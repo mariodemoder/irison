@@ -28,7 +28,7 @@ class RegisteredUserController extends Controller
      *
      * @throws \Illuminate\Validation\ValidationException
      */
-    public function store(Request $request): RedirectResponse
+   public function store(Request $request): RedirectResponse
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -36,15 +36,19 @@ class RegisteredUserController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
-        $lastClinicId = Clinic::max('id');
-        $nextClinicId = $lastClinicId ? ($lastClinicId + 1) : 1;
+        
+        $clinic = Clinic::create([
+            'name' => $request->name . ' - Clinica',
+            'legal_name' => $request->name . ' - Clinica',
+            'email' => $request->email,
+        ]);
 
+        
         $user = User::create([
-            'clinic_id' => $nextClinicId,
+            'clinic_id' => $clinic->id,
             'name' => $request->name,
             'email' => $request->email,
-            'password_hash' => Hash::make($request->password)
-
+            'password' => Hash::make($request->password),
         ]);
 
         event(new Registered($user));
@@ -53,4 +57,5 @@ class RegisteredUserController extends Controller
 
         return redirect(route('dashboard', absolute: false));
     }
+
 }

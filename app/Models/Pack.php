@@ -5,11 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\Concerns\BelongsToClinic;
 
 class Pack extends Model
 {
+    use BelongsToClinic;
     protected $fillable = [
-        'clinic_id', 'patient_id', 'total_sessions',
+        'patient_id', 'total_sessions',
         'remaining_sessions', 'price', 'status'
     ];
 

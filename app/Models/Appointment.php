@@ -5,12 +5,23 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Models\Concerns\BelongsToClinic;
 
 class Appointment extends Model
 {
+    use BelongsToClinic;
+
     protected $fillable = [
-        'clinic_id', 'patient_id', 'start_time', 'end_time',
-        'status', 'payment_status'
+        'patient_id',
+        'start_time',
+        'end_time',
+        'status',
+        'payment_status',
+    ];
+
+    protected $casts = [
+        'start_time' => 'datetime',
+        'end_time'   => 'datetime',
     ];
 
     public function clinic(): BelongsTo

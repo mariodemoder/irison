@@ -8,15 +8,18 @@ return new class extends Migration
 {
     public function up(): void
     {
-        /*
-        |--------------------------------------------------------------------------
-        | clinics
-        |--------------------------------------------------------------------------
-        */
+
+       //--------------------------------------------------------------------------
+       // clinics
+       //--------------------------------------------------------------------------
+        
         Schema::dropIfExists('clinics');
         Schema::create('clinics', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+            $table->string('legal_name')->nullable();
+            $table->string('cif')->nullable();
+            $table->boolean('is_active')->default(true);
             $table->string('email')->nullable();
             $table->string('phone')->nullable();
             $table->string('address')->nullable();
@@ -24,27 +27,27 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        /*
-        |--------------------------------------------------------------------------
-        | users
-        |--------------------------------------------------------------------------
-        */
+       
+       //--------------------------------------------------------------------------
+       // users
+       //--------------------------------------------------------------------------
+        
         Schema::dropIfExists('users');
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->foreignId('clinic_id')->constrained()->cascadeOnDelete();
             $table->string('name');
             $table->string('email')->unique();
-            $table->string('password_hash');
+            $table->string('password');
             $table->enum('role', ['owner', 'staff'])->default('owner');
             $table->timestamps();
         });
 
-        /*
-        |--------------------------------------------------------------------------
-        | subscriptions
-        |--------------------------------------------------------------------------
-        */
+       
+       //--------------------------------------------------------------------------
+       // subscriptions
+       //--------------------------------------------------------------------------
+        
         Schema::dropIfExists('subscriptions');
         Schema::create('subscriptions', function (Blueprint $table) {
             $table->id();
@@ -57,11 +60,11 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        /*
-        |--------------------------------------------------------------------------
-        | patients
-        |--------------------------------------------------------------------------
-        */
+       
+       //--------------------------------------------------------------------------
+       // patients
+       //--------------------------------------------------------------------------
+        
         Schema::create('patients', function (Blueprint $table) {
             $table->id();
             $table->foreignId('clinic_id')->constrained()->cascadeOnDelete();
@@ -76,11 +79,11 @@ return new class extends Migration
             $table->index(['clinic_id', 'last_name']);
         });
 
-        /*
-        |--------------------------------------------------------------------------
-        | appointments
-        |--------------------------------------------------------------------------
-        */
+       
+       //--------------------------------------------------------------------------
+       // appointments
+       //--------------------------------------------------------------------------
+        
         Schema::create('appointments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('clinic_id')->constrained()->cascadeOnDelete();
@@ -92,13 +95,14 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['clinic_id', 'start_time']);
+            $table->index(['patient_id']);
         });
 
-        /*
-        |--------------------------------------------------------------------------
-        | clinical_records
-        |--------------------------------------------------------------------------
-        */
+       
+       //--------------------------------------------------------------------------
+       // clinical_records
+       //--------------------------------------------------------------------------
+        
         Schema::create('clinical_records', function (Blueprint $table) {
             $table->id();
             $table->foreignId('clinic_id')->constrained()->cascadeOnDelete();
@@ -110,11 +114,11 @@ return new class extends Migration
             $table->index(['clinic_id', 'patient_id']);
         });
 
-        /*
-        |--------------------------------------------------------------------------
-        | packs
-        |--------------------------------------------------------------------------
-        */
+       
+       //--------------------------------------------------------------------------
+       // packs
+       //--------------------------------------------------------------------------
+        
         Schema::create('packs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('clinic_id')->constrained()->cascadeOnDelete();
@@ -128,11 +132,11 @@ return new class extends Migration
             $table->index(['clinic_id', 'patient_id']);
         });
 
-        /*
-        |--------------------------------------------------------------------------
-        | payments
-        |--------------------------------------------------------------------------
-        */
+       
+       //--------------------------------------------------------------------------
+       // payments
+       //--------------------------------------------------------------------------
+        
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('clinic_id')->constrained()->cascadeOnDelete();
@@ -147,11 +151,11 @@ return new class extends Migration
             $table->index(['clinic_id', 'patient_id']);
         });
 
-        /*
-        |--------------------------------------------------------------------------
-        | reminders
-        |--------------------------------------------------------------------------
-        */
+       
+       //--------------------------------------------------------------------------
+       // reminders
+       //--------------------------------------------------------------------------
+        
         Schema::create('reminders', function (Blueprint $table) {
             $table->id();
             $table->foreignId('clinic_id')->constrained()->cascadeOnDelete();
@@ -161,6 +165,7 @@ return new class extends Migration
             $table->enum('status', ['sent', 'failed'])->default('sent');
             $table->timestamps();
         });
+        
     }
 
     public function down(): void

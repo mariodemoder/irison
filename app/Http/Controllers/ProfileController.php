@@ -48,6 +48,11 @@ class ProfileController extends Controller
 
         $user = $request->user();
 
+        // Desactivar la clínica asociada 
+        if ($user->clinic_id) {
+                \App\Models\Clinic::where('id', $user->clinic_id) ->update(['is_active' => 0]); 
+                }
+
         Auth::logout();
 
         $user->delete();
