@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
-use Illuminate\Routing\Controller as BaseController;
 use App\Models\Patient;
+use Illuminate\Routing\Controller as BaseController;
 use Illuminate\Http\Request;
 
 class PatientController extends BaseController
