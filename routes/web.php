@@ -1,10 +1,11 @@
 <?php
 
+use Illuminate\Support\Facades\Route;
+/*
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\PatientController;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Hash; 
 
 Route::get('/', function () {
@@ -21,3 +22,10 @@ Route::middleware('auth')->group(function () {
 require __DIR__.'/auth.php';
 
 Route::get('/hash-test', function () { return Hash::make('HOLISholis123'); });
+
+*/
+Route::get('/{any}', function () {
+    return view('app');
+})->where('any', '.*');
+
+

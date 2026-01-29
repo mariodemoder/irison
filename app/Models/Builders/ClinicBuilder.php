@@ -2,8 +2,9 @@
 
 namespace App\Models\Builders;
 
+use App\Models\Scopes\ClinicScope;
 use Illuminate\Database\Eloquent\Builder;
-use App\Scopes\ClinicScope;
+
 
 class ClinicBuilder extends Builder
 {

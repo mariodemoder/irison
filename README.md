@@ -37,7 +37,8 @@ app/
  │   └─ Middleware/        # EnsureClinic
  ├─ Models/
  │   └─ Scopes/            # ClinicScope
- ├─ Traits/                # BelongsToClinic
+ │   └─ Concerns/          # BelongsToClinic
+ ├─ Traits/                # MultiTenantAuthorization
  └─ Services/              # Lógica de negocio (futuro)
 ```
 

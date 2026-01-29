@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+{{-- <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         <meta charset="utf-8">
@@ -33,4 +33,17 @@
             </main>
         </div>
     </body>
+</html> --}}
+
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Clínica SaaS</title>
+    @vite('resources/js/app.js')
+</head>
+<body>
+    <div id="app"></div>
+</body>
 </html>
