@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureClinic;
+use App\Http\Middleware\EnsureClinicIsActive;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -16,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->alias([
             'clinic' => EnsureClinic::class,
+            'clinic.active' => EnsureClinicIsActive::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

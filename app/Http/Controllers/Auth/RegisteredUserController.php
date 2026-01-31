@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Clinic;
+use Carbon\Carbon;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -41,6 +42,8 @@ class RegisteredUserController extends Controller
             'name' => $request->name . ' - Clinica',
             'legal_name' => $request->name . ' - Clinica',
             'email' => $request->email,
+            'trial_ends_at' => Carbon::now()->addDays(30),
+            'subscribed_at' => null,
         ]);
 
         

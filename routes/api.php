@@ -18,7 +18,7 @@ use App\Http\Middleware\EnsureClinic;
 |
 */
 
-Route::middleware(['auth:sanctum', 'clinic'])->group(function () {
+Route::middleware(['auth:sanctum', 'clinic', 'clinic.active'])->group(function () {
 
     Route::apiResource('patients', PatientController::class);
     Route::apiResource('appointments', AppointmentController::class);
@@ -27,4 +27,16 @@ Route::middleware(['auth:sanctum', 'clinic'])->group(function () {
 Route::post('/register', RegisterController::class);
 // API login para clientes SPA (valida credenciales y devuelve token)
 Route::post('/login', [AuthController::class, 'login']);
+
+// Stripe Checkout
+Route::middleware(['auth:sanctum'])->post('/stripe/checkout', \App\Http\Controllers\Api\StripeCheckoutController::class);
+
+// Stripe webhook (no auth)
+Route::post('/stripe/webhook', [\App\Http\Controllers\Api\StripeWebhookController::class, 'handle']);
+
+// Fake subscribe (development/testing): marca la clínica como suscrita
+Route::middleware(['auth:sanctum'])->post('/subscribe/fake', \App\Http\Controllers\Api\FakeSubscribeController::class);
+
+// Información del usuario autenticado (frontend single-point)
+Route::middleware(['auth:sanctum', 'clinic', 'clinic.active'])->get('/me', \App\Http\Controllers\Api\MeController::class);
 

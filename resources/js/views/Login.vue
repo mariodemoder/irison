@@ -5,8 +5,9 @@ import { useRouter } from 'vue-router'
 
 const router = useRouter()
 
-const email = ref('')
-const password = ref('')
+// Valores por defecto para testing rápido — eliminar en producción
+const email = ref('mario@test.com')
+const password = ref('password123')
 const loading = ref(false)
 const error = ref(null)
 

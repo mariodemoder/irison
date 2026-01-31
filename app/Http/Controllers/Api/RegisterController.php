@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Clinic;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
@@ -24,6 +25,8 @@ class RegisterController extends Controller
             'name' => $data['clinic_name'],
             'legal_name' => $data['clinic_name'],
             'email' => $data['email'],
+            'trial_ends_at' => Carbon::now()->addDays(30),
+            'subscribed_at' => null,
         ]);
 
         $user = User::create([
