@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <!-- Engranaje -->
+  <circle cx="70" cy="60" r="32" fill="#0f4c81"></circle>
+  <g fill="#0f4c81">
+    <rect x="68" y="10" width="4" height="14" rx="2"></rect>
+    <rect x="68" y="96" width="4" height="14" rx="2"></rect>
+    <rect x="10" y="58" width="14" height="4" rx="2"></rect>
+    <rect x="96" y="58" width="14" height="4" rx="2"></rect>
+  </g>
+
+  <!-- Hueco central -->
+  <circle cx="70" cy="60" r="18" fill="#ffffff"></circle>
+
+  <!-- Columna -->
+  <path d="
+    M48 18
+    C40 30, 40 90, 48 102
+    C52 96, 52 84, 50 78
+    C48 70, 48 50, 50 42
+    C52 34, 52 24, 48 18
+    Z" fill="#7bb135"></path>
+
+  <!-- Vértebras -->
+  <g fill="#ffffff">
+    <rect x="46" y="30" width="8" height="6" rx="3"></rect>
+    <rect x="46" y="42" width="8" height="6" rx="3"></rect>
+    <rect x="46" y="54" width="8" height="6" rx="3"></rect>
+    <rect x="46" y="66" width="8" height="6" rx="3"></rect>
+    <rect x="46" y="78" width="8" height="6" rx="3"></rect>
+  </g>
+</svg>

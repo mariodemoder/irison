@@ -12,6 +12,11 @@ class Subscription extends Model
         'stripe_customer_id', 'stripe_subscription_id'
     ];
 
+    protected $casts = [
+        'trial_ends_at' => 'datetime',
+        'current_period_end' => 'datetime',
+    ];
+
     public function clinic(): BelongsTo
     {
         return $this->belongsTo(Clinic::class);

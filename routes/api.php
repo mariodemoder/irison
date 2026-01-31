@@ -38,5 +38,6 @@ Route::post('/stripe/webhook', [\App\Http\Controllers\Api\StripeWebhookControlle
 Route::middleware(['auth:sanctum'])->post('/subscribe/fake', \App\Http\Controllers\Api\FakeSubscribeController::class);
 
 // Información del usuario autenticado (frontend single-point)
-Route::middleware(['auth:sanctum', 'clinic', 'clinic.active'])->get('/me', \App\Http\Controllers\Api\MeController::class);
+// `/me` debe estar disponible para UI aunque el trial esté expirado — devuelve el `status` canónico
+Route::middleware(['auth:sanctum', 'clinic'])->get('/me', \App\Http\Controllers\Api\MeController::class);
 

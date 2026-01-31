@@ -11,15 +11,31 @@ class MeController
         $user = $request->user();
         $clinic = $user ? $user->clinic : null;
 
-        $active = false;
+        $status = 'blocked';
         if ($clinic) {
-            $active = $clinic->isTrialActive() || $clinic->isSubscribed();
+            $status = match (true) {
+                $clinic->isSubscribed() => 'active',
+                $clinic->isTrialActive() => 'trial',
+                default => 'blocked',
+            };
+        }
+
+        $trialEnds = null;
+        if ($clinic) {
+            $sub = $clinic->currentSubscription();
+            $trialEnds = $sub ? $sub->trial_ends_at : null;
+        }
+
+        if ($clinic) {
+            $clinic->load('subscriptions');
         }
 
         return response()->json([
             'user' => $user,
             'clinic' => $clinic,
-            'trial_active' => $active,
+            'status' => $status,
+            'trial_ends_at' => $trialEnds,
         ]);
+
     }
 }

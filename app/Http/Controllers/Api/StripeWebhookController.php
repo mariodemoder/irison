@@ -33,9 +33,28 @@ class StripeWebhookController extends Controller
             if ($email) {
                 $user = User::where('email', $email)->first();
                 if ($user && $user->clinic) {
-                    $user->clinic->update([
-                        'subscribed_at' => Carbon::now(),
+                    $clinic = $user->clinic;
+
+                    // Crear registro de suscripción activa en la tabla subscriptions
+                    \App\Models\Subscription::create([
+                        'clinic_id' => $clinic->id,
+                        'status' => 'active',
+                        'trial_ends_at' => null,
+                        'current_period_end' => Carbon::now()->addMonth(),
+                        'stripe_customer_id' => $event->data->object->customer ?? null,
+                        'stripe_subscription_id' => $event->data->object->subscription ?? null,
                     ]);
+
+                    // Eliminar registros de trial previos
+                    \App\Models\Subscription::where('clinic_id', $clinic->id)
+                        ->where('status', 'trial')
+                        ->delete();
+
+                    // Limpiar columnas antiguas en clinics si existieran
+                    $clinic->subscribed_at = null;
+                    $clinic->subscription_provider = null;
+                    $clinic->subscription_reference = null;
+                    $clinic->save();
                 }
             }
         }

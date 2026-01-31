@@ -53,15 +53,29 @@ class Clinic extends Model
         return $this->hasMany(Reminder::class);
     }
 
+    public function currentSubscription()
+    {
+        // Preferir suscripción activa; si no existe, devolver la más reciente
+        $active = $this->subscriptions()->where('status', 'active')->orderByDesc('id')->first();
+        if ($active) {
+            return $active;
+        }
+
+        return $this->subscriptions()->orderByDesc('id')->first();
+    }
+
     public function isTrialActive(): bool
     {
-        if (! $this->trial_ends_at) return false;
-        // $this->trial_ends_at is cast to Carbon by Eloquent
-        return $this->trial_ends_at->isFuture();
+        $sub = $this->currentSubscription();
+        if (! $sub) return false;
+        if (! isset($sub->trial_ends_at)) return false;
+        return $sub->trial_ends_at->isFuture();
     }
 
     public function isSubscribed(): bool
     {
-        return ! is_null($this->subscribed_at);
+        $sub = $this->currentSubscription();
+        if (! $sub) return false;
+        return isset($sub->status) && $sub->status === 'active';
     }
 }

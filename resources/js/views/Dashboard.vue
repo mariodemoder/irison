@@ -4,7 +4,8 @@ import api from '../services/api'
 
 const user = ref(null)
 const clinic = ref(null)
-const trial_active = ref(true)
+const status = ref('blocked')
+const trial_ends_at = ref(null)
 const loading = ref(true)
 
 async function subscribe() {
@@ -21,26 +22,23 @@ async function subscribeFake() {
     const res = await api.post('/subscribe/fake')
     // actualizar estado en UI
     clinic.value = res.data.clinic
-    trial_active.value = !!res.data.trial_active
+    status.value = res.data.status_clinic || status.value
+    trial_ends_at.value = res.data.trial_ends_at || trial_ends_at.value
   } catch (e) {
     console.error('Error activando suscripción fake', e)
   }
 }
 
 onMounted(async () => {
-  try {
+    try {
     const res = await api.get('/me')
     user.value = res.data.user
     clinic.value = res.data.clinic
-    trial_active.value = !!res.data.trial_active
+    status.value = res.data.status || status.value
+    trial_ends_at.value = res.data.trial_ends_at || null
   } catch (e) {
     console.error('Error cargando /me', e)
-    // Si el backend responde 403 por trial expirado, marcar trial como inactivo
-    if (e?.response?.status === 403) {
-      trial_active.value = false
-      user.value = null
-      clinic.value = null
-    }
+    // si ocurre 403 por otra razón, mantenemos estado por defecto
   } finally {
     loading.value = false
   }
@@ -53,15 +51,23 @@ onMounted(async () => {
   <div v-else>
     <h1>Dashboard</h1>
 
-    <div v-if="!trial_active">
-      <p class="alert">Tu trial ha expirado</p>
+    <div v-if="status === 'trial'">
+      <p>
+        Estás en periodo de prueba hasta
+        <strong>{{ trial_ends_at }}</strong>
+      </p>
+    </div>
+
+    <div v-else-if="status === 'blocked'">
+      <p class="alert">Tu periodo de prueba ha terminado.</p>
       <div style="display:flex;gap:8px;">
-        <button @click="subscribe" class="btn">Suscribirse (Stripe)</button>
+        <button @click="subscribe" class="btn">Activar plan (Stripe)</button>
         <button @click="subscribeFake" class="btn">Activar plan (fake)</button>
       </div>
     </div>
 
-    <div v-else>
+    <div v-else-if="status === 'active'">
+      <p class="ok">Plan activo ✅</p>
       <p>Bienvenido {{ user?.name ?? '—' }}</p>
       <p>Clínica: {{ clinic?.name ?? '—' }}</p>
     </div>
