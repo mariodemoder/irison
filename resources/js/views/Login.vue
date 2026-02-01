@@ -27,23 +27,27 @@ async function submit() {
 
 <template>
   <AuthLayout>
-    <h2 class="text-2xl font-semibold">¡Buenos días!</h2>
+    <div class="login-column">
+      <h2 class="text-2xl font-semibold mb-2">¡Buenos días!</h2>
 
-    <form @submit.prevent="submit">
-      <BaseInput v-model="email" label="Email" autocomplete="email" />
-      <BaseInput v-model="password" label="Contraseña" type="password" autocomplete="current-password" />
+      <form @submit.prevent="submit">
+        <BaseInput v-model="email" label="Email" autocomplete="email" />
+        <BaseInput v-model="password" label="Contraseña" type="password" autocomplete="current-password" />
 
-      <a class="link text-sm text-gray-600">¿Has olvidado la contraseña?</a>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;margin-bottom:6px;">
+          <a class="link text-sm text-gray-600">¿Has olvidado la contraseña?</a>
+        </div>
 
-      <BaseButton :type="'submit'">{{ loading ? 'Entrando...' : 'Iniciar sesión' }}</BaseButton>
-    </form>
+        <BaseButton :type="'submit'">{{ loading ? 'Entrando...' : 'Iniciar sesión' }}</BaseButton>
+      </form>
 
-    <p class="footer text-sm mt-4">
-      ¿Aún no tienes cuenta?
-      <router-link to="/register" class="text-accent">Registrarse</router-link>
-    </p>
+      <p class="footer text-sm mt-4">
+        ¿Aún no tienes cuenta?
+        <router-link to="/register" class="text-accent">Registrarse</router-link>
+      </p>
 
-    <p v-if="error" class="mt-3 text-sm text-red-600">{{ error }}</p>
+      <p v-if="error" class="mt-3 text-sm error-text">{{ error }}</p>
+    </div>
   </AuthLayout>
 </template>
 
