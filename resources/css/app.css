@@ -1,3 +1,17 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root{
+	--bg-mint: #8ce6ab; /* verde menta claro */
+	--bg-card: #14b484;
+	--text-main: #0F172A;
+	--muted: #64748B;
+	--border: #8ef5e7;
+}
+
+html,body,#app { height: 100%; }
+body { background: var(--bg-mint); color: var(--text-main); }
+
+/* Make Auth layout respect global bg if it used explicit color */
+.auth-container, .auth-left { background: transparent }
