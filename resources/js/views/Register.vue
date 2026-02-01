@@ -8,6 +8,7 @@ import axios from 'axios'
 
 const router = useRouter()
 const name = ref('')
+const clinic_name = ref('')
 const email = ref('')
 const password = ref('')
 const loading = ref(false)
@@ -17,7 +18,7 @@ async function submit() {
   loading.value = true
   error.value = ''
   try {
-    await axios.post('/api/register', { name: name.value, email: email.value, password: password.value })
+    await axios.post('/api/register', { name: name.value, clinic_name: clinic_name.value, email: email.value, password: password.value })
     router.push('/login')
   } catch (err) {
     error.value = err.response?.data?.message || 'Error al crear cuenta'
@@ -31,6 +32,7 @@ async function submit() {
 
     <form @submit.prevent="submit">
       <BaseInput v-model="name" label="Nombre" />
+      <BaseInput v-model="clinic_name" label="Nombre de la clínica" />
       <BaseInput v-model="email" label="Email" autocomplete="email" />
       <BaseInput v-model="password" label="Contraseña" type="password" autocomplete="new-password" />
 

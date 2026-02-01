@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Clinic;
+use App\Models\Subscription;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -34,6 +35,14 @@ class RegisterController extends Controller
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
+        ]);
+
+        // Create initial trial subscription for the clinic
+        Subscription::create([
+            'clinic_id' => $clinic->id,
+            'status' => 'trial',
+            'trial_ends_at' => $clinic->trial_ends_at,
+            'current_period_end' => null,
         ]);
 
         $token = $user->createToken('spa')->plainTextToken;
