@@ -20,14 +20,18 @@ class RegisterController extends Controller
             'clinic_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'min:8'],
+            'trial_ends_at' => ['nullable', 'datetime'],
+            
         ]);
+
+        // Define trial end date once and store it on the subscription.
+        $trialEnds = Carbon::now()->addDays(30);
 
         $clinic = Clinic::create([
             'name' => $data['clinic_name'],
             'legal_name' => $data['clinic_name'],
             'email' => $data['email'],
-            'trial_ends_at' => Carbon::now()->addDays(30),
-            'subscribed_at' => null,
+            'trial_ends_at' => $trialEnds,
         ]);
 
         $user = User::create([
@@ -41,7 +45,7 @@ class RegisterController extends Controller
         Subscription::create([
             'clinic_id' => $clinic->id,
             'status' => 'trial',
-            'trial_ends_at' => $clinic->trial_ends_at,
+            'trial_ends_at' => $trialEnds,
             'current_period_end' => null,
         ]);
 

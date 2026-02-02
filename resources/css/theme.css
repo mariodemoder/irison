@@ -64,3 +64,16 @@
 
 /* Error text for auth */
 .error-text { color: var(--error); }
+
+/* Subscription banner (top-right) */
+.sub-banner { display: flex; gap: 12px; align-items: center; background: var(--bg-card); padding: 10px 14px; border-radius: 12px; box-shadow: 0 8px 24px rgba(2,6,23,0.06); border: 1px solid var(--border); }
+.sub-banner .meta { display: flex; flex-direction: column; gap: 2px }
+.sub-banner .meta .small { font-size: 12px; color: var(--text-muted) }
+.status-dot { width: 10px; height: 10px; border-radius: 999px; display: inline-block; margin-right: 8px }
+.status-dot.green { background: var(--success) }
+.status-dot.yellow { background: var(--warning) }
+.status-dot.red { background: var(--error) }
+
+@media (max-width: 768px) {
+  .sub-banner { padding: 8px 10px; gap: 8px }
+}

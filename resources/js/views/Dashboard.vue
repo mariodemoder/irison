@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import api from '../services/api'
 
 const user = ref(null)
@@ -7,6 +7,25 @@ const clinic = ref(null)
 const status = ref('blocked')
 const trial_ends_at = ref(null)
 const loading = ref(true)
+
+const daysLeft = computed(() => {
+  if (!trial_ends_at.value) return null
+  const end = new Date(trial_ends_at.value)
+  const now = new Date()
+  const diff = end.getTime() - now.getTime()
+  return Math.ceil(diff / (1000 * 60 * 60 * 24))
+})
+
+const subscriptionState = computed(() => {
+  if (status.value === 'active') return { color: 'green', label: 'Suscripción activa' }
+  if (status.value === 'trial') {
+    if (daysLeft.value === null) return { color: 'red', label: 'Trial (sin fecha)' }
+    if (daysLeft.value > 7) return { color: 'green', label: `Trial — ${daysLeft.value} días` }
+    if (daysLeft.value > 0) return { color: 'yellow', label: `Trial — ${daysLeft.value} días` }
+    return { color: 'red', label: 'Trial vencido' }
+  }
+  return { color: 'red', label: 'Suscripción vencida' }
+})
 
 async function subscribe() {
   try {
@@ -49,7 +68,21 @@ onMounted(async () => {
   <div v-if="loading">Cargando...</div>
 
   <div v-else>
-    <h1>Dashboard</h1>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+      <h1>Dashboard</h1>
+
+      <div class="sub-banner">
+        <div class="meta">
+          <div style="font-weight:600">{{ user?.name ?? '—' }}</div>
+          <div class="small">{{ clinic?.name ?? '—' }}</div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:8px">
+          <span :class="['status-dot', subscriptionState.color]"></span>
+          <div style="font-size:13px">{{ subscriptionState.label }}</div>
+        </div>
+      </div>
+    </div>
 
     <div v-if="status === 'trial'">
       <p>
