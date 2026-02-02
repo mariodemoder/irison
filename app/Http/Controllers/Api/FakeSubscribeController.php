@@ -30,19 +30,30 @@ class FakeSubscribeController extends Controller
                 $s->save();
             }
 
-            // Eliminar cualquier registro de trial existente para esta clínica
-            \App\Models\Subscription::where('clinic_id', $clinic->id)
+            // Intentar reutilizar una suscripción de trial existente (UPDATE)
+            $subscription = \App\Models\Subscription::where('clinic_id', $clinic->id)
                 ->where('status', 'trial')
-                ->delete();
+                ->latest()
+                ->first();
 
-            $subscription = \App\Models\Subscription::create([
-                'clinic_id' => $clinic->id,
-                'status' => 'active',
-                'trial_ends_at' => null,
-                'current_period_end' => Carbon::now()->addMonth(),
-                'stripe_customer_id' => null,
-                'stripe_subscription_id' => 'fake-' . uniqid(),
-            ]);
+            if ($subscription) {
+                $subscription->status = 'active';
+                $subscription->trial_ends_at = null;
+                $subscription->current_period_end = Carbon::now()->addMonth();
+                $subscription->stripe_customer_id = $subscription->stripe_customer_id ?? null;
+                $subscription->stripe_subscription_id = $subscription->stripe_subscription_id ?? 'fake-' . uniqid();
+                $subscription->save();
+            } else {
+                // Si no existe trial previo, crear nueva suscripción
+                $subscription = \App\Models\Subscription::create([
+                    'clinic_id' => $clinic->id,
+                    'status' => 'active',
+                    'trial_ends_at' => null,
+                    'current_period_end' => Carbon::now()->addMonth(),
+                    'stripe_customer_id' => null,
+                    'stripe_subscription_id' => 'fake-' . uniqid(),
+                ]);
+            }
 
             // Limpiar campos en clinics para que subscriptions sea la fuente de verdad
             $clinic->subscribed_at = null;

@@ -20,9 +20,9 @@ const subscriptionState = computed(() => {
   if (status.value === 'active') return { color: 'green', label: 'Suscripción activa' }
   if (status.value === 'trial') {
     if (daysLeft.value === null) return { color: 'red', label: 'Trial (sin fecha)' }
-    if (daysLeft.value > 7) return { color: 'green', label: `Trial — ${daysLeft.value} días` }
-    if (daysLeft.value > 0) return { color: 'yellow', label: `Trial — ${daysLeft.value} días` }
-    return { color: 'red', label: 'Trial vencido' }
+    if (daysLeft.value > 7 | daysLeft.value < 15) return { color: 'yellow', label: `Te quedan ${daysLeft.value} días de prueba` }
+    if (daysLeft.value > 0 | daysLeft.value < 7) return { color: 'red', label: `Te quedan ${daysLeft.value} días de prueba` }
+    return { color: 'red', label: 'Tu prueba ha finalizado' }
   }
   return { color: 'red', label: 'Suscripción vencida' }
 })
@@ -85,14 +85,14 @@ onMounted(async () => {
     </div>
 
     <div v-if="status === 'trial'">
-      <p>
-        Estás en periodo de prueba hasta
-        <strong>{{ trial_ends_at }}</strong>
+      <p v-if="daysLeft !== null && daysLeft > 0">
+        Te quedan <strong>{{ daysLeft }}</strong> días de prueba
       </p>
+      <p v-else>Tu prueba ha finalizado</p>
     </div>
 
     <div v-else-if="status === 'blocked'">
-      <p class="alert">Tu periodo de prueba ha terminado.</p>
+      <p class="alert">Tu prueba ha finalizado</p>
       <div style="display:flex;gap:8px;">
         <button @click="subscribe" class="btn">Activar plan (Stripe)</button>
         <button @click="subscribeFake" class="btn">Activar plan (fake)</button>
