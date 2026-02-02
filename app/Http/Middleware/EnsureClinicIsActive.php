@@ -19,7 +19,8 @@ class EnsureClinicIsActive
 
         if (! $clinic->isTrialActive() && ! $clinic->isSubscribed()) {
             return response()->json([
-                'message' => 'Trial expirado',
+                'message' => 'Tu periodo de prueba ha finalizado',
+                'code' => 'SUBSCRIPTION_REQUIRED',
             ], 403);
         }
 

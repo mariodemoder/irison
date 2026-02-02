@@ -30,12 +30,19 @@ class MeController
             $clinic->load('subscriptions');
         }
 
-        return response()->json([
+        $payload = [
             'user' => $user,
             'clinic' => $clinic,
             'status' => $status,
             'trial_ends_at' => $trialEnds,
-        ]);
+        ];
+
+        if ($status === 'blocked') {
+            $payload['code'] = 'SUBSCRIPTION_REQUIRED';
+            $payload['message'] = 'Tu periodo de prueba ha finalizado';
+        }
+
+        return response()->json($payload);
 
     }
 }
