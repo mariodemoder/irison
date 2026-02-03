@@ -28,4 +28,7 @@ Route::get('/{any}', function () {
     return view('app');
 })->where('any', '.*');
 
+// Fake billing success endpoint (antes de la catch-all)
+Route::get('/billing/fake/complete', [\App\Http\Controllers\Api\BillingWebhookController::class, 'fakeComplete']);
+
 

@@ -9,7 +9,7 @@ use App\Models\{
     Appointment,
     ClinicalRecord,
     Pack,
-    Payment,
+    PatientPayment,
     Reminder
 };
 
@@ -18,7 +18,7 @@ use App\Policies\{
     AppointmentPolicy,
     ClinicalRecordPolicy,
     PackPolicy,
-    PaymentPolicy,
+    PatientPaymentPolicy,
     ReminderPolicy
 };
 
@@ -29,7 +29,7 @@ class AuthServiceProvider extends ServiceProvider
         Appointment::class    => AppointmentPolicy::class,
         ClinicalRecord::class => ClinicalRecordPolicy::class,
         Pack::class           => PackPolicy::class,
-        Payment::class        => PaymentPolicy::class,
+        PatientPayment::class        => PatientPaymentPolicy::class,
         Reminder::class       => ReminderPolicy::class,
     ];
 

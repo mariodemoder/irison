@@ -134,10 +134,10 @@ return new class extends Migration
 
        
        //--------------------------------------------------------------------------
-       // payments
+       // patients payments
        //--------------------------------------------------------------------------
         
-        Schema::create('payments', function (Blueprint $table) {
+        Schema::create('patients_payments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('clinic_id')->constrained()->cascadeOnDelete();
             $table->foreignId('patient_id')->constrained()->cascadeOnDelete();
@@ -171,7 +171,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('reminders');
-        Schema::dropIfExists('payments');
+        Schema::dropIfExists('patients_payments');
         Schema::dropIfExists('packs');
         Schema::dropIfExists('clinical_records');
         Schema::dropIfExists('appointments');

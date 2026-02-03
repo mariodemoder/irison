@@ -2,9 +2,9 @@
 
 namespace App\Policies;
 
-use App\Models\Payment;
+use App\Models\PatientPayment;
 
-class PaymentPolicy extends BasePolicy
+class PatientPaymentPolicy extends BasePolicy
 {
     //
 }

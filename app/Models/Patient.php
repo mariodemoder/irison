@@ -31,9 +31,9 @@ class Patient extends Model
         return $this->hasMany(Pack::class);
     }
 
-    public function payments(): HasMany
+    public function patientpayments(): HasMany
     {
-        return $this->hasMany(Payment::class);
+        return $this->hasMany(PatientPayment::class);
     }
 
     public function clinicalRecords(): HasMany

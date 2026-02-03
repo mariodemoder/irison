@@ -4,15 +4,16 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\Concerns\BelongsToClinic;
 
-class Pack extends Model
+class PatientPayment extends Model
 {
     use BelongsToClinic;
+    public $timestamps = false;
+
     protected $fillable = [
-        'patient_id', 'total_sessions',
-        'remaining_sessions', 'price', 'status'
+        'patient_id', 'appointment_id',
+        'pack_id', 'amount', 'method', 'status'
     ];
 
     public function clinic(): BelongsTo
@@ -25,8 +26,13 @@ class Pack extends Model
         return $this->belongsTo(Patient::class);
     }
 
-    public function payments(): HasMany
+    public function appointment(): BelongsTo
     {
-        return $this->hasMany(Patientpayment::class);
+        return $this->belongsTo(Appointment::class);
+    }
+
+    public function pack(): BelongsTo
+    {
+        return $this->belongsTo(Pack::class);
     }
 }
