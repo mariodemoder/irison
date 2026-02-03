@@ -31,12 +31,6 @@ Route::post('/login', [AuthController::class, 'login']);
 // Stripe Checkout
 Route::middleware(['auth:sanctum'])->post('/stripe/checkout', \App\Http\Controllers\Api\StripeCheckoutController::class);
 
-// Generic billing checkout (uses provider resolver)
-Route::middleware(['auth:sanctum'])->post('/billing/checkout', \App\Http\Controllers\Api\CheckoutController::class);
-
-// Billing webhook endpoint (no auth)
-Route::post('/billing/webhook', [\App\Http\Controllers\Api\BillingWebhookController::class, '__invoke']);
-
 // Stripe webhook (no auth)
 Route::post('/stripe/webhook', [\App\Http\Controllers\Api\StripeWebhookController::class, 'handle']);
 

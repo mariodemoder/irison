@@ -39,8 +39,8 @@ class Appointment extends Model
         return $this->hasOne(ClinicalRecord::class);
     }
 
-    public function patientpayment(): HasOne
+    public function payment(): HasOne
     {
-        return $this->hasOne(PatientPayment::class);
+        return $this->hasOne(Payment::class);
     }
 }

@@ -27,6 +27,6 @@ class Pack extends Model
 
     public function payments(): HasMany
     {
-        return $this->hasMany(Patientpayment::class);
+        return $this->hasMany(Payment::class);
     }
 }

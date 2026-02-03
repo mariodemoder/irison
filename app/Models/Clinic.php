@@ -43,9 +43,9 @@ class Clinic extends Model
         return $this->hasMany(Pack::class);
     }
 
-    public function patientpayments(): HasMany
+    public function payments(): HasMany
     {
-        return $this->hasMany(PatientPayment::class);
+        return $this->hasMany(Payment::class);
     }
 
     public function reminders(): HasMany
