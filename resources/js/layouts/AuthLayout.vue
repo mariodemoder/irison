@@ -25,7 +25,7 @@ import logo from '../assets/fisiomeca.svg'
 
 <style scoped>
 .accent { color: var(--primary); }
-.brand img { border-radius: 12px; box-shadow: none; width: 96px; height: 96px }
+.brand img { border-radius: 16px; box-shadow:2px; width: 280px; height: 280px }
 .brand h1 { margin: 0 }
 .brand p { margin: 0; color: var(--text-muted) }
 
