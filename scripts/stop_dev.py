@@ -46,8 +46,19 @@ def main():
             with open(titles_file, 'r', encoding='utf-8') as f:
                 titles = json.load(f)
             for cmd, title in titles.items():
-                # Intentar cerrar ventana por título exacta
-                subprocess.run(f'taskkill /FI "WINDOWTITLE eq {title}" /T /F', shell=True)
+                # Intentar cerrar ventana por título exacta usando PowerShell para buscar ventanas
+                try:
+                    esc = title.replace("'", "''")
+                    out = subprocess.check_output([
+                        'powershell', '-NoProfile', '-Command',
+                        f"Get-Process | Where-Object {{ $_.MainWindowTitle -like '*{esc}*' -and $_.MainWindowTitle -ne '' }} | Select-Object -ExpandProperty Id"
+                    ], text=True, stderr=subprocess.DEVNULL)
+                    pids = [p.strip() for p in out.splitlines() if p.strip().isdigit()]
+                    for pid in pids:
+                        subprocess.run(['taskkill', '/PID', pid, '/F'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                except Exception:
+                    # fallback: intentar taskkill por WINDOWTITLE exacto
+                    subprocess.run(f'taskkill /FI "WINDOWTITLE eq {title}" /T /F', shell=True)
         except Exception:
             pass
     for p in ports:

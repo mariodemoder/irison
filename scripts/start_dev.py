@@ -13,10 +13,11 @@ def run_in_new_terminal(cmd, title=None):
     if system == 'Windows':
         if title:
             # start "title" cmd /k "cd /d ROOT && cmd"
-            safe_cmd = f'cd /d "{ROOT}" && {cmd}'
+            # also set the console title inside the cmd session to ensure exact match
+            safe_cmd = f'title {title} && cd /d "{ROOT}" && {cmd}'
             subprocess.Popen(f'start "{title}" cmd /k "{safe_cmd}"', shell=True)
         else:
-            subprocess.Popen(f'start cmd /k "{cmd}"', shell=True)
+            subprocess.Popen(f'start cmd /k "cd /d "{ROOT}" && {cmd}"', shell=True)
     elif system == 'Darwin':
         subprocess.Popen(['osascript', '-e', f'tell app "Terminal" to do script "{cmd}"'])
     else:
