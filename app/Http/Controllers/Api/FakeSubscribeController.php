@@ -55,10 +55,10 @@ class FakeSubscribeController extends Controller
                 ]);
             }
 
-            // Limpiar campos en clinics para que subscriptions sea la fuente de verdad
-            $clinic->subscribed_at = null;
-            $clinic->subscription_provider = null;
-            $clinic->subscription_reference = null;
+            // Marcar clínica como suscrita y guardar referencias
+            $clinic->subscribed_at = Carbon::now();
+            $clinic->subscription_provider = 'fake';
+            $clinic->subscription_reference = $subscription->stripe_subscription_id;
             $clinic->save();
 
             $clinic->load('subscriptions');
@@ -84,7 +84,8 @@ class FakeSubscribeController extends Controller
             'status' => 'ok',
             'clinic' => $clinic,
             'status_clinic' => $status,
-            'trial_ends_at' => $subscription->trial_ends_at,
+            'subscribed_at' => $clinic->subscribed_at,
+            'current_period_end' => $subscription->current_period_end,
         ]);
     }
 }

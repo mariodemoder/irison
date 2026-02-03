@@ -24,6 +24,13 @@ require __DIR__.'/auth.php';
 Route::get('/hash-test', function () { return Hash::make('HOLISholis123'); });
 
 */
+
+use App\Http\Controllers\BillingController;
+
+// Rutas públicas/auxiliares para billing (fake provider local)
+Route::get('/billing/fake-success', [BillingController::class, 'fakeSuccess'])->name('billing.fake.success');
+Route::get('/billing/thankyou', [BillingController::class, 'thankyou'])->name('billing.thankyou');
+
 Route::get('/{any}', function () {
     return view('app');
 })->where('any', '.*');

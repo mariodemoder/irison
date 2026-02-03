@@ -1,7 +1,10 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import logout from '../utils/logout'
 import api from '../services/api'
 
+const router = useRouter()
 const user = ref(null)
 const clinic = ref(null)
 const status = ref('blocked')
@@ -62,6 +65,10 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+function logoutAction() {
+  logout(router)
+}
 </script>
 
 <template>
@@ -80,6 +87,9 @@ onMounted(async () => {
         <div style="display:flex;align-items:center;gap:8px">
           <span :class="['status-dot', subscriptionState.color]"></span>
           <div style="font-size:13px">{{ subscriptionState.label }}</div>
+        </div>
+        <div style="margin-left:12px">
+          <button class="btn" @click.prevent="logoutAction">Cerrar sesión</button>
         </div>
       </div>
     </div>

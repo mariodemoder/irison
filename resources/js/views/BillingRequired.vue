@@ -1,45 +1,81 @@
 <template>
   <div class="billing-wrapper">
     <div class="billing-card">
-      <h1 class="title">Tu periodo de prueba ha finalizado</h1>
+        <h1 class="title">Tu periodo de prueba ha finalizado</h1>
 
-      <p class="subtitle">
-        Para seguir usando la plataforma y no perder tus datos,
-        necesitas activar tu suscripción.
-      </p>
+        <p class="subtitle">
+          Para seguir usando la plataforma y no perder tus datos,
+          necesitas activar tu suscripción.
+        </p>
 
-      <ul class="benefits">
-        <li>Gestión de pacientes ilimitada</li>
-        <li>Agenda y control de citas</li>
-        <li>Acceso a facturación y pagos</li>
-      </ul>
+        <form @submit.prevent="startCheckout" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Plan</label>
+            <div class="mt-1 p-4 border rounded flex items-center justify-between">
+              <div>
+                <div class="text-lg font-semibold">Profesional</div>
+                <div class="text-sm text-gray-500">Gestión completa · 29€/mes</div>
+              </div>
+              <div class="text-right">
+                <div class="text-xl font-bold">29€</div>
+                <div class="text-xs text-gray-500">/ mes</div>
+              </div>
+            </div>
+          </div>
 
-      <button class="btn-primary" @click="goToCheckout">Activar suscripción</button>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Método</label>
+            <select v-model="method" class="mt-1 block w-full border rounded px-3 py-2">
+              <option value="card">Tarjeta</option>
+              <option value="transfer">Transferencia</option>
+            </select>
+          </div>
 
-      <p class="note">No se perderá ningún dato.</p>
-    </div>
+          <div class="flex items-center gap-2">
+            <button type="submit" class="btn-primary">Activar suscripción</button>
+            <button type="button" class="btn-ghost" @click="usarFake">Usar proveedor de pruebas</button>
+          </div>
+
+          <p v-if="error" class="text-red-600">{{ error }}</p>
+        </form>
+
+        <p class="note">No se perderá ningún dato.</p>
+      </div>
   </div>
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../services/api'
 
 const router = useRouter()
+const method = ref('card')
+const error = ref(null)
 
-async function goToCheckout() {
+async function startCheckout() {
+  error.value = null
   try {
-    // Temporal: usar endpoint fake para activar suscripción en desarrollo
-    const res = await api.post('/subscribe/fake')
-    // Si el backend devuelve éxito y actualiza la clínica, volvemos al dashboard
-    if (res?.data) {
-      // permitir que Dashboard recargue /me en su montaje
-      router.push('/dashboard')
+    const res = await api.post('/billing/checkout', { amount: 2900, method: method.value })
+    const data = res.data
+    if (data.checkout && data.checkout.checkout_url) {
+      // abrir pasarela en nueva ventana
+      window.open(data.checkout.checkout_url, '_blank')
       return
     }
-    console.log('Respuesta inesperada al activar suscripción', res)
+    error.value = 'No se pudo crear el checkout'
   } catch (e) {
-    console.error('Error activando suscripción (fake)', e)
+    error.value = e.response?.data?.message || e.message
+  }
+}
+
+async function usarFake() {
+  try {
+    await api.post('/subscribe/fake')
+    // reintentar checkout ahora que la clínica está marcada como suscrita (dev)
+    startCheckout()
+  } catch (e) {
+    error.value = 'No se pudo activar proveedor fake'
   }
 }
 </script>

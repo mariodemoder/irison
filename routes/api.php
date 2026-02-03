@@ -37,7 +37,14 @@ Route::post('/stripe/webhook', [\App\Http\Controllers\Api\StripeWebhookControlle
 // Fake subscribe (development/testing): marca la clínica como suscrita
 Route::middleware(['auth:sanctum'])->post('/subscribe/fake', \App\Http\Controllers\Api\FakeSubscribeController::class);
 
+// API logout for SPA (revoke current token)
+Route::middleware(['auth:sanctum'])->post('/logout', [\App\Http\Controllers\Api\AuthController::class, 'logout']);
+
 // Información del usuario autenticado (frontend single-point)
 // `/me` debe estar disponible para UI aunque el trial esté expirado — devuelve el `status` canónico
 Route::middleware(['auth:sanctum', 'clinic'])->get('/me', \App\Http\Controllers\Api\MeController::class);
+
+// Billing endpoints
+Route::middleware(['auth:sanctum'])->post('/billing/checkout', [\App\Http\Controllers\BillingController::class, 'createCheckout']);
+Route::post('/billing/webhook', [\App\Http\Controllers\BillingController::class, 'webhook']);
 

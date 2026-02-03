@@ -8,7 +8,7 @@ import axios from 'axios'
 
 const router = useRouter()
 const email = ref('mario@test.com')
-const password = ref('password123')
+const password = ref('Pasword123')
 const loading = ref(false)
 const error = ref('')
 

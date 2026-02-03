@@ -32,4 +32,27 @@ class AuthController extends Controller
             'token_type' => 'Bearer',
         ]);
     }
+
+    public function logout(Request $request)
+    {
+        $user = $request->user();
+        if ($user) {
+            // Revoke current access token (SPA single token)
+            $token = $request->bearerToken();
+            try {
+                if ($request->user()->currentAccessToken()) {
+                    $request->user()->currentAccessToken()->delete();
+                }
+            } catch (\Exception $e) {
+                // fallback: delete all tokens
+                try {
+                    $user->tokens()->delete();
+                } catch (\Exception $e) {
+                    // ignore
+                }
+            }
+        }
+
+        return response()->json(['message' => 'Logged out'], 200);
+    }
 }
