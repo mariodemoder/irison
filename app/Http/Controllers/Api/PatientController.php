@@ -20,11 +20,10 @@ class PatientController extends BaseController
     {
         $perPage = (int) $request->get('per_page', 15);
 
-        $patients = Patient::orderBy('last_name')
+        $paginator = Patient::orderBy('last_name')
             ->paginate($perPage);
 
-        // Mapear la colección para respuestas limpias
-        $patients->getCollection()->transform(function ($p) {
+        $items = $paginator->getCollection()->transform(function ($p) {
             return [
                 'id' => $p->id,
                 'clinic_id' => $p->clinic_id,
@@ -36,9 +35,17 @@ class PatientController extends BaseController
                 'created_at' => $p->created_at,
                 'updated_at' => $p->updated_at,
             ];
-        });
+        })->toArray();
 
-        return response()->json($patients);
+        return response()->json([
+            'data' => $items,
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+            ],
+        ]);
     }
 
     /**

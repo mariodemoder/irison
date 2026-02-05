@@ -6,11 +6,11 @@
       </div>
 
       <nav class="space-y-1">
-        <router-link to="/dashboard" class="block px-3 py-2 rounded text-gray-800 hover:bg-gray-100">Dashboard</router-link>
-        <router-link to="/patients" class="block px-3 py-2 rounded text-gray-800 hover:bg-gray-100">Pacientes</router-link>
-        <router-link to="/appointments" class="block px-3 py-2 rounded text-gray-800 hover:bg-gray-100">Agenda</router-link>
-        <router-link to="/payments" class="block px-3 py-2 rounded text-gray-800 hover:bg-gray-100">Pagos</router-link>
-        <router-link to="/links" class="block px-3 py-2 rounded text-blue-600 hover:bg-gray-100">Links activos</router-link>
+        <router-link :class="[{ 'menu-active': isActive('/dashboard') }, 'block px-3 py-2 rounded text-gray-800 hover:bg-gray-100']" to="/dashboard">Dashboard</router-link>
+        <router-link :class="[{ 'menu-active': isActive('/patients') }, 'block px-3 py-2 rounded text-gray-800 hover:bg-gray-100']" to="/patients">Pacientes</router-link>
+        <router-link :class="[{ 'menu-active': isActive('/appointments') }, 'block px-3 py-2 rounded text-gray-800 hover:bg-gray-100']" to="/appointments">Agenda</router-link>
+        <router-link :class="[{ 'menu-active': isActive('/payments') }, 'block px-3 py-2 rounded text-gray-800 hover:bg-gray-100']" to="/payments">Pagos</router-link>
+        <router-link :class="[{ 'menu-active': isActive('/links') }, 'block px-3 py-2 rounded text-blue-600 hover:bg-gray-100']" to="/links">Links activos</router-link>
       </nav>
     </aside>
 
@@ -35,11 +35,24 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useRoute } from 'vue-router'
 import logo from '../assets/fisiomeca.svg'
 
 const open = ref(false)
+const route = useRoute()
+
+function isActive(base) {
+  const p = route.path || ''
+  return p === base || p.startsWith(base + '/')
+}
 </script>
 
 <style scoped>
 /* Estilos mínimos: el diseño depende de utilidades de Tailwind si está disponible. */
+.menu-active {
+  background: #eef2ff;
+  color: #1f2937 !important;
+  font-weight: 600;
+}
 </style>
+
