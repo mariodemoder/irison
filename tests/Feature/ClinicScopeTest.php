@@ -21,6 +21,8 @@ class ClinicScopeTest extends TestCase
         // create patient without clinic_id, trait should fill it
         $p = Patient::create(['first_name' => 'John', 'last_name' => 'Doe']);
         $this->assertEquals($clinicA->id, $p->clinic_id);
+        $this->assertEquals('John Doe', $p->name);
+        $this->assertArrayHasKey('name', $p->toArray());
 
         // create another patient in clinic B directly
         app()->instance('clinic', $clinicB);
@@ -32,6 +34,7 @@ class ClinicScopeTest extends TestCase
         $patients = Patient::all();
         $this->assertCount(1, $patients);
         $this->assertEquals('John', $patients->first()->first_name);
+        $this->assertEquals('John Doe', $patients->first()->name);
 
         // try to update clinic B patient using a scoped query from clinic A
         $updated = Patient::where('id', $pB->id)->update(['first_name' => 'Hacked']);

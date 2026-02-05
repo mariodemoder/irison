@@ -16,6 +16,11 @@ class Patient extends Model
         'birth_date', 'notes'
     ];
 
+    /**
+     * Añadir accessors calculados a la serialización.
+     */
+    protected $appends = ['name'];
+
     public function clinic(): BelongsTo
     {
         return $this->belongsTo(Clinic::class);
@@ -39,5 +44,17 @@ class Patient extends Model
     public function clinicalRecords(): HasMany
     {
         return $this->hasMany(ClinicalRecord::class);
+    }
+
+    /**
+     * Accessor para obtener el nombre completo del paciente.
+     * Ejemplo: `$patient->name` devolverá "First Last".
+     */
+    public function getNameAttribute(): string
+    {
+        $first = $this->first_name ?? '';
+        $last = $this->last_name ?? '';
+
+        return trim(sprintf('%s %s', $first, $last));
     }
 }

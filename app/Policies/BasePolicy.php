@@ -14,6 +14,11 @@ abstract class BasePolicy
         return $this->sameClinic($user, $model);
     }
 
+    public function create(User $user): bool
+    {
+        return (bool) $user->clinic_id;
+    }
+
     public function update(User $user, $model): bool
     {
         return $this->sameClinic($user, $model);

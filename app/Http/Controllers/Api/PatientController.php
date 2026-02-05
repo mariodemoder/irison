@@ -18,8 +18,25 @@ class PatientController extends BaseController
      */
     public function index(Request $request)
     {
+        $perPage = (int) $request->get('per_page', 15);
+
         $patients = Patient::orderBy('last_name')
-            ->paginate($request->get('per_page', 15));
+            ->paginate($perPage);
+
+        // Mapear la colección para respuestas limpias
+        $patients->getCollection()->transform(function ($p) {
+            return [
+                'id' => $p->id,
+                'clinic_id' => $p->clinic_id,
+                'name' => $p->name,
+                'phone' => $p->phone,
+                'email' => $p->email,
+                'birth_date' => $p->birth_date,
+                'notes' => $p->notes,
+                'created_at' => $p->created_at,
+                'updated_at' => $p->updated_at,
+            ];
+        });
 
         return response()->json($patients);
     }
@@ -30,17 +47,38 @@ class PatientController extends BaseController
     public function store(Request $request)
     {
         $data = $request->validate([
-            'first_name' => 'required|string|max:255',
-            'last_name'  => 'required|string|max:255',
+            'name'       => 'required|string|max:255',
             'phone'      => 'nullable|string|max:50',
             'email'      => 'nullable|email|max:255',
             'birth_date' => 'nullable|date',
             'notes'      => 'nullable|string',
         ]);
 
-        $patient = Patient::create($data); // clinic_id se asigna automáticamente
+        // Split básico: primera palabra -> first_name, resto -> last_name
+        $parts = preg_split('/\s+/', trim($data['name']));
+        $first = $parts[0] ?? '';
+        $last = count($parts) > 1 ? implode(' ', array_slice($parts, 1)) : '';
 
-        return response()->json($patient, 201);
+        $patient = Patient::create([
+            'first_name' => $first,
+            'last_name' => $last,
+            'phone' => $data['phone'] ?? null,
+            'email' => $data['email'] ?? null,
+            'birth_date' => $data['birth_date'] ?? null,
+            'notes' => $data['notes'] ?? null,
+        ]);
+
+        return response()->json([
+            'id' => $patient->id,
+            'clinic_id' => $patient->clinic_id,
+            'name' => $patient->name,
+            'phone' => $patient->phone,
+            'email' => $patient->email,
+            'birth_date' => $patient->birth_date,
+            'notes' => $patient->notes,
+            'created_at' => $patient->created_at,
+            'updated_at' => $patient->updated_at,
+        ], 201);
     }
 
     /**
@@ -48,7 +86,17 @@ class PatientController extends BaseController
      */
     public function show(Patient $patient)
     {
-        return response()->json($patient);
+        return response()->json([
+            'id' => $patient->id,
+            'clinic_id' => $patient->clinic_id,
+            'name' => $patient->name,
+            'phone' => $patient->phone,
+            'email' => $patient->email,
+            'birth_date' => $patient->birth_date,
+            'notes' => $patient->notes,
+            'created_at' => $patient->created_at,
+            'updated_at' => $patient->updated_at,
+        ]);
     }
 
     /**
@@ -57,17 +105,37 @@ class PatientController extends BaseController
     public function update(Request $request, Patient $patient)
     {
         $data = $request->validate([
-            'first_name' => 'sometimes|required|string|max:255',
-            'last_name'  => 'sometimes|required|string|max:255',
+            'name'       => 'sometimes|required|string|max:255',
             'phone'      => 'nullable|string|max:50',
             'email'      => 'nullable|email|max:255',
             'birth_date' => 'nullable|date',
             'notes'      => 'nullable|string',
         ]);
 
-        $patient->update($data);
+        $payload = [];
+        if (array_key_exists('name', $data)) {
+            $parts = preg_split('/\s+/', trim($data['name']));
+            $payload['first_name'] = $parts[0] ?? '';
+            $payload['last_name'] = count($parts) > 1 ? implode(' ', array_slice($parts, 1)) : '';
+        }
 
-        return response()->json($patient);
+        foreach (['phone','email','birth_date','notes'] as $k) {
+            if (array_key_exists($k, $data)) $payload[$k] = $data[$k];
+        }
+
+        $patient->update($payload);
+
+        return response()->json([
+            'id' => $patient->id,
+            'clinic_id' => $patient->clinic_id,
+            'name' => $patient->name,
+            'phone' => $patient->phone,
+            'email' => $patient->email,
+            'birth_date' => $patient->birth_date,
+            'notes' => $patient->notes,
+            'created_at' => $patient->created_at,
+            'updated_at' => $patient->updated_at,
+        ]);
     }
 
     /**
