@@ -25,113 +25,68 @@ Principios clave:
 - **Autenticación:** Laravel Sanctum
 - **Multi-tenant:** Aislamiento por clínica (`clinic_id`)
 - **ORM:** Eloquent
+# 🏥 SaaS Multi-Tenant – Gestión de Clínicas
 
-### 📁 Estructura principal
+Resumen del estado actual del proyecto (actualizado):
 
-```text
-app/
- ├─ Domain/                # Modelos de dominio (Clinic, Patient, Appointment, User)
- ├─ Http/
- │   ├─ Controllers/
- │   │   └─ Api/           # Controladores REST (API-first)
- │   └─ Middleware/        # EnsureClinic
- ├─ Models/
- │   └─ Scopes/            # ClinicScope
- │   └─ Concerns/          # BelongsToClinic
- ├─ Traits/                # MultiTenantAuthorization
- └─ Services/              # Lógica de negocio (futuro)
-```
+## 🚧 Estado general
 
----
+- Backend: Laravel (API) con soporte multi-tenant por `clinic_id` (middleware, global scope y traits).
+- Frontend: SPA en Vue 3 (views + components) consumiendo la API.
+- Desarrollo en marcha: UI básica, CRUD de pacientes, listado paginado y funcionalidad de autenticación con Sanctum.
 
-## 🔐 Multi-Tenant (núcleo del sistema)
+## ✅ Funcionalidades implementadas relevantes
 
-El aislamiento entre clínicas se garantiza mediante **tres capas complementarias**, diseñadas para evitar fugas de datos incluso por error humano.
+- Pacientes
+  - Listado moderno en `resources/js/views/patients/Index.vue`: búsqueda local, fila de títulos, acciones separadas por fila (`Historial`, `Datos`).
+  - Formulario de paciente en `resources/js/views/patients/Form.vue`: creación y edición (misma vista para ambos modos).
+  - Validación de `nif`: `nullable` o único. En creación/actualización la API responde con 409 y `{ existing: { id } }` cuando el NIF ya existe para otro paciente — el frontend muestra un aviso con opción “Ir al paciente existente”.
+  - Enrutado: `/patients` (lista), `/patients/create` (nuevo), `/patients/:id` (ficha / show), `/patients/:id/edit` (editar).
 
-### 1️⃣ Middleware `EnsureClinic`
-- Verifica que el usuario autenticado tenga una clínica asignada
-- Inyecta la clínica activa en el contenedor (`app('clinic')`)
-- Protege todas las rutas de la API
+- Ficha de paciente (`Show.vue`)
+  - Muestra datos principales (nombre, NIF, teléfono, email, notas).
+  - Secciones históricas: `Citas`, `Bonos`, `Pagos` como cards; cuando están vacías se muestran placeholders visuales.
+  - Botón “Editar” que entra al formulario en modo edición.
 
-### 2️⃣ Global Scope `ClinicScope`
-- Aplica automáticamente `WHERE clinic_id = ?` a todas las queries
-- Evita accesos cruzados entre clínicas
+- API
+  - `GET /api/patients` paginado (meta + data)
+  - `GET /api/patients/{id}` ahora garantiza devolver relaciones como arrays (posiblemente vacíos): `appointments`, `packs`, `payments`, `clinical_records` (future-proof).
+  - `POST /api/patients` y `PUT /api/patients/{id}` con validaciones y manejo claro de errores (422 para validación, 409 para NIF duplicado con payload que indica el id existente).
 
-### 3️⃣ Trait `BelongsToClinic`
-- Asigna automáticamente el `clinic_id` al crear registros
-- Garantiza consistencia incluso en procesos internos
+## 🧩 UX / Frontend details
 
-> Resultado: **seguridad por defecto**, sin depender del controlador.
+- Barra lateral (`MainLayout.vue`) ahora es sticky (permanece visible al hacer scroll).
+- Lista de pacientes: acciones `Historial` (va a `Show.vue`) y `Datos` (va al formulario en modo edición con query `from=list`).
+- El formulario respeta `route.query.from` para que el botón `Cancelar` vuelva al origen correcto (`list` o `show`).
+- Manejo de errores mejorado en `Form.vue`: muestra errores 422, 409 y errores generales.
 
----
+## 🗂 Migraciones / DB
 
-## 🔄 API REST
+- Se añadió columna `nif` nullable en la tabla `patients` y un índice único (migraciones en `database/migrations/2026_*`). Ejecuta `php artisan migrate` si no lo hiciste.
 
-La aplicación está diseñada como **API-first**.
+## 🛠 Cómo ejecutar (recordatorio rápido)
 
-### Recursos disponibles
-- `GET /api/patients`
-- `POST /api/patients`
-- `PUT /api/patients/{id}`
-- `DELETE /api/patients/{id}`
-
-- `GET /api/appointments`
-- `POST /api/appointments`
-- `PUT /api/appointments/{id}`
-- `DELETE /api/appointments/{id}`
-
-Todos los endpoints están protegidos por:
-- `auth:sanctum`
-- `EnsureClinic`
-
----
-
-## ▶️ Cómo ejecutar el proyecto
-
-1. Clonar el repositorio
-2. Instalar dependencias:
+1. Instala dependencias PHP y JS:
    ```bash
    composer install
+   npm install
    ```
-3. Configurar el archivo `.env`
-   - Base de datos
-   - Sanctum
-4. Ejecutar migraciones y seeds:
+2. Configura `.env` y la DB
+3. Ejecuta migraciones:
    ```bash
-   php artisan migrate --seed
+   php artisan migrate
    ```
-5. Iniciar el servidor:
+4. Inicia backend y dev frontend (si usas Vite):
    ```bash
    php artisan serve
+   npm run dev
    ```
-6. Probar la API con Postman o Insomnia
 
----
+> Nota: durante desarrollo Vite puede mostrar errores WebSocket para HMR si la configuración de host no coincide con `localhost`/`127.0.0.1`. Eso no impide las llamadas API; para eliminar los warnings ajusta `vite.config.js` o inicia Vite con `--host`.
 
-## 🧠 Decisiones de diseño
+## 🔜 Próximos pasos sugeridos
 
-- **API-first:** el frontend (Vue) consume la API directamente
-- **Multi-tenant por código:** no por base de datos
-- **Global scopes:** seguridad estructural
-- **Domain-driven:** modelos de negocio separados de infraestructura
-- **Preparado para crecer:** facturación, pagos, roles, integraciones
-
----
-
-## 🏷️ Versionado
-
-- **v0.1** — Semana 1
-  - Base multi-tenant estable
-  - CRUD de pacientes y citas
-  - Arquitectura limpia y documentada
-
----
-
-## 🚀 Estado del proyecto
-
-🟢 Base sólida lista para continuar con:
-- Agenda visual
-- Frontend en Vue
-- Roles y permisos
-- Facturación y pagos
-
+- Paginación/filtrado del lado del servidor para la búsqueda (actualmente es local sobre la página cargada).
+- Implementar creación directa de `Citas` / `Bonos` desde la ficha del paciente (modales o rutas dedicadas).
+- Añadir conteos y paginación en relaciones grandes (appointments/packs/payments).
+- Tests automatizados para endpoints críticos (nif único, multi-tenant scope).
