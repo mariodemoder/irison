@@ -14,6 +14,7 @@ const routes = [
   { path: '/patients', component: PatientsIndex, meta: { auth: true } },
   { path: '/patients/create', component: PatientsForm, meta: { auth: true } },
   { path: '/patients/:id', component: PatientsShow, meta: { auth: true } },
+  { path: '/patients/:id/edit', component: PatientsForm, meta: { auth: true } },
   { path: '/billing/required', component: BillingRequired, meta: { auth: true } },
 ]
 

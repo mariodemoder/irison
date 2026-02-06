@@ -27,6 +27,7 @@ class PatientController extends BaseController
             return [
                 'id' => $p->id,
                 'clinic_id' => $p->clinic_id,
+                'nif' => $p->nif,
                 'name' => $p->name,
                 'phone' => $p->phone,
                 'email' => $p->email,
@@ -55,11 +56,23 @@ class PatientController extends BaseController
     {
         $data = $request->validate([
             'name'       => 'required|string|max:255',
+            'nif'        => ['nullable','string','max:50','regex:/\\d/'],
             'phone'      => 'nullable|string|max:50',
             'email'      => 'nullable|email|max:255',
             'birth_date' => 'nullable|date',
             'notes'      => 'nullable|string',
         ]);
+
+        // Si se proporciona nif, comprobar duplicado y devolver 409 con el id existente
+        if (!empty($data['nif'])) {
+            $existing = Patient::where('nif', $data['nif'])->first();
+            if ($existing) {
+                return response()->json([
+                    'message' => 'El NIF ya existe para otro paciente',
+                    'existing' => ['id' => $existing->id]
+                ], 409);
+            }
+        }
 
         // Split básico: primera palabra -> first_name, resto -> last_name
         $parts = preg_split('/\s+/', trim($data['name']));
@@ -69,6 +82,7 @@ class PatientController extends BaseController
         $patient = Patient::create([
             'first_name' => $first,
             'last_name' => $last,
+            'nif' => $data['nif'] ?? null,
             'phone' => $data['phone'] ?? null,
             'email' => $data['email'] ?? null,
             'birth_date' => $data['birth_date'] ?? null,
@@ -78,6 +92,7 @@ class PatientController extends BaseController
         return response()->json([
             'id' => $patient->id,
             'clinic_id' => $patient->clinic_id,
+            'nif' => $patient->nif,
             'name' => $patient->name,
             'phone' => $patient->phone,
             'email' => $patient->email,
@@ -93,14 +108,40 @@ class PatientController extends BaseController
      */
     public function show(Patient $patient)
     {
+        // Cargar relaciones esenciales (aunque vacías) para futuro historial
+        $patient->load(['appointments', 'packs', 'payments']);
+
         return response()->json([
             'id' => $patient->id,
             'clinic_id' => $patient->clinic_id,
+            'nif' => $patient->nif,
             'name' => $patient->name,
             'phone' => $patient->phone,
             'email' => $patient->email,
             'birth_date' => $patient->birth_date,
             'notes' => $patient->notes,
+            'appointments' => $patient->appointments->map(function ($a) {
+                return [
+                    'id' => $a->id,
+                    'start_time' => $a->start_time,
+                    'status' => $a->status,
+                ];
+            })->toArray(),
+            'packs' => $patient->packs->map(function ($p) {
+                return [
+                    'id' => $p->id,
+                    'total_sessions' => $p->total_sessions,
+                    'remaining_sessions' => $p->remaining_sessions,
+                    'status' => $p->status,
+                ];
+            })->toArray(),
+            'payments' => $patient->payments->map(function ($pay) {
+                return [
+                    'id' => $pay->id,
+                    'amount' => $pay->amount,
+                    'status' => $pay->status,
+                ];
+            })->toArray(),
             'created_at' => $patient->created_at,
             'updated_at' => $patient->updated_at,
         ]);
@@ -113,6 +154,7 @@ class PatientController extends BaseController
     {
         $data = $request->validate([
             'name'       => 'sometimes|required|string|max:255',
+            'nif'        => ['nullable','string','max:50','regex:/\\d/'],
             'phone'      => 'nullable|string|max:50',
             'email'      => 'nullable|email|max:255',
             'birth_date' => 'nullable|date',
@@ -126,6 +168,20 @@ class PatientController extends BaseController
             $payload['last_name'] = count($parts) > 1 ? implode(' ', array_slice($parts, 1)) : '';
         }
 
+        if (array_key_exists('nif', $data)) {
+            // comprobar que no pertenece a otro paciente
+            if (!empty($data['nif'])) {
+                $existing = Patient::where('nif', $data['nif'])->where('id', '!=', $patient->id)->first();
+                if ($existing) {
+                    return response()->json([
+                        'message' => 'NIF already exists',
+                        'existing' => ['id' => $existing->id]
+                    ], 409);
+                }
+            }
+            $payload['nif'] = $data['nif'];
+        }
+
         foreach (['phone','email','birth_date','notes'] as $k) {
             if (array_key_exists($k, $data)) $payload[$k] = $data[$k];
         }
@@ -135,6 +191,7 @@ class PatientController extends BaseController
         return response()->json([
             'id' => $patient->id,
             'clinic_id' => $patient->clinic_id,
+            'nif' => $patient->nif,
             'name' => $patient->name,
             'phone' => $patient->phone,
             'email' => $patient->email,
