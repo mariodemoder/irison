@@ -37,7 +37,7 @@
             <div class="row-col">{{ p.email ?? '—' }}</div>
             <div class="row-action">
               <router-link :to="`/patients/${p.id}`" class="action-btn history" aria-label="Historial">🔍 Historial</router-link>
-              <router-link :to="`/patients/${p.id}/edit`" class="action-btn datos" aria-label="Datos">✎ Datos</router-link>
+              <router-link :to="{ path: `/patients/${p.id}/edit`, query: { from: 'list' } }" class="action-btn datos" aria-label="Datos">✎ Datos</router-link>
             </div>
           </div>
         </div>

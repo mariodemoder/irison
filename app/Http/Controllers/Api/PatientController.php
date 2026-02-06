@@ -110,8 +110,43 @@ class PatientController extends BaseController
      */
     public function show(Patient $patient)
     {
-        // Cargar relaciones esenciales (aunque vacías) para futuro historial
-        $patient->load(['appointments', 'packs', 'payments']);
+        // Eager-load relaciones relevantes si aún no están cargadas.
+        // Usamos loadMissing para no forzar consultas si ya vinieron cargadas.
+        $patient->loadMissing(['appointments', 'packs', 'payments', 'clinicalRecords']);
+
+        // Preparar arrays vacíos por seguridad (future-proof)
+        $appointments = $patient->relationLoaded('appointments') ? $patient->appointments->map(function ($a) {
+            return [
+                'id' => $a->id,
+                'start_time' => $a->start_time,
+                'status' => $a->status,
+            ];
+        })->toArray() : [];
+
+        $packs = $patient->relationLoaded('packs') ? $patient->packs->map(function ($p) {
+            return [
+                'id' => $p->id,
+                'total_sessions' => $p->total_sessions,
+                'remaining_sessions' => $p->remaining_sessions,
+                'status' => $p->status,
+            ];
+        })->toArray() : [];
+
+        $payments = $patient->relationLoaded('payments') ? $patient->payments->map(function ($pay) {
+            return [
+                'id' => $pay->id,
+                'amount' => $pay->amount,
+                'status' => $pay->status,
+            ];
+        })->toArray() : [];
+
+        $clinicalRecords = $patient->relationLoaded('clinicalRecords') ? $patient->clinicalRecords->map(function ($r) {
+            return [
+                'id' => $r->id,
+                'notes' => $r->notes ?? null,
+                'created_at' => $r->created_at,
+            ];
+        })->toArray() : [];
 
         return response()->json([
             'id' => $patient->id,
@@ -122,28 +157,10 @@ class PatientController extends BaseController
             'email' => $patient->email,
             'birth_date' => $patient->birth_date,
             'notes' => $patient->notes,
-            'appointments' => $patient->appointments->map(function ($a) {
-                return [
-                    'id' => $a->id,
-                    'start_time' => $a->start_time,
-                    'status' => $a->status,
-                ];
-            })->toArray(),
-            'packs' => $patient->packs->map(function ($p) {
-                return [
-                    'id' => $p->id,
-                    'total_sessions' => $p->total_sessions,
-                    'remaining_sessions' => $p->remaining_sessions,
-                    'status' => $p->status,
-                ];
-            })->toArray(),
-            'payments' => $patient->payments->map(function ($pay) {
-                return [
-                    'id' => $pay->id,
-                    'amount' => $pay->amount,
-                    'status' => $pay->status,
-                ];
-            })->toArray(),
+            'appointments' => $appointments,
+            'packs' => $packs,
+            'payments' => $payments,
+            'clinical_records' => $clinicalRecords,
             'created_at' => $patient->created_at,
             'updated_at' => $patient->updated_at,
         ]);

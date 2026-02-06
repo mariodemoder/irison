@@ -114,7 +114,9 @@ watch(() => route.params.id, (id) => {
 })
 
 function goEdit() {
-  if (patient.value && patient.value.id) router.push(`/patients/${patient.value.id}`)
+  if (patient.value && patient.value.id) {
+    router.push({ path: `/patients/${patient.value.id}/edit`, query: { from: 'show' } })
+  }
 }
 </script>
 

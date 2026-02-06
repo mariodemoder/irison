@@ -48,7 +48,7 @@
 
           <div class="actions full">
             <button class="primary" type="submit" :disabled="submitting">Guardar</button>
-            <router-link to="/patients" class="muted">Cancelar</router-link>
+            <button type="button" class="muted" @click.prevent="cancel">Cancelar</button>
           </div>
         </form>
       </div>
@@ -74,6 +74,26 @@ const loading = ref(false)
 
 function goToDuplicate() {
   if (duplicateId.value) router.push(`/patients/${duplicateId.value}`)
+}
+
+function cancel() {
+  // Respetar el origen si se pasó via query
+  const from = route.query.from
+  const id = route.params.id
+  if (from === 'show' && id) {
+    router.push(`/patients/${id}`)
+    return
+  }
+  if (from === 'list') {
+    router.push('/patients')
+    return
+  }
+  // fallback: history back o listado
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    router.push('/patients')
+  }
 }
 
 async function loadForEdit(id) {
