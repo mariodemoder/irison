@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen flex bg-gray-50">
-    <aside :class="['w-64 bg-white border-r p-4', { 'hidden': !open, 'block': open }, 'md:block']">
+    <aside :class="['w-64 bg-white border-r p-4', { 'hidden': !open, 'block': open }, 'md:block']" style="position:sticky;top:0;height:100vh;overflow:auto;">
       <div class="mb-6">
         <img :src="logo" alt="Logo" class="w-40 h-40 object-contain" />
       </div>

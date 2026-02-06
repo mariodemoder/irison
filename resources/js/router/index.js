@@ -5,6 +5,7 @@ import Dashboard from '../views/Dashboard.vue'
 import BillingRequired from '../views/BillingRequired.vue'
 import PatientsIndex from '../views/patients/Index.vue'
 import PatientsForm from '../views/patients/Form.vue'
+// Nota: usamos el mismo formulario para creación/edición
 import PatientsShow from '../views/patients/Show.vue'
 
 const routes = [

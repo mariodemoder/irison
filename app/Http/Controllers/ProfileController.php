@@ -16,8 +16,24 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): View
     {
+        $user = $request->user();
+        $clinic = null;
+        $status = 'blocked';
+        $trial_ends_at = null;
+
+        if ($user->clinic) {
+            $clinic = $user->clinic;
+            $trial_ends_at = $clinic->trial_ends_at ?? null;
+            if ($clinic->isSubscribed()) $status = 'active';
+            else if ($clinic->isTrialActive()) $status = 'trial';
+            else $status = 'blocked';
+        }
+
         return view('profile.edit', [
-            'user' => $request->user(),
+            'user' => $user,
+            'clinic' => $clinic,
+            'status' => $status,
+            'trial_ends_at' => $trial_ends_at,
         ]);
     }
 

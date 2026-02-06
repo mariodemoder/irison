@@ -57,7 +57,7 @@
 </template>
 
 <script setup>
-import { reactive, ref, onMounted } from 'vue'
+import { reactive, ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
@@ -73,7 +73,7 @@ const duplicateMessage = ref('')
 const loading = ref(false)
 
 function goToDuplicate() {
-  if (duplicateId.value) router.push(`/patients/${duplicateId.value}/edit`)
+  if (duplicateId.value) router.push(`/patients/${duplicateId.value}`)
 }
 
 async function loadForEdit(id) {
@@ -103,6 +103,26 @@ onMounted(() => {
   }
 })
 
+// Si navegamos desde /patients/create -> /patients/:id el componente se reutiliza,
+// por eso hay que observar los cambios en la ruta y recargar el paciente.
+watch(() => route.params.id, (id) => {
+  if (id) {
+    isEdit.value = true
+    duplicateMessage.value = ''
+    duplicateId.value = null
+    loadForEdit(id)
+  } else {
+    isEdit.value = false
+    // limpiar formulario cuando volvemos a modo creación
+    form.name = ''
+    form.nif = ''
+    form.phone = ''
+    form.email = ''
+    form.notes = ''
+    Object.keys(errors).forEach(k => delete errors[k])
+  }
+})
+
 async function submit() {
   submitting.value = true
   Object.keys(errors).forEach(k => delete errors[k])
@@ -114,15 +134,32 @@ async function submit() {
     }
     router.push('/patients')
   } catch (e) {
-    if (e.response && e.response.status === 422) {
-      const eobj = e.response.data.errors || {}
-      Object.assign(errors, eobj)
-    } else if (e.response && e.response.status === 409) {
-      // NIF duplicado: mostrar aviso y enlace al paciente existente
-      duplicateMessage.value = e.response.data.message || 'El NIF ya existe para otro paciente.'
-      duplicateId.value = e.response?.data?.existing?.id ?? null
+    // Normalizar y manejar errores de validación y conflicto
+    if (e.response) {
+      console.error('API error response:', e.response)
+      const status = e.response.status
+      const data = e.response.data || {}
+
+      if (status === 422) {
+        // data.errors expected
+        const eobj = data.errors || {}
+        Object.assign(errors, eobj)
+        // si existe un error de tipo unique en nif, también mostrar mensaje general
+        if (!eobj.nif && data.message && data.message.toLowerCase().includes('nif')) {
+          errors.nif = [data.message]
+        }
+      } else if (status === 409) {
+        // NIF duplicado: mostrar aviso y enlace al paciente existente
+        duplicateMessage.value = data.message || 'El NIF ya existe para otro paciente.'
+        duplicateId.value = data?.existing?.id ?? null
+      } else {
+        console.error('Error guardando paciente', e)
+        // mostrar mensaje general bajo errors.general
+        errors.general = [data.message || 'Error desconocido']
+      }
     } else {
-      console.error('Error guardando paciente', e)
+      console.error('Error guardando paciente (sin respuesta)', e)
+      errors.general = ['Error de red o servidor']
     }
   } finally {
     submitting.value = false

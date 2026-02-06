@@ -47,6 +47,26 @@
             @endif
         </div>
 
+        @if(isset($clinic) && $clinic)
+            <div class="pt-4 border-t">
+                <h3 class="text-sm font-medium text-gray-900">Clínica</h3>
+                <div class="mt-2 text-sm text-gray-700">{{ $clinic->name ?? '—' }}</div>
+                @if($clinic->email)
+                    <div class="mt-1 text-sm text-gray-600">{{ $clinic->email }}</div>
+                @endif
+
+                <div class="mt-3 flex items-center gap-3">
+                    @php
+                        $statusLabel = 'Suscripción vencida';
+                        if(isset($status) && $status === 'active') $statusLabel = 'Suscripción activa';
+                        elseif(isset($status) && $status === 'trial') $statusLabel = 'Periodo de prueba';
+                    @endphp
+                    <span class="w-2 h-2 rounded-full bg-{{ $status === 'active' ? 'green-500' : ($status === 'trial' ? 'yellow-400' : 'red-500') }}"></span>
+                    <div class="text-sm text-gray-700">{{ $statusLabel }} @if(isset($trial_ends_at) && $status === 'trial') — termina {{ \\Carbon\\Carbon::parse($trial_ends_at)->toDateString() }} @endif</div>
+                </div>
+            </div>
+        @endif
+
         <div class="flex items-center gap-4">
             <x-primary-button>{{ __('Save') }}</x-primary-button>
 

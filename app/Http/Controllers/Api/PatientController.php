@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Models\Patient;
 use Illuminate\Routing\Controller as BaseController;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class PatientController extends BaseController
 {
@@ -152,14 +154,34 @@ class PatientController extends BaseController
      */
     public function update(Request $request, Patient $patient)
     {
-        $data = $request->validate([
-            'name'       => 'sometimes|required|string|max:255',
-            'nif'        => ['nullable','string','max:50','regex:/\\d/'],
-            'phone'      => 'nullable|string|max:50',
-            'email'      => 'nullable|email|max:255',
-            'birth_date' => 'nullable|date',
-            'notes'      => 'nullable|string',
-        ]);
+        try {
+            $data = $request->validate([
+                'name'       => 'sometimes|required|string|max:255',
+                'nif'        => ['nullable','string','max:50','regex:/\\d/', Rule::unique('patients','nif')->ignore($patient->id)],
+                'phone'      => 'nullable|string|max:50',
+                'email'      => 'nullable|email|max:255',
+                'birth_date' => 'nullable|date',
+                'notes'      => 'nullable|string',
+            ]);
+        } catch (ValidationException $e) {
+            $errors = $e->errors();
+            // Si la validación falla por nif duplicado, devolver 409 con id existente
+            if (isset($errors['nif'])) {
+                $nifVal = $request->input('nif');
+                if (!empty($nifVal)) {
+                    $existing = Patient::where('nif', $nifVal)->where('id', '!=', $patient->id)->first();
+                    if ($existing) {
+                        return response()->json([
+                            'message' => 'El NIF ya existe para otro paciente',
+                            'existing' => ['id' => $existing->id]
+                        ], 409);
+                    }
+                }
+            }
+
+            // Re-throw para que Laravel devuelva 422 como antes si no es nif
+            throw $e;
+        }
 
         $payload = [];
         if (array_key_exists('name', $data)) {
@@ -169,16 +191,6 @@ class PatientController extends BaseController
         }
 
         if (array_key_exists('nif', $data)) {
-            // comprobar que no pertenece a otro paciente
-            if (!empty($data['nif'])) {
-                $existing = Patient::where('nif', $data['nif'])->where('id', '!=', $patient->id)->first();
-                if ($existing) {
-                    return response()->json([
-                        'message' => 'NIF already exists',
-                        'existing' => ['id' => $existing->id]
-                    ], 409);
-                }
-            }
             $payload['nif'] = $data['nif'];
         }
 

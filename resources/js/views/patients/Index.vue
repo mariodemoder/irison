@@ -28,7 +28,7 @@
         </div>
 
         <div class="list">
-          <router-link v-for="p in filteredPatients" :key="p.id" :to="`/patients/${p.id}`" class="patient-row">
+          <div v-for="p in filteredPatients" :key="p.id" class="patient-row">
             <div class="row-left">
               <div class="row-name">{{ p.name }}</div>
               <div class="row-sub">{{ p.nif ?? '—' }}</div>
@@ -36,9 +36,10 @@
             <div class="row-col">{{ p.phone ?? '—' }}</div>
             <div class="row-col">{{ p.email ?? '—' }}</div>
             <div class="row-action">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <router-link :to="`/patients/${p.id}`" class="action-btn history" aria-label="Historial">🔍 Historial</router-link>
+              <router-link :to="`/patients/${p.id}/edit`" class="action-btn datos" aria-label="Datos">✎ Datos</router-link>
             </div>
-          </router-link>
+          </div>
         </div>
 
         <div v-if="meta" class="pagination">
@@ -125,6 +126,11 @@ onMounted(() => load())
 .row-sub { color:#6b7280; font-size:13px }
 .row-col { color:#374151; font-size:13px }
 .row-action { display:flex; align-items:center; justify-content:center; color:#6b7280 }
+
+.action-btn { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:8px; text-decoration:none; color:#374151; font-size:13px; border:1px solid transparent }
+.action-btn.history { background:#eef2ff; border-color: #dbeafe; color:#1e3a8a }
+.action-btn.datos { background:#fff; border-color:#e5e7eb; color:#374151 }
+.action-btn:hover { transform:translateY(-1px) }
 
 .pagination { margin-top:12px; display:flex; gap:8px; align-items:center }
 
