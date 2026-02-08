@@ -44,9 +44,15 @@
         </div>
 
         <div v-if="meta" class="pagination">
-          <button :disabled="meta.current_page <= 1" @click="load(meta.current_page - 1)">Anterior</button>
-          <div>Página {{ meta.current_page }} / {{ meta.last_page }} — {{ meta.total }} pacientes</div>
-          <button :disabled="meta.current_page >= meta.last_page" @click="load(meta.current_page + 1)">Siguiente</button>
+          <div class="pagination-info">Página {{ meta.current_page }} / {{ meta.last_page }} — {{ meta.total }} pacientes</div>
+          <div class="pagination-actions">
+            <button :disabled="meta.current_page <= 1" @click="load(meta.current_page - 1)" class="icon-btn" aria-label="Anterior">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <button :disabled="meta.current_page >= meta.last_page" @click="load(meta.current_page + 1)" class="icon-btn" aria-label="Siguiente">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -189,7 +195,12 @@ function goToPatient(id) {
 .action-btn.datos { background:#fff; border-color:#e5e7eb; color:#374151 }
 .action-btn:hover { transform:translateY(-1px) }
 
-.pagination { margin-top:12px; display:flex; gap:8px; align-items:center }
+.pagination { margin-top:12px; display:flex; justify-content:flex-end; gap:12px; align-items:center }
+.pagination-info { color:#6b7280; font-size:13px }
+.pagination-actions { display:flex; gap:8px }
+.icon-btn { display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:8px; border:1px solid #e5e7eb; background:#fff; cursor:pointer }
+.icon-btn svg { width:18px; height:18px; color:#374151 }
+.icon-btn:disabled { opacity:0.45; cursor:default }
 
 @media (max-width: 900px) {
   .page-header { grid-template-columns: 1fr auto }

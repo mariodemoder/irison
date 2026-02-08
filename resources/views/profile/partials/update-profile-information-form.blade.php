@@ -58,7 +58,7 @@
                 <div class="mt-3 flex items-center gap-3">
                     @php
                         $statusLabel = 'Suscripción vencida';
-                        if(isset($status) && $status === 'active') $statusLabel = 'Suscripción activa';
+                        if(isset($status) && $status === 'active') $statusLabel = '';
                         elseif(isset($status) && $status === 'trial') $statusLabel = 'Periodo de prueba';
                     @endphp
                     <span class="w-2 h-2 rounded-full bg-{{ $status === 'active' ? 'green-500' : ($status === 'trial' ? 'yellow-400' : 'red-500') }}"></span>
