@@ -11,3 +11,44 @@ body { background: var(--bg-app); color: var(--text-main); }
 
 /* Ensure auth layout doesn't force its own background */
 .auth-container, .auth-left { background: transparent }
+
+/* SweetAlert2 global theming to match app buttons and popup */
+.swal2-popup {
+	font-family: inherit;
+	border-radius: 12px;
+	padding: 18px;
+	box-shadow: 0 10px 30px rgba(2,6,23,0.08);
+}
+.swal2-title { font-size: 16px; font-weight: 700; color: #111827; margin-bottom: 6px }
+.swal2-content { color: #6b7280; font-size: 14px; margin-bottom: 6px }
+.swal2-icon { margin: 0 auto 8px }
+.swal2-actions { display: flex; gap: 8px; justify-content: center; margin-top: 12px }
+
+/* Confirm button - primary warning */
+.swal2-confirm {
+	background-color: #f97316 !important;
+	color: #ffffff !important;
+	border-radius: 9999px !important;
+	padding: 8px 14px !important;
+	border: 2px solid transparent !important;
+	font-weight: 600 !important;
+	min-width: 110px !important;
+	box-shadow: none !important;
+}
+.swal2-confirm:hover { background-color: #ef7a1e !important }
+
+/* Cancel button - muted outline */
+.swal2-cancel {
+	background-color: #ffffff !important;
+	color: #374151 !important;
+	border-radius: 9999px !important;
+	padding: 8px 14px !important;
+	border: 2px solid #e5e7eb !important;
+	font-weight: 600 !important;
+	min-width: 110px !important;
+}
+.swal2-cancel:hover { background-color: #f9fafb !important }
+
+/* Make default icon warning color consistent */
+.swal2-icon.swal2-warning .swal2-icon-content { color: #ffffff }
+.swal2-icon.swal2-warning { background-color: #f97316 !important }

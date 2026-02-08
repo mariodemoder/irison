@@ -4,33 +4,32 @@
       <div class="form-card">
         <div class="form-header" style="display:flex;justify-content:space-between;align-items:start">
           <div>
-            <h1>Paciente</h1>
-            <p class="form-sub">Datos y historial</p>
+            <h1>Paciente e Historial</h1>
           </div>
+          <p></p>
           <div style="display:flex;gap:8px">
             <button class="primary" @click.prevent="goEdit" style="padding:6px 12px;font-size:13px">Editar</button>
+            <button class="action-btn" @click.prevent="confirmDelete" style="padding:6px 12px;font-size:13px">🗑️ Eliminar</button>
+            <button class="muted" @click.prevent="goBack" style="padding:6px 12px;font-size:13px">Volver</button>
           </div>
         </div>
-
+        <br>
         <div class="grid-display">
           <div class="card">
-            <div class="card-row"><strong>Nombre</strong></div>
-            <div class="card-row">{{ patient?.name ?? '—' }}</div>
+            <div class="card-row"><strong>Nombre: </strong>{{ patient?.name ?? '—' }}</div>
+            
           </div>
 
           <div class="card">
-            <div class="card-row"><strong>NIF</strong></div>
-            <div class="card-row">{{ patient?.nif ?? '—' }}</div>
+            <div class="card-row"><strong>NIF: </strong>{{ patient?.nif ?? '—' }}</div>
           </div>
 
           <div class="card">
-            <div class="card-row"><strong>Teléfono</strong></div>
-            <div class="card-row">{{ patient?.phone ?? '—' }}</div>
+            <div class="card-row"><strong>Teléfono: </strong>{{ patient?.phone ?? '—' }}</div>
           </div>
 
           <div class="card">
-            <div class="card-row"><strong>Email</strong></div>
-            <div class="card-row">{{ patient?.email ?? '—' }}</div>
+            <div class="card-row"><strong>Email: </strong>{{ patient?.email ?? '—' }}</div>
           </div>
 
           <div class="card full">
@@ -80,6 +79,8 @@ import MainLayout from '../../layouts/MainLayout.vue'
 import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../../services/api'
+import { useToast } from 'vue-toastification'
+import Swal from 'sweetalert2'
 
 const route = useRoute()
 const router = useRouter()
@@ -118,6 +119,40 @@ function goEdit() {
     router.push({ path: `/patients/${patient.value.id}/edit`, query: { from: 'show' } })
   }
 }
+
+function goBack() {
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    router.push('/patients')
+  }
+}
+
+async function confirmDelete() {
+  if (!patient.value) return
+  const res = await Swal.fire({
+    title: `Eliminar paciente`,
+    text: `¿Eliminar al paciente "${patient.value.name}"?`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, eliminar',
+    cancelButtonText: 'Cancelar'
+  })
+
+  if (!res.isConfirmed) return
+
+  try {
+    await api.delete(`/patients/${patient.value.id}`)
+    const toast = useToast()
+    toast.success('Paciente eliminado')
+    // ir al listado
+    router.push('/patients')
+  } catch (e) {
+    const msg = e.response?.data?.message || 'Error eliminando paciente'
+    const toast = useToast()
+    toast.error(msg)
+  }
+}
 </script>
 
 <style scoped>
@@ -128,7 +163,7 @@ function goEdit() {
 .form-sub { color:#6b7280; font-size:13px; margin-top:6px }
 
 .grid-display { display:grid; grid-template-columns: repeat(2,1fr); gap:12px }
-.card { background:#fafafa; padding:12px; border-radius:10px; border:1px solid #eef2ff22 }
+.card { background:#fafafa; padding:5px; border-radius:10px; border:1px solid #eef2ff22 }
 .card.full { grid-column:1 / -1 }
 .card-row { margin-bottom:6px }
 

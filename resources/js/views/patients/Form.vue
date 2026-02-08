@@ -61,6 +61,7 @@ import { reactive, ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
+import { useToast } from 'vue-toastification'
 
 const router = useRouter()
 const route = useRoute()
@@ -147,12 +148,16 @@ async function submit() {
   submitting.value = true
   Object.keys(errors).forEach(k => delete errors[k])
   try {
-    if (isEdit.value && route.params.id) {
-      await api.put(`/patients/${route.params.id}`, { ...form })
-    } else {
-      await api.post('/patients', { ...form })
-    }
-    router.push('/patients')
+      const toast = useToast()
+      if (isEdit.value && route.params.id) {
+        await api.put(`/patients/${route.params.id}`, { ...form })
+        toast.success('Paciente actualizado')
+        router.push('/patients')
+      } else {
+        await api.post('/patients', { ...form })
+        toast.success('Paciente creado')
+        router.push('/patients')
+      }
   } catch (e) {
     // Normalizar y manejar errores de validación y conflicto
     if (e.response) {

@@ -3,13 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\Concerns\BelongsToClinic;
 
 class Patient extends Model
 {
-    use BelongsToClinic;
+    use BelongsToClinic, SoftDeletes;
       
     protected $fillable = [
         'first_name', 'last_name', 'phone', 'email',

@@ -7,6 +7,7 @@ use Illuminate\Routing\Controller as BaseController;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Auth;
 
 class PatientController extends BaseController
 {
@@ -65,15 +66,24 @@ class PatientController extends BaseController
             'notes'      => 'nullable|string',
         ]);
 
-        // Si se proporciona nif, comprobar duplicado y devolver 409 con el id existente
+        // Si se proporciona nif, comprobar duplicado dentro de la misma clínica
+        // Si existe en otra clínica, no lo bloqueamos: lo guardamos como null.
         if (!empty($data['nif'])) {
             $existing = Patient::where('nif', $data['nif'])->first();
             if ($existing) {
-                return response()->json([
-                    'message' => 'El NIF ya existe para otro paciente',
-                    'existing' => ['id' => $existing->id]
-                ], 409);
+                if ($existing->clinic_id === Auth::user()->clinic_id) {
+                    return response()->json([
+                        'message' => 'El NIF ya existe para otro paciente en esta clínica',
+                        'existing' => ['id' => $existing->id]
+                    ], 409);
+                }
+
+                // Existe en otra clínica: no lo guardamos para evitar conflicto con índice global
+                $data['nif'] = null;
             }
+        } else {
+            // Si no se envía NIF lo guardamos como null
+            $data['nif'] = null;
         }
 
         // Split básico: primera palabra -> first_name, resto -> last_name
@@ -174,7 +184,7 @@ class PatientController extends BaseController
         try {
             $data = $request->validate([
                 'name'       => 'sometimes|required|string|max:255',
-                'nif'        => ['nullable','string','max:50','regex:/\\d/', Rule::unique('patients','nif')->ignore($patient->id)],
+                'nif'        => ['nullable','string','max:50','regex:/\\d/', Rule::unique('patients','nif')->ignore($patient->id)->where(function ($q) { return $q->where('clinic_id', Auth::user()->clinic_id); })],
                 'phone'      => 'nullable|string|max:50',
                 'email'      => 'nullable|email|max:255',
                 'birth_date' => 'nullable|date',
@@ -186,7 +196,10 @@ class PatientController extends BaseController
             if (isset($errors['nif'])) {
                 $nifVal = $request->input('nif');
                 if (!empty($nifVal)) {
-                    $existing = Patient::where('nif', $nifVal)->where('id', '!=', $patient->id)->first();
+                    $existing = Patient::where('nif', $nifVal)
+                        ->where('clinic_id', Auth::user()->clinic_id)
+                        ->where('id', '!=', $patient->id)
+                        ->first();
                     if ($existing) {
                         return response()->json([
                             'message' => 'El NIF ya existe para otro paciente',
@@ -208,7 +221,27 @@ class PatientController extends BaseController
         }
 
         if (array_key_exists('nif', $data)) {
-            $payload['nif'] = $data['nif'];
+            // Si el nif es vacío lo guardamos null
+            if (empty($data['nif'])) {
+                $payload['nif'] = null;
+            } else {
+                // Ver si existe ese NIF en otro paciente
+                $existing = Patient::where('nif', $data['nif'])->where('id', '!=', $patient->id)->first();
+                if ($existing) {
+                    // Si pertenece a la misma clínica => conflicto
+                    if ($existing->clinic_id === Auth::user()->clinic_id) {
+                        return response()->json([
+                            'message' => 'El NIF ya existe para otro paciente',
+                            'existing' => ['id' => $existing->id]
+                        ], 409);
+                    }
+
+                    // Si existe en otra clínica: no lo guardamos (lo dejamos null)
+                    $payload['nif'] = null;
+                } else {
+                    $payload['nif'] = $data['nif'];
+                }
+            }
         }
 
         foreach (['phone','email','birth_date','notes'] as $k) {
@@ -236,6 +269,14 @@ class PatientController extends BaseController
      */
     public function destroy(Patient $patient)
     {
+        // Evitar borrar pacientes que tienen citas o pagos asociados.
+        // Nota: la lógica futura puede chequear únicamente los pendientes.
+        if ($patient->appointments()->exists() || $patient->payments()->exists()) {
+            return response()->json([
+                'message' => 'No se puede eliminar el paciente porque tiene citas o pagos asociados'
+            ], 422);
+        }
+
         $patient->delete();
 
         return response()->noContent();

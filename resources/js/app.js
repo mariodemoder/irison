@@ -4,9 +4,14 @@ import router from './router'
 import '../css/app.css'
 import api from './services/api'
 
-createApp(App)
-    .use(router)
-    .mount('#app')
+// Toasts
+import Toast from 'vue-toastification'
+import 'vue-toastification/dist/index.css'
+
+const app = createApp(App)
+app.use(router)
+app.use(Toast, { position: 'top-right', timeout: 4000 })
+app.mount('#app')
 
 // Interceptor global: redirigir a billing requerido cuando backend lo indique
 api.interceptors.response.use(

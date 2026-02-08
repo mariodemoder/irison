@@ -20,6 +20,7 @@
       <div v-if="loading">Cargando...</div>
 
       <div v-else>
+        
         <div class="list-header">
           <div>Paciente</div>
           <div>Teléfono</div>
@@ -28,7 +29,7 @@
         </div>
 
         <div class="list">
-          <div v-for="p in filteredPatients" :key="p.id" class="patient-row">
+          <div v-for="p in filteredPatients" :key="p.id" class="patient-row" role="button" tabindex="0" @click="goToPatient(p.id)" @keydown.enter="goToPatient(p.id)">
             <div class="row-left">
               <div class="row-name">{{ p.name }}</div>
               <div class="row-sub">{{ p.nif ?? '—' }}</div>
@@ -36,8 +37,8 @@
             <div class="row-col">{{ p.phone ?? '—' }}</div>
             <div class="row-col">{{ p.email ?? '—' }}</div>
             <div class="row-action">
-              <router-link :to="`/patients/${p.id}`" class="action-btn history" aria-label="Historial">🔍 Historial</router-link>
-              <router-link :to="{ path: `/patients/${p.id}/edit`, query: { from: 'list' } }" class="action-btn datos" aria-label="Datos">✎ Datos</router-link>
+              <router-link :to="{ path: `/patients/${p.id}/edit`, query: { from: 'list' } }" class="action-btn datos" aria-label="Datos" @click.stop>✎ Datos</router-link>
+              <!-- <button class="action-btn" @click.prevent="deletePatient(p)" :disabled="deletingId===p.id" style="margin-left:6px">🗑️ Eliminar</button> -->
             </div>
           </div>
         </div>
@@ -54,6 +55,9 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useToast } from 'vue-toastification'
+import Swal from 'sweetalert2'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
 
@@ -61,6 +65,11 @@ const patients = ref([])
 const meta = ref(null)
 const loading = ref(false)
 const query = ref('')
+const deletingId = ref(null)
+
+const route = useRoute()
+const router = useRouter()
+const toast = useToast()
 
 const filteredPatients = computed(() => {
   const q = (query.value || '').toLowerCase().trim()
@@ -84,6 +93,54 @@ async function load(page = 1) {
 }
 
 onMounted(() => load())
+
+// Mostrar mensajes pasados por query (p.e. after create/update/delete)
+onMounted(() => {
+  const m = route.query.msg
+  if (m) {
+    toast.success(String(m))
+    // limpiar query sin recargar
+    router.replace({ query: Object.assign({}, route.query, { msg: undefined }) })
+  }
+})
+
+async function deletePatient(p) {
+  const res = await Swal.fire({
+    title: `Eliminar paciente`,
+    text: `¿Eliminar al paciente "${p.name}"? Esta acción es reversible (soft delete).`,
+    icon: 'warning',
+    iconColor: '#f97316',
+    width: '420px',
+    buttonsStyling: false,
+    customClass: {
+      confirmButton: 'app-btn app-btn-warning',
+      cancelButton: 'app-btn app-btn-muted',
+      actions: 'swal-actions'
+    },
+    showCancelButton: true,
+    confirmButtonText: 'Sí, eliminar',
+    cancelButtonText: 'Cancelar'
+  })
+
+  if (!res.isConfirmed) return
+
+  deletingId.value = p.id
+  try {
+    await api.delete(`/patients/${p.id}`)
+    toast.warning('Paciente eliminado')
+    // recargar página actual de listado
+    load(meta.value?.current_page || 1)
+  } catch (e) {
+    const msg = e.response?.data?.message || 'Error eliminando paciente'
+    toast.error(msg)
+  } finally {
+    deletingId.value = null
+  }
+}
+
+function goToPatient(id) {
+  router.push(`/patients/${id}`)
+}
 </script>
 
 <style scoped>
@@ -143,4 +200,21 @@ onMounted(() => load())
   .patient-row { grid-template-columns: 1fr; gap:6px }
   .row-action { justify-content:flex-start }
 }
+</style>
+
+<!-- Global styles for SweetAlert buttons (not scoped so they apply to the modal) -->
+<style>
+/* SweetAlert modal styled to match app buttons and spacing */
+.app-btn { display:inline-flex; align-items:center; justify-content:center; padding:8px 14px; border-radius:9999px; border:2px solid transparent; font-weight:600; cursor:pointer; font-size:13px; box-shadow:none }
+.app-btn-warning { border-color:#f97316; background:#f97316; color:#ffffff }
+.app-btn-warning:hover { background:#ef7a1e }
+.app-btn-muted { border-color:#e5e7eb; color:#374151; background:#ffffff }
+.swal-actions { display:flex; gap:8px; justify-content:center; margin-top:12px }
+
+/* Popup container and typography to match app */
+.swal2-popup { font-family: inherit; border-radius:12px; padding:18px; box-shadow: 0 10px 30px rgba(2,6,23,0.08); }
+.swal2-title { font-size:16px; font-weight:700; color:#111827; margin-bottom:6px }
+.swal2-content { color:#ffffff; font-size:14px; margin-bottom:6px }
+.swal2-icon { margin: 0 auto 8px }
+.swal2-actions .app-btn { min-width:110px }
 </style>
