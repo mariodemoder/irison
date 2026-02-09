@@ -44,6 +44,9 @@ Route::middleware(['auth:sanctum'])->post('/logout', [\App\Http\Controllers\Api\
 // `/me` debe estar disponible para UI aunque el trial esté expirado — devuelve el `status` canónico
 Route::middleware(['auth:sanctum', 'clinic'])->get('/me', \App\Http\Controllers\Api\MeController::class);
 
+// Cambiar contraseña del usuario autenticado (API)
+Route::middleware(['auth:sanctum'])->post('/me/password', [\App\Http\Controllers\Api\ProfilePasswordController::class, 'update']);
+
 // Billing endpoints
 Route::middleware(['auth:sanctum'])->post('/billing/checkout', [\App\Http\Controllers\BillingController::class, 'createCheckout']);
 Route::post('/billing/webhook', [\App\Http\Controllers\BillingController::class, 'webhook']);

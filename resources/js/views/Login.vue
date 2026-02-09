@@ -16,7 +16,9 @@ async function submit() {
   loading.value = true
   error.value = ''
   try {
-    const res = await axios.post('/api/login', { email: email.value, password: password.value })
+    // Sanear contraseña: eliminar comillas envolventes y espacios accidentales
+    const sendPassword = (password.value || '').toString().trim().replace(/^"|"$/g, '')
+    const res = await axios.post('/api/login', { email: email.value, password: sendPassword })
     localStorage.setItem('token', res.data.token || res.data.access_token)
     router.push('/dashboard')
   } catch (err) {

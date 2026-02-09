@@ -22,9 +22,21 @@ class PatientController extends BaseController
     public function index(Request $request)
     {
         $perPage = (int) $request->get('per_page', 15);
+        $q = (string) $request->get('q', '');
 
-        $paginator = Patient::orderBy('last_name')
-            ->paginate($perPage);
+        $query = Patient::orderBy('last_name');
+
+        if (!empty($q)) {
+            $like = '%' . strtolower($q) . '%';
+            $query = $query->where(function ($sub) use ($like) {
+                $sub->whereRaw("LOWER(CONCAT(first_name, ' ', last_name)) LIKE ?", [$like])
+                    ->orWhereRaw('LOWER(nif) LIKE ?', [$like])
+                    ->orWhereRaw('LOWER(phone) LIKE ?', [$like])
+                    ->orWhereRaw('LOWER(email) LIKE ?', [$like]);
+            });
+        }
+
+        $paginator = $query->paginate($perPage);
 
         $items = $paginator->getCollection()->transform(function ($p) {
             return [

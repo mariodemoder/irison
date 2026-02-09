@@ -17,11 +17,12 @@ class Appointment extends Model
         'end_time',
         'status',
         'payment_status',
+        'notes',
     ];
 
     protected $casts = [
-        'start_time' => 'datetime',
-        'end_time'   => 'datetime',
+        'start_time' => 'datetime:Y-m-d H:i:s',
+        'end_time'   => 'datetime:Y-m-d H:i:s',
     ];
 
     public function clinic(): BelongsTo

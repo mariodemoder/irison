@@ -8,6 +8,9 @@ import PatientsForm from '../views/patients/Form.vue'
 // Nota: usamos el mismo formulario para creación/edición
 import PatientsShow from '../views/patients/Show.vue'
 import Profile from '../views/Profile.vue'
+import AgendaDay from '../views/appointments/AgendaDay.vue'
+import AppointmentsForm from '../views/appointments/Form.vue'
+import AppointmentsShow from '../views/appointments/Show.vue'
 
 const routes = [
   { path: '/login', component: Login },
@@ -19,6 +22,11 @@ const routes = [
   { path: '/patients/:id', component: PatientsShow, meta: { auth: true } },
   { path: '/patients/:id/edit', component: PatientsForm, meta: { auth: true } },
   { path: '/billing/required', component: BillingRequired, meta: { auth: true } },
+  { path: '/appointments', redirect: '/appointments/day', meta: { auth: true } },
+  { path: '/appointments/day', component: AgendaDay, meta: { auth: true } },
+  { path: '/appointments/create', component: AppointmentsForm, meta: { auth: true } },
+  { path: '/appointments/:id', component: AppointmentsShow, meta: { auth: true } },
+  { path: '/appointments/:id/edit', component: AppointmentsForm, meta: { auth: true } },
 ]
 
 const router = createRouter({

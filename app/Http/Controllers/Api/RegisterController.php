@@ -38,7 +38,8 @@ class RegisterController extends Controller
             'clinic_id' => $clinic->id,
             'name' => $data['name'],
             'email' => $data['email'],
-            'password' => Hash::make($data['password']),
+            // The User model casts 'password' => 'hashed', so avoid double hashing here.
+            'password' => $data['password'],
         ]);
 
         // Create initial trial subscription for the clinic

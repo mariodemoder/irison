@@ -18,7 +18,9 @@ async function submit() {
   loading.value = true
   error.value = ''
   try {
-    await axios.post('/api/register', { name: name.value, clinic_name: clinic_name.value, email: email.value, password: password.value })
+    // Sanear contraseña similar al login: evitar comillas envolventes accidentales
+    const sendPassword = (password.value || '').toString().trim().replace(/^"|"$/g, '')
+    await axios.post('/api/register', { name: name.value, clinic_name: clinic_name.value, email: email.value, password: sendPassword })
     router.push('/login')
   } catch (err) {
     error.value = err.response?.data?.message || 'Error al crear cuenta'

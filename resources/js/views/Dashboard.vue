@@ -122,20 +122,7 @@ function logoutAction() {
 
 <style scoped>
 /* Botón más pequeño */
-.btn {
-  background: var(--primary, #1f2937);
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  padding: 8px 12px;
-  font-size: 14px;
-  cursor: pointer;
-}
-.btn.btn-sm {
-  padding: 4px 8px;
-  font-size: 12px;
-  border-radius: 6px;
-}
+/* Buttons use global .btn styles from resources/css/app.css */
 
 /* Card float / sub-banner más compacto */
 .sub-banner {

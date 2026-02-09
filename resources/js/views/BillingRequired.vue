@@ -32,8 +32,8 @@
           </div>
 
           <div class="flex items-center gap-2">
-            <button type="submit" class="btn-primary">Activar suscripción</button>
-            <button type="button" class="btn-ghost" @click="usarFake">Usar proveedor de pruebas</button>
+            <button type="submit" class="btn btn--solid">Activar suscripción</button>
+            <button type="button" class="btn btn--ghost" @click="usarFake">Usar proveedor de pruebas</button>
           </div>
 
           <p v-if="error" class="text-red-600">{{ error }}</p>
@@ -137,24 +137,7 @@ async function usarFake() {
   font-weight: 700;
 }
 
-.btn-primary {
-  width: 100%;
-  padding: 14px;
-  border-radius: 12px;
-  background: var(--black, #0f172a);
-  color: #ffffff;
-  font-size: 15px;
-  font-weight: 700;
-  border: none;
-  cursor: pointer;
-  box-shadow: 0 10px 28px rgba(2, 6, 23, 0.18);
-  transition: transform 0.1s ease, box-shadow 0.15s ease;
-}
 
-.btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 14px 32px rgba(2, 6, 23, 0.22);
-}
 
 .note {
   margin-top: 16px;

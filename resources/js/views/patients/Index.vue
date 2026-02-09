@@ -150,34 +150,13 @@ function goToPatient(id) {
 </script>
 
 <style scoped>
-/* Botón estilo outline azul, pill */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  text-decoration: none;
-}
-.btn.btn-sm {
-  padding: 6px 12px;
-  font-size: 13px;
-  border-radius: 9999px;
-  border: 2px solid #3b82f6; /* azul */
-  color: #3b82f6;
-  background: #ffffff;
-  font-weight: 600;
-}
-.btn.btn-sm:hover { background: #eff6ff }
-
-.btn.btn-sm.small { padding:6px 10px; font-size:13px }
+/* Button uses global .btn styles from resources/css/app.css */
 
 .page-header { display:grid; grid-template-columns: 1fr 480px auto; align-items:center; gap:12px; margin-bottom:16px }
-.page-header h1 { margin:0 }
+.page-header h1 { margin:0; font-size:20px; font-weight:800 }
 .form-sub { color:#6b7280; font-size:13px; margin-top:4px }
 
-.search-center { display:flex; justify-content:center }
-.search-wrapper { position:relative; width:100%; max-width:480px }
-.search-icon { position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#9ca3af }
-.search-input { width:100%; padding:8px 12px 8px 36px; border-radius:9999px; border:1px solid #e5e7eb; font-size:14px }
+  /* Search styles moved to global resources/css/app.css */
 
 
 .list { display:flex; flex-direction:column; gap:8px }
@@ -185,7 +164,7 @@ function goToPatient(id) {
 .patient-row { display:grid; grid-template-columns: 2fr 1fr 1fr auto; gap:12px; align-items:center; background:#fff; padding:12px 14px; border-radius:10px; text-decoration:none; color:inherit; border:1px solid #eef2ff22 }
 .patient-row:hover { box-shadow: 0 10px 24px rgba(2,6,23,0.06); transform: translateY(-2px) }
 .row-left { display:flex; flex-direction:column }
-.row-name { font-weight:700 }
+.row-name { font-weight:600; font-size:15px }
 .row-sub { color:#6b7280; font-size:13px }
 .row-col { color:#374151; font-size:13px }
 .row-action { display:flex; align-items:center; justify-content:center; color:#6b7280 }
@@ -204,7 +183,6 @@ function goToPatient(id) {
 
 @media (max-width: 900px) {
   .page-header { grid-template-columns: 1fr auto }
-  .search-center { order:3; grid-column: 1 / -1 }
 }
 
 @media (max-width: 480px) {

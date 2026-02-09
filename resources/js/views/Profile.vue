@@ -23,7 +23,7 @@
       <div v-if="loading">Cargando...</div>
 
       <div v-else>
-        <form @submit.prevent="save" style="display:grid;gap:12px;max-width:760px">
+          <form @submit.prevent="save" style="display:grid;gap:12px;max-width:760px">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <div>
               <label class="label">Nombre</label>
@@ -48,6 +48,33 @@
             </div>
           </div>
         </form>
+
+        <hr style="margin:18px 0" />
+
+        <div style="max-width:760px">
+          <h2>Cambiar contraseña</h2>
+          <div v-if="pwMessage" class="field-error">{{ pwMessage }}</div>
+          <form @submit.prevent="changePassword" style="display:grid;gap:12px">
+            <div>
+              <label class="label">Contraseña actual</label>
+              <input class="input" type="password" v-model="pw.current_password" />
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div>
+                <label class="label">Nueva contraseña</label>
+                <input class="input" type="password" v-model="pw.password" />
+              </div>
+              <div>
+                <label class="label">Confirmar contraseña</label>
+                <input class="input" type="password" v-model="pw.password_confirmation" />
+              </div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-sm" type="submit" :disabled="pwSaving">Cambiar contraseña</button>
+              <button class="btn btn-sm" type="button" @click.prevent="pwReset">Limpiar</button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   </MainLayout>
@@ -72,6 +99,11 @@ const loading = ref(true)
 const saving = ref(false)
 
 const form = ref({ name: '', email: '', clinic_name: '' })
+
+// password change
+const pw = ref({ current_password: '', password: '', password_confirmation: '' })
+const pwSaving = ref(false)
+const pwMessage = ref('')
 
 const daysLeft = computed(() => {
   if (!trial_ends_at.value) return null
@@ -140,6 +172,36 @@ async function save() {
 
 function reload() { load() }
 
+function pwReset() {
+  pw.value.current_password = ''
+  pw.value.password = ''
+  pw.value.password_confirmation = ''
+  pwMessage.value = ''
+}
+
+async function changePassword() {
+  pwSaving.value = true
+  pwMessage.value = ''
+  try {
+    await api.post('/me/password', { ...pw.value })
+    pwReset()
+    const toast = useToast()
+    toast.success('Contraseña actualizada')
+  } catch (e) {
+    console.error('Error cambiando contraseña', e)
+    if (e.response && e.response.status === 422) {
+      const errs = e.response.data.errors || {}
+      // Mostrar primer error encontrado
+      const first = Object.values(errs)[0]
+      pwMessage.value = Array.isArray(first) ? first[0] : String(first)
+    } else {
+      pwMessage.value = e.response?.data?.message || 'Error cambiando contraseña'
+    }
+  } finally {
+    pwSaving.value = false
+  }
+}
+
 async function subscribe() {
   try {
     const res = await api.post('/stripe/checkout')
@@ -154,8 +216,7 @@ async function subscribe() {
 <style scoped>
 .label { display:block; font-weight:600; margin-bottom:6px }
 .input { width:100%; padding:10px; border-radius:8px; border:1px solid #e5e7eb }
-.btn { background: var(--primary, #1f2937); color: #fff; border: none; border-radius: 6px; padding: 8px 12px; font-size: 14px; cursor: pointer }
-.btn.btn-sm { padding: 6px 10px; font-size: 13px; border-radius: 6px }
+.btn { /* use global .btn styles from resources/css/app.css */ }
 .sub-banner { display:flex; align-items:center; gap:12px; background: rgba(255,255,255,0.9); padding:8px 10px; border-radius:10px; box-shadow: 0 6px 18px rgba(2,6,23,0.06) }
 .sub-banner .meta { display:flex; flex-direction:column }
 .sub-banner .small { font-size:12px; color:var(--text-muted,#6b7280) }
