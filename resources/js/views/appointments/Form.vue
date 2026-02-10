@@ -10,7 +10,10 @@
         <form class="grid-form" @submit.prevent="submit">
           <div class="field">
             <label class="label">Paciente</label>
-            <PatientSelect v-model="form.patient_id" />
+            <select v-model="form.patient_id" class="input">
+              <option value="" disabled>Selecciona un paciente</option>
+              <option v-for="p in patients" :key="p.id" :value="p.id">{{ p.name }}{{ p.nif ? (' — ' + p.nif) : '' }}</option>
+            </select>
             <div v-if="errors.patient_id" class="field-error">{{ errors.patient_id[0] }}</div>
           </div>
 
@@ -48,7 +51,6 @@ import { useRouter, useRoute } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
 import { useToast } from 'vue-toastification'
-import PatientSelect from '../../components/PatientSelect2.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -58,8 +60,17 @@ const errors = reactive({})
 const submitting = ref(false)
 const loading = ref(false)
 
-// Register component locally
-const components = { PatientSelect }
+// Simple patients list for select
+const patients = ref([])
+
+async function loadPatients() {
+  try {
+    const res = await api.get('/patients', { params: { per_page: 200 } })
+    patients.value = Array.isArray(res.data.data) ? res.data.data : (res.data || [])
+  } catch (e) {
+    patients.value = []
+  }
+}
 
 function cancel() {
   const from = route.query.from
@@ -103,6 +114,7 @@ onMounted(() => {
     isEdit.value = true
     loadForEdit(id)
   }
+  loadPatients()
 })
 
 watch(() => route.params.id, (id) => {
