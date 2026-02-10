@@ -96,6 +96,18 @@ body { background: var(--bg-app); color: var(--text-main); }
 	border: 2px solid #e5e7eb;
 }
 
+/* Warning variant — subtle orange used for destructive/attention actions */
+.warning {
+	padding: 8px 16px;
+	border-radius: 9999px;
+	background: #fff7ed;
+	color: #c2410c;
+	border: 2px solid #f97316;
+	font-weight: 600;
+	font-size: 14px;
+}
+.warning:hover { background: #fff2e6 }
+
 /* Global search input used in Patients and Appointments (unified style) */
 .search-center { display:flex; justify-content:center }
 .search-wrapper { position:relative; width:100%; max-width:480px }

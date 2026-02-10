@@ -116,7 +116,7 @@ class AppointmentController extends Controller
      */
     public function cancel(Appointment $appointment)
     {
-        $appointment->status = 'cancelled';
+        $appointment->status = 'canceled';
         $appointment->save();
 
         return response()->json($appointment);

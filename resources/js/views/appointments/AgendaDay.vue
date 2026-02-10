@@ -18,6 +18,7 @@
           <div style="display:flex; gap:8px; align-items:center">
             <router-link to="/appointments/create" class="btn btn-sm small">Nueva cita</router-link>
           </div>
+        </div>
 
         <div class="list-header">
           <div>Hora</div>
@@ -42,7 +43,6 @@
           <div v-if="filteredAppointments.length === 0" class="empty">No hay citas para esta fecha.</div>
         </div>
       </div>
-    </div>
   </MainLayout>
 </template>
 

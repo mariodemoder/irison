@@ -50,4 +50,5 @@ Route::middleware(['auth:sanctum'])->post('/me/password', [\App\Http\Controllers
 // Billing endpoints
 Route::middleware(['auth:sanctum'])->post('/billing/checkout', [\App\Http\Controllers\BillingController::class, 'createCheckout']);
 Route::post('/billing/webhook', [\App\Http\Controllers\BillingController::class, 'webhook']);
+Route::post('appointments/{appointment}/cancel', [\App\Http\Controllers\Api\AppointmentController::class, 'cancel']);
 

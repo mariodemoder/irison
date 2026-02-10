@@ -37,7 +37,8 @@
 
           <div class="actions full">
             <button class="primary" type="submit" :disabled="submitting">Guardar</button>
-            <button type="button" class="muted" @click.prevent="cancel">Cancelar</button>
+            <button type="button" class="warning" @click.prevent="appointmentCancel">Cancelar cita</button>
+            <button type="button" class="muted" @click.prevent="cancel">Volver</button>
           </div>
         </form>
       </div>
@@ -51,6 +52,7 @@ import { useRouter, useRoute } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
 import { useToast } from 'vue-toastification'
+import Swal from 'sweetalert2'
 
 const router = useRouter()
 const route = useRoute()
@@ -90,6 +92,28 @@ function cancel() {
   }
 }
 
+function appointmentCancel() {
+  const toast = useToast()
+  Swal.fire({
+    title: '¿Cancelar esta cita?',
+    text: 'Esta acción no se puede deshacer.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, cancelar',
+    cancelButtonText: 'No, mantener',
+  }).then(async (result) => {
+    if (result.isConfirmed) {
+      try {
+        await api.post(`/appointments/${route.params.id}/cancel`)
+        toast.success('Cita cancelada')
+        router.push('/appointments/day')
+      } catch (e) {
+        toast.error('Error cancelando la cita')
+      }
+    }
+  })
+ 
+}
 async function loadForEdit(id) {
   loading.value = true
   try {
