@@ -17,6 +17,9 @@ class AppointmentController extends Controller
     {
         $query = Appointment::query();
 
+        // Cargar relación de paciente para que la API devuelva el nombre en el front
+        $query->with('patient');
+
         // Si se pasa ?date=YYYY-MM-DD devolvemos citas de ese día
         if ($request->filled('date')) {
             $date = Carbon::parse($request->input('date'));
