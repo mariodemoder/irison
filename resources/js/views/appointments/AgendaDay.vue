@@ -181,7 +181,7 @@ const filteredAppointments = computed(() => {
 .search-center { display:flex; justify-content:flex-end; align-items:center }
 
 .list { display:flex; flex-direction:column; gap:8px }
-.list-header { display:grid; grid-template-columns: 100px 2fr 160px auto; gap:12px; align-items:center; padding:8px 14px; color:#6b7280; font-weight:600; font-size:13px }
+.list-header { display:grid; grid-template-columns: 100px 2fr 220px auto; gap:12px; align-items:center; padding:8px 14px; color:#6b7280; font-weight:600; font-size:13px }
 .appointment-row { display:grid; grid-template-columns: 100px 2fr 160px auto; gap:12px; align-items:center; background:#fff; padding:12px 14px; border-radius:10px; text-decoration:none; color:inherit; border:1px solid #eef2ff22 }
 .appointment-row:hover { box-shadow: 0 10px 24px rgba(2,6,23,0.06); transform: translateY(-2px) }
 .row-left { display:flex; flex-direction:column }
@@ -191,7 +191,7 @@ const filteredAppointments = computed(() => {
 .row-action { display:flex; align-items:center; justify-content:center; color:#6b7280 }
 
 .status { padding:6px 10px; border-radius:9999px; font-weight:700; text-transform:capitalize }
-.status.cancelled { background:#fee2e2; color:#b91c1c }
+.status.canceled { background:#fff4f4; color:#da7a7a }
 .status.scheduled { background:#eef2ff; color:#1e3a8a }
 .status.completed { background:#dcfce7; color:#166534 }
 

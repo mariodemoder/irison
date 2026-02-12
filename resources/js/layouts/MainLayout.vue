@@ -10,7 +10,6 @@
         <router-link :class="[{ 'menu-active': isActive('/patients') }, 'block px-3 py-2 rounded text-gray-800 hover:bg-gray-100']" to="/patients">Pacientes</router-link>
         <router-link :class="[{ 'menu-active': isActive('/appointments') }, 'block px-3 py-2 rounded text-gray-800 hover:bg-gray-100']" to="/appointments">Agenda</router-link>
         <router-link :class="[{ 'menu-active': isActive('/payments') }, 'block px-3 py-2 rounded text-gray-800 hover:bg-gray-100']" to="/payments">Pagos</router-link>
-        <router-link :class="[{ 'menu-active': isActive('/links') }, 'block px-3 py-2 rounded text-blue-600 hover:bg-gray-100']" to="/links">Links activos</router-link>
       </nav>
     </aside>
 

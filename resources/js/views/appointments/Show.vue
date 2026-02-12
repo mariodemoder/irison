@@ -31,8 +31,18 @@
           </div>
 
           <div class="actions">
-            <router-link :to="`/appointments/${appointment.id}/edit`" class="primary">Editar</router-link>
-            <button class="warning" @click.prevent="appointmentCancel" :disabled="cancelling">Cancelar cita</button>
+            <template v-if="appointment.status === 'canceled'">
+              <button class="primary" :disabled="!canReprogram" @click.prevent="goReprogram">Reprogramar</button>
+              <div v-if="!canReprogram" class="field-error" style="margin-left:8px">La reprogramación sólo está permitida con al menos 2 horas de antelación.</div>
+            </template>
+            <template v-else>
+              <router-link :to="`/appointments/${appointment.id}/edit`" class="primary">Editar</router-link>
+            </template>
+
+            <button class="muted" @click.prevent="appointmentCancel" :disabled="cancelling">
+              <IconCancel />
+              Cancelar
+            </button>
             <button class="muted" @click="back">Volver</button>
           </div>
         </div>
@@ -46,6 +56,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
+import IconCancel from '../../components/icons/IconCancel.vue'
 import { useToast } from 'vue-toastification'
 import Swal from 'sweetalert2'
 
@@ -54,6 +65,7 @@ const router = useRouter()
 const appointment = ref({})
 const loading = ref(false)
 const cancelling = ref(false)
+const canReprogram = ref(false)
 
 async function load() {
   loading.value = true
@@ -69,6 +81,26 @@ async function load() {
 }
 
 onMounted(() => load())
+
+// recompute permission when appointment changes
+function computeReprogramAllowance() {
+  if (!appointment.value || !appointment.value.start_time) {
+    canReprogram.value = false
+    return
+  }
+  const start = new Date(appointment.value.start_time).getTime()
+  const threshold = start - (1 * 60 * 60 * 1000) // 1 hours before
+  canReprogram.value = Date.now() < threshold
+}
+
+// watch for loaded appointment
+;(() => {
+  const origLoad = load
+  load = async () => {
+    await origLoad()
+    computeReprogramAllowance()
+  }
+})()
 
 function back() {
   router.push('/appointments/day')
@@ -112,6 +144,10 @@ function appointmentCancel() {
     }
   })
 }
+
+function goReprogram() {
+  router.push({ path: `/appointments/${appointment.value.id}/edit`, query: { mode: 'reprogram' } })
+}
 </script>
 
 <style scoped>
@@ -125,4 +161,11 @@ function appointmentCancel() {
 .actions { display:flex; gap:12px; margin-top:16px }
 .primary { padding: 8px 16px; font-size: 14px; border-radius: 9999px; border: 2px solid #3b82f6; color: #3b82f6; background: #ffffff; font-weight: 600 }
 .muted { padding:8px 14px; border-radius:9999px; border:1px solid #e5e7eb; background:#fff }
+
+/* Alinear icono y texto en botones */
+.actions button { display:inline-flex; align-items:center; gap:8px }
+
+.icon-cancel { width:16px; height:16px; margin-right:8px; vertical-align:middle; color:#ef4444 }
+.icon-cancel circle { stroke: currentColor; stroke-width:1.5 }
+.icon-cancel path { stroke: currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round }
 </style>

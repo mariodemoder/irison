@@ -5,8 +5,6 @@ use App\Http\Controllers\Api\AppointmentController;
 use App\Http\Controllers\Api\PatientController;
 use App\Http\Controllers\API\RegisterController;
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Auth\AuthenticatedSessionController;
-use App\Http\Middleware\EnsureClinic;
 
 /*
 |--------------------------------------------------------------------------
@@ -18,37 +16,73 @@ use App\Http\Middleware\EnsureClinic;
 |
 */
 
-Route::middleware(['auth:sanctum', 'clinic', 'clinic.active'])->group(function () {
+/*
+|--------------------------------------------------------------------------
+| API Routes
+|--------------------------------------------------------------------------
+|
+| Rutas de datos (JSON). Reorganizadas en: rutas públicas, webhooks,
+| y rutas protegidas por middleware (auth + tenant).
+|
+*/
 
-    Route::apiResource('patients', PatientController::class);
-    Route::apiResource('appointments', AppointmentController::class);
-    
-});
+// -----------------------------
+// RUTAS PÚBLICAS (sin auth)
+// -----------------------------
+
+// Registro de usuario (mobile/SPA) — crea usuario y tenant inicial
 Route::post('/register', RegisterController::class);
-// API login para clientes SPA (valida credenciales y devuelve token)
+
+// Login para clientes SPA — valida credenciales y devuelve token
 Route::post('/login', [AuthController::class, 'login']);
 
-// Stripe Checkout
-Route::middleware(['auth:sanctum'])->post('/stripe/checkout', \App\Http\Controllers\Api\StripeCheckoutController::class);
-
-// Stripe webhook (no auth)
+// Webhooks (Stripe, billing) deben ser públicos y verificarse por firma
+// Stripe webhook (recibe eventos desde Stripe)
 Route::post('/stripe/webhook', [\App\Http\Controllers\Api\StripeWebhookController::class, 'handle']);
 
-// Fake subscribe (development/testing): marca la clínica como suscrita
-Route::middleware(['auth:sanctum'])->post('/subscribe/fake', \App\Http\Controllers\Api\FakeSubscribeController::class);
+// Billing webhook (desde proveedor de pagos)
+Route::post('/billing/webhook', [\App\Http\Controllers\BillingController::class, 'webhook']);
 
-// API logout for SPA (revoke current token)
-Route::middleware(['auth:sanctum'])->post('/logout', [\App\Http\Controllers\Api\AuthController::class, 'logout']);
 
-// Información del usuario autenticado (frontend single-point)
-// `/me` debe estar disponible para UI aunque el trial esté expirado — devuelve el `status` canónico
+// -----------------------------
+// RUTAS PROTEGIDAS (auth + tenant activo)
+// -----------------------------
+
+Route::middleware(['auth:sanctum', 'clinic', 'clinic.active'])->group(function () {
+
+    // Pacientes: CRUD multitenant
+    Route::apiResource('patients', PatientController::class);
+
+    // Citas: CRUD multitenant
+    Route::apiResource('appointments', AppointmentController::class);
+
+    // Checkout con Stripe (inicia flujo de pago desde UI autenticada)
+    Route::post('/stripe/checkout', \App\Http\Controllers\Api\StripeCheckoutController::class);
+
+    // Endpoint de testing para marcar clínica como suscrita (dev)
+    Route::post('/subscribe/fake', \App\Http\Controllers\Api\FakeSubscribeController::class);
+
+    // Logout: revoca el token actual
+    Route::post('/logout', [\App\Http\Controllers\Api\AuthController::class, 'logout']);
+
+    // Cambiar contraseña del usuario autenticado
+    Route::post('/me/password', [\App\Http\Controllers\Api\ProfilePasswordController::class, 'update']);
+
+    // Billing: iniciar checkout desde la app (usuario autenticado)
+    Route::post('/billing/checkout', [\App\Http\Controllers\BillingController::class, 'createCheckout']);
+
+    // Cancelar cita (acción sobre recurso protegido)
+    Route::post('appointments/{appointment}/cancel', [\App\Http\Controllers\Api\AppointmentController::class, 'cancel']);
+
+});
+
+
+// -----------------------------
+// RUTAS CON CASOS ESPECIALES
+// -----------------------------
+
+// Información del usuario autenticado (`/me`): debe estar disponible
+// aunque el trial haya expirado, por eso no incluimos `clinic.active`.
 Route::middleware(['auth:sanctum', 'clinic'])->get('/me', \App\Http\Controllers\Api\MeController::class);
 
-// Cambiar contraseña del usuario autenticado (API)
-Route::middleware(['auth:sanctum'])->post('/me/password', [\App\Http\Controllers\Api\ProfilePasswordController::class, 'update']);
-
-// Billing endpoints
-Route::middleware(['auth:sanctum'])->post('/billing/checkout', [\App\Http\Controllers\BillingController::class, 'createCheckout']);
-Route::post('/billing/webhook', [\App\Http\Controllers\BillingController::class, 'webhook']);
-Route::post('appointments/{appointment}/cancel', [\App\Http\Controllers\Api\AppointmentController::class, 'cancel']);
 

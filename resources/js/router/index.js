@@ -11,12 +11,14 @@ import Profile from '../views/Profile.vue'
 import AgendaDay from '../views/appointments/AgendaDay.vue'
 import AppointmentsForm from '../views/appointments/Form.vue'
 import AppointmentsShow from '../views/appointments/Show.vue'
+import PaymentsIndex from '../views/payments/Index.vue'
 
 const routes = [
   { path: '/login', component: Login },
   { path: '/register', component: Register },
   { path: '/dashboard', component: Dashboard, meta: { auth: true } },
   { path: '/profile', component: Profile, meta: { auth: true } },
+  { path: '/payments', component: PaymentsIndex, meta: { auth: true } },
   { path: '/patients', component: PatientsIndex, meta: { auth: true } },
   { path: '/patients/create', component: PatientsForm, meta: { auth: true } },
   { path: '/patients/:id', component: PatientsShow, meta: { auth: true } },
