@@ -10,9 +10,10 @@
         <form class="grid-form" @submit.prevent="submit">
           <div class="field">
             <label class="label">Paciente</label>
-            <select v-model="form.patient_id" class="input" :disabled="isCanceled && mode !== 'reprogram'">
+            <select v-model="form.patient_id" @change="onPatientChange" class="input" :disabled="isCanceled && mode !== 'reprogram'">
               <option value="" disabled>Selecciona un paciente</option>
               <option v-for="p in patients" :key="p.id" :value="p.id">{{ p.name }}{{ p.nif ? (' — ' + p.nif) : '' }}</option>
+              <option value="__create">+ Crear paciente...</option>
             </select>
             <div v-if="errors.patient_id" class="field-error">{{ errors.patient_id[0] }}</div>
           </div>
@@ -45,13 +46,13 @@
           </div>
 
           <div class="actions full">
-            <button class="primary" type="submit" :disabled="submitting">Guardar</button>
-            <button type="button" class="muted" @click.prevent="appointmentCancel" :disabled="submitting">
-              <IconCancel />
-              Cancelar
-            </button>
-            <button type="button" class="muted" @click.prevent="cancel">Volver</button>
-          </div>
+                  <button class="primary" type="submit" :disabled="submitting">Guardar</button>
+                  <button v-if="isEdit" type="button" class="muted" @click.prevent="appointmentCancel" :disabled="submitting">
+                    <IconCancel />
+                    Cancelar
+                  </button>
+                  <button type="button" class="muted" @click.prevent="cancel">Volver</button>
+                </div>
         </form>
       </div>
     </div>
@@ -82,6 +83,66 @@ const canReprogramInForm = ref(false)
 const errors = reactive({})
 const submitting = ref(false)
 const loading = ref(false)
+const patients = ref([])
+
+function onPatientChange() {
+  if (form.patient_id === '__create') {
+    // abrir popup para crear paciente
+    openCreatePatientPopup()
+  }
+}
+
+async function openCreatePatientPopup() {
+  const { value: formValues } = await Swal.fire({
+    title: 'Crear paciente',
+    html:
+    
+      '<div class="swal-card">' +
+      '<input id="swal-name" class="input" placeholder="Nombre">' +
+      '<input id="swal-nif" class="input" placeholder="NIF (opcional)">' +
+      '<input id="swal-phone" class="input" placeholder="Teléfono (opcional)">' +
+      '<input id="swal-email" class="input" placeholder="Email (opcional)">' +
+      '</div>',
+    focusConfirm: false,
+    showCancelButton: true,
+    confirmButtonText: 'Crear',
+    cancelButtonText: 'Cancelar',
+    buttonsStyling: false,
+    customClass: {
+      popup: 'swal-popup-card',
+      confirmButton: 'primary',
+      cancelButton: 'muted'
+    },
+    preConfirm: async () => {
+      const name = document.getElementById('swal-name')?.value?.trim()
+      const nif = document.getElementById('swal-nif')?.value?.trim() || null
+      const phone = document.getElementById('swal-phone')?.value?.trim() || null
+      const email = document.getElementById('swal-email')?.value?.trim() || null
+      if (!name) {
+        Swal.showValidationMessage('El nombre es requerido')
+        return false
+      }
+      try {
+        const res = await api.post('/patients', { name, nif, phone, email })
+        return res.data || res.data?.data || res
+      } catch (e) {
+        const msg = e.response?.data?.message || 'Error creando paciente'
+        Swal.showValidationMessage(msg)
+        return false
+      }
+    }
+  })
+
+  if (formValues) {
+    const newPatient = formValues.data ? formValues.data : formValues
+    patients.value.unshift(newPatient)
+    form.patient_id = newPatient.id
+    const toast = useToast()
+    toast.success('Paciente creado')
+  } else {
+    form.patient_id = ''
+  }
+}
 
 
 async function loadPatients() {
@@ -271,4 +332,22 @@ async function submit() {
 
 /* Alinear icono y texto en botones */
 .actions button { display:inline-flex; align-items:center; gap:8px }
+</style>
+
+/* Estilos globales para el popup de creación de paciente */
+<style>
+.swal-popup-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(2,6,23,0.06);
+  padding: 18px 18px 16px;
+  max-width: 480px;
+}
+.swal-popup-card .swal2-title { margin-bottom:8px }
+.swal-card { display:flex; flex-direction:column; gap:10px }
+.swal-card .input { width:100%; padding:10px; border-radius:8px; border:1px solid #e5e7eb; box-sizing:border-box }
+.swal2-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:12px }
+.swal2-actions .primary, .primary { padding: 8px 16px; font-size: 14px; border-radius: 9999px; border: 2px solid #3b82f6; color: #3b82f6; background: #ffffff; font-weight: 600 }
+.swal2-actions .primary:hover, .primary:hover { background:#eff6ff }
+.swal2-actions .muted { padding:8px 14px; border-radius:9999px; border:1px solid #e5e7eb; background:#fff }
 </style>

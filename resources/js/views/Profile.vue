@@ -23,57 +23,88 @@
       <div v-if="loading">Cargando...</div>
 
       <div v-else>
-          <form @submit.prevent="save" style="display:grid;gap:12px;max-width:760px">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-            <div>
-              <label class="label">Nombre</label>
-              <input class="input" v-model="form.name" />
-            </div>
-            <div>
-              <label class="label">Email</label>
-              <input class="input" v-model="form.email" />
-            </div>
-          </div>
-
-          <div>
-            <label class="label">Nombre clínica</label>
-            <input class="input" v-model="form.clinic_name" />
-          </div>
-
-          <div style="display:flex;gap:8px">
-            <button class="btn btn-sm" type="submit" :disabled="saving">Guardar</button>
-            <button class="btn btn-sm" type="button" @click.prevent="reload">Cancelar</button>
-            <div style="margin-left:auto">
-              <button v-if="status==='blocked'" class="btn" @click.prevent="subscribe">Activar plan (Stripe)</button>
-            </div>
-          </div>
-        </form>
-
-        <hr style="margin:18px 0" />
-
         <div style="max-width:760px">
-          <h2>Cambiar contraseña</h2>
-          <div v-if="pwMessage" class="field-error">{{ pwMessage }}</div>
-          <form @submit.prevent="changePassword" style="display:grid;gap:12px">
-            <div>
-              <label class="label">Contraseña actual</label>
-              <input class="input" type="password" v-model="pw.current_password" />
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-              <div>
-                <label class="label">Nueva contraseña</label>
-                <input class="input" type="password" v-model="pw.password" />
+          <div class="tabs">
+            <button :class="['tab', { active: activeTab==='datos' }]" @click="activeTab='datos'">Datos</button>
+            <button :class="['tab', { active: activeTab==='seguridad' }]" @click="activeTab='seguridad'">Seguridad</button>
+            <button :class="['tab', { active: activeTab==='subscripcion' }]" @click="activeTab='subscripcion'">Subscripción</button>
+          </div>
+
+          <div class="tab-panel" v-show="activeTab==='datos'">
+            <form @submit.prevent="save" style="display:grid;gap:12px;">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div>
+                  <label class="label">Nombre</label>
+                  <input class="input" v-model="form.name" />
+                </div>
+                <div>
+                  <label class="label">Email</label>
+                  <input class="input" v-model="form.email" />
+                </div>
               </div>
+
               <div>
-                <label class="label">Confirmar contraseña</label>
-                <input class="input" type="password" v-model="pw.password_confirmation" />
+                <label class="label">Nombre clínica</label>
+                <input class="input" v-model="form.clinic_name" />
+              </div>
+
+              <div style="display:flex;gap:8px">
+                <button class="btn btn-sm" type="submit" :disabled="saving">Guardar</button>
+                <button class="btn btn-sm" type="button" @click.prevent="reload">Cancelar</button>
+                <div style="margin-left:auto">
+                  <button v-if="status==='blocked'" class="btn" @click.prevent="subscribe">Activar plan (Stripe)</button>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <div class="tab-panel" v-show="activeTab==='seguridad'" style="margin-top:14px">
+            <h2>Cambiar contraseña</h2>
+            <div v-if="pwMessage" class="field-error">{{ pwMessage }}</div>
+            <form @submit.prevent="changePassword" style="display:grid;gap:12px">
+              <div>
+                <label class="label">Contraseña actual</label>
+                <input class="input" type="password" v-model="pw.current_password" />
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div>
+                  <label class="label">Nueva contraseña</label>
+                  <input class="input" type="password" v-model="pw.password" />
+                </div>
+                <div>
+                  <label class="label">Confirmar contraseña</label>
+                  <input class="input" type="password" v-model="pw.password_confirmation" />
+                </div>
+              </div>
+              <div style="display:flex;gap:8px">
+                <button class="btn btn-sm" type="submit" :disabled="pwSaving">Cambiar contraseña</button>
+                <button class="btn btn-sm" type="button" @click.prevent="pwReset">Limpiar</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="tab-panel" v-show="activeTab==='subscripcion'" style="margin-top:14px">
+            <h2>Subscripción</h2>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:8px">
+              <span :class="['status-dot', subscriptionState.color]"></span>
+              <div>{{ subscriptionState.label }}</div>
+            </div>
+            <div style="margin-top:12px">
+              <div v-if="status==='trial'">
+                <div>Quedan <strong>{{ daysLeft ?? '—' }}</strong> días de demo.</div>
+              </div>
+              <div v-else-if="status==='active'">
+                <div>Tu suscripción está activa.</div>
+              </div>
+              <div v-else>
+                <div>No tienes suscripción activa.</div>
+              </div>
+
+              <div style="margin-top:12px">
+                <button class="btn btn-primary" @click.prevent="beginPaidPlanFake">Comenzar plan pago</button>
               </div>
             </div>
-            <div style="display:flex;gap:8px">
-              <button class="btn btn-sm" type="submit" :disabled="pwSaving">Cambiar contraseña</button>
-              <button class="btn btn-sm" type="button" @click.prevent="pwReset">Limpiar</button>
-            </div>
-          </form>
+          </div>
         </div>
       </div>
     </div>
@@ -100,6 +131,9 @@ const saving = ref(false)
 
 const form = ref({ name: '', email: '', clinic_name: '' })
 
+// pestañas: 'datos' | 'seguridad' | 'subscripcion'
+const activeTab = ref('datos')
+
 // password change
 const pw = ref({ current_password: '', password: '', password_confirmation: '' })
 const pwSaving = ref(false)
@@ -117,6 +151,11 @@ const subscriptionState = computed(() => {
   if (status.value === 'active') return { color: 'green', label: 'Suscripción activa' }
   if (status.value === 'trial') return { color: 'yellow', label: `Prueba — quedan ${daysLeft.value ?? '—'} días` }
   return { color: 'red', label: 'Sin suscripción' }
+})
+
+// indica si el trial está vencido
+const trialExpired = computed(() => {
+  return status.value === 'trial' && daysLeft.value !== null && daysLeft.value <= 0
 })
 
 onMounted(async () => {
@@ -211,6 +250,10 @@ async function subscribe() {
     toast.error('Error iniciando subscripción')
   }
 }
+
+function beginPaidPlanFake() {
+  router.push('/billing/required')
+}
 </script>
 
 <style scoped>
@@ -224,4 +267,9 @@ async function subscribe() {
 .status-dot.green { background: #10b981 }
 .status-dot.yellow { background: #f59e0b }
 .status-dot.red { background: #ef4444 }
+
+.tabs { display:flex; gap:8px; margin-bottom:12px }
+.tab { padding:8px 12px; border-radius:8px; background:transparent; border:1px solid transparent; cursor:pointer }
+.tab.active { background:#eef2ff; border-color:#c7d2fe; font-weight:600 }
+.tab-panel { background:transparent }
 </style>
