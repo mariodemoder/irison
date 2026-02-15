@@ -21,25 +21,27 @@
         </div>
 
         <div class="list-header">
-          <div>Hora</div>
-          <div>Paciente</div>
+          <div>Horario</div>
+          <div class="row-left">Paciente</div>
+          <div class="row-left">Notas</div>
           <div>Estado</div>
           <div></div>
         </div>
 
         <div class="list">
           <div v-for="a in filteredAppointments" :key="a.id" class="appointment-row" role="button" tabindex="0" @click="goToAppointment(a.id)" @keydown.enter="goToAppointment(a.id)">
-            <div class="row-col">{{ formatTime(a.start_time) }}</div>
+            <div :class="['row-col','time', timeClass(a.status)]">{{ formatTime(a.start_time) }} - {{ formatTime(a.end_time) }}</div>
             <div class="row-left">
-              <div class="row-name">{{ a.patient?.name ?? ('Paciente #' + a.patient_id) }}</div>
-              <div class="row-sub">{{ a.patient?.nif ?? '—' }}</div>
+              <div class="row-name">{{ a.patient?.nif ?? '—' }} - {{ a.patient?.name ?? ('Paciente #' + a.patient_id) }}</div>
             </div>
-            <div class="row-col"><span class="status" :class="a.status">{{ a.status ?? '—' }}</span></div>
+
+            <div class="row-col note time">{{ a.notes ?? '' }}</div>
+            
+            <div class="row-col"><span class="status" :class="a.status">{{ statusLabel(a.status) }}</span></div>
             <div class="row-action">
               <router-link :to="`/appointments/${a.id}/edit`" class="action-btn datos" @click.stop>✎ Editar</router-link>
             </div>
           </div>
-
           <div v-if="filteredAppointments.length === 0" class="empty">No hay citas para esta fecha.</div>
         </div>
       </div>
@@ -152,12 +154,36 @@ const filteredAppointments = computed(() => {
     return [name, nif].some(f => f && String(f).toLowerCase().includes(q))
   })
 })
+
+function statusLabel(s) {
+  if (!s) return '—'
+  const map = {
+    scheduled: 'Programada',
+    completed: 'Completada',
+    canceled: 'Cancelada',
+    cancelled: 'Cancelada'
+  }
+  return map[s] || String(s)
+}
+
+function timeClass(s) {
+  if (!s) return ''
+  const map = {
+    scheduled: 'time-scheduled',
+    completed: 'time-completed',
+    canceled: 'time-canceled',
+    cancelled: 'time-canceled'
+  }
+  return map[s] || ''
+}
 </script>
 
 .style-reset { }
 <style scoped>
 *, ::before, ::after { box-sizing: border-box; border-width: 0; border-style: solid; border-color: #e5e7eb }
+
 .page-header { display:grid; grid-template-columns: 230px 1fr 160px; align-items:center; gap:0px; margin-bottom:16px }
+
 .page-header h1 { margin:0; font-size:20px; font-weight:800 }
 .form-sub { color:#6b7280; font-size:13px; margin-top:4px }
 .calendar-card { display:flex; align-items:center; gap:12px; background:#fff; padding:10px; border-radius:10px; border:1px solid #eef2ff22 }
@@ -180,15 +206,26 @@ const filteredAppointments = computed(() => {
 
 .search-center { display:flex; justify-content:flex-end; align-items:center }
 
-.list { display:flex; flex-direction:column; gap:8px }
-.list-header { display:grid; grid-template-columns: 100px 2fr 220px auto; gap:12px; align-items:center; padding:8px 14px; color:#6b7280; font-weight:600; font-size:13px }
-.appointment-row { display:grid; grid-template-columns: 100px 2fr 160px auto; gap:12px; align-items:center; background:#fff; padding:12px 14px; border-radius:10px; text-decoration:none; color:inherit; border:1px solid #eef2ff22 }
+.list { display:flex; flex-direction:column; gap:8px; overflow-x:auto }
+.list-header { display:grid; grid-template-columns: 140px 1.3fr 2fr 160px 120px; gap:12px; align-items:center; padding:8px 14px; color:#6b7280; font-weight:600; font-size:13px }
+.appointment-row { display:grid; grid-template-columns: 140px 1.3fr 2fr 160px 120px; gap:12px; align-items:center; background:#fff; padding:12px 14px; border-radius:10px; text-decoration:none; color:inherit; border:1px solid #eef2ff22; min-width:700px }
 .appointment-row:hover { box-shadow: 0 10px 24px rgba(2,6,23,0.06); transform: translateY(-2px) }
 .row-left { display:flex; flex-direction:column }
-.row-name { font-weight:600; font-size:15px }
+.row-name { font-weight:600; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
 .row-sub { color:#6b7280; font-size:13px }
-.row-col { color:#374151; font-size:13px }
-.row-action { display:flex; align-items:center; justify-content:center; color:#6b7280 }
+.row-col { color:#374151; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.time { white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.time-scheduled { background:#eef2ff; color:#1e3a8a; padding:4px 8px; border-radius:8px; display:inline-block }
+.time-completed { background:#dcfce7; color:#166534; padding:4px 8px; border-radius:8px; display:inline-block }
+.time-canceled { background:#fff4f4; color:#da7a7a; padding:4px 8px; border-radius:8px; display:inline-block }
+.note { font-style: italic; display:block; text-align:left;
+  white-space: normal;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical; }
+.row-action { display:flex; align-items:center; justify-content:flex-start; color:#6b7280 }
 
 .status { padding:6px 10px; border-radius:9999px; font-weight:700; text-transform:capitalize }
 .status.canceled { background:#fff4f4; color:#da7a7a }
@@ -211,7 +248,11 @@ const filteredAppointments = computed(() => {
 }
 
 @media (max-width: 480px) {
-  .appointment-row { grid-template-columns: 1fr; gap:6px }
+  .appointment-row { grid-template-columns: 140px 2fr 220px 160px auto; gap:8px }
   .row-action { justify-content:flex-start }
+}
+.list-header > div,
+.appointment-row > div {
+  text-align: left;
 }
 </style>
