@@ -10,11 +10,19 @@
         <form class="grid-form" @submit.prevent="submit">
           <div class="field">
             <label class="label">Paciente</label>
-            <select v-model="form.patient_id" @change="onPatientChange" class="input" :disabled="isCanceled && mode !== 'reprogram'">
-              <option value="" disabled>Selecciona un paciente</option>
-              <option v-for="p in patients" :key="p.id" :value="p.id">{{ p.name }}{{ p.nif ? (' — ' + p.nif) : '' }}</option>
-              <option value="__create">+ Crear paciente...</option>
-            </select>
+            <div style="display:flex; gap:12px; align-items:flex-start">
+              <select v-model="form.patient_id" @change="onPatientChange" class="input" :disabled="isCanceled && mode !== 'reprogram'">
+                <option value="" disabled>Selecciona un paciente</option>
+                <option v-for="p in patients" :key="p.id" :value="p.id">{{ p.name }}{{ p.nif ? (' — ' + p.nif) : '' }}</option>
+                <option value="__create">+ Crear paciente...</option>
+              </select>
+              <div v-if="form.patient_id && (!bonuses || bonuses.length === 0)" class="inline-alert">
+                <div>Sin bonos disponibles</div>
+                <div>
+                  <button type="button" class="muted" @click.prevent="suggestCreateBonus">Crear bono</button>
+                </div>
+              </div>
+            </div>
             <div v-if="errors.patient_id" class="field-error">{{ errors.patient_id[0] }}</div>
           </div>
           <div class="field">
@@ -56,6 +64,32 @@
             <div v-if="errors.notes" class="field-error">{{ errors.notes[0] }}</div>
           </div>
 
+          <div class="field" v-if="bonuses.length > 0">
+            <label class="label">Seleccionar bono</label>
+            <label style="display:flex; align-items:center; gap:8px"><input type="checkbox" v-model="selectBonus" /> Marcar para usar bono</label>
+          </div>
+
+          <div v-if="selectBonus && bonuses.length > 0" class="field full">
+            <label class="label">Bono</label>
+            <div v-if="bonusesLoading">Cargando bonos...</div>
+            <div v-else>
+              <div v-if="bonuses.length === 0" class="alert-subtle">
+                <div>No hay bonos activos para este paciente.</div>
+                <div style="margin-top:8px">
+                  <button type="button" class="muted" @click.prevent="suggestCreateBonus">Sugerir crear bono</button>
+                </div>
+              </div>
+              <select v-else v-model="form.use_bonus_id" class="input">
+                <option value="" disabled>Selecciona un bono</option>
+                <option v-for="b in bonuses" :key="b.id" :value="b.id">{{ b.total_sessions }} sesiones — {{ b.remaining_sessions }} restantes{{ b.expires_at ? (' — expira ' + formatExpiry(b.expires_at)) : '' }}</option>
+              </select>
+              <div v-if="errors.use_bonus_id" class="field-error">{{ errors.use_bonus_id[0] }}</div>
+            </div>
+
+            <label class="label" style="margin-top:8px">Notas (bono)</label>
+            <input v-model="form.bonus_notes" class="input" />
+          </div>
+
           <div class="actions full">
                   <button class="primary" type="submit" :disabled="submitting">Guardar</button>
                   <button v-if="isEdit && isFutureAppointment" type="button" class="muted" @click.prevent="startReprogram" :disabled="submitting">
@@ -63,7 +97,7 @@
                   </button>
                   <button v-if="isEdit && !isCanceled" type="button" class="muted" @click.prevent="appointmentCancel" :disabled="submitting">
                     <IconCancel />
-                    Cancelar
+                    Cancelar Cita
                   </button>
                   <button type="button" class="muted" @click.prevent="cancel">Volver</button>
                 </div>
@@ -86,12 +120,34 @@ import IconCancel from '../../components/icons/IconCancel.vue'
 import OptionSelect from '../../components/OptionSelect.vue'
 import { useToast } from 'vue-toastification'
 import Swal from 'sweetalert2'
+import { formatDate } from '../../shared/appointmentHelpers'
+import {
+  openCreatePatientPopup as sharedOpenCreatePatientPopup,
+  loadPatients as loadPatientsShared,
+  checkOverlapShared,
+  goBack as sharedGoBack,
+  startReprogramShared,
+  appointmentCancelShared
+} from '../../shared/formHelpers'
+
+function formatExpiry(v) {
+  if (!v) return ''
+  try {
+    const d = new Date(v)
+    const dd = String(d.getDate()).padStart(2, '0')
+    const mm = String(d.getMonth() + 1).padStart(2, '0')
+    const yyyy = d.getFullYear()
+    return `${dd}/${mm}/${yyyy}`
+  } catch (e) {
+    return ''
+  }
+}
 
 const router = useRouter()
 const route = useRoute()
 const isEdit = ref(false)
 const mode = ref(route.query.mode || null)
-const form = reactive({ patient_id: '', status: 'scheduled', start_time: '', end_time: '', notes: '' })
+const form = reactive({ patient_id: '', status: 'scheduled', start_time: '', end_time: '', notes: '', use_bonus_id: '', bonus_notes: '' })
 
 const statusOptions = [
   { value: 'scheduled', label: 'Programada', color: '#99b1ff' },
@@ -108,92 +164,71 @@ const patients = ref([])
 const overlapping = ref([])
 const hasScheduledOverlap = computed(() => overlapping.value.some(a => a.status === 'scheduled'))
 let overlapTimer = null
+const selectBonus = ref(false)
 
-function onPatientChange() {
+const bonuses = ref([])
+const bonusesLoading = ref(false)
+
+async function onPatientChange() {
   if (form.patient_id === '__create') {
-    // abrir popup para crear paciente
-    openCreatePatientPopup()
-  }
-}
-
-async function openCreatePatientPopup() {
-  const { value: formValues } = await Swal.fire({
-    title: 'Crear paciente',
-    html:
-    
-      '<div class="swal-card">' +
-      '<input id="swal-name" class="input" placeholder="Nombre">' +
-      '<input id="swal-nif" class="input" placeholder="NIF (opcional)">' +
-      '<input id="swal-phone" class="input" placeholder="Teléfono (opcional)">' +
-      '<input id="swal-email" class="input" placeholder="Email (opcional)">' +
-      '</div>',
-    focusConfirm: false,
-    showCancelButton: true,
-    confirmButtonText: 'Crear',
-    cancelButtonText: 'Cancelar',
-    buttonsStyling: false,
-    customClass: {
-      popup: 'swal-popup-card',
-      confirmButton: 'primary',
-      cancelButton: 'muted'
-    },
-    preConfirm: async () => {
-      const name = document.getElementById('swal-name')?.value?.trim()
-      const nif = document.getElementById('swal-nif')?.value?.trim() || null
-      const phone = document.getElementById('swal-phone')?.value?.trim() || null
-      const email = document.getElementById('swal-email')?.value?.trim() || null
-      if (!name) {
-        Swal.showValidationMessage('El nombre es requerido')
-        return false
-      }
-      try {
-        const res = await api.post('/patients', { name, nif, phone, email })
-        return res.data || res.data?.data || res
-      } catch (e) {
-        const msg = e.response?.data?.message || 'Error creando paciente'
-        Swal.showValidationMessage(msg)
-        return false
-      }
-    }
-  })
-
-  if (formValues) {
-    const newPatient = formValues.data ? formValues.data : formValues
-    patients.value.unshift(newPatient)
-    form.patient_id = newPatient.id
     const toast = useToast()
-    toast.success('Paciente creado')
+    const newPatient = await sharedOpenCreatePatientPopup({ api, Swal, toast })
+    if (newPatient) {
+      patients.value.unshift(newPatient)
+      form.patient_id = newPatient.id
+    } else {
+      form.patient_id = ''
+    }
+  }
+  // Load all bonuses for the selected patient so user can choose
+  if (form.patient_id && form.patient_id !== '__create') {
+    await loadBonusesForPatient(form.patient_id)
   } else {
-    form.patient_id = ''
+    bonuses.value = []
+    selectBonus.value = false
+    form.use_bonus_id = ''
   }
 }
+
+async function loadBonusesForPatient(patientId) {
+  bonuses.value = []
+  if (!patientId) return
+  bonusesLoading.value = true
+  try {
+    const res = await api.get(`/patients/${patientId}/bonuses`)
+    bonuses.value = (res.data && res.data.data) ? res.data.data : []
+  } catch (e) {
+    bonuses.value = []
+  } finally {
+    bonusesLoading.value = false
+    // If there are no bonuses, ensure checkbox is off and selection cleared
+    if (!bonuses.value || bonuses.value.length === 0) {
+      selectBonus.value = false
+      form.use_bonus_id = ''
+    }
+  }
+}
+
+// openCreatePatientPopup moved to shared/formHelpers
 
 
 async function loadPatients() {
-  try {
-    const res = await api.get('/patients', { params: { per_page: 200 } })
-    patients.value = Array.isArray(res.data.data) ? res.data.data : (res.data || [])
-  } catch (e) {
-    patients.value = []
+  patients.value = await loadPatientsShared(api)
+}
+
+function suggestCreateBonus() {
+  const toast = useToast()
+  if (!form.patient_id) {
+    toast.info('Selecciona primero un paciente')
+    return
   }
+
+  // Navegar a la ficha del paciente donde existe la card para crear bonos
+  router.push({ path: `/patients/${form.patient_id}`, query: { open: 'bonuses' } })
 }
 
 function cancel() {
-  const from = route.query.from
-  const id = route.params.id
-  if (from === 'day') {
-    router.push('/appointments/day')
-    return
-  }
-  if (from === 'show' && id) {
-    router.push(`/appointments/${id}`)
-    return
-  }
-  if (window.history.length > 1) {
-    router.back()
-  } else {
-    router.push('/appointments/day')
-  }
+  sharedGoBack(router, route)
 }
 
 function checkOverlap() {
@@ -204,54 +239,12 @@ function checkOverlap() {
   }
 
   if (overlapTimer) clearTimeout(overlapTimer)
-
   return new Promise((resolve) => {
     overlapTimer = setTimeout(async () => {
       try {
-        const params = {
-          start: new Date(form.start_time).toISOString(),
-          end: new Date(form.end_time).toISOString(),
-          per_page: 200
-        }
-        const res = await api.get('/appointments', { params })
-        const list = Array.isArray(res.data.data) ? res.data.data : (res.data || [])
         const currentId = route.params.id ? String(route.params.id) : null
-
-        // calcular inicio/fin del intervalo elegido
-        const chosenStart = new Date(form.start_time)
-        const chosenEnd = new Date(form.end_time)
-
-        // helper: mismo día (comparación por Y/M/D local)
-        const isSameDay = (d1, d2) => (
-          d1.getFullYear() === d2.getFullYear() &&
-          d1.getMonth() === d2.getMonth() &&
-          d1.getDate() === d2.getDate()
-        )
-
-        // conservar solo citas que (a) se solapen en tiempo con el intervalo elegido
-        // y (b) ocurran el mismo día que el inicio elegido
-        const filtered = list.filter(a => {
-          try {
-            const aStart = new Date(a.start_time)
-            const aEnd = new Date(a.end_time)
-            const intersects = (aStart < chosenEnd && aEnd > chosenStart)
-            return intersects && isSameDay(aStart, chosenStart)
-          } catch (e) {
-            return false
-          }
-        }).filter(a => String(a.id) !== currentId)
-        overlapping.value = filtered
-        const hasScheduled = filtered.some(a => a.status === 'scheduled')
-        if (hasScheduled) {
-          Swal.fire({
-            icon: 'warning',
-            title: 'La franja horaria se solapa con otra cita.',
-            text: 'Hay una cita ya programada en ese intervalo de tiempo (mismo día).',
-            confirmButtonText: 'Entendido',
-            buttonsStyling: false,
-            customClass: { confirmButton: 'primary' }
-          })
-        }
+        const cleaned = await checkOverlapShared({ start: form.start_time, end: form.end_time, currentId, api, Swal })
+        overlapping.value = cleaned
       } catch (e) {
         overlapping.value = []
       }
@@ -262,36 +255,11 @@ function checkOverlap() {
 
 function appointmentCancel() {
   const toast = useToast()
-  Swal.fire({
-    title: '¿Cancelar esta cita?',
-    text: 'Esta acción no se puede deshacer.',
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonText: 'Sí, cancelar',
-    cancelButtonText: 'No, mantener',
-  }).then(async (result) => {
-    if (result.isConfirmed) {
-      try {
-        await api.post(`/appointments/${route.params.id}/cancel`)
-        toast.success('Cita cancelada')
-        router.push('/appointments/day')
-      } catch (e) {
-        toast.error('Error cancelando la cita')
-      }
-    }
-  })
+  appointmentCancelShared(route.params.id, { api, toast, router }).catch(() => {})
  
 }
 
-function formatDate(d) {
-  try {
-    if (!d) return ''
-    const dt = new Date(d)
-    return dt.toLocaleString()
-  } catch (e) {
-    return d
-  }
-}
+// formatDate moved to shared/appointmentHelpers
 
 function goToAppointment(id) {
   if (!id) return
@@ -311,7 +279,7 @@ const isFutureAppointment = computed(() => {
 
 function startReprogram() {
   // enable reprogram mode in the route so form respects reprogram behavior
-  router.push({ query: { ...route.query, mode: 'reprogram' } })
+  startReprogramShared(router, route)
 }
 async function loadForEdit(id) {
   loading.value = true
@@ -341,13 +309,32 @@ async function loadForEdit(id) {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   const id = route.params.id
   if (id) {
     isEdit.value = true
-    loadForEdit(id)
+    await loadForEdit(id)
   }
-  loadPatients()
+  // Load patients list first so we can preselect patient from query
+  await loadPatients()
+
+  // If opened with ?patient_id=..., preselect that patient for creation
+  const preselect = route.query.patient_id
+  if (!isEdit.value && preselect) {
+    form.patient_id = String(preselect)
+    // Load bonuses for the preselected patient
+    await loadBonusesForPatient(form.patient_id)
+  }
+})
+
+// When selecting patient, load bonuses for that patient
+watch(() => form.patient_id, (id) => {
+  if (id && id !== '__create') loadBonusesForPatient(id)
+})
+
+// When toggling 'selectBonus', ensure bonuses are loaded
+watch(() => selectBonus.value, (v) => {
+  if (v && form.patient_id) loadBonusesForPatient(form.patient_id)
 })
 
 // keep mode in sync with route query
@@ -392,6 +379,8 @@ async function submit() {
       start_time: form.start_time,
       end_time: form.end_time,
       notes: form.notes,
+      use_bonus_id: form.use_bonus_id || undefined,
+      bonus_notes: form.bonus_notes || undefined,
     }
 
     // If reprogramming a canceled appointment, force status -> scheduled
@@ -404,6 +393,13 @@ async function submit() {
       toast.success('Cita actualizada')
       router.push('/appointments/day')
     } else {
+      // If user marked to select a bonus but there are no bonuses, block and show error
+      if (selectBonus.value && (!bonuses.value || bonuses.value.length === 0) && !payload.use_bonus_id) {
+        errors.general = ['No hay bonos activos disponibles para este paciente']
+        submitting.value = false
+        return
+      }
+
       await api.post('/appointments', payload)
       toast.success('Cita creada')
       router.push('/appointments/day')
@@ -457,6 +453,11 @@ async function submit() {
 
 /* Alinear icono y texto en botones */
 .actions button { display:inline-flex; align-items:center; gap:8px }
+
+.alert-subtle { background: #f8fafc; border: 1px solid #e6edf3; padding:10px; border-radius:8px; color:#334155; font-size:14px }
+
+.inline-alert { display:flex; flex-direction:column; gap:6px; background: #f8fafc; border: 1px solid #e6edf3; padding:8px; border-radius:8px; color:#334155; font-size:13px; max-width:360px }
+.inline-alert button { padding:6px 10px; font-size:13px }
 </style>
 
 /* Estilos globales para el popup de creación de paciente */

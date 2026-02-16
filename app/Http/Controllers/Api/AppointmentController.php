@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
 use App\Services\Availability\CheckAvailability;
+use App\Services\BonusService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -51,6 +52,9 @@ class AppointmentController extends Controller
             'end_time'   => ['required', 'date', 'after:start_time'],
             'status'     => ['nullable', 'string'],
             'payment_status' => ['nullable', 'string'],
+            'payment_type' => ['sometimes', 'string', 'in:single,bonus'],
+            'use_bonus_id' => ['sometimes', 'integer', 'exists:bonuses,id'],
+            'bonus_notes' => ['sometimes', 'string', 'nullable'],
             'notes'      => ['nullable', 'string'],
         ]);
 
@@ -70,14 +74,58 @@ class AppointmentController extends Controller
 
         $appointment = Appointment::create($data);
 
+        // If payment type is bonus or a bonus id was provided, attempt to apply the bonus
+        if (($request->input('payment_type') === 'bonus') || $request->filled('use_bonus_id')) {
+            $patientId = $data['patient_id'];
+
+            // If user chose bonus but didn't send a specific bonus id, ensure there are active bonuses
+            if ($request->input('payment_type') === 'bonus' && ! $request->filled('use_bonus_id')) {
+                $hasActive = \App\Models\Bonus::where('patient_id', $patientId)
+                    ->where('remaining_sessions', '>', 0)
+                    ->where(function($q){ $q->whereNull('expires_at')->orWhere('expires_at', '>', now()); })
+                    ->exists();
+
+                if (! $hasActive) {
+                    return response()->json(['error' => 'No hay bonos activos disponibles para este paciente'], 422);
+                }
+
+                return response()->json(['error' => 'Debe seleccionar un bono para pagar con bono'], 422);
+            }
+
+            // If a bonus id was provided, attempt to use it
+            if ($request->filled('use_bonus_id')) {
+                $bonusService = new BonusService();
+                try {
+                    $usage = $bonusService->useBonusForAppointment($request->input('use_bonus_id'), $appointment, $request->input('bonus_notes'));
+                } catch (\Exception $e) {
+                    // Rollback appointment if bonus application fails
+                    $appointment->delete();
+                    return response()->json(['error' => $e->getMessage()], 422);
+                }
+
+                return response()->json(['appointment' => $appointment, 'bonus_usage' => $usage], 201);
+            }
+        }
+
         return response()->json($appointment, 201);
     }
 
     /**
      * Ver cita
      */
-    public function show(Appointment $appointment)
+    public function show(Request $request, Appointment $appointment)
     {
+        // If a bonus id is provided, attempt to use it for this appointment
+        if ($request->filled('use_bonus_id')) {
+            $bonusService = new BonusService();
+            try {
+                $usage = $bonusService->useBonusForAppointment($request->input('use_bonus_id'), $appointment, $request->input('bonus_notes'));
+                return response()->json(['appointment' => $appointment, 'bonus_usage' => $usage]);
+            } catch (\Exception $e) {
+                return response()->json(['error' => $e->getMessage()], 422);
+            }
+        }
+
         return $appointment;
     }
 
@@ -91,6 +139,8 @@ class AppointmentController extends Controller
             'start_time' => ['sometimes', 'date'],
             'end_time'   => ['sometimes', 'date', 'after:start_time'],
             'notes'      => ['sometimes', 'string', 'nullable'],
+            'use_bonus_id' => ['sometimes', 'integer', 'exists:bonuses,id'],
+            'bonus_notes' => ['sometimes', 'string', 'nullable'],
         ]);
 
         $needsAvailabilityCheck = isset($data['start_time']) || isset($data['end_time']);
@@ -110,6 +160,17 @@ class AppointmentController extends Controller
         }
 
         $appointment->update($data);
+
+        // If a bonus is requested to be used during update, attempt to apply it
+        if ($request->filled('use_bonus_id')) {
+            $bonusService = new BonusService();
+            try {
+                $usage = $bonusService->useBonusForAppointment($request->input('use_bonus_id'), $appointment, $request->input('bonus_notes'));
+                return response()->json(['appointment' => $appointment, 'bonus_usage' => $usage]);
+            } catch (\Exception $e) {
+                return response()->json(['error' => $e->getMessage()], 422);
+            }
+        }
 
         return $appointment;
     }

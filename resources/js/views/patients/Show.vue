@@ -40,23 +40,34 @@
 
         <div class="history-grid">
           <div class="history-card">
-            <div class="history-title">Citas</div>
+            <div class="history-title" style="display:flex;justify-content:space-between;align-items:center">
+              <div>Citas</div>
+              <div>
+                <button class="primary" @click.prevent="createAppointment" style="padding:6px 10px;font-size:13px">Crear</button>
+              </div>
+            </div>
             <div v-if="appointments && appointments.length"> 
               <ul>
-                <li v-for="a in appointments" :key="a.id">{{ a.start_time }} — {{ a.status }}</li>
+                <li v-for="a in appointments" :key="a.id" role="button" tabindex="0" @click.prevent="goToAppointment(a.id)" @keydown.enter.prevent="goToAppointment(a.id)" style="cursor:pointer">
+                  <div style="display:flex; gap:10px; align-items:center">
+                    <div>
+                      <strong>{{ formatDateShort(a.start_time) }} {{ formatTime(a.start_time) }}</strong>
+                    </div>
+                    <div>
+                      <span class="status" :class="a.status">{{ statusLabel(a.status) }}</span>
+                    </div>
+                  </div>
+                </li>
               </ul>
             </div>
             <div v-else class="empty-card">Sin citas</div>
           </div>
 
           <div class="history-card">
-            <div class="history-title">Bonos</div>
-            <div v-if="packs && packs.length">
-              <ul>
-                <li v-for="p in packs" :key="p.id">{{ p.remaining_sessions }} / {{ p.total_sessions }} — {{ p.status }}</li>
-              </ul>
+            <div class="history-title" style="display:flex;justify-content:space-between;align-items:center">
+              <div>Bonos</div>
             </div>
-            <div v-else class="empty-card">Sin bonos</div>
+            <PatientBonuses v-if="patient && patient.id" :patientId="patient.id" />
           </div>
 
           <div class="history-card">
@@ -77,6 +88,8 @@
 <script setup>
 import MainLayout from '../../layouts/MainLayout.vue'
 import { ref, onMounted, watch } from 'vue'
+import PatientBonuses from '../../components/PatientBonuses.vue'
+import { formatTime, formatDateShort, statusLabel } from '../../shared/appointmentHelpers'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../../services/api'
 import { useToast } from 'vue-toastification'
@@ -128,6 +141,16 @@ function goBack() {
   }
 }
 
+function goToAppointment(id) {
+  if (!id) return
+  router.push(`/appointments/${id}`)
+}
+
+function createAppointment() {
+  if (!patient.value || !patient.value.id) return
+  router.push({ path: '/appointments/create', query: { patient_id: patient.value.id } })
+}
+
 async function confirmDelete() {
   if (!patient.value) return
   const res = await Swal.fire({
@@ -171,6 +194,15 @@ async function confirmDelete() {
 .history-card { background:#fff; padding:14px; border-radius:10px; border:1px solid #eef2ff; box-shadow: 0 6px 18px rgba(2,6,23,0.04) }
 .history-title { font-weight:700; margin-bottom:8px }
 .empty-card { padding:18px; border-radius:8px; border:2px dashed #e6e6e6; color:#6b7280; text-align:center; min-height:72px; display:flex; align-items:center; justify-content:center }
+
+.history-card ul { list-style:none; padding:0; margin:0 }
+.history-card li { padding:6px 0; border-bottom:1px dashed #f1f5f9; font-size:12px; color:#334155 }
+.history-card li:last-child { border-bottom: none }
+
+.history-card .status { padding:4px 8px; border-radius:9999px; font-weight:700; text-transform:capitalize; font-size:11px }
+.status.canceled { background:#fff4f4; color:#da7a7a }
+.status.scheduled { background:#eef2ff; color:#1e3a8a }
+.status.completed { background:#dcfce7; color:#166534 }
 
 .primary { padding:8px 14px; border-radius:9999px; border:2px solid #3b82f6; color:#3b82f6; background:#fff; font-weight:600 }
 .primary:hover { background:#eff6ff }

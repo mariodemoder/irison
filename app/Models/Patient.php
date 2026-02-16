@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\Concerns\BelongsToClinic;
+use App\Models\Bonus;
 
 class Patient extends Model
 {
@@ -45,6 +46,11 @@ class Patient extends Model
     public function clinicalRecords(): HasMany
     {
         return $this->hasMany(ClinicalRecord::class);
+    }
+
+    public function bonuses(): HasMany
+    {
+        return $this->hasMany(Bonus::class);
     }
 
     /**

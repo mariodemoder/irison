@@ -23,7 +23,7 @@ class CheckAvailability
      * @param int|null $patientId
      * @return array ['valid' => bool, 'errors' => array]
      */
-    public function validate(int $clinicId, Carbon $start, Carbon $end, ?int $patientId = null): array
+    public function validate(int $clinicId, Carbon $start, Carbon $end, ?int $patientId = null, ?int $ignoreAppointmentId = null): array
     {
         $errors = [];
 
@@ -40,12 +40,17 @@ class CheckAvailability
             }
         }
 
-        $overlap = Appointment::where('clinic_id', $clinicId)
+        $query = Appointment::where('clinic_id', $clinicId)
             ->where(function ($q) use ($start, $end) {
                 $q->where('start_time', '<', $end)
                   ->where('end_time', '>', $start);
-            })
-            ->exists();
+            });
+
+        if ($ignoreAppointmentId) {
+            $query->where('id', '<>', $ignoreAppointmentId);
+        }
+
+        $overlap = $query->exists();
 
         if ($overlap) {
             $errors[] = 'La franja horaria se solapa con otra cita.';

@@ -53,6 +53,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
+import { formatTime, formatDate, statusLabel, timeClass } from '../../shared/appointmentHelpers'
 
 const router = useRouter()
 const appointments = ref([])
@@ -70,12 +71,6 @@ const displayMonthYear = computed(() => {
   return d.toLocaleString(undefined, { month: 'short', year: 'numeric' })
 })
 
-function formatTime(dt) {
-  if (!dt) return '—'
-  // espera ISO string o timestamp compatible
-  const d = new Date(dt)
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-}
 
 async function load() {
   loading.value = true
@@ -155,27 +150,7 @@ const filteredAppointments = computed(() => {
   })
 })
 
-function statusLabel(s) {
-  if (!s) return '—'
-  const map = {
-    scheduled: 'Programada',
-    completed: 'Completada',
-    canceled: 'Cancelada',
-    cancelled: 'Cancelada'
-  }
-  return map[s] || String(s)
-}
-
-function timeClass(s) {
-  if (!s) return ''
-  const map = {
-    scheduled: 'time-scheduled',
-    completed: 'time-completed',
-    canceled: 'time-canceled',
-    cancelled: 'time-canceled'
-  }
-  return map[s] || ''
-}
+// statusLabel and timeClass moved to shared/appointmentHelpers
 </script>
 
 .style-reset { }

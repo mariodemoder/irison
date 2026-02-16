@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use App\Models\Concerns\BelongsToClinic;
+use App\Models\BonusUsage;
 
 class Appointment extends Model
 {
@@ -43,5 +44,29 @@ class Appointment extends Model
     public function payment(): HasOne
     {
         return $this->hasOne(Payment::class);
+    }
+
+    public function bonusUsage(): HasOne
+    {
+        return $this->hasOne(BonusUsage::class);
+    }
+
+    /**
+     * Convenience: apply a bonus to this appointment by id using BonusService.
+     * Throws exceptions from BonusService on failure.
+     */
+    public function applyBonus(int $bonusId, ?string $notes = null)
+    {
+        $service = new \App\Services\BonusService();
+        return $service->useBonusForAppointment($bonusId, $this, $notes);
+    }
+
+    /**
+     * Convenience: restore bonus usage for this appointment (on cancel).
+     */
+    public function restoreBonusUsageIfCancelled()
+    {
+        $service = new \App\Services\BonusService();
+        return $service->restoreBonusIfCancelled($this);
     }
 }
