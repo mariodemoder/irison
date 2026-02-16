@@ -5,14 +5,10 @@
         <div class="show-header">
           <h1>Cita</h1>
           <div class="header-right">
-            <h2 class="status-wrap"><span class="status" :class="appointment.status">{{ statusLabel(appointment.status) }}</span></h2>
+            <h2 class="status-wrap"><span class="status" :class="effectiveStatus">{{ statusLabel(effectiveStatus) }}</span></h2>
             <div class="actions header-actions">
               <button v-if="isEdit && isFutureAppointment" type="button" class="muted" @click.prevent="goReprogram" :disabled="submitting">
                 Reprogramar
-              </button>
-              <button v-if="isEdit && !isCanceled" type="button" class="muted" @click.prevent="appointmentCancel" :disabled="submitting">
-                <IconCancel />
-                Cancelar Cita
               </button>
             </div>
           </div>
@@ -27,27 +23,36 @@
 
           <div class="field">
             <label class="label">Inicio</label>
-            <div class="value">{{ appointment.start_time }}</div>
+            <div class="value">{{ formatDateShort(appointment.start_time) }} - {{ formatTime(appointment.start_time) }} hs.</div>
           </div>
 
           <div class="field">
             <label class="label">Fin</label>
-            <div class="value">{{ appointment.end_time }}</div>
+            <div class="value">{{ formatDateShort(appointment.end_time) }} - {{ formatTime(appointment.end_time) }} hs.</div>
           </div>
 
           <div class="field full">
             <label class="label">Notas</label>
             <div class="value">{{ appointment.notes ?? '—' }}</div>
           </div>
-          <div class="actions">
-            <template v-if="appointment.status === 'canceled'">
-              <button class="primary" :disabled="!canReprogram" @click.prevent="goReprogram">Reprogramar</button>
-              <div v-if="!canReprogram" class="field-error" style="margin-left:8px">La reprogramación sólo está permitida con al menos 2 horas de antelación.</div>
-            </template>
-            <template v-else>
-              <router-link :to="`/appointments/${appointment.id}/edit`" class="primary">Editar</router-link>
-            </template>
-            <button class="muted" @click="back">Volver</button>
+          <div class="actions action-row">
+            <div class="left-actions">
+              <template v-if="appointment.status === 'canceled'">
+                <button class="primary" :disabled="!canReprogram" @click.prevent="goReprogram">Reprogramar</button>
+                <div v-if="!canReprogram" class="field-error" style="margin-left:8px">La reprogramación sólo está permitida con al menos 2 horas de antelación.</div>
+              </template>
+              <template v-else>
+                <router-link :to="`/appointments/${appointment.id}/edit`" class="primary">Editar</router-link>
+              </template>
+              <button class="muted" @click="back">Volver</button>
+            </div>
+
+            <div class="right-actions">
+              <button v-if="isEdit && !isCanceled && effectiveStatus !== 'completed'" type="button" class="muted" @click.prevent="appointmentCancel" :disabled="cancelling">
+                <IconCancel />
+                Cancelar Cita
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -63,7 +68,7 @@ import MainLayout from '../../layouts/MainLayout.vue'
 import IconCancel from '../../components/icons/IconCancel.vue'
 import { useToast } from 'vue-toastification'
 import Swal from 'sweetalert2'
-import { statusLabel } from '../../shared/appointmentHelpers'
+import { statusLabel, formatDateShort, formatTime } from '../../shared/appointmentHelpers'
 import { appointmentCancelShared } from '../../shared/formHelpers'
 
 const route = useRoute()
@@ -71,6 +76,7 @@ const router = useRouter()
 const appointment = ref({})
 const loading = ref(false)
 const cancelling = ref(false)
+const submitting = ref(false)
 const canReprogram = ref(false)
 const isEdit = ref(!!route.params.id)
 const isCanceled = computed(() => appointment.value && (appointment.value.status === 'canceled' || appointment.value.status === 'cancelled'))
@@ -83,6 +89,19 @@ const isFutureAppointment = computed(() => {
   } catch (e) {
     return false
   }
+})
+
+const effectiveStatus = computed(() => {
+  if (!appointment.value || !appointment.value.status) return ''
+  const s = appointment.value.status
+  if (s === 'scheduled' && appointment.value.end_time) {
+    try {
+      if (new Date(appointment.value.end_time).getTime() < Date.now()) return 'completed'
+    } catch (e) {
+      // ignore parse errors
+    }
+  }
+  return s
 })
 
 async function load() {
@@ -175,10 +194,13 @@ function goReprogram() {
 .label { font-weight:600; margin-bottom:6px }
 .value { padding:10px; background:#f8fafc; border-radius:8px }
 .actions { display:flex; gap:12px; margin-top:16px }
+.action-row { display:flex; justify-content:space-between; align-items:center }
+.left-actions { display:flex; gap:12px; align-items:center }
+.right-actions { display:flex; gap:8px; align-items:center }
 .primary { padding: 8px 16px; font-size: 14px; border-radius: 9999px; border: 2px solid #3b82f6; color: #3b82f6; background: #ffffff; font-weight: 600 }
 .muted { padding:8px 14px; border-radius:9999px; border:1px solid #e5e7eb; background:#fff }
 
-.status { padding:6px 10px; border-radius:9999px; font-weight:700; text-transform:capitalize }
+.status { padding:8px 14px; border-radius:9999px; font-weight:700; text-transform:capitalize; display:inline-flex; align-items:center }
 .status.canceled { background:#fff4f4; color:#da7a7a }
 .status.scheduled { background:#eef2ff; color:#1e3a8a }
 .status.completed { background:#dcfce7; color:#166534 }

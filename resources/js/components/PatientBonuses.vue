@@ -10,6 +10,10 @@
     <div v-if="showForm" style="margin-top:8px">
       <form @submit.prevent="create">
         <div>
+          <label>Nombre</label>
+          <input v-model.number="form.name" type="text" value='Bono' required />
+        </div>
+        <div>
           <label>Nº sesiones</label>
           <input v-model.number="form.total_sessions" type="number" min="1" required />
         </div>
@@ -30,8 +34,9 @@
 
     <ul style="margin-top:12px">
       <li v-for="b in bonuses" :key="b.id" style="margin-bottom:8px">
-        <div><strong>Bono {{ b.total_sessions }} sesiones</strong></div>
-        <div>Restantes: {{ b.remaining_sessions }}</div>
+        <div v-if="b.name"><strong>{{ b.name }}</strong></div>
+        <div>Sesiones: {{ b.total_sessions }} sesiones</div>
+        <div>Restan: {{ b.remaining_sessions }}</div>
         <div>Expira: {{ b.expires_at ? formatDMY(b.expires_at) : '—' }}</div>
         <div style="margin-top:6px">
           <button @click="confirmDeleteBonus(b)" class="action-btn">🗑️ Eliminar</button>
@@ -52,7 +57,7 @@ import { formatDMY } from '../shared/dateHelpers'
 const props = defineProps({ patientId: { type: [String, Number], required: true } })
 const bonuses = ref([])
 const showForm = ref(false)
-const form = ref({ total_sessions: 1, price: 0, expires_at: '' })
+const form = ref({ name:'bono',total_sessions: 1, price: 0, expires_at: '' })
 const toast = useToast()
 
 
@@ -73,8 +78,8 @@ function cancelForm() {
 
 async function create() {
   try {
-    const payload = { ...form.value }
-    if (!payload.expires_at) delete payload.expires_at
+    const bonus = { ...form.value }
+    if (!bonus.expires_at) delete bonus.expires_at
     const res = await api.post(`/patients/${props.patientId}/bonuses`, payload)
     const b = res.data.data
     bonuses.value.unshift(b)

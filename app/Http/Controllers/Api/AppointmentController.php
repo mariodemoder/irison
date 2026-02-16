@@ -16,6 +16,11 @@ class AppointmentController extends Controller
      */
     public function index(Request $request)
     {
+        // Persistir automáticamente citas programadas cuya end_time ya pasó
+        Appointment::where('status', 'scheduled')
+            ->where('end_time', '<', Carbon::now())
+            ->update(['status' => 'completed']);
+
         $query = Appointment::query();
 
         // Cargar relación de paciente para que la API devuelva el nombre en el front
@@ -115,6 +120,19 @@ class AppointmentController extends Controller
      */
     public function show(Request $request, Appointment $appointment)
     {
+        // Si la cita está marcada como programada pero su end_time ya pasó,
+        // persistimos el estado como 'completed'.
+        try {
+            if ($appointment->status === 'scheduled' && $appointment->end_time && Carbon::parse($appointment->end_time)->lt(Carbon::now())) {
+                $appointment->status = 'completed';
+                $appointment->save();
+                // Refresh the model so callers receive updated value
+                $appointment->refresh();
+            }
+        } catch (\Exception $e) {
+            // no bloquear la vista si hay problema al parsear/la actualización
+        }
+
         // If a bonus id is provided, attempt to use it for this appointment
         if ($request->filled('use_bonus_id')) {
             $bonusService = new BonusService();

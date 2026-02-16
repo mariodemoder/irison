@@ -83,6 +83,13 @@
                 <option value="" disabled>Selecciona un bono</option>
                 <option v-for="b in bonuses" :key="b.id" :value="b.id">{{ b.total_sessions }} sesiones — {{ b.remaining_sessions }} restantes{{ b.expires_at ? (' — expira ' + formatDMY(b.expires_at)) : '' }}</option>
               </select>
+              <div v-if="selectedBonus" class="bonus-details" style="margin-top:8px;padding:8px;border-radius:8px;background:#fffaf0;border:1px solid #ffedd5;color:#92400e;font-size:13px">
+                <div><strong>Bono seleccionado</strong></div>
+                <div v-if="selectedBonus.name">Nombre: {{ selectedBonus.name }}</div>
+                <div>Sesiones totales: {{ selectedBonus.total_sessions }}</div>
+                <div>Sesiones restantes: {{ selectedBonus.remaining_sessions }}</div>
+                <div v-if="selectedBonus.expires_at">Expira: {{ formatDMY(selectedBonus.expires_at) }}</div>
+              </div>
               <div v-if="errors.use_bonus_id" class="field-error">{{ errors.use_bonus_id[0] }}</div>
             </div>
 
@@ -90,17 +97,20 @@
             <input v-model="form.bonus_notes" class="input" />
           </div>
 
-          <div class="actions full">
-                  <button class="primary" type="submit" :disabled="submitting">Guardar</button>
-                  <button v-if="isEdit && isFutureAppointment" type="button" class="muted" @click.prevent="startReprogram" :disabled="submitting">
-                    Reprogramar
-                  </button>
-                  <button v-if="isEdit && !isCanceled" type="button" class="muted" @click.prevent="appointmentCancel" :disabled="submitting">
-                    <IconCancel />
-                    Cancelar Cita
-                  </button>
-                  <button type="button" class="muted" @click.prevent="cancel">Volver</button>
-                </div>
+          <div class="actions full action-row">
+            <div class="left-actions">
+              <button class="primary" type="submit" :disabled="submitting">Guardar</button>
+              <button v-if="isEdit && isFutureAppointment" type="button" class="muted" @click.prevent="startReprogram" :disabled="submitting">Reprogramar</button>
+              <button type="button" class="muted" @click.prevent="cancel">Volver</button>
+            </div>
+
+            <div class="right-actions">
+              <button v-if="isEdit && !isCanceled" type="button" class="muted" @click.prevent="appointmentCancel" :disabled="cancelling">
+                <IconCancel />
+                Cancelar Cita
+              </button>
+            </div>
+          </div>
         </form>
       </div>
     </div>
@@ -137,7 +147,7 @@ const router = useRouter()
 const route = useRoute()
 const isEdit = ref(false)
 const mode = ref(route.query.mode || null)
-const form = reactive({ patient_id: '', status: 'scheduled', start_time: '', end_time: '', notes: '', use_bonus_id: '', bonus_notes: '' })
+const form = reactive({ patient_id: '', status: 'scheduled', start_time: '', end_time: '', notes: '', use_bonus_id: '', bonus_notes: '', bonus_name: '' })
 
 const statusOptions = [
   { value: 'scheduled', label: 'Programada', color: '#99b1ff' },
@@ -149,6 +159,7 @@ const originalStart = ref(null)
 const canReprogramInForm = ref(false)
 const errors = reactive({})
 const submitting = ref(false)
+const cancelling = ref(false)
 const loading = ref(false)
 const patients = ref([])
 const overlapping = ref([])
@@ -158,6 +169,21 @@ const selectBonus = ref(false)
 
 const bonuses = ref([])
 const bonusesLoading = ref(false)
+
+const selectedBonus = computed(() => {
+  if (!form.use_bonus_id || !bonuses.value) return null
+  return bonuses.value.find(b => String(b.id) === String(form.use_bonus_id)) || null
+})
+
+// Keep form.bonus_name in sync with selected bonus id
+watch(() => form.use_bonus_id, (id) => {
+  if (!id) {
+    form.bonus_name = ''
+    return
+  }
+  const b = bonuses.value.find(x => String(x.id) === String(id))
+  form.bonus_name = b ? (b.name || (`Bono ${b.total_sessions} sesiones`)) : ''
+})
 
 async function onPatientChange() {
   if (form.patient_id === '__create') {
@@ -243,10 +269,16 @@ function checkOverlap() {
   })
 }
 
-function appointmentCancel() {
+async function appointmentCancel() {
+  cancelling.value = true
   const toast = useToast()
-  appointmentCancelShared(route.params.id, { api, toast, router }).catch(() => {})
- 
+  try {
+    await appointmentCancelShared(route.params.id, { api, toast, router })
+  } catch (e) {
+    // ignore
+  } finally {
+    cancelling.value = false
+  }
 }
 
 // formatDate moved to shared/appointmentHelpers
@@ -291,6 +323,14 @@ async function loadForEdit(id) {
     form.start_time = data.start_time ? new Date(data.start_time).toISOString().slice(0,16) : ''
     form.end_time = data.end_time ? new Date(data.end_time).toISOString().slice(0,16) : ''
     form.notes = data.notes || ''
+    // Load bonuses for this patient so we can show the associated bonus if any
+    if (form.patient_id) {
+      await loadBonusesForPatient(form.patient_id)
+      if (data.use_bonus_id) {
+        form.use_bonus_id = data.use_bonus_id
+        selectBonus.value = true
+      }
+    }
   } catch (e) {
     console.error('Error cargando cita para edición', e)
     if (e.response && e.response.status === 404) router.push('/appointments/day')
@@ -371,6 +411,7 @@ async function submit() {
       notes: form.notes,
       use_bonus_id: form.use_bonus_id || undefined,
       bonus_notes: form.bonus_notes || undefined,
+      bonus_name: form.bonus_name || undefined,
     }
 
     // If reprogramming a canceled appointment, force status -> scheduled
@@ -432,6 +473,10 @@ async function submit() {
 .primary { padding: 8px 16px; font-size: 14px; border-radius: 9999px; border: 2px solid #3b82f6; color: #3b82f6; background: #ffffff; font-weight: 600 }
 .primary:hover { background: #eff6ff }
 .muted { padding:8px 14px; border-radius:9999px; border:1px solid #e5e7eb; background:#fff }
+
+.action-row { display:flex; justify-content:space-between; align-items:center }
+.left-actions { display:flex; gap:12px; align-items:center }
+.right-actions { display:flex; gap:8px; align-items:center }
 
 @media (max-width: 768px) {
   .grid-form { grid-template-columns: 1fr }
