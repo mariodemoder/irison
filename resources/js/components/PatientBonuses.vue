@@ -32,7 +32,7 @@
       <li v-for="b in bonuses" :key="b.id" style="margin-bottom:8px">
         <div><strong>Bono {{ b.total_sessions }} sesiones</strong></div>
         <div>Restantes: {{ b.remaining_sessions }}</div>
-        <div>Expira: {{ formatDate(b.expires_at) }}</div>
+        <div>Expira: {{ b.expires_at ? formatDMY(b.expires_at) : '—' }}</div>
         <div style="margin-top:6px">
           <button @click="confirmDeleteBonus(b)" class="action-btn">🗑️ Eliminar</button>
         </div>
@@ -47,6 +47,7 @@ import { ref, onMounted } from 'vue'
 import Swal from 'sweetalert2'
 import api from '../services/api'
 import { useToast } from 'vue-toastification'
+import { formatDMY } from '../shared/dateHelpers'
 
 const props = defineProps({ patientId: { type: [String, Number], required: true } })
 const bonuses = ref([])
@@ -54,18 +55,7 @@ const showForm = ref(false)
 const form = ref({ total_sessions: 1, price: 0, expires_at: '' })
 const toast = useToast()
 
-function formatDate(v) {
-  if (!v) return '—'
-  try {
-    const d = new Date(v)
-    const dd = String(d.getDate()).padStart(2, '0')
-    const mm = String(d.getMonth() + 1).padStart(2, '0')
-    const yyyy = d.getFullYear()
-    return `${dd}/${mm}/${yyyy}`
-  } catch (e) {
-    return '—'
-  }
-}
+
 
 async function load() {
   try {

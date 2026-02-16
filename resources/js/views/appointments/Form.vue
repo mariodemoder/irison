@@ -81,7 +81,7 @@
               </div>
               <select v-else v-model="form.use_bonus_id" class="input">
                 <option value="" disabled>Selecciona un bono</option>
-                <option v-for="b in bonuses" :key="b.id" :value="b.id">{{ b.total_sessions }} sesiones — {{ b.remaining_sessions }} restantes{{ b.expires_at ? (' — expira ' + formatExpiry(b.expires_at)) : '' }}</option>
+                <option v-for="b in bonuses" :key="b.id" :value="b.id">{{ b.total_sessions }} sesiones — {{ b.remaining_sessions }} restantes{{ b.expires_at ? (' — expira ' + formatDMY(b.expires_at)) : '' }}</option>
               </select>
               <div v-if="errors.use_bonus_id" class="field-error">{{ errors.use_bonus_id[0] }}</div>
             </div>
@@ -121,6 +121,7 @@ import OptionSelect from '../../components/OptionSelect.vue'
 import { useToast } from 'vue-toastification'
 import Swal from 'sweetalert2'
 import { formatDate } from '../../shared/appointmentHelpers'
+import { formatDMY } from '../../shared/dateHelpers'
 import {
   openCreatePatientPopup as sharedOpenCreatePatientPopup,
   loadPatients as loadPatientsShared,
@@ -130,18 +131,7 @@ import {
   appointmentCancelShared
 } from '../../shared/formHelpers'
 
-function formatExpiry(v) {
-  if (!v) return ''
-  try {
-    const d = new Date(v)
-    const dd = String(d.getDate()).padStart(2, '0')
-    const mm = String(d.getMonth() + 1).padStart(2, '0')
-    const yyyy = d.getFullYear()
-    return `${dd}/${mm}/${yyyy}`
-  } catch (e) {
-    return ''
-  }
-}
+
 
 const router = useRouter()
 const route = useRoute()
