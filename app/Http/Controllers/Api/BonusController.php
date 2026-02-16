@@ -42,7 +42,14 @@ class BonusController extends Controller
 
         $service = new BonusService();
         $clinicId = app()->has('activeClinic') ? app()->get('activeClinic')->id : null;
-        $bonus = $service->assignBonusToPatient($clinicId, $patient->id, $data['name'], $data['total_sessions'], $data['price'] ?? 0, isset($data['expires_at']) ? new \DateTime($data['expires_at']) : null);
+        $bonus = $service->assignBonusToPatient(
+            $clinicId,
+            $patient->id,
+            $data['name'],
+            (int) $data['total_sessions'],
+            $data['price'] ?? 0,
+            isset($data['expires_at']) ? new \DateTime($data['expires_at']) : null
+        );
 
         return response()->json(['data' => $bonus], 201);
     }

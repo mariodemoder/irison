@@ -13,11 +13,12 @@ class BonusService
      * Assign a bonus to a patient (create Bonus record).
      * Returns the created Bonus.
      */
-    public function assignBonusToPatient(int $clinicId, int $patientId, int $totalSessions, float $price = 0.0, ?\DateTime $expiresAt = null): Bonus
+    public function assignBonusToPatient(int $clinicId, int $patientId, string $name, int $totalSessions, float $price = 0.0, ?\DateTime $expiresAt = null): Bonus
     {
         $data = [
             'clinic_id' => $clinicId,
             'patient_id' => $patientId,
+            'name' => $name,
             'total_sessions' => $totalSessions,
             'remaining_sessions' => $totalSessions,
             'price' => $price,

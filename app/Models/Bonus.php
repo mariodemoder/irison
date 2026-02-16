@@ -12,7 +12,7 @@ class Bonus extends Model
 {
     use BelongsToClinic;
     protected $fillable = [
-        'clinic_id', 'patient_id', 'total_sessions', 'remaining_sessions', 'price', 'expires_at'
+        'clinic_id', 'patient_id', 'name', 'total_sessions', 'remaining_sessions', 'price', 'expires_at'
     ];
 
     protected $casts = [
