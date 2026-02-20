@@ -76,6 +76,10 @@ class AppointmentController extends Controller
         }
 
         $data['clinic_id'] = $clinicId;
+        // If frontend provided use_bonus_id, also persist it to bonus_id column
+        if (isset($data['use_bonus_id'])) {
+            $data['bonus_id'] = $data['use_bonus_id'];
+        }
 
         $appointment = Appointment::create($data);
 
@@ -175,6 +179,11 @@ class AppointmentController extends Controller
             if (! $validation['valid']) {
                 return response()->json(['errors' => $validation['errors']], 422);
             }
+        }
+
+        // If updating with a bonus id, also persist to bonus_id column
+        if (isset($data['use_bonus_id'])) {
+            $data['bonus_id'] = $data['use_bonus_id'];
         }
 
         $appointment->update($data);

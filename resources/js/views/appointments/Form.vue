@@ -16,12 +16,6 @@
                 <option v-for="p in patients" :key="p.id" :value="p.id">{{ p.name }}{{ p.nif ? (' — ' + p.nif) : '' }}</option>
                 <option value="__create">+ Crear paciente...</option>
               </select>
-              <div v-if="form.patient_id && (!bonuses || bonuses.length === 0)" class="inline-alert">
-                <div>Sin bonos disponibles</div>
-                <div>
-                  <button type="button" class="muted" @click.prevent="suggestCreateBonus">Crear bono</button>
-                </div>
-              </div>
             </div>
             <div v-if="errors.patient_id" class="field-error">{{ errors.patient_id[0] }}</div>
           </div>
@@ -64,12 +58,21 @@
             <div v-if="errors.notes" class="field-error">{{ errors.notes[0] }}</div>
           </div>
 
-          <div class="field" v-if="bonuses.length > 0">
-            <label class="label">Seleccionar bono</label>
-            <label style="display:flex; align-items:center; gap:8px"><input type="checkbox" v-model="selectBonus" /> Marcar para usar bono</label>
+          <div class="field">
+            <label class="label">Forma de pago</label>
+            <div style="display:flex; gap:12px; align-items:center">
+              <label style="display:flex; align-items:center; gap:8px"><input type="radio" v-model="form.payment_type" value="single" /> Pago individual</label>
+              <label style="display:flex; align-items:center; gap:8px"><input type="radio" v-model="form.payment_type" value="bonus" :disabled="!bonuses || bonuses.length === 0" /> Usar bono</label>
+            </div>
+            <div v-if="form.patient_id && (!bonuses || bonuses.length === 0)" class="inline-alert" style="margin-top:8px">
+              <div>Sin bonos disponibles</div>
+              <div>
+                <button type="button" class="muted" @click.prevent="suggestCreateBonus">Crear bono</button>
+              </div>
+            </div>
           </div>
 
-          <div v-if="selectBonus && bonuses.length > 0" class="field full">
+          <div v-if="(selectBonus || form.payment_type === 'bonus') && bonuses.length > 0" class="field full">
             <label class="label">Bono</label>
             <div v-if="bonusesLoading">Cargando bonos...</div>
             <div v-else>
@@ -79,9 +82,9 @@
                   <button type="button" class="muted" @click.prevent="suggestCreateBonus">Sugerir crear bono</button>
                 </div>
               </div>
-              <select v-else v-model="form.use_bonus_id" class="input">
+              <select v-else v-model="form.use_bonus_id" class="input" style="width:100%">
                 <option value="" disabled>Selecciona un bono</option>
-                <option v-for="b in bonuses" :key="b.id" :value="b.id">{{ b.total_sessions }} sesiones — {{ b.remaining_sessions }} restantes{{ b.expires_at ? (' — expira ' + formatDMY(b.expires_at)) : '' }}</option>
+                <option v-for="b in bonuses" :key="b.id" :value="b.id">{{ b.name ? (b.name + ' — ') : '' }}{{ b.total_sessions }} sesiones — {{ b.remaining_sessions }} restantes{{ b.expires_at ? (' — expira ' + formatDMY(b.expires_at)) : '' }}</option>
               </select>
               <div v-if="selectedBonus" class="bonus-details" style="margin-top:8px;padding:8px;border-radius:8px;background:#fffaf0;border:1px solid #ffedd5;color:#92400e;font-size:13px">
                 <div><strong>Bono seleccionado</strong></div>
@@ -90,11 +93,17 @@
                 <div>Sesiones restantes: {{ selectedBonus.remaining_sessions }}</div>
                 <div v-if="selectedBonus.expires_at">Expira: {{ formatDMY(selectedBonus.expires_at) }}</div>
               </div>
-              <div v-if="errors.use_bonus_id" class="field-error">{{ errors.use_bonus_id[0] }}</div>
+              <div v-if="errors.use_bonus_id || errors.bonus_id" class="field-error">{{ (errors.use_bonus_id || errors.bonus_id)[0] }}</div>
             </div>
 
             <label class="label" style="margin-top:8px">Notas (bono)</label>
             <input v-model="form.bonus_notes" class="input" />
+          </div>
+
+          <div class="field" style="display:flex; justify-content:flex-end; gap:8px;">
+            <div v-if="form.payment_type === 'single'">
+              <button type="button" class="muted" @click.prevent="handleSinglePayment" :disabled="submitting">Pagar sesión individual</button>
+            </div>
           </div>
 
           <div class="actions full action-row">
@@ -147,7 +156,7 @@ const router = useRouter()
 const route = useRoute()
 const isEdit = ref(false)
 const mode = ref(route.query.mode || null)
-const form = reactive({ patient_id: '', status: 'scheduled', start_time: '', end_time: '', notes: '', use_bonus_id: '', bonus_notes: '', bonus_name: '' })
+const form = reactive({ patient_id: '', status: 'scheduled', start_time: '', end_time: '', notes: '', use_bonus_id: '', bonus_notes: '', bonus_name: '', payment_type: 'single' })
 
 const statusOptions = [
   { value: 'scheduled', label: 'Programada', color: '#99b1ff' },
@@ -183,6 +192,18 @@ watch(() => form.use_bonus_id, (id) => {
   }
   const b = bonuses.value.find(x => String(x.id) === String(id))
   form.bonus_name = b ? (b.name || (`Bono ${b.total_sessions} sesiones`)) : ''
+})
+
+// Cuando cambia el tipo de pago: si es 'bonus' habilitar selección, si es 'single' limpiar selección
+watch(() => form.payment_type, (v) => {
+  if (v === 'bonus') {
+    selectBonus.value = true
+  } else {
+    selectBonus.value = false
+    form.use_bonus_id = ''
+    form.bonus_notes = ''
+    form.bonus_name = ''
+  }
 })
 
 async function onPatientChange() {
@@ -281,6 +302,11 @@ async function appointmentCancel() {
   }
 }
 
+function handleSinglePayment() {
+  // Create appointment and redirect to payment flow
+  submit(true)
+}
+
 // formatDate moved to shared/appointmentHelpers
 
 function goToAppointment(id) {
@@ -326,9 +352,14 @@ async function loadForEdit(id) {
     // Load bonuses for this patient so we can show the associated bonus if any
     if (form.patient_id) {
       await loadBonusesForPatient(form.patient_id)
-      if (data.use_bonus_id) {
-        form.use_bonus_id = data.use_bonus_id
+      // backend may return either use_bonus_id or bonus_id
+      const bid = data.use_bonus_id || data.bonus_id
+      if (bid) {
+        form.use_bonus_id = bid
         selectBonus.value = true
+      }
+      if (data.payment_type) {
+        form.payment_type = data.payment_type
       }
     }
   } catch (e) {
@@ -390,7 +421,7 @@ watch(() => [form.start_time, form.end_time], () => {
   checkOverlap()
 })
 
-async function submit() {
+async function submit(payNow = false) {
   submitting.value = true
   Object.keys(errors).forEach(k => delete errors[k])
   // If trying to reprogram a canceled appointment, ensure it's allowed
@@ -409,7 +440,9 @@ async function submit() {
       start_time: form.start_time,
       end_time: form.end_time,
       notes: form.notes,
+      payment_type: form.payment_type,
       use_bonus_id: form.use_bonus_id || undefined,
+      bonus_id: form.use_bonus_id || undefined,
       bonus_notes: form.bonus_notes || undefined,
       bonus_name: form.bonus_name || undefined,
     }
@@ -422,18 +455,27 @@ async function submit() {
     if (isEdit.value && route.params.id) {
       await api.patch(`/appointments/${route.params.id}`, payload)
       toast.success('Cita actualizada')
-      router.push('/appointments/day')
+      if (payNow && route.params.id) {
+        router.push(`/payments?appointment_id=${route.params.id}`)
+      } else {
+        router.push('/appointments/day')
+      }
     } else {
-      // If user marked to select a bonus but there are no bonuses, block and show error
-      if (selectBonus.value && (!bonuses.value || bonuses.value.length === 0) && !payload.use_bonus_id) {
+      // If user selected 'bonus' as payment type but there are no bonuses, block and show error
+      if (form.payment_type === 'bonus' && (!bonuses.value || bonuses.value.length === 0) && !payload.bonus_id) {
         errors.general = ['No hay bonos activos disponibles para este paciente']
         submitting.value = false
         return
       }
 
-      await api.post('/appointments', payload)
+      const res = await api.post('/appointments', payload)
+      const createdId = res && res.data ? res.data.id : undefined
       toast.success('Cita creada')
-      router.push('/appointments/day')
+      if (payNow && createdId) {
+        router.push(`/payments?appointment_id=${createdId}`)
+      } else {
+        router.push('/appointments/day')
+      }
     }
   } catch (e) {
     if (e.response) {

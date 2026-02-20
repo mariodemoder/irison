@@ -19,6 +19,8 @@ class Appointment extends Model
         'status',
         'payment_status',
         'notes',
+        'payment_type',
+        'bonus_id',
     ];
 
     protected $casts = [
@@ -49,6 +51,11 @@ class Appointment extends Model
     public function bonusUsage(): HasOne
     {
         return $this->hasOne(BonusUsage::class);
+    }
+
+    public function bonus(): BelongsTo
+    {
+        return $this->belongsTo(Bonus::class, 'bonus_id');
     }
 
     /**
