@@ -7,6 +7,7 @@ import PatientsIndex from '../views/patients/Index.vue'
 import PatientsForm from '../views/patients/Form.vue'
 // Nota: usamos el mismo formulario para creación/edición
 import PatientsShow from '../views/patients/Show.vue'
+import ClinicalHistory from '../views/patients/ClinicalHistory.vue'
 import Profile from '../views/Profile.vue'
 import AgendaDay from '../views/appointments/AgendaDay.vue'
 import AppointmentsForm from '../views/appointments/Form.vue'
@@ -22,6 +23,7 @@ const routes = [
   { path: '/patients', component: PatientsIndex, meta: { auth: true } },
   { path: '/patients/create', component: PatientsForm, meta: { auth: true } },
   { path: '/patients/:id', component: PatientsShow, meta: { auth: true } },
+  { path: '/patients/:id/history', component: ClinicalHistory, meta: { auth: true } },
   { path: '/patients/:id/edit', component: PatientsForm, meta: { auth: true } },
   { path: '/billing/required', component: BillingRequired, meta: { auth: true } },
   { path: '/appointments', redirect: '/appointments/day', meta: { auth: true } },

@@ -28,7 +28,20 @@ class BonusController extends Controller
         }
 
         $list = $query->orderBy('created_at', 'desc')->get();
-        return response()->json(['data' => $list]);
+
+        $mapped = $list->map(function($b) {
+            return [
+                'id' => $b->id,
+                'name' => $b->name,
+                'total_sessions' => (int) $b->total_sessions,
+                'remaining_sessions' => (int) $b->remaining_sessions,
+                'price' => $b->price ?? 0,
+                'expires_at' => $b->expires_at ? $b->expires_at->toDateString() : null,
+                'status' => $b->status,
+            ];
+        });
+
+        return response()->json(['data' => $mapped]);
     }
 
     public function storeForPatient(Request $request, Patient $patient): JsonResponse

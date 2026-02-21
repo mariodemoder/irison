@@ -2,10 +2,21 @@
   <MainLayout>
     <div>
       <div class="page-header">
-          <div class="mini-cal">
-            <div class="cal-day">{{ displayDay }}</div>
-            <div class="cal-month">{{ displayMonthYear }}</div>
-            <input type="date" v-model="date" class="mini-date" aria-label="Seleccionar fecha" />
+          <div class="mini-cal-wrapper">
+            <div class="mini-cal-vert" aria-hidden="false">
+              <button @click.prevent="nextDay" class="vert-btn up" aria-label="Avanzar un día">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 15 12 9 18 15"></polyline></svg>
+              </button>
+              <button @click.prevent="prevDay" class="vert-btn down" aria-label="Retroceder un día">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="18 9 12 15 6 9"></polyline></svg>
+              </button>
+            </div>
+
+            <div class="mini-cal">
+              <div class="cal-day">{{ displayDay }}</div>
+              <div class="cal-month">{{ displayMonthYear }}</div>
+              <input id="agenda-date" name="date" type="date" v-model="date" class="mini-date" aria-label="Seleccionar fecha" />
+            </div>
           </div>
 
           <div class="search-center">
@@ -169,10 +180,16 @@ const filteredAppointments = computed(() => {
 .date-input { display:none }
 
 .mini-cal { display:flex; flex-direction:row; align-items:center; gap:12px; padding:8px 12px; background:#fff; border-radius:10px; border:1px solid #eef2ff22; width:230px; box-shadow: 0 4px 10px rgba(2,6,23,0.03) }
+.mini-cal-wrapper { display:flex; align-items:center; gap:10px }
+.mini-cal-vert { display:flex; flex-direction:column; gap:6px }
+.vert-btn { background:transparent; border:1px solid transparent; padding:6px; border-radius:8px; cursor:pointer; color:#374151; display:flex; align-items:center; justify-content:center }
+.vert-btn svg { width:18px; height:18px; display:block }
+.vert-btn:hover { background:#f1f5f9 }
 .mini-cal .cal-day { font-size:20px; font-weight:800 }
 .mini-cal .cal-month { font-size:13px; color:#6b7280 }
 .mini-cal .cal-meta { display:flex; flex-direction:column; line-height:1 }
-.mini-date { border:1px solid #e5e7eb; border-radius:8px; padding:6px; font-size:13px; margin-left:auto }
+.mini-date { border:1px solid #e5e7eb; border-radius:8px; padding:6px; font-size:13px; margin-left:auto; appearance: auto; -webkit-appearance: textfield; -moz-appearance: textfield; cursor: pointer }
+.mini-date::-webkit-calendar-picker-indicator { display: block; cursor: pointer }
 
 @media (max-width: 900px) {
   .mini-cal { width:100%; max-width:240px }
@@ -180,6 +197,10 @@ const filteredAppointments = computed(() => {
 }
 
 .search-center { display:flex; justify-content:flex-end; align-items:center }
+
+/* Ensure mini calendar sits above the search area to avoid being covered */
+.mini-cal-wrapper { position: relative; z-index: 20 }
+.search-center, .search-wrapper { position: relative; z-index: 0 }
 
 .list { display:flex; flex-direction:column; gap:8px; overflow-x:auto }
 .list-header { display:grid; grid-template-columns: 140px 1.3fr 2fr 160px 120px; gap:12px; align-items:center; padding:8px 14px; color:#6b7280; font-weight:600; font-size:13px }

@@ -9,6 +9,7 @@
           <p></p>
           <div style="display:flex;gap:8px">
             <button class="primary" @click.prevent="goEdit" style="padding:6px 12px;font-size:13px">Editar</button>
+            <button class="primary" @click.prevent="viewHistory" style="padding:6px 12px;font-size:13px">Ver Historia Clínica</button>
             <button class="action-btn" @click.prevent="confirmDelete" style="padding:6px 12px;font-size:13px">🗑️ Eliminar</button>
             <button class="muted" @click.prevent="goBack" style="padding:6px 12px;font-size:13px">Volver</button>
           </div>
@@ -17,7 +18,8 @@
         <div class="grid-display">
           <div class="card">
             <div class="card-row"><strong>Nombre: </strong>{{ patient?.name ?? '—' }}</div>
-            
+            <div v-if="activeBonusCount > 0" class="mini-badge">{{ activeBonusCount }} bono(s) activo(s)</div>
+          
           </div>
 
           <div class="card">
@@ -67,7 +69,7 @@
             <div class="history-title" style="display:flex;justify-content:space-between;align-items:center">
               <div>Bonos</div>
             </div>
-            <PatientBonuses v-if="patient && patient.id" :patientId="patient.id" />
+            <PatientBonuses v-if="patient && patient.id" :patientId="patient.id" @active-bonus-count="v => activeBonusCount = v" />
           </div>
 
           <div class="history-card">
@@ -98,6 +100,7 @@ import Swal from 'sweetalert2'
 const route = useRoute()
 const router = useRouter()
 const patient = ref(null)
+const activeBonusCount = ref(0)
 const appointments = ref([])
 const packs = ref([])
 const payments = ref([])
@@ -130,6 +133,12 @@ watch(() => route.params.id, (id) => {
 function goEdit() {
   if (patient.value && patient.value.id) {
     router.push({ path: `/patients/${patient.value.id}/edit`, query: { from: 'show' } })
+  }
+}
+
+function viewHistory() {
+  if (patient.value && patient.value.id) {
+    router.push({ path: `/patients/${patient.value.id}/history` })
   }
 }
 
@@ -211,4 +220,6 @@ async function confirmDelete() {
   .history-grid { grid-template-columns: 1fr }
   .grid-display { grid-template-columns: 1fr }
 }
+
+.mini-badge { display:inline-block; margin-top:6px; padding:6px 10px; background:#ecfdf5; color:#065f46; border-radius:9999px; font-size:13px; font-weight:700 }
 </style>

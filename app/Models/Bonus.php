@@ -20,6 +20,9 @@ class Bonus extends Model
         'price' => 'decimal:2',
     ];
 
+    // Expose computed status in model JSON form
+    protected $appends = ['status'];
+
     public function clinic(): BelongsTo
     {
         return $this->belongsTo(Clinic::class);
@@ -39,6 +42,21 @@ class Bonus extends Model
     {
         if (!$this->expires_at) return false;
         return now()->greaterThan($this->expires_at->copy()->endOfDay());
+    }
+
+    /**
+     * Compute business status for the bonus.
+     * Values: active | last | exhausted | expired
+     */
+    public function getStatusAttribute(): string
+    {
+        if ($this->isExpired()) return 'expired';
+
+        if ($this->remaining_sessions <= 0) return 'exhausted';
+
+        if ($this->remaining_sessions === 1) return 'last';
+
+        return 'active';
     }
 
     /**
