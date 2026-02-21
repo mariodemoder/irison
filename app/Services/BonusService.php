@@ -41,8 +41,8 @@ class BonusService
                 throw new \Exception('Bono no encontrado');
             }
 
-            // Check expiration
-            if ($bonus->expires_at && $bonus->expires_at->isPast()) {
+            // Check expiration (inclusive of the expiration day)
+            if ($bonus->isExpired()) {
                 throw new \Exception('Bono expirado');
             }
 

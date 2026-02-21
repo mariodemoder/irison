@@ -41,6 +41,8 @@ class CheckAvailability
         }
 
         $query = Appointment::where('clinic_id', $clinicId)
+            // ignore canceled appointments
+            ->whereNotIn('status', ['canceled', 'cancelled'])
             ->where(function ($q) use ($start, $end) {
                 $q->where('start_time', '<', $end)
                   ->where('end_time', '>', $start);
@@ -76,6 +78,7 @@ class CheckAvailability
     public function check(int $clinicId, Carbon $start, Carbon $end): string
     {
         $conflict = Appointment::where('clinic_id', $clinicId)
+            ->whereNotIn('status', ['canceled', 'cancelled'])
             ->where(function ($q) use ($start, $end) {
                 $q->where('start_time', '<', $end)
                   ->where('end_time', '>', $start);

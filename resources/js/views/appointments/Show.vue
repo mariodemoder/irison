@@ -35,6 +35,20 @@
             <label class="label">Notas</label>
             <div class="value">{{ appointment.notes ?? '—' }}</div>
           </div>
+
+          <div class="field">
+            <label class="label">Forma de pago</label>
+            <div class="value">{{ appointment.payment_type === 'bonus' ? 'Bono' : 'Pago simple' }}</div>
+          </div>
+
+          <div v-if="appointment.payment_type === 'bonus'" class="field full">
+            <label class="label">Bono asociado</label>
+            <div v-if="appointment.bonus" class="value">
+              <div><strong>{{ appointment.bonus.name }}</strong> -- Sesiones totales: {{ appointment.bonus.total_sessions }}
+              <div v-if="appointment.bonus.expires_at">Expira: {{ formatDateShort(appointment.bonus.expires_at) }}</div>
+            </div></div>
+            <div v-else class="value">—</div>
+          </div>
           <div class="actions action-row">
             <div class="left-actions">
               <template v-if="appointment.status === 'canceled'">
@@ -204,6 +218,7 @@ function goReprogram() {
 .status.canceled { background:#fff4f4; color:#da7a7a }
 .status.scheduled { background:#eef2ff; color:#1e3a8a }
 .status.completed { background:#dcfce7; color:#166534 }
+ .status.rescheduled { background:#fff7ed; color:#b45309 }
 
 /* Alinear icono y texto en botones */
 .actions button { display:inline-flex; align-items:center; gap:8px }

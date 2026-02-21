@@ -38,7 +38,7 @@ class Bonus extends Model
     public function isExpired(): bool
     {
         if (!$this->expires_at) return false;
-        return $this->expires_at->isPast();
+        return now()->greaterThan($this->expires_at->copy()->endOfDay());
     }
 
     /**

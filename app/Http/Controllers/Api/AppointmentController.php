@@ -6,6 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Appointment;
 use App\Services\Availability\CheckAvailability;
 use App\Services\BonusService;
+use App\Models\Bonus;
+use App\Models\BonusUsage;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -75,48 +78,68 @@ class AppointmentController extends Controller
             return response()->json(['errors' => $validation['errors']], 422);
         }
 
-        $data['clinic_id'] = $clinicId;
-        // If frontend provided use_bonus_id, also persist it to bonus_id column
-        if (isset($data['use_bonus_id'])) {
-            $data['bonus_id'] = $data['use_bonus_id'];
+        // PRE-VALIDATION: enforce payment_type rules before creating appointment
+        $paymentType = $request->input('payment_type');
+        $useBonusId = $request->input('use_bonus_id');
+
+        if ($paymentType === 'single' && $useBonusId) {
+            return response()->json(['error' => 'Cuando payment_type es single, bonus_id debe ser null'], 422);
         }
 
-        $appointment = Appointment::create($data);
-
-        // If payment type is bonus or a bonus id was provided, attempt to apply the bonus
-        if (($request->input('payment_type') === 'bonus') || $request->filled('use_bonus_id')) {
-            $patientId = $data['patient_id'];
-
-            // If user chose bonus but didn't send a specific bonus id, ensure there are active bonuses
-            if ($request->input('payment_type') === 'bonus' && ! $request->filled('use_bonus_id')) {
-                $hasActive = \App\Models\Bonus::where('patient_id', $patientId)
-                    ->where('remaining_sessions', '>', 0)
-                    ->where(function($q){ $q->whereNull('expires_at')->orWhere('expires_at', '>', now()); })
-                    ->exists();
-
-                if (! $hasActive) {
-                    return response()->json(['error' => 'No hay bonos activos disponibles para este paciente'], 422);
-                }
-
-                return response()->json(['error' => 'Debe seleccionar un bono para pagar con bono'], 422);
+        if ($paymentType === 'bonus') {
+            if (! $useBonusId) {
+                return response()->json(['error' => 'Debe seleccionar un bono cuando payment_type es bonus'], 422);
             }
 
-            // If a bonus id was provided, attempt to use it
-            if ($request->filled('use_bonus_id')) {
-                $bonusService = new BonusService();
-                try {
+            // Validate bonus exists and belongs to patient and clinic, has remaining_sessions and not expired
+            $bonus = Bonus::find($useBonusId);
+            if (! $bonus) {
+                return response()->json(['error' => 'Bono no encontrado'], 422);
+            }
+            if ($bonus->patient_id != $data['patient_id']) {
+                return response()->json(['error' => 'El bono no pertenece a este paciente'], 422);
+            }
+            if ($bonus->clinic_id != $clinicId) {
+                return response()->json(['error' => 'El bono no pertenece a esta clínica'], 422);
+            }
+            if ($bonus->remaining_sessions <= 0) {
+                return response()->json(['error' => 'Bono agotado'], 422);
+            }
+            if ($bonus->isExpired()) {
+                return response()->json(['error' => 'Bono expirado'], 422);
+            }
+        }
+
+        // All good — create appointment and apply bonus inside a transaction so failure to apply bonus rolls back appointment
+        try {
+            $result = DB::transaction(function () use ($data, $clinicId, $request) {
+                // persist clinic id and map use_bonus_id to bonus_id column
+                $data['clinic_id'] = $clinicId;
+                if (isset($data['use_bonus_id'])) {
+                    $data['bonus_id'] = $data['use_bonus_id'];
+                }
+
+                $appointment = Appointment::create($data);
+
+                // If bonus flow, attempt to consume the bonus (BonusService handles usage logging)
+                if (($request->input('payment_type') === 'bonus') || $request->filled('use_bonus_id')) {
+                    $bonusService = new BonusService();
                     $usage = $bonusService->useBonusForAppointment($request->input('use_bonus_id'), $appointment, $request->input('bonus_notes'));
-                } catch (\Exception $e) {
-                    // Rollback appointment if bonus application fails
-                    $appointment->delete();
-                    return response()->json(['error' => $e->getMessage()], 422);
+                    return ['appointment' => $appointment, 'bonus_usage' => $usage];
                 }
 
-                return response()->json(['appointment' => $appointment, 'bonus_usage' => $usage], 201);
-            }
+                return ['appointment' => $appointment];
+            });
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
         }
 
-        return response()->json($appointment, 201);
+        // Return created resources
+        if (isset($result['bonus_usage'])) {
+            return response()->json(['appointment' => $result['appointment'], 'bonus_usage' => $result['bonus_usage']], 201);
+        }
+
+        return response()->json($result['appointment'], 201);
     }
 
     /**
@@ -142,12 +165,15 @@ class AppointmentController extends Controller
             $bonusService = new BonusService();
             try {
                 $usage = $bonusService->useBonusForAppointment($request->input('use_bonus_id'), $appointment, $request->input('bonus_notes'));
+                $appointment->load(['bonus', 'patient']);
                 return response()->json(['appointment' => $appointment, 'bonus_usage' => $usage]);
             } catch (\Exception $e) {
                 return response()->json(['error' => $e->getMessage()], 422);
             }
         }
 
+        // Ensure related bonus (if any) and patient are loaded so frontend can show bonus details
+        $appointment->load(['bonus', 'patient']);
         return $appointment;
     }
 
@@ -156,13 +182,15 @@ class AppointmentController extends Controller
      */
     public function update(Request $request, Appointment $appointment)
     {
-        // Sólo permitimos actualizar fecha/hora y notas
+        // Permitimos actualizar fecha/hora, notas y campos de pago
         $data = $request->validate([
+            'status'     => ['sometimes', 'string'],
             'start_time' => ['sometimes', 'date'],
             'end_time'   => ['sometimes', 'date', 'after:start_time'],
             'notes'      => ['sometimes', 'string', 'nullable'],
             'use_bonus_id' => ['sometimes', 'integer', 'exists:bonuses,id'],
             'bonus_notes' => ['sometimes', 'string', 'nullable'],
+            'payment_type' => ['sometimes', 'string', 'in:single,bonus'],
         ]);
 
         $needsAvailabilityCheck = isset($data['start_time']) || isset($data['end_time']);
@@ -181,23 +209,94 @@ class AppointmentController extends Controller
             }
         }
 
-        // If updating with a bonus id, also persist to bonus_id column
+        $oldPaymentType = $appointment->payment_type;
+        $newPaymentType = $request->input('payment_type', $oldPaymentType);
+        $useBonusId = $request->input('use_bonus_id');
+
+        // Normalize data: if use_bonus_id present, map to bonus_id
         if (isset($data['use_bonus_id'])) {
             $data['bonus_id'] = $data['use_bonus_id'];
         }
 
-        $appointment->update($data);
-
-        // If a bonus is requested to be used during update, attempt to apply it
-        if ($request->filled('use_bonus_id')) {
-            $bonusService = new BonusService();
+        // Case: switching from bonus -> single (restore)
+        if ($oldPaymentType === 'bonus' && $newPaymentType === 'single') {
             try {
-                $usage = $bonusService->useBonusForAppointment($request->input('use_bonus_id'), $appointment, $request->input('bonus_notes'));
-                return response()->json(['appointment' => $appointment, 'bonus_usage' => $usage]);
+                $result = DB::transaction(function () use ($appointment, $data) {
+                    // clear bonus reference on appointment
+                    $appointment->update(array_merge($data, ['payment_type' => 'single', 'bonus_id' => null]));
+
+                    $bonusService = new BonusService();
+                    $bonusService->restoreBonusIfCancelled($appointment);
+
+                    return ['appointment' => $appointment];
+                });
             } catch (\Exception $e) {
                 return response()->json(['error' => $e->getMessage()], 422);
             }
+
+            return response()->json($result['appointment']);
         }
+
+        // Case: switching to bonus (from single or different bonus)
+        if ($newPaymentType === 'bonus') {
+            // require a bonus id to consume
+            if (! $useBonusId && ! isset($appointment->bonus_id)) {
+                return response()->json(['error' => 'Debe seleccionar un bono al cambiar a payment_type=bonus'], 422);
+            }
+
+            $targetBonusId = $useBonusId ?: $appointment->bonus_id;
+
+            // Pre-validate bonus
+            $bonus = Bonus::find($targetBonusId);
+            if (! $bonus) {
+                return response()->json(['error' => 'Bono no encontrado'], 422);
+            }
+            if ($bonus->patient_id != $appointment->patient_id) {
+                return response()->json(['error' => 'El bono no pertenece a este paciente'], 422);
+            }
+            $clinicId = app()->has('activeClinic') ? app('activeClinic')->id : $appointment->clinic_id;
+            if ($bonus->clinic_id != $clinicId) {
+                return response()->json(['error' => 'El bono no pertenece a esta clínica'], 422);
+            }
+            if ($bonus->remaining_sessions <= 0) {
+                return response()->json(['error' => 'Bono agotado'], 422);
+            }
+            if ($bonus->isExpired()) {
+                return response()->json(['error' => 'Bono expirado'], 422);
+            }
+
+            try {
+                $result = DB::transaction(function () use ($appointment, $data, $targetBonusId, $request, $oldPaymentType) {
+                    $bonusService = new BonusService();
+
+                    // If previously bonus and different bonus id, restore old usage first
+                    if ($oldPaymentType === 'bonus' && $appointment->bonus_id && $appointment->bonus_id != $targetBonusId) {
+                        $bonusService->restoreBonusIfCancelled($appointment);
+                    }
+
+                    // persist new bonus_id and payment_type
+                    $appointment->update(array_merge($data, ['payment_type' => 'bonus', 'bonus_id' => $targetBonusId]));
+
+                    // If a usage already exists for this appointment and bonus, reuse it (editing case)
+                    $existing = \App\Models\BonusUsage::where('bonus_id', $targetBonusId)->where('appointment_id', $appointment->id)->first();
+                    if ($existing) {
+                        $usage = $existing;
+                    } else {
+                        // consume target bonus for this appointment
+                        $usage = $bonusService->useBonusForAppointment($targetBonusId, $appointment, $request->input('bonus_notes'));
+                    }
+
+                    return ['appointment' => $appointment, 'bonus_usage' => $usage];
+                });
+            } catch (\Exception $e) {
+                return response()->json(['error' => $e->getMessage()], 422);
+            }
+
+            return response()->json(['appointment' => $result['appointment'], 'bonus_usage' => $result['bonus_usage']]);
+        }
+
+        // Default: no payment type change or unrelated changes — regular update
+        $appointment->update($data);
 
         return $appointment;
     }
@@ -207,10 +306,29 @@ class AppointmentController extends Controller
      */
     public function cancel(Appointment $appointment)
     {
-        $appointment->status = 'canceled';
-        $appointment->save();
+        try {
+            $result = DB::transaction(function () use ($appointment) {
+                $appointment->status = 'canceled';
+                $appointment->save();
 
-        return response()->json($appointment);
+                // If this appointment had an associated bonus, restore its usage
+                if ($appointment->bonus_id) {
+                    // Restore remaining_sessions and delete BonusUsage if exists
+                    $appointment->restoreBonusUsageIfCancelled();
+
+                    // Clear bonus reference on the appointment
+                    $appointment->bonus_id = null;
+                    $appointment->payment_type = 'single';
+                    $appointment->save();
+                }
+
+                return $appointment;
+            });
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        return response()->json($result);
     }
 
     /**

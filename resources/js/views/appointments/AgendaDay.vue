@@ -30,7 +30,7 @@
 
         <div class="list">
           <div v-for="a in filteredAppointments" :key="a.id" class="appointment-row" role="button" tabindex="0" @click="goToAppointment(a.id)" @keydown.enter="goToAppointment(a.id)">
-            <div :class="['row-col','time', timeClass(a.status)]">{{ formatTime(a.start_time) }} - {{ formatTime(a.end_time) }}</div>
+            <div :class="['row-col','time', timeClass(a.status)]">{{ formatTimeCalendar(a.start_time) }} - {{ formatTimeCalendar(a.end_time) }}</div>
             <div class="row-left">
               <div class="row-name">{{ a.patient?.nif ?? '—' }} - {{ a.patient?.name ?? ('Paciente #' + a.patient_id) }}</div>
             </div>
@@ -53,7 +53,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
-import { formatTime, formatDate, statusLabel, timeClass } from '../../shared/appointmentHelpers'
+import { formatTime, formatDate, statusLabel, timeClass, formatTimeCalendar } from '../../shared/appointmentHelpers'
 
 const router = useRouter()
 const appointments = ref([])
@@ -193,6 +193,7 @@ const filteredAppointments = computed(() => {
 .time-scheduled { background:#eef2ff; color:#1e3a8a; padding:4px 8px; border-radius:8px; display:inline-block }
 .time-completed { background:#dcfce7; color:#166534; padding:4px 8px; border-radius:8px; display:inline-block }
 .time-canceled { background:#fff4f4; color:#da7a7a; padding:4px 8px; border-radius:8px; display:inline-block }
+ .time-rescheduled { background:#fff7ed; color:#b45309; padding:4px 8px; border-radius:8px; display:inline-block }
 .note { font-style: italic; display:block; text-align:left;
   white-space: normal;
   overflow: hidden;
@@ -206,6 +207,7 @@ const filteredAppointments = computed(() => {
 .status.canceled { background:#fff4f4; color:#da7a7a }
 .status.scheduled { background:#eef2ff; color:#1e3a8a }
 .status.completed { background:#dcfce7; color:#166534 }
+ .status.rescheduled { background:#fff7ed; color:#b45309 }
 
 .empty { color:#6b7280; padding:12px }
 

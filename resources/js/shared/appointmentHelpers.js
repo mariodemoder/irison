@@ -2,13 +2,28 @@ export function formatTime(dt) {
   if (!dt) return '—'
   try {
     const d = new Date(dt)
-    // Forzar formato 24h (sin AM/PM) para consistencia en la UI
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+      // Forzar formato 24h (sin AM/PM) para consistencia en la UI
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
   } catch (e) {
     return dt
   }
 }
 
+  export function formatTimeCalendar(dt) {
+    if (!dt) return '—'
+    try {
+      const d = new Date(dt)
+      let hh = d.getHours()
+      let mm = d.getMinutes()
+      // truncar al múltiplo de 5 (no avanzar al siguiente intervalo)
+      mm = Math.floor(mm / 5) * 5
+      const hhStr = String(hh).padStart(2, '0')
+      const mmStr = String(mm).padStart(2, '0')
+      return `${hhStr}:${mmStr}`
+    } catch (e) {
+      return dt
+    }
+  }
 export function formatDate(d) {
   if (!d) return ''
   try {
@@ -37,6 +52,7 @@ export function statusLabel(s) {
   if (!s) return '—'
   const map = {
     scheduled: 'Programada',
+    rescheduled: 'Reprogramada',
     completed: 'Completada',
     canceled: 'Cancelada',
     cancelled: 'Cancelada'
@@ -48,6 +64,7 @@ export function timeClass(s) {
   if (!s) return ''
   const map = {
     scheduled: 'time-scheduled',
+    rescheduled: 'time-rescheduled',
     completed: 'time-completed',
     canceled: 'time-canceled',
     cancelled: 'time-canceled'
@@ -94,6 +111,8 @@ export async function findOverlaps({ start, end, currentId = null, api, per_page
 
   return list.filter(a => {
     try {
+      // ignore canceled appointments for overlap checks
+      if (a.status === 'canceled' || a.status === 'cancelled') return false
       const aStart = new Date(a.start_time)
       const aEnd = new Date(a.end_time)
       const intersects = (aStart < chosenEnd && aEnd > chosenStart)

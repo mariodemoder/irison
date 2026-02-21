@@ -10,29 +10,32 @@
         <form class="grid-form" @submit.prevent="submit">
           <div class="field">
             <label class="label">Paciente</label>
-            <div style="display:flex; gap:12px; align-items:flex-start">
-              <select v-model="form.patient_id" @change="onPatientChange" class="input" :disabled="isCanceled && mode !== 'reprogram'">
+              <div style="display:flex; gap:12px; align-items:flex-start; width:100%">
+              <select v-model="form.patient_id" @change="onPatientChange" class="input" :disabled="isCanceled && mode !== 'reprogram'" style="flex:1">
                 <option value="" disabled>Selecciona un paciente</option>
                 <option v-for="p in patients" :key="p.id" :value="p.id">{{ p.name }}{{ p.nif ? (' — ' + p.nif) : '' }}</option>
                 <option value="__create">+ Crear paciente...</option>
               </select>
+              <button v-if="form.patient_id && form.patient_id !== '__create'" type="button" class="muted" @click.prevent="goToPatient(form.patient_id)" title="Ir a la ficha del paciente" style="height:40px;padding:8px 10px;border-radius:8px;align-self:center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              </button>
             </div>
             <div v-if="errors.patient_id" class="field-error">{{ errors.patient_id[0] }}</div>
           </div>
           <div class="field">
             <label class="label">Estado</label>
-            <OptionSelect v-model="form.status" :options="statusOptions" :disabled="isCanceled" />
+            <OptionSelect v-model="form.status" :options="statusOptions" :disabled="isCanceled && mode !== 'reprogram'" />
             <div v-if="errors.status" class="field-error">{{ errors.status[0] }}</div>
           </div>
           <div class="field">
             <label class="label">Inicio</label>
-            <input v-model="form.start_time" type="datetime-local" class="input" :disabled="isCanceled && mode !== 'reprogram'" />
+            <input v-model="form.start_time" type="datetime-local" step="300" class="input" :disabled="isCanceled && mode !== 'reprogram'" />
             <div v-if="errors.start_time" class="field-error">{{ errors.start_time[0] }}</div>
           </div>
 
           <div class="field">
             <label class="label">Fin</label>
-            <input v-model="form.end_time" type="datetime-local" class="input" :disabled="isCanceled && mode !== 'reprogram'" />
+            <input v-model="form.end_time" type="datetime-local" step="300" class="input" :disabled="isCanceled && mode !== 'reprogram'" />
             <div v-if="errors.end_time" class="field-error">{{ errors.end_time[0] }}</div>
             <div v-if="overlapping.length">
               <div v-if="hasScheduledOverlap" class="field-error">La franja horaria se solapa con otra cita programada.</div>
@@ -60,11 +63,11 @@
 
           <div class="field">
             <label class="label">Forma de pago</label>
-            <div style="display:flex; gap:12px; align-items:center">
-              <label style="display:flex; align-items:center; gap:8px"><input type="radio" v-model="form.payment_type" value="single" /> Pago individual</label>
-              <label style="display:flex; align-items:center; gap:8px"><input type="radio" v-model="form.payment_type" value="bonus" :disabled="!bonuses || bonuses.length === 0" /> Usar bono</label>
+              <div style="display:flex; gap:12px; align-items:center">
+              <label style="display:flex; align-items:center; gap:8px"><input type="radio" v-model="form.payment_type" value="single" /> Simple</label>
+              <label style="display:flex; align-items:center; gap:8px"><input type="radio" v-model="form.payment_type" value="bonus" :disabled="!hasAvailableBonuses" /> Usar bono</label>
             </div>
-            <div v-if="form.patient_id && (!bonuses || bonuses.length === 0)" class="inline-alert" style="margin-top:8px">
+            <div v-if="form.patient_id && !hasAvailableBonuses" class="inline-alert" style="margin-top:8px">
               <div>Sin bonos disponibles</div>
               <div>
                 <button type="button" class="muted" @click.prevent="suggestCreateBonus">Crear bono</button>
@@ -84,7 +87,10 @@
               </div>
               <select v-else v-model="form.use_bonus_id" class="input" style="width:100%">
                 <option value="" disabled>Selecciona un bono</option>
-                <option v-for="b in bonuses" :key="b.id" :value="b.id">{{ b.name ? (b.name + ' — ') : '' }}{{ b.total_sessions }} sesiones — {{ b.remaining_sessions }} restantes{{ b.expires_at ? (' — expira ' + formatDMY(b.expires_at)) : '' }}</option>
+                <option v-for="b in bonuses" :key="b.id" :value="b.id" :disabled="(b.remaining_sessions <= 0) || isExpiredLocal(b)">
+                  {{ b.name ? (b.name + ' — ') : '' }}{{ b.total_sessions }} sesiones — {{ b.remaining_sessions }} restantes{{ b.expires_at ? (' — expira ' + formatDMY(b.expires_at)) : '' }}
+                  <span v-if="b.remaining_sessions <= 0"> — AGOTADO</span>
+                </option>
               </select>
               <div v-if="selectedBonus" class="bonus-details" style="margin-top:8px;padding:8px;border-radius:8px;background:#fffaf0;border:1px solid #ffedd5;color:#92400e;font-size:13px">
                 <div><strong>Bono seleccionado</strong></div>
@@ -102,7 +108,7 @@
 
           <div class="field" style="display:flex; justify-content:flex-end; gap:8px;">
             <div v-if="form.payment_type === 'single'">
-              <button type="button" class="muted" @click.prevent="handleSinglePayment" :disabled="submitting">Pagar sesión individual</button>
+              <button type="button" class="muted" @click.prevent="handleSinglePayment" :disabled="submitting">Registrar Pago Simple</button>
             </div>
           </div>
 
@@ -160,6 +166,7 @@ const form = reactive({ patient_id: '', status: 'scheduled', start_time: '', end
 
 const statusOptions = [
   { value: 'scheduled', label: 'Programada', color: '#99b1ff' },
+  { value: 'rescheduled', label: 'Reprogramada', color: '#f59e0b' },
   { value: 'completed', label: 'Completada', color: '#a1f7bf' },
   { value: 'canceled', label: 'Cancelada', color: '#ffcccc' }
 ]
@@ -182,6 +189,23 @@ const bonusesLoading = ref(false)
 const selectedBonus = computed(() => {
   if (!form.use_bonus_id || !bonuses.value) return null
   return bonuses.value.find(b => String(b.id) === String(form.use_bonus_id)) || null
+})
+
+function isExpiredLocal(b) {
+  if (!b || !b.expires_at) return false
+  try {
+    const ex = new Date(b.expires_at)
+    // treat the expiration day as inclusive -> end of day
+    ex.setHours(23,59,59,999)
+    return Date.now() > ex.getTime()
+  } catch (e) {
+    return false
+  }
+}
+
+const hasAvailableBonuses = computed(() => {
+  if (!bonuses.value || bonuses.value.length === 0) return false
+  return bonuses.value.some(b => (b.remaining_sessions && b.remaining_sessions > 0) && !isExpiredLocal(b))
 })
 
 // Keep form.bonus_name in sync with selected bonus id
@@ -303,8 +327,13 @@ async function appointmentCancel() {
 }
 
 function handleSinglePayment() {
-  // Create appointment and redirect to payment flow
-  submit(true)
+  // On edit allow "pay now" flow, but when creating a new appointment
+  // do not redirect to payments (user requested no redirect on create)
+  if (isEdit.value && route.params.id) {
+    submit(true)
+  } else {
+    submit(false)
+  }
 }
 
 // formatDate moved to shared/appointmentHelpers
@@ -312,6 +341,11 @@ function handleSinglePayment() {
 function goToAppointment(id) {
   if (!id) return
   router.push(`/appointments/${id}`)
+}
+
+function goToPatient(id) {
+  if (!id || id === '__create') return
+  router.push(`/patients/${id}`)
 }
 
 const isFutureAppointment = computed(() => {
@@ -336,12 +370,16 @@ async function loadForEdit(id) {
     const data = res.data
     form.patient_id = data.patient_id || ''
     form.status = data.status || 'scheduled'
+    // If opened in reprogram mode, default the status to 'rescheduled'
+    if (mode.value === 'reprogram') {
+      form.status = 'rescheduled'
+    }
     isCanceled.value = (data.status === 'canceled' || data.status === 'cancelled')
     originalStart.value = data.start_time || null
     // allow reprogram only if now < start_time - 2 hours
     if (originalStart.value) {
       const startMs = new Date(originalStart.value).getTime()
-      canReprogramInForm.value = Date.now() < (startMs - (2 * 60 * 60 * 1000))
+      canReprogramInForm.value = Date.now() < (startMs - (1 * 60 * 60 * 1000))
     } else {
       canReprogramInForm.value = false
     }
@@ -426,7 +464,7 @@ async function submit(payNow = false) {
   Object.keys(errors).forEach(k => delete errors[k])
   // If trying to reprogram a canceled appointment, ensure it's allowed
   if (isCanceled.value && mode.value === 'reprogram' && !canReprogramInForm.value) {
-    errors.general = ['Reprogramación no permitida fuera del plazo de 2 horas antes del inicio']
+    errors.general = ['Reprogramación no permitida fuera del plazo de 1 horas antes del inicio']
     submitting.value = false
     return
   }
@@ -447,19 +485,15 @@ async function submit(payNow = false) {
       bonus_name: form.bonus_name || undefined,
     }
 
-    // If reprogramming a canceled appointment, force status -> scheduled
-    if (isCanceled.value && mode.value === 'reprogram') {
-      payload.status = 'scheduled'
+    // If reprogramming (mode=reprogram) force status -> reprogrammed
+    if (mode.value === 'reprogram') {
+      payload.status = 'rescheduled'
     }
 
     if (isEdit.value && route.params.id) {
       await api.patch(`/appointments/${route.params.id}`, payload)
       toast.success('Cita actualizada')
-      if (payNow && route.params.id) {
-        router.push(`/payments?appointment_id=${route.params.id}`)
-      } else {
-        router.push('/appointments/day')
-      }
+      router.push('/appointments/day')
     } else {
       // If user selected 'bonus' as payment type but there are no bonuses, block and show error
       if (form.payment_type === 'bonus' && (!bonuses.value || bonuses.value.length === 0) && !payload.bonus_id) {
@@ -471,22 +505,27 @@ async function submit(payNow = false) {
       const res = await api.post('/appointments', payload)
       const createdId = res && res.data ? res.data.id : undefined
       toast.success('Cita creada')
-      if (payNow && createdId) {
-        router.push(`/payments?appointment_id=${createdId}`)
-      } else {
-        router.push('/appointments/day')
-      }
+      router.push('/appointments/day')
     }
   } catch (e) {
     if (e.response) {
       const status = e.response.status
       const data = e.response.data || {}
-      if (status === 422) {
-        const eobj = data.errors || {}
-        Object.assign(errors, eobj)
-      } else {
-        errors.general = [data.message || 'Error desconocido']
-      }
+        if (status === 422) {
+          // Backend may return structured validation errors or a simple error message
+          // Show SweetAlert if it's a concurrency error about exhausted bonus
+          const serverError = data.error || data.message || ''
+          if (typeof serverError === 'string' && serverError.indexOf('Bono agotado') !== -1) {
+            Swal.fire({ icon: 'error', title: 'Bono agotado', text: 'Bono agotado' })
+            errors.general = [serverError]
+          }
+          const eobj = data.errors || {}
+          Object.assign(errors, eobj)
+          // If there is a top-level message that's not validation, include it
+          if (!Object.keys(eobj).length && serverError) errors.general = [serverError]
+        } else {
+          errors.general = [data.message || 'Error desconocido']
+        }
     } else {
       errors.general = ['Error de red o servidor']
     }
