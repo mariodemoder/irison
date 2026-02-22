@@ -12,6 +12,12 @@ const status = ref('blocked')
 const trial_ends_at = ref(null)
 const loading = ref(true)
 
+// listado compacto: pacientes con bonos cerca de agotarse
+const lowBonusPatients = ref([])
+const lowBonusLoading = ref(true)
+
+const shortLowBonusList = computed(() => lowBonusPatients.value.slice(0, 5))
+
 const daysLeft = computed(() => {
   if (!trial_ends_at.value) return null
   const end = new Date(trial_ends_at.value)
@@ -65,7 +71,33 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+  // cargar listado compacto en paralelo
+  fetchLowBonuses()
 })
+
+async function fetchLowBonuses() {
+  try {
+    const res = await api.get('/bonuses/expiring')
+    console.log('bonuses/expiring response:', res.data) // revisar en consola
+    // Normalizar la respuesta a los campos que usa la plantilla
+    lowBonusPatients.value = (res.data || []).map(item => {
+      const bonusObj = item.bonus ?? item.bono ?? {}
+      return {
+        id: item.patient_id ?? item.id ?? item.patient?.id,
+        patient_name: item.patient_name ?? item.patient?.name ?? item.name ?? '—',
+        bonus_name: item.bonus_name ?? bonusObj.name ?? bonusObj.title ?? bonusObj.descripcion ?? '—',
+        expires_at: item.expires_at ?? bonusObj.expires_at ?? bonusObj.expiration ?? bonusObj.expiresAt ?? null,
+        sessions_left: item.sessions_left ?? item.remaining_sessions ?? item.sessions ?? 0,
+        // conservar objeto original por si hace falta
+        _raw: item
+      }
+    })
+  } catch (e) {
+    console.error('Error cargando bonos por agotarse', e)
+  } finally {
+    lowBonusLoading.value = false
+  }
+}
 
 function logoutAction() {
   logout(router)
@@ -94,6 +126,21 @@ function logoutAction() {
             <button class="btn btn-sm" @click.prevent="logoutAction">Cerrar sesión</button>
           </div>
         </div>
+      </div>
+
+      <!-- Listado compacto de bonos por agotarse -->
+      <div v-if="!lowBonusLoading && lowBonusPatients.length" class="compact-card" style="margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-weight:600">Bonos por agotarse</div>
+          <div class="small" style="font-size:12px;color:var(--text-muted,#6b7280)">Mostrando {{ shortLowBonusList.length }} de {{ lowBonusPatients.length }}</div>
+        </div>
+        <ul class="compact-list" style="margin-top:6px;">
+          <li v-for="p in shortLowBonusList" :key="p.id" class="compact-item">
+            Paciente <router-link :to="`/patients/${p.id}`" class="compact-link">{{ p.patient_name }}</router-link>
+            <span class="compact-bonus">· Bono: <strong>{{ p.bonus_name ?? '—' }}</strong><span v-if="p.expires_at"> · expira {{ p.expires_at }}</span></span>
+            <div style="float:right;color:var(--text-muted,#6b7280)">Queda {{ p.sessions_left }} sesión<span v-if="p.sessions_left > 1">es</span></div>
+          </li>
+        </ul>
       </div>
 
       <div v-if="status === 'trial'">
@@ -143,4 +190,20 @@ function logoutAction() {
 
 .alert { color: #b91c1c }
 .ok { color: #059669 }
+
+/* Compact list styles */
+.compact-card {
+  background: rgba(255,255,255,0.95);
+  padding: 8px 10px;
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(2,6,23,0.04);
+  font-size: 13px;
+}
+.compact-list { list-style:none;margin:6px 0 0;padding:0;max-height:88px;overflow:auto }
+.compact-item { padding:6px 0;border-bottom:1px solid rgba(0,0,0,0.04);color:var(--text,#111827) }
+.compact-item:last-child { border-bottom: none }
+.compact-link { color: var(--primary,#0369a1); font-weight:600; text-decoration:none }
+.compact-link:hover { text-decoration:underline }
+.compact-bonus { margin-left:8px; font-size:12px; color:var(--text-muted,#6b7280) }
+.compact-bonus strong { color:var(--text,#111827); font-weight:600 }
 </style>

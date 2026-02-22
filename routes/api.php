@@ -56,6 +56,8 @@ Route::middleware(['auth:sanctum', 'clinic', 'clinic.active'])->group(function (
     // Bonos: endpoints mínimos (list/create for patient + resource actions)
     Route::get('patients/{patient}/bonuses', [\App\Http\Controllers\Api\BonusController::class, 'forPatient']);
     Route::post('patients/{patient}/bonuses', [\App\Http\Controllers\Api\BonusController::class, 'storeForPatient']);
+    // Listado compacto para UI: pacientes con bonos con 1 sesión restante
+    Route::get('bonuses/expiring', [\App\Http\Controllers\Api\BonusController::class, 'expiring']);
     Route::apiResource('bonuses', \App\Http\Controllers\Api\BonusController::class)->only(['show','update','destroy']);
 
     // Citas: CRUD multitenant

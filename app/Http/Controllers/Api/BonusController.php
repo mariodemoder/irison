@@ -93,4 +93,35 @@ class BonusController extends Controller
         $bonus->delete();
         return response()->json([], 204);
     }
+
+    /**
+     * Devuelve un listado compacto de bonos con 1 sesión restante.
+     * Formato: array de objetos { id: patient_id, patient_name, sessions_left, bonus_id }
+     */
+    public function expiring(): JsonResponse
+    {
+        $query = Bonus::with('patient')
+            ->where('remaining_sessions', 1)
+            ->where(function($q){ $q->whereNull('expires_at')->orWhere('expires_at', '>', now()); });
+
+        $clinicId = app()->has('activeClinic') ? app()->get('activeClinic')->id : null;
+        if ($clinicId) {
+            $query->where('clinic_id', $clinicId);
+        }
+
+        $list = $query->orderBy('remaining_sessions', 'asc')->orderBy('updated_at', 'desc')->get();
+
+        $mapped = $list->map(function($b) {
+            return [
+                'id' => $b->patient ? $b->patient->id : null,
+                'patient_name' => $b->patient ? $b->patient->name : '—',
+                'sessions_left' => (int) $b->remaining_sessions,
+                'bonus_id' => $b->id,
+                'bonus_name' => $b->name ?? null,
+                'expires_at' => $b->expires_at ? $b->expires_at->toDateString() : null,
+            ];
+        })->filter(function($item){ return $item['id'] !== null; })->values();
+
+        return response()->json($mapped);
+    }
 }
