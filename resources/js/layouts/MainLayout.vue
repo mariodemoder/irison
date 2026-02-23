@@ -21,11 +21,14 @@
 
         <div class="flex items-center gap-4">
           <div class="header-card">
-            <div class="header-card-label">{{ clinic?.name ?? '—' }} — <router-link to="/profile" class="user-link">{{ user?.name ?? '—' }}</router-link></div>
-            <div class="header-card-sub">
-              <span :class="['status-dot', subscriptionState.color]" aria-hidden="true"></span>
-              <span class="sub-label">{{ subscriptionState.label }}</span>
+            <div class="header-card-meta">
+              <div class="header-card-label">{{ clinic?.name ?? '—' }} — <router-link to="/profile" class="user-link">{{ user?.name ?? '—' }}</router-link></div>
+              <div class="header-card-sub">
+                <span :class="['status-dot', subscriptionState.color]" aria-hidden="true"></span>
+                <span class="sub-label">{{ subscriptionState.label }}</span>
+              </div>
             </div>
+            <button class="logout-btn" @click.prevent="logoutAction">Cerrar sesión</button>
           </div>
         </div>
       </header>
@@ -39,13 +42,15 @@
 
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import logo from '../assets/fisiomeca.svg'
 import api from '../services/api'
+import logout from '../utils/logout'
 
 const MENU_OPEN_KEY = 'layout_menu_open'
 const open = ref(false)
 const route = useRoute()
+const router = useRouter()
 
 const user = ref(null)
 const clinic = ref(null)
@@ -102,6 +107,10 @@ function keepMenuOpen() {
   open.value = true
 }
 
+function logoutAction() {
+  logout(router)
+}
+
 function isActive(base) {
   const p = route.path || ''
   return p === base || p.startsWith(base + '/')
@@ -122,10 +131,13 @@ function isActive(base) {
 .status-dot.red { background: #ef4444 }
 
 .header-card { display:flex; align-items:center; gap:12px; background: rgba(255,255,255,0.95); padding:8px 12px; border-radius:10px; box-shadow: 0 6px 18px rgba(2,6,23,0.06) }
+.header-card-meta { display:flex; flex-direction:column; min-width: 220px; }
 .header-card-label { font-weight:600; color:#111827 }
 .user-link { color:#374151; text-decoration:none }
 .user-link:hover { text-decoration:underline }
 .header-card-sub { display:flex; align-items:center; gap:8px; color:#6b7280; font-size:13px }
 .sub-label { color:#6b7280 }
+.logout-btn { padding:6px 12px; border-radius:999px; border:1px solid #e5e7eb; background:#fff; color:#374151; font-size:13px; font-weight:600; white-space:nowrap }
+.logout-btn:hover { background:#f8fafc }
 </style>
 

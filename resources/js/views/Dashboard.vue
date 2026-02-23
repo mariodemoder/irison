@@ -1,22 +1,26 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import MainLayout from '../layouts/MainLayout.vue'
-import { useRouter } from 'vue-router'
-import logout from '../utils/logout'
 import api from '../services/api'
+import StatsCard from '../components/dashboard/StatsCard.vue'
+import LineChartCard from '../components/dashboard/LineChartCard.vue'
+import BarChartCard from '../components/dashboard/BarChartCard.vue'
 
-const router = useRouter()
 const user = ref(null)
 const clinic = ref(null)
 const status = ref('blocked')
 const trial_ends_at = ref(null)
 const loading = ref(true)
 
-// listado compacto: pacientes con bonos cerca de agotarse
 const lowBonusPatients = ref([])
 const lowBonusLoading = ref(true)
 
 const shortLowBonusList = computed(() => lowBonusPatients.value.slice(0, 5))
+
+const monthlyRevenue = [1200, 1500, 1800, 2100]
+const monthlyRevenueLabels = ['Ene', 'Feb', 'Mar', 'Abr']
+const weeklyAppointments = [20, 35, 28, 40]
+const weeklyAppointmentsLabels = ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4']
 
 const daysLeft = computed(() => {
   if (!trial_ends_at.value) return null
@@ -30,11 +34,29 @@ const subscriptionState = computed(() => {
   if (status.value === 'active') return { color: 'green', label: 'Suscripción activa' }
   if (status.value === 'trial') {
     if (daysLeft.value === null) return { color: 'red', label: 'Trial (sin fecha)' }
-    if (daysLeft.value > 7 | daysLeft.value < 15) return { color: 'yellow', label: `Te quedan ${daysLeft.value} días de prueba` }
-    if (daysLeft.value > 0 | daysLeft.value < 7) return { color: 'red', label: `Te quedan ${daysLeft.value} días de prueba` }
+    if (daysLeft.value > 7 && daysLeft.value < 15) return { color: 'yellow', label: `Te quedan ${daysLeft.value} días de prueba` }
+    if (daysLeft.value > 0 && daysLeft.value < 7) return { color: 'red', label: `Te quedan ${daysLeft.value} días de prueba` }
+    if (daysLeft.value >= 15) return { color: 'yellow', label: `Te quedan ${daysLeft.value} días de prueba` }
     return { color: 'red', label: 'Tu prueba ha finalizado' }
   }
   return { color: 'red', label: 'Suscripción vencida' }
+})
+
+const subscriptionValue = computed(() => {
+  if (status.value === 'active') return 'Activa'
+  if (status.value === 'trial') return daysLeft.value && daysLeft.value > 0 ? `${daysLeft.value} días` : 'Finalizada'
+  return 'Vencida'
+})
+
+const bonusSummary = computed(() => {
+  if (lowBonusLoading.value) return 'Cargando...'
+  return `${lowBonusPatients.value.length}`
+})
+
+const bonusSubtitle = computed(() => {
+  if (lowBonusLoading.value) return 'Bonos por agotarse'
+  if (!lowBonusPatients.value.length) return 'Sin bonos por agotarse'
+  return `Mostrando ${shortLowBonusList.value.length} de ${lowBonusPatients.value.length}`
 })
 
 async function subscribe() {
@@ -49,7 +71,6 @@ async function subscribe() {
 async function subscribeFake() {
   try {
     const res = await api.post('/subscribe/fake')
-    // actualizar estado en UI
     clinic.value = res.data.clinic
     status.value = res.data.status_clinic || status.value
     trial_ends_at.value = res.data.trial_ends_at || trial_ends_at.value
@@ -58,29 +79,10 @@ async function subscribeFake() {
   }
 }
 
-onMounted(async () => {
-    try {
-    const res = await api.get('/me')
-    user.value = res.data.user
-    clinic.value = res.data.clinic
-    status.value = res.data.status || status.value
-    trial_ends_at.value = res.data.trial_ends_at || null
-  } catch (e) {
-    console.error('Error cargando /me', e)
-    // si ocurre 403 por otra razón, mantenemos estado por defecto
-  } finally {
-    loading.value = false
-  }
-  // cargar listado compacto en paralelo
-  fetchLowBonuses()
-})
-
 async function fetchLowBonuses() {
   try {
     const res = await api.get('/bonuses/expiring')
-    console.log('bonuses/expiring response:', res.data) // revisar en consola
-    // Normalizar la respuesta a los campos que usa la plantilla
-    lowBonusPatients.value = (res.data || []).map(item => {
+    lowBonusPatients.value = (res.data || []).map((item) => {
       const bonusObj = item.bonus ?? item.bono ?? {}
       return {
         id: item.patient_id ?? item.id ?? item.patient?.id,
@@ -88,8 +90,6 @@ async function fetchLowBonuses() {
         bonus_name: item.bonus_name ?? bonusObj.name ?? bonusObj.title ?? bonusObj.descripcion ?? '—',
         expires_at: item.expires_at ?? bonusObj.expires_at ?? bonusObj.expiration ?? bonusObj.expiresAt ?? null,
         sessions_left: item.sessions_left ?? item.remaining_sessions ?? item.sessions ?? 0,
-        // conservar objeto original por si hace falta
-        _raw: item
       }
     })
   } catch (e) {
@@ -99,111 +99,163 @@ async function fetchLowBonuses() {
   }
 }
 
-function logoutAction() {
-  logout(router)
-}
+onMounted(async () => {
+  try {
+    const res = await api.get('/me')
+    user.value = res.data.user
+    clinic.value = res.data.clinic
+    status.value = res.data.status || status.value
+    trial_ends_at.value = res.data.trial_ends_at || null
+  } catch (e) {
+    console.error('Error cargando /me', e)
+  } finally {
+    loading.value = false
+  }
+
+  fetchLowBonuses()
+})
 </script>
 
 <template>
   <MainLayout>
     <div v-if="loading">Cargando...</div>
 
-    <div v-else>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+    <div v-else class="dashboard-container">
+      <header class="dashboard-header">
         <h1>Dashboard</h1>
+        <div class="clinic-badge">{{ clinic?.name ?? 'FisioMeca' }}</div>
+      </header>
 
-        <div class="sub-banner">
-          <div class="meta">
-            <div style="font-weight:600">{{ user?.name ?? '—' }}</div>
-            <div class="small">{{ clinic?.name ?? '—' }}</div>
-          </div>
+      <div class="dashboard-grid">
+        <StatsCard
+          title="Suscripción"
+          :value="subscriptionValue"
+          :subtitle="subscriptionState.label"
+          :details="`Usuario: ${user?.name ?? '—'}`"
+        >
+          <template #actions>
+            <button v-if="status === 'blocked'" class="btn btn-sm" @click.prevent="subscribe">Activar plan (Stripe)</button>
+            <button v-if="status === 'blocked'" class="btn btn-sm" @click.prevent="subscribeFake">Activar plan (fake)</button>
+          </template>
+        </StatsCard>
 
-          <div style="display:flex;align-items:center;gap:8px">
-            <span :class="['status-dot', subscriptionState.color]"></span>
-            <div style="font-size:13px">{{ subscriptionState.label }}</div>
-          </div>
-          <div style="margin-left:12px">
-            <button class="btn btn-sm" @click.prevent="logoutAction">Cerrar sesión</button>
-          </div>
-        </div>
+        <StatsCard
+          title="Bonos"
+          :value="bonusSummary"
+          :subtitle="bonusSubtitle"
+          :details="shortLowBonusList.length ? `${shortLowBonusList[0].patient_name} · ${shortLowBonusList[0].bonus_name}` : '—'"
+        />
+
+        <LineChartCard
+          title="Ingresos mensuales"
+          :labels="monthlyRevenueLabels"
+          :values="monthlyRevenue"
+        />
+
+        <BarChartCard
+          title="Citas por semana"
+          :labels="weeklyAppointmentsLabels"
+          :values="weeklyAppointments"
+        />
       </div>
 
-      <!-- Listado compacto de bonos por agotarse -->
-      <div v-if="!lowBonusLoading && lowBonusPatients.length" class="compact-card" style="margin-bottom:12px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <div style="font-weight:600">Bonos por agotarse</div>
-          <div class="small" style="font-size:12px;color:var(--text-muted,#6b7280)">Mostrando {{ shortLowBonusList.length }} de {{ lowBonusPatients.length }}</div>
-        </div>
-        <ul class="compact-list" style="margin-top:6px;">
-          <li v-for="p in shortLowBonusList" :key="p.id" class="compact-item">
-            Paciente <router-link :to="`/patients/${p.id}`" class="compact-link">{{ p.patient_name }}</router-link>
-            <span class="compact-bonus">· Bono: <strong>{{ p.bonus_name ?? '—' }}</strong><span v-if="p.expires_at"> · expira {{ p.expires_at }}</span></span>
-            <div style="float:right;color:var(--text-muted,#6b7280)">Queda {{ p.sessions_left }} sesión<span v-if="p.sessions_left > 1">es</span></div>
+      <div v-if="shortLowBonusList.length" class="bonus-inline card-list">
+        <div class="inline-title">Bonos por agotarse</div>
+        <ul>
+          <li v-for="p in shortLowBonusList" :key="`${p.id}-${p.bonus_name}`">
+            Paciente <router-link :to="`/patients/${p.id}`">{{ p.patient_name }}</router-link>
+            · Bono: <strong>{{ p.bonus_name }}</strong>
+            <span v-if="p.expires_at"> · expira {{ p.expires_at }}</span>
+            <span class="sessions"> · Queda {{ p.sessions_left }} sesión<span v-if="p.sessions_left > 1">es</span></span>
           </li>
         </ul>
-      </div>
-
-      <div v-if="status === 'trial'">
-        <p v-if="daysLeft !== null && daysLeft > 0">
-          Te quedan <strong>{{ daysLeft }}</strong> días de prueba
-        </p>
-        <p v-else>Tu prueba ha finalizado</p>
-      </div>
-
-      <div v-else-if="status === 'blocked'">
-        <p class="alert">Tu prueba ha finalizado</p>
-        <div style="display:flex;gap:8px;">
-          <button @click="subscribe" class="btn">Activar plan (Stripe)</button>
-          <button @click="subscribeFake" class="btn">Activar plan (fake)</button>
-        </div>
-      </div>
-
-      <div v-else-if="status === 'active'">
-        <p class="ok">Plan activo ✅</p>
-        <p>Bienvenido {{ user?.name ?? '—' }}</p>
-        <p>Clínica: {{ clinic?.name ?? '—' }}</p>
       </div>
     </div>
   </MainLayout>
 </template>
 
 <style scoped>
-/* Botón más pequeño */
-/* Buttons use global .btn styles from resources/css/app.css */
+.dashboard-container {
+  padding: 40px;
+  background: var(--bg-app);
+  min-height: 100vh;
+}
 
-/* Card float / sub-banner más compacto */
-.sub-banner {
+.dashboard-header {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  background: rgba(255,255,255,0.9);
-  padding: 8px 10px;
-  border-radius: 10px;
-  box-shadow: 0 6px 18px rgba(2,6,23,0.06);
+  margin-bottom: 32px;
 }
-.sub-banner .meta { display:flex;flex-direction:column }
-.sub-banner .small { font-size:12px; color:var(--text-muted,#6b7280) }
-.status-dot { width:10px;height:10px;border-radius:50%;display:inline-block }
-.status-dot.green { background: #10b981 }
-.status-dot.yellow { background: #f59e0b }
-.status-dot.red { background: #ef4444 }
 
-.alert { color: #b91c1c }
-.ok { color: #059669 }
-
-/* Compact list styles */
-.compact-card {
-  background: rgba(255,255,255,0.95);
-  padding: 8px 10px;
-  border-radius: 10px;
-  box-shadow: 0 6px 18px rgba(2,6,23,0.04);
-  font-size: 13px;
+.dashboard-header h1 {
+  margin: 0;
 }
-.compact-list { list-style:none;margin:6px 0 0;padding:0;max-height:88px;overflow:auto }
-.compact-item { padding:6px 0;border-bottom:1px solid rgba(0,0,0,0.04);color:var(--text,#111827) }
-.compact-item:last-child { border-bottom: none }
-.compact-link { color: var(--primary,#0369a1); font-weight:600; text-decoration:none }
-.compact-link:hover { text-decoration:underline }
-.compact-bonus { margin-left:8px; font-size:12px; color:var(--text-muted,#6b7280) }
-.compact-bonus strong { color:var(--text,#111827); font-weight:600 }
+
+.clinic-badge {
+  background: var(--secondary);
+  color: #fff;
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+}
+
+.bonus-inline {
+  margin-top: 24px;
+  background: var(--bg-card);
+  border: 1px solid #94a3b8;
+  border-radius: 20px;
+  padding: 16px 20px;
+}
+
+.inline-title {
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.bonus-inline ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.bonus-inline li {
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.bonus-inline li:last-child {
+  border-bottom: none;
+}
+
+.bonus-inline a {
+  color: var(--secondary);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.bonus-inline a:hover {
+  text-decoration: underline;
+}
+
+.sessions {
+  color: var(--text-muted, #6b7280);
+}
+
+@media (max-width: 900px) {
+  .dashboard-container {
+    padding: 18px;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
 </style>
