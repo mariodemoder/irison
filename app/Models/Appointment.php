@@ -64,7 +64,7 @@ class Appointment extends Model
      */
     public function applyBonus(int $bonusId, ?string $notes = null)
     {
-        $service = new \App\Services\BonusService();
+        $service = new \App\Services\Bonus\BonusService();
         return $service->useBonusForAppointment($bonusId, $this, $notes);
     }
 
@@ -73,7 +73,7 @@ class Appointment extends Model
      */
     public function restoreBonusUsageIfCancelled()
     {
-        $service = new \App\Services\BonusService();
+        $service = new \App\Services\Bonus\BonusService();
         return $service->restoreBonusIfCancelled($this);
     }
 }

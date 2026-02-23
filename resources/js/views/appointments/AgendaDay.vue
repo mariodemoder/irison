@@ -64,15 +64,13 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
-import { formatTime, formatDate, statusLabel, timeClass, formatTimeCalendar } from '../../shared/appointmentHelpers'
+import { statusLabel, timeClass, formatTimeCalendar } from '../../shared/appointmentHelpers'
 
 const router = useRouter()
 const appointments = ref([])
 const loading = ref(false)
 const date = ref(new Date().toISOString().slice(0,10))
 const query = ref('')
-const nextAppointment = ref(null)
-const tomorrowCount = ref(0)
 const displayDay = computed(() => {
   const d = new Date(date.value)
   return d.getDate()
@@ -97,54 +95,22 @@ async function load() {
   }
 }
 
-async function loadNext() {
-  try {
-    const now = new Date().toISOString()
-    const res = await api.get('/appointments', { params: { from: now, per_page: 1 } })
-    const data = Array.isArray(res.data) ? res.data : (res.data.data || [])
-    nextAppointment.value = data.length ? data[0] : null
-  } catch (e) {
-    console.error('Error cargando próxima cita', e)
-    nextAppointment.value = null
-  }
-}
-
-async function checkTomorrow() {
-  try {
-    const d = new Date(date.value)
-    d.setDate(d.getDate() + 1)
-    const t = d.toISOString().slice(0,10)
-    const res = await api.get('/appointments', { params: { date: t } })
-    const data = Array.isArray(res.data) ? res.data : (res.data.data || [])
-    tomorrowCount.value = data.length
-  } catch (e) {
-    tomorrowCount.value = 0
-  }
-}
-
 function prevDay() {
   const d = new Date(date.value)
   d.setDate(d.getDate() - 1)
   date.value = d.toISOString().slice(0,10)
-  load(); loadNext(); checkTomorrow()
 }
 
 function nextDay() {
   const d = new Date(date.value)
   d.setDate(d.getDate() + 1)
   date.value = d.toISOString().slice(0,10)
-  load(); loadNext(); checkTomorrow()
 }
 
 onMounted(() => load())
-onMounted(() => {
-  load()
-  loadNext()
-  checkTomorrow()
-})
 
 watch(date, () => {
-  load(); loadNext(); checkTomorrow()
+  load()
 })
 
 function goToAppointment(id) {

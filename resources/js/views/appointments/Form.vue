@@ -145,7 +145,7 @@ import IconCancel from '../../components/icons/IconCancel.vue'
 import OptionSelect from '../../components/OptionSelect.vue'
 import { useToast } from 'vue-toastification'
 import Swal from 'sweetalert2'
-import { formatDate } from '../../shared/appointmentHelpers'
+import { formatDate, toDatetimeLocalValue } from '../../shared/appointmentHelpers'
 import { formatDMY } from '../../shared/dateHelpers'
 import {
   openCreatePatientPopup as sharedOpenCreatePatientPopup,
@@ -383,9 +383,8 @@ async function loadForEdit(id) {
     } else {
       canReprogramInForm.value = false
     }
-    // backend returns ISO datetime; convert to local input format
-    form.start_time = data.start_time ? new Date(data.start_time).toISOString().slice(0,16) : ''
-    form.end_time = data.end_time ? new Date(data.end_time).toISOString().slice(0,16) : ''
+    form.start_time = toDatetimeLocalValue(data.start_time)
+    form.end_time = toDatetimeLocalValue(data.end_time)
     form.notes = data.notes || ''
     // Load bonuses for this patient so we can show the associated bonus if any
     if (form.patient_id) {

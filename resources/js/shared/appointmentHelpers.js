@@ -1,7 +1,49 @@
+export function parseAppointmentDateTime(value) {
+  if (!value) return null
+
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value
+  }
+
+  const raw = String(value).trim()
+  if (!raw) return null
+
+  const sqlMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/)
+  if (sqlMatch) {
+    const [, y, m, d, hh, mm, ss] = sqlMatch
+    const parsed = new Date(Number(y), Number(m) - 1, Number(d), Number(hh), Number(mm), Number(ss || '0'))
+    return Number.isNaN(parsed.getTime()) ? null : parsed
+  }
+
+  const parsed = new Date(raw)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+
+export function toDatetimeLocalValue(value) {
+  const raw = value == null ? '' : String(value).trim()
+  if (!raw) return ''
+
+  const sqlLike = raw.match(/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?$/)
+  if (sqlLike) {
+    return raw.replace(' ', 'T').slice(0, 16)
+  }
+
+  const parsed = parseAppointmentDateTime(raw)
+  if (!parsed) return ''
+
+  const yyyy = parsed.getFullYear()
+  const mm = String(parsed.getMonth() + 1).padStart(2, '0')
+  const dd = String(parsed.getDate()).padStart(2, '0')
+  const hh = String(parsed.getHours()).padStart(2, '0')
+  const min = String(parsed.getMinutes()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}T${hh}:${min}`
+}
+
 export function formatTime(dt) {
   if (!dt) return '—'
   try {
-    const d = new Date(dt)
+    const d = parseAppointmentDateTime(dt)
+    if (!d) return dt
       // Forzar formato 24h (sin AM/PM) para consistencia en la UI
       return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
   } catch (e) {
@@ -12,7 +54,8 @@ export function formatTime(dt) {
   export function formatTimeCalendar(dt) {
     if (!dt) return '—'
     try {
-      const d = new Date(dt)
+      const d = parseAppointmentDateTime(dt)
+      if (!d) return dt
       let hh = d.getHours()
       let mm = d.getMinutes()
       // truncar al múltiplo de 5 (no avanzar al siguiente intervalo)
@@ -27,7 +70,8 @@ export function formatTime(dt) {
 export function formatDate(d) {
   if (!d) return ''
   try {
-    const dt = new Date(d)
+    const dt = parseAppointmentDateTime(d)
+    if (!dt) return d
     // Fecha + hora en formato legible sin AM/PM
     return dt.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
   } catch (e) {
@@ -38,7 +82,8 @@ export function formatDate(d) {
 export function formatDateShort(dt) {
   if (!dt) return ''
   try {
-    const d = new Date(dt)
+    const d = parseAppointmentDateTime(dt)
+    if (!d) return dt
     const day = String(d.getDate()).padStart(2, '0')
     const month = String(d.getMonth() + 1).padStart(2, '0')
     const year = d.getFullYear()

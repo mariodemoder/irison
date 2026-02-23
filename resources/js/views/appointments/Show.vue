@@ -82,7 +82,7 @@ import MainLayout from '../../layouts/MainLayout.vue'
 import IconCancel from '../../components/icons/IconCancel.vue'
 import { useToast } from 'vue-toastification'
 import Swal from 'sweetalert2'
-import { statusLabel, formatDateShort, formatTime } from '../../shared/appointmentHelpers'
+import { statusLabel, formatDateShort, formatTime, parseAppointmentDateTime } from '../../shared/appointmentHelpers'
 import { appointmentCancelShared } from '../../shared/formHelpers'
 
 const route = useRoute()
@@ -98,7 +98,8 @@ const isFutureAppointment = computed(() => {
   try {
     const t = appointment.value.start_time
     if (!t) return false
-    const dt = new Date(t)
+    const dt = parseAppointmentDateTime(t)
+    if (!dt) return false
     return dt.getTime() > Date.now()
   } catch (e) {
     return false
@@ -110,7 +111,8 @@ const effectiveStatus = computed(() => {
   const s = appointment.value.status
   if (s === 'scheduled' && appointment.value.end_time) {
     try {
-      if (new Date(appointment.value.end_time).getTime() < Date.now()) return 'completed'
+      const end = parseAppointmentDateTime(appointment.value.end_time)
+      if (end && end.getTime() < Date.now()) return 'completed'
     } catch (e) {
       // ignore parse errors
     }
@@ -151,7 +153,12 @@ function computeReprogramAllowance() {
     canReprogram.value = false
     return
   }
-  const start = new Date(appointment.value.start_time).getTime()
+  const startDate = parseAppointmentDateTime(appointment.value.start_time)
+  if (!startDate) {
+    canReprogram.value = false
+    return
+  }
+  const start = startDate.getTime()
   const threshold = start - (1 * 60 * 60 * 1000) // 1 hours before
   canReprogram.value = Date.now() < threshold
 }

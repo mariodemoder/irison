@@ -1,0 +1,301 @@
+<?php
+declare(strict_types=1);
+
+namespace App\Services\Appointments;
+
+use Some\Dependency;
+
+use App\Models\Appointment;
+use App\Models\Bonus;
+use App\Models\BonusUsage;
+use App\Services\Availability\CheckAvailability;
+use App\Services\Bonus\BonusService;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
+use DomainException;
+
+class AppointmentService
+{
+    public function list(array $filters)
+    {
+        // Auto-complete scheduled whose end_time passed
+        Appointment::where('status', 'scheduled')
+            ->where('end_time', '<', Carbon::now())
+            ->update(['status' => 'completed']);
+
+        $query = Appointment::with('patient');
+
+        if (!empty($filters['date'])) {
+            $date = Carbon::parse($filters['date']);
+            $query->whereBetween('start_time', [
+                $date->startOfDay()->toDateTimeString(),
+                $date->endOfDay()->toDateTimeString(),
+            ]);
+        } else {
+            if (!empty($filters['from'])) {
+                $query->where('start_time', '>=', $filters['from']);
+            }
+            if (!empty($filters['to'])) {
+                $query->where('end_time', '<=', $filters['to']);
+            }
+        }
+
+        return $query->orderBy('start_time')->get();
+    }
+
+    public function create(array $data)
+    {
+        return DB::transaction(function () use ($data) {
+            $clinicId = $this->resolveClinic($data);
+
+            $this->checkAvailability($clinicId, $data);
+
+            $this->validatePaymentRules($data, $clinicId);
+
+            $data['clinic_id'] = $clinicId;
+            if (isset($data['use_bonus_id'])) {
+                $data['bonus_id'] = $data['use_bonus_id'];
+            }
+
+            $appointment = Appointment::create($data);
+
+            if (($data['payment_type'] ?? null) === 'bonus') {
+                app(BonusService::class)
+                    ->useBonusForAppointment(
+                        $data['use_bonus_id'],
+                        $appointment,
+                        $data['bonus_notes'] ?? null
+                    );
+            }
+
+            return $appointment->load(['patient', 'bonus']);
+        });
+    }
+
+    public function show(Appointment $appointment, array $params = [])
+    {
+        // If use_bonus_id requested, try to apply via BonusService
+        if (!empty($params['use_bonus_id'])) {
+            try {
+                $usage = app(BonusService::class)
+                    ->useBonusForAppointment(
+                        $params['use_bonus_id'],
+                        $appointment,
+                        $params['bonus_notes'] ?? null
+                    );
+
+                $appointment->load(['bonus', 'patient']);
+                return ['appointment' => $appointment, 'bonus_usage' => $usage];
+            } catch (\Exception $e) {
+                throw new DomainException($e->getMessage());
+            }
+        }
+
+        $appointment->load(['bonus', 'patient']);
+        return $appointment;
+    }
+
+    public function update(Appointment $appointment, array $data)
+    {
+        return DB::transaction(function () use ($appointment, $data) {
+            $oldPaymentType = $appointment->payment_type;
+            $newPaymentType = $data['payment_type'] ?? $oldPaymentType;
+
+            if ($this->needsAvailabilityCheck($data)) {
+                $this->checkAvailability($appointment->clinic_id, $data, $appointment->id);
+            }
+
+            // switching from bonus -> single: restore usage
+            if ($oldPaymentType === 'bonus' && $newPaymentType === 'single') {
+                // update appointment first (clear bonus reference)
+                $appointment->update(array_merge($data, ['payment_type' => 'single', 'bonus_id' => null]));
+                app(BonusService::class)->restoreBonusIfCancelled($appointment);
+
+                return $appointment->load(['patient', 'bonus']);
+            }
+
+            // switching to bonus (consume or change)
+            if ($newPaymentType === 'bonus') {
+                $targetBonusId = $data['use_bonus_id'] ?? $appointment->bonus_id;
+
+                if (empty($targetBonusId)) {
+                    throw new DomainException('Debe seleccionar un bono al cambiar a payment_type=bonus');
+                }
+
+                $this->validateBonusForAppointment($targetBonusId, $appointment);
+
+                $bonusService = app(BonusService::class);
+
+                // If previously bonus with different bonus -> restore old usage first
+                if ($oldPaymentType === 'bonus' && $appointment->bonus_id && $appointment->bonus_id != $targetBonusId) {
+                    $bonusService->restoreBonusIfCancelled($appointment);
+                }
+
+                // persist new bonus_id and payment_type before attempting consumption
+                $appointment->update(array_merge($data, ['payment_type' => 'bonus', 'bonus_id' => $targetBonusId]));
+
+                // if an existing usage exists for this appointment and bonus, reuse it
+                $existing = BonusUsage::where('bonus_id', $targetBonusId)
+                    ->where('appointment_id', $appointment->id)
+                    ->first();
+
+                if ($existing) {
+                    $usage = $existing;
+                } else {
+                    $usage = $bonusService->useBonusForAppointment(
+                        $targetBonusId,
+                        $appointment,
+                        $data['bonus_notes'] ?? null
+                    );
+                }
+
+                return ['appointment' => $appointment->load(['patient', 'bonus']), 'bonus_usage' => $usage];
+            }
+
+            // default: regular update
+            if (isset($data['use_bonus_id'])) {
+                $data['bonus_id'] = $data['use_bonus_id'];
+            }
+
+            $appointment->update($data);
+
+            return $appointment->load(['patient', 'bonus']);
+        });
+    }
+
+    public function cancel(Appointment $appointment)
+    {
+        return DB::transaction(function () use ($appointment) {
+            $appointment->update(['status' => 'canceled']);
+
+            if ($appointment->payment_type === 'bonus' || $appointment->bonus_id) {
+                app(BonusService::class)->restoreBonusIfCancelled($appointment);
+
+                $appointment->update([
+                    'bonus_id' => null,
+                    'payment_type' => 'single'
+                ]);
+            }
+
+            return $appointment;
+        });
+    }
+
+    public function delete(Appointment $appointment)
+    {
+        $appointment->delete();
+    }
+
+    /* ---------- helpers ---------- */
+
+private function resolveClinic(array $data)
+{
+    // bound() es explícito para bindings del contenedor
+    if (app()->bound('activeClinic')) {
+        $clinic = app('activeClinic');
+        return $clinic->id ?? null;
+    }
+
+    return $data['clinic_id'] ?? null;
+}
+
+    private function checkAvailability($clinicId, array $data, $ignoreId = null)
+    {
+        $checker = app(CheckAvailability::class);
+
+        $start = Carbon::parse($data['start_time']);
+        $end = Carbon::parse($data['end_time']);
+
+        if (!is_numeric($clinicId)) {
+            throw new DomainException('Clínica inválida para validar disponibilidad');
+        }
+
+        $patientId = null;
+        if (array_key_exists('patient_id', $data) && $data['patient_id'] !== null && $data['patient_id'] !== '') {
+            if (!is_numeric($data['patient_id'])) {
+                throw new DomainException('Paciente inválido para validar disponibilidad');
+            }
+            $patientId = (int) $data['patient_id'];
+        }
+
+        $ignoreAppointmentId = null;
+        if ($ignoreId !== null && $ignoreId !== '') {
+            if (!is_numeric($ignoreId)) {
+                throw new DomainException('Cita inválida para validar disponibilidad');
+            }
+            $ignoreAppointmentId = (int) $ignoreId;
+        }
+
+        $validation = $checker->validate(
+            (int) $clinicId,
+            $start,
+            $end,
+            $patientId,
+            $ignoreAppointmentId
+        );
+
+        if (!$validation['valid']) {
+            throw new DomainException(implode(', ', $validation['errors']));
+        }
+    }
+
+    private function validatePaymentRules(array $data, $clinicId)
+    {
+        if (($data['payment_type'] ?? null) !== 'bonus') {
+            return;
+        }
+
+        if (empty($data['use_bonus_id'])) {
+            throw new DomainException('Debe seleccionar un bono');
+        }
+
+        $bonus = Bonus::find($data['use_bonus_id']);
+
+        if (!$bonus) {
+            throw new DomainException('Bono no encontrado');
+        }
+
+        if ($bonus->clinic_id != $clinicId) {
+            throw new DomainException('Bono no pertenece a esta clínica');
+        }
+
+        if ($bonus->remaining_sessions <= 0) {
+            throw new DomainException('Bono agotado');
+        }
+
+        if ($bonus->isExpired()) {
+            throw new DomainException('Bono expirado');
+        }
+    }
+
+    private function needsAvailabilityCheck(array $data): bool
+    {
+        return isset($data['start_time']) || isset($data['end_time']);
+    }
+
+    private function validateBonusForAppointment($bonusId, Appointment $appointment)
+    {
+        $bonus = Bonus::find($bonusId);
+
+        if (!$bonus) {
+            throw new DomainException('Bono no encontrado');
+        }
+
+        if ($bonus->patient_id != $appointment->patient_id) {
+            throw new DomainException('El bono no pertenece a este paciente');
+        }
+
+        $clinicId = $this->resolveClinic(['clinic_id' => $appointment->clinic_id]);
+        if ($bonus->clinic_id != $clinicId) {
+            throw new DomainException('El bono no pertenece a esta clínica');
+        }
+
+        if ($bonus->remaining_sessions <= 0) {
+            throw new DomainException('Bono agotado');
+        }
+
+        if ($bonus->isExpired()) {
+            throw new DomainException('Bono expirado');
+        }
+    }
+}

@@ -6,10 +6,10 @@
       </div>
 
       <nav class="space-y-1">
-        <router-link :class="[{ 'menu-active': isActive('/dashboard') }, 'block px-3 py-2 rounded text-gray-800 hover:bg-gray-100']" to="/dashboard">Dashboard</router-link>
-        <router-link :class="[{ 'menu-active': isActive('/patients') }, 'block px-3 py-2 rounded text-gray-800 hover:bg-gray-100']" to="/patients">Pacientes</router-link>
-        <router-link :class="[{ 'menu-active': isActive('/appointments') }, 'block px-3 py-2 rounded text-gray-800 hover:bg-gray-100']" to="/appointments">Agenda</router-link>
-        <router-link :class="[{ 'menu-active': isActive('/payments') }, 'block px-3 py-2 rounded text-gray-800 hover:bg-gray-100']" to="/payments">Pagos</router-link>
+        <router-link :class="[{ 'menu-active': isActive('/dashboard') }, 'block px-3 py-2 rounded text-gray-800 hover:bg-gray-100']" to="/dashboard" @click="keepMenuOpen">Dashboard</router-link>
+        <router-link :class="[{ 'menu-active': isActive('/patients') }, 'block px-3 py-2 rounded text-gray-800 hover:bg-gray-100']" to="/patients" @click="keepMenuOpen">Pacientes</router-link>
+        <router-link :class="[{ 'menu-active': isActive('/appointments') }, 'block px-3 py-2 rounded text-gray-800 hover:bg-gray-100']" to="/appointments" @click="keepMenuOpen">Agenda</router-link>
+        <router-link :class="[{ 'menu-active': isActive('/payments') }, 'block px-3 py-2 rounded text-gray-800 hover:bg-gray-100']" to="/payments" @click="keepMenuOpen">Pagos</router-link>
       </nav>
     </aside>
 
@@ -38,11 +38,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import logo from '../assets/fisiomeca.svg'
 import api from '../services/api'
 
+const MENU_OPEN_KEY = 'layout_menu_open'
 const open = ref(false)
 const route = useRoute()
 
@@ -72,6 +73,13 @@ const subscriptionState = computed(() => {
 })
 
 onMounted(async () => {
+  const persistedOpen = localStorage.getItem(MENU_OPEN_KEY)
+  if (persistedOpen === null) {
+    open.value = window.innerWidth >= 768
+  } else {
+    open.value = persistedOpen === '1'
+  }
+
   try {
     const res = await api.get('/me')
     user.value = res.data.user
@@ -85,6 +93,14 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+watch(open, (value) => {
+  localStorage.setItem(MENU_OPEN_KEY, value ? '1' : '0')
+})
+
+function keepMenuOpen() {
+  open.value = true
+}
 
 function isActive(base) {
   const p = route.path || ''

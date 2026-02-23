@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureClinic;
 use App\Http\Middleware\EnsureClinicIsActive;
+use App\Http\Middleware\SetActiveClinic;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -15,6 +16,8 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->prependToGroup('api', SetActiveClinic::class);
+
         $middleware->alias([
             'clinic' => EnsureClinic::class,
             'clinic.active' => EnsureClinicIsActive::class,
