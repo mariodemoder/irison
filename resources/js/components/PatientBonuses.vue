@@ -2,7 +2,14 @@
   <div class="patient-bonuses">
     <div style="display:flex; justify-content:space-between; align-items:center">
       <h3 style="margin:0"></h3>
-      <div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button
+          class="toggle-canceled-btn"
+          @click="toggleInactiveVisibility"
+          :title="showInactiveBonuses ? 'Ocultar bonos expirados o agotados' : 'Ver bonos expirados o agotados'"
+        >
+          🔎
+        </button>
         <button @click="showForm = !showForm" class="primary" style="padding:6px 10px;font-size:13px">Crear</button>
       </div>
     </div>
@@ -36,7 +43,7 @@
 
     <div class="bonus-list">
       <div
-        v-for="b in orderedBonuses"
+        v-for="b in visibleBonuses"
         :key="b.id"
         class="bonus-card"
         :class="[b.status, { new: b.justCreated }]"
@@ -90,6 +97,7 @@ const props = defineProps({ patientId: { type: [String, Number], required: true 
 const emit = defineEmits(['active-bonus-count'])
 const bonuses = ref([])
 const showForm = ref(false)
+const showInactiveBonuses = ref(false)
 const form = ref({ name: 'Bono', total_sessions: 1, price: 0, expires_at: '' })
 const toast = useToast()
 
@@ -115,16 +123,23 @@ function normalizeBonus(b) {
   }
 }
 
-// Ordered bonuses: active first, last second, exhausted last
-const orderedBonuses = computed(() => {
+const visibleBonuses = computed(() => {
+  const filtered = showInactiveBonuses.value
+    ? bonuses.value
+    : bonuses.value.filter(b => b.status !== 'expired' && b.status !== 'exhausted')
+
   const order = { active: 0, last: 1, exhausted: 2, expired: 2 }
-  return [...bonuses.value].sort((a, b) => {
+  return [...filtered].sort((a, b) => {
     const oa = order[a.status] ?? 99
     const ob = order[b.status] ?? 99
     if (oa !== ob) return oa - ob
     return (b.id || 0) - (a.id || 0)
   })
 })
+
+function toggleInactiveVisibility() {
+  showInactiveBonuses.value = !showInactiveBonuses.value
+}
 
 function emitActiveCount() {
   const count = bonuses.value.filter(b => b.status === 'active' || b.status === 'last').length
@@ -209,6 +224,26 @@ function prefillRenew(b) {
 .primary { padding:6px 12px; border-radius:9999px; border:2px solid #3b82f6; color:#3b82f6; background:#fff }
 .muted { padding:6px 12px; border-radius:8px; border:1px solid #e5e7eb; background:#fff }
 .action-btn { padding:4px 8px; border-radius:8px; border:1px solid #e5e7eb; background:#fff; font-size:12px }
+
+.toggle-canceled-btn {
+  width:32px;
+  height:32px;
+  border-radius:9999px;
+  border:1px solid #fca5a5;
+  color:#f87171;
+  background:transparent;
+  font-size:13px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  opacity:0.9;
+}
+
+.toggle-canceled-btn:hover {
+  background:transparent;
+  border-color:#f87171;
+  color:#ef4444;
+}
 
 /* 6️⃣ Estilos UX profesional */
 .bonus-list {

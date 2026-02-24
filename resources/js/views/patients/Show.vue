@@ -44,13 +44,20 @@
           <div class="history-card">
             <div class="history-title" style="display:flex;justify-content:space-between;align-items:center">
               <div>Citas</div>
-              <div>
+              <div style="display:flex;gap:8px;align-items:center">
+                <button
+                  class="toggle-canceled-btn"
+                  @click.prevent="toggleCanceledVisibility"
+                  :title="showCanceledAppointments ? 'Ocultar citas canceladas' : 'Ver citas canceladas'"
+                >
+                  🔎
+                </button>
                 <button class="primary" @click.prevent="createAppointment" style="padding:6px 10px;font-size:13px">Crear</button>
               </div>
             </div>
-            <div v-if="appointments && appointments.length"> 
+            <div v-if="filteredAppointments && filteredAppointments.length"> 
               <ul>
-                <li v-for="a in appointments" :key="a.id" role="button" tabindex="0" @click.prevent="goToAppointment(a.id)" @keydown.enter.prevent="goToAppointment(a.id)" style="cursor:pointer">
+                <li v-for="a in filteredAppointments" :key="a.id" role="button" tabindex="0" @click.prevent="goToAppointment(a.id)" @keydown.enter.prevent="goToAppointment(a.id)" style="cursor:pointer">
                   <div style="display:flex; gap:10px; align-items:center">
                     <div>
                       <strong>{{ formatDateShort(a.start_time) }} {{ formatTime(a.start_time) }}</strong>
@@ -89,7 +96,7 @@
 
 <script setup>
 import MainLayout from '../../layouts/MainLayout.vue'
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import PatientBonuses from '../../components/PatientBonuses.vue'
 import { formatTime, formatDateShort, statusLabel } from '../../shared/appointmentHelpers'
 import { useRoute, useRouter } from 'vue-router'
@@ -105,6 +112,12 @@ const appointments = ref([])
 const packs = ref([])
 const payments = ref([])
 const loading = ref(false)
+const showCanceledAppointments = ref(false)
+
+const filteredAppointments = computed(() => {
+  if (showCanceledAppointments.value) return appointments.value
+  return appointments.value.filter(a => a.status !== 'canceled')
+})
 
 async function loadPatient() {
   loading.value = true
@@ -158,6 +171,10 @@ function goToAppointment(id) {
 function createAppointment() {
   if (!patient.value || !patient.value.id) return
   router.push({ path: '/appointments/create', query: { patient_id: patient.value.id } })
+}
+
+function toggleCanceledVisibility() {
+  showCanceledAppointments.value = !showCanceledAppointments.value
 }
 
 async function confirmDelete() {
@@ -215,6 +232,26 @@ async function confirmDelete() {
 
 .primary { padding:8px 14px; border-radius:9999px; border:2px solid #3b82f6; color:#3b82f6; background:#fff; font-weight:600 }
 .primary:hover { background:#eff6ff }
+
+.toggle-canceled-btn {
+  width:32px;
+  height:32px;
+  border-radius:9999px;
+  border:1px solid #fca5a5;
+  color:#f87171;
+  background:transparent;
+  font-size:13px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  opacity:0.9;
+}
+
+.toggle-canceled-btn:hover {
+  background:transparent;
+  border-color:#f87171;
+  color:#ef4444;
+}
 
 @media (max-width: 900px) {
   .history-grid { grid-template-columns: 1fr }

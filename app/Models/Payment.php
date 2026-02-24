@@ -9,11 +9,15 @@ use App\Models\Concerns\BelongsToClinic;
 class Payment extends Model
 {
     use BelongsToClinic;
-    public $timestamps = false;
 
     protected $fillable = [
         'patient_id', 'appointment_id',
-        'pack_id', 'amount', 'method', 'status'
+        'pack_id', 'amount', 'method', 'status', 'notes', 'paid_at'
+    ];
+
+    protected $casts = [
+        'paid_at' => 'datetime:Y-m-d H:i:s',
+        'amount' => 'decimal:2',
     ];
 
     public function clinic(): BelongsTo

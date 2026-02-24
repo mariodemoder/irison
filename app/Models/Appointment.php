@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use App\Models\Concerns\BelongsToClinic;
 use App\Models\BonusUsage;
@@ -43,9 +44,16 @@ class Appointment extends Model
         return $this->hasOne(ClinicalRecord::class);
     }
 
-    public function payment(): HasOne
+    public function payments(): HasMany
     {
-        return $this->hasOne(Payment::class);
+        return $this->hasMany(Payment::class);
+    }
+
+    public function totalPaid(): float
+    {
+        return (float) $this->payments()
+            ->where('status', 'completed')
+            ->sum('amount');
     }
 
     public function bonusUsage(): HasOne

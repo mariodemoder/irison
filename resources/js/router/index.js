@@ -13,6 +13,7 @@ import AgendaDay from '../views/appointments/AgendaDay.vue'
 import AppointmentsForm from '../views/appointments/Form.vue'
 import AppointmentsShow from '../views/appointments/Show.vue'
 import PaymentsIndex from '../views/payments/Index.vue'
+import PaymentsForm from '../views/payments/Form.vue'
 
 const routes = [
   { path: '/login', component: Login },
@@ -20,6 +21,8 @@ const routes = [
   { path: '/dashboard', component: Dashboard, meta: { auth: true } },
   { path: '/profile', component: Profile, meta: { auth: true } },
   { path: '/payments', component: PaymentsIndex, meta: { auth: true } },
+  { path: '/payments/create', component: PaymentsForm, meta: { auth: true } },
+  { path: '/payments/:id/edit', component: PaymentsForm, meta: { auth: true } },
   { path: '/patients', component: PatientsIndex, meta: { auth: true } },
   { path: '/patients/create', component: PatientsForm, meta: { auth: true } },
   { path: '/patients/:id', component: PatientsShow, meta: { auth: true } },

@@ -63,6 +63,11 @@ Route::middleware(['auth:sanctum', 'clinic', 'clinic.active'])->group(function (
     // Citas: CRUD multitenant
     Route::apiResource('appointments', AppointmentController::class);
 
+    // Pagos de clientes: listado, creación y detalle
+    Route::get('payments/appointment-options', [\App\Http\Controllers\Api\PaymentController::class, 'appointmentOptions']);
+    Route::apiResource('payments', \App\Http\Controllers\Api\PaymentController::class)
+        ->only(['index', 'store', 'show', 'update']);
+
     // Checkout con Stripe (inicia flujo de pago desde UI autenticada)
     Route::post('/stripe/checkout', \App\Http\Controllers\Api\StripeCheckoutController::class);
 
