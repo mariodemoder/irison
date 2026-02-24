@@ -75,6 +75,34 @@
             </div>
           </div>
 
+          <div class="field full" v-if="form.payment_type === 'single' && form.patient_id && form.patient_id !== '__create' && availableCredit > 0">
+            <label class="label">Crédito disponible</label>
+            <div class="inline-alert" style="margin-top:0">
+              <div>Saldo a favor: <strong>{{ availableCredit.toFixed(2) }}€</strong></div>
+            </div>
+
+            <div style="margin-top:10px; display:flex; flex-direction:column; gap:8px;">
+              <label style="display:flex; align-items:center; gap:8px">
+                <input type="checkbox" v-model="form.apply_credit" /> Aplicar crédito en esta cita
+              </label>
+
+              <div v-if="form.apply_credit" style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+                <label style="display:flex; align-items:center; gap:6px"><input type="radio" v-model="form.apply_credit_mode" value="auto" /> Automático</label>
+                <label style="display:flex; align-items:center; gap:6px"><input type="radio" v-model="form.apply_credit_mode" value="manual" /> Manual</label>
+                <input
+                  v-if="form.apply_credit_mode === 'manual'"
+                  v-model="form.apply_credit_amount"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  class="input"
+                  style="max-width:180px"
+                  placeholder="Importe a aplicar"
+                />
+              </div>
+            </div>
+          </div>
+
           <div v-if="(selectBonus || form.payment_type === 'bonus') && bonuses.length > 0" class="field full">
             <label class="label">Bono</label>
             <div v-if="bonusesLoading">Cargando bonos...</div>
@@ -162,7 +190,7 @@ const router = useRouter()
 const route = useRoute()
 const isEdit = ref(false)
 const mode = ref(route.query.mode || null)
-const form = reactive({ patient_id: '', status: 'scheduled', start_time: '', end_time: '', notes: '', use_bonus_id: '', bonus_notes: '', bonus_name: '', payment_type: 'single' })
+const form = reactive({ patient_id: '', status: 'scheduled', start_time: '', end_time: '', notes: '', use_bonus_id: '', bonus_notes: '', bonus_name: '', payment_type: 'single', apply_credit: false, apply_credit_mode: 'auto', apply_credit_amount: '' })
 
 const statusOptions = [
   { value: 'scheduled', label: 'Programada', color: '#99b1ff' },
@@ -208,6 +236,16 @@ const hasAvailableBonuses = computed(() => {
   return bonuses.value.some(b => (b.remaining_sessions && b.remaining_sessions > 0) && !isExpiredLocal(b))
 })
 
+const selectedPatient = computed(() => {
+  if (!form.patient_id || form.patient_id === '__create') return null
+  return patients.value.find(p => String(p.id) === String(form.patient_id)) || null
+})
+
+const availableCredit = computed(() => {
+  const amount = Number(selectedPatient.value?.available_credit || 0)
+  return Number.isFinite(amount) ? amount : 0
+})
+
 // Keep form.bonus_name in sync with selected bonus id
 watch(() => form.use_bonus_id, (id) => {
   if (!id) {
@@ -222,6 +260,8 @@ watch(() => form.use_bonus_id, (id) => {
 watch(() => form.payment_type, (v) => {
   if (v === 'bonus') {
     selectBonus.value = true
+    form.apply_credit = false
+    form.apply_credit_amount = ''
   } else {
     selectBonus.value = false
     form.use_bonus_id = ''
@@ -427,7 +467,19 @@ onMounted(async () => {
 
 // When selecting patient, load bonuses for that patient
 watch(() => form.patient_id, (id) => {
-  if (id && id !== '__create') loadBonusesForPatient(id)
+  if (id && id !== '__create') {
+    loadBonusesForPatient(id)
+    return
+  }
+
+  form.apply_credit = false
+  form.apply_credit_amount = ''
+})
+
+watch(() => form.apply_credit_mode, (modeValue) => {
+  if (modeValue !== 'manual') {
+    form.apply_credit_amount = ''
+  }
 })
 
 // When toggling 'selectBonus', ensure bonuses are loaded
@@ -450,6 +502,9 @@ watch(() => route.params.id, (id) => {
     form.start_time = ''
     form.end_time = ''
     form.notes = ''
+    form.apply_credit = false
+    form.apply_credit_mode = 'auto'
+    form.apply_credit_amount = ''
     Object.keys(errors).forEach(k => delete errors[k])
   }
 })
@@ -467,6 +522,22 @@ async function submit(payNow = false) {
     submitting.value = false
     return
   }
+
+  if (form.payment_type === 'single' && form.apply_credit && form.apply_credit_mode === 'manual') {
+    const manualAmount = Number(form.apply_credit_amount || 0)
+    if (!manualAmount || manualAmount <= 0) {
+      errors.general = ['Indica un importe de crédito válido']
+      submitting.value = false
+      return
+    }
+
+    if (manualAmount > availableCredit.value) {
+      errors.general = ['El importe de crédito supera el saldo disponible']
+      submitting.value = false
+      return
+    }
+  }
+
     try {
       // comprobar solapamiento antes de enviar (muestra aviso, pero no bloquea)
       await checkOverlap()
@@ -482,6 +553,10 @@ async function submit(payNow = false) {
       bonus_id: form.use_bonus_id || undefined,
       bonus_notes: form.bonus_notes || undefined,
       bonus_name: form.bonus_name || undefined,
+      apply_credit: form.payment_type === 'single' ? form.apply_credit : false,
+      apply_credit_amount: form.payment_type === 'single' && form.apply_credit && form.apply_credit_mode === 'manual'
+        ? form.apply_credit_amount
+        : undefined,
     }
 
     // If reprogramming (mode=reprogram) force status -> reprogrammed

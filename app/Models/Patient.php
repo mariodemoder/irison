@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\Concerns\BelongsToClinic;
 use App\Models\Bonus;
+use App\Models\CreditUsage;
 
 class Patient extends Model
 {
@@ -51,6 +52,26 @@ class Patient extends Model
     public function bonuses(): HasMany
     {
         return $this->hasMany(Bonus::class);
+    }
+
+    public function creditUsages(): HasMany
+    {
+        return $this->hasMany(CreditUsage::class);
+    }
+
+    public function creditUsed(): float
+    {
+        return (float) $this->creditUsages()->sum('amount');
+    }
+
+    public function availableCredit(): float
+    {
+        $creditTotal = (float) $this->payments()
+            ->where('concept', 'credit')
+            ->where('status', 'completed')
+            ->sum('amount');
+
+        return max($creditTotal - $this->creditUsed(), 0.0);
     }
 
     /**

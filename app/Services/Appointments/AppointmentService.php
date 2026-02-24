@@ -8,6 +8,8 @@ use Some\Dependency;
 use App\Models\Appointment;
 use App\Models\Bonus;
 use App\Models\BonusUsage;
+use App\Models\CreditUsage;
+use App\Models\Patient;
 use App\Services\Availability\CheckAvailability;
 use App\Services\Bonus\BonusService;
 use Illuminate\Support\Facades\DB;
@@ -68,6 +70,8 @@ class AppointmentService
                     );
             }
 
+            $this->applyCreditUsage($appointment, $data, 'usage_on_create');
+
             return $appointment->load(['patient', 'bonus']);
         });
     }
@@ -91,7 +95,7 @@ class AppointmentService
             }
         }
 
-        $appointment->load(['bonus', 'patient']);
+        $appointment->load(['bonus', 'patient', 'creditUsages']);
         return $appointment;
     }
 
@@ -159,6 +163,8 @@ class AppointmentService
 
             $appointment->update($data);
 
+            $this->applyCreditUsage($appointment, $data, 'usage_on_update');
+
             return $appointment->load(['patient', 'bonus']);
         });
     }
@@ -176,6 +182,8 @@ class AppointmentService
                     'payment_type' => 'single'
                 ]);
             }
+
+            $this->restoreCreditOnCancel($appointment);
 
             return $appointment;
         });
@@ -241,6 +249,18 @@ private function resolveClinic(array $data)
 
     private function validatePaymentRules(array $data, $clinicId)
     {
+        $wantsCredit = $this->shouldApplyCredit($data);
+
+        if ($wantsCredit && (($data['payment_type'] ?? 'single') === 'bonus')) {
+            throw new DomainException('No puedes aplicar crédito en una cita pagada con bono');
+        }
+
+        if (array_key_exists('apply_credit_amount', $data) && $data['apply_credit_amount'] !== null && $data['apply_credit_amount'] !== '') {
+            if (!is_numeric($data['apply_credit_amount']) || (float) $data['apply_credit_amount'] <= 0) {
+                throw new DomainException('El importe de crédito a aplicar debe ser mayor que cero');
+            }
+        }
+
         if (($data['payment_type'] ?? null) !== 'bonus') {
             return;
         }
@@ -297,5 +317,81 @@ private function resolveClinic(array $data)
         if ($bonus->isExpired()) {
             throw new DomainException('Bono expirado');
         }
+    }
+
+    private function shouldApplyCredit(array $data): bool
+    {
+        $applyFlag = filter_var($data['apply_credit'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $hasAmount = array_key_exists('apply_credit_amount', $data)
+            && $data['apply_credit_amount'] !== null
+            && $data['apply_credit_amount'] !== '';
+
+        return $applyFlag || $hasAmount;
+    }
+
+    private function applyCreditUsage(Appointment $appointment, array $data, string $reason): void
+    {
+        if (!$this->shouldApplyCredit($data)) {
+            return;
+        }
+
+        if (($appointment->payment_type ?? 'single') === 'bonus' || $appointment->bonus_id) {
+            throw new DomainException('No puedes aplicar crédito en una cita pagada con bono');
+        }
+
+        $patient = Patient::whereKey($appointment->patient_id)->lockForUpdate()->first();
+        if (!$patient) {
+            throw new DomainException('Paciente no encontrado para aplicar crédito');
+        }
+
+        $availableCredit = $patient->availableCredit();
+        if ($availableCredit <= 0) {
+            throw new DomainException('El paciente no tiene crédito disponible');
+        }
+
+        $manualAmount = array_key_exists('apply_credit_amount', $data)
+            && $data['apply_credit_amount'] !== null
+            && $data['apply_credit_amount'] !== ''
+            ? (float) $data['apply_credit_amount']
+            : null;
+
+        $amountToApply = $manualAmount !== null ? $manualAmount : $availableCredit;
+
+        if ($amountToApply <= 0) {
+            throw new DomainException('El importe de crédito a aplicar debe ser mayor que cero');
+        }
+
+        if ($amountToApply > $availableCredit) {
+            throw new DomainException('El importe supera el crédito disponible del paciente');
+        }
+
+        CreditUsage::create([
+            'clinic_id' => $appointment->clinic_id,
+            'patient_id' => $appointment->patient_id,
+            'appointment_id' => $appointment->id,
+            'amount' => $amountToApply,
+            'reason' => $reason,
+        ]);
+
+        if ($appointment->payment_status === 'pending') {
+            $appointment->update(['payment_status' => 'partially_paid']);
+        }
+    }
+
+    private function restoreCreditOnCancel(Appointment $appointment): void
+    {
+        $netUsedCredit = (float) $appointment->creditUsages()->sum('amount');
+
+        if ($netUsedCredit <= 0) {
+            return;
+        }
+
+        CreditUsage::create([
+            'clinic_id' => $appointment->clinic_id,
+            'patient_id' => $appointment->patient_id,
+            'appointment_id' => $appointment->id,
+            'amount' => -1 * $netUsedCredit,
+            'reason' => 'reversal_on_cancel',
+        ]);
     }
 }

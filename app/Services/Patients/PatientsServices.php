@@ -135,6 +135,7 @@ class PatientsServices
             'email' => $patient->email,
             'birth_date' => $patient->birth_date,
             'notes' => $patient->notes,
+            'available_credit' => $patient->availableCredit(),
             'appointments' => $appointments,
             'packs' => $packs,
             'payments' => $payments,
@@ -226,6 +227,7 @@ class PatientsServices
             'email' => $patient->email,
             'birth_date' => $patient->birth_date,
             'notes' => $patient->notes,
+            'available_credit' => $patient->availableCredit(),
             'created_at' => $patient->created_at,
             'updated_at' => $patient->updated_at,
         ];

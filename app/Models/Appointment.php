@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use App\Models\Concerns\BelongsToClinic;
 use App\Models\BonusUsage;
+use App\Models\CreditUsage;
 
 class Appointment extends Model
 {
@@ -47,6 +48,11 @@ class Appointment extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    public function creditUsages(): HasMany
+    {
+        return $this->hasMany(CreditUsage::class);
     }
 
     public function totalPaid(): float
