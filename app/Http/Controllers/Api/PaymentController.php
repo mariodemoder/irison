@@ -39,6 +39,24 @@ class PaymentController extends Controller
         return response()->json(['data' => $options]);
     }
 
+    public function packageOptions(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'patient_id' => 'required|integer|exists:patients,id',
+            'current_package_id' => 'nullable|integer|exists:packs,id',
+        ]);
+
+        $clinicId = (int) Auth::user()->clinic_id;
+
+        $options = $this->paymentService->packageOptionsForPatient(
+            (int) $data['patient_id'],
+            $clinicId,
+            isset($data['current_package_id']) ? (int) $data['current_package_id'] : null
+        );
+
+        return response()->json(['data' => $options]);
+    }
+
     public function store(Request $request): JsonResponse
     {
         try {

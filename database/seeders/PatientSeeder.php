@@ -57,7 +57,7 @@ class PatientSeeder extends Seeder
                     'clinic_id' => $clinic->id,
                     'patient_id' => $patient->id,
                     'appointment_id' => null,
-                    'pack_id' => null,
+                    'package_id' => null,
                     'amount' => $faker->randomFloat(2, 20, 200),
                     'method' => 'card',
                     'status' => 'pending',

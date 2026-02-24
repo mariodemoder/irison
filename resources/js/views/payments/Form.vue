@@ -22,6 +22,15 @@
             </select>
           </div>
 
+          <div class="field full">
+            <label class="label">Motivo del ingreso</label>
+            <select v-model="form.concept" class="input" required>
+              <option value="appointment">🧾 Pago de cita individual</option>
+              <option value="package">🎁 Compra de bono</option>
+              <option value="credit">💰 Adelanto (crédito a favor)</option>
+            </select>
+          </div>
+
           <div class="field">
             <label class="label">Importe (€)</label>
             <input v-model.number="form.amount" type="number" min="0" step="0.01" class="input" required />
@@ -50,8 +59,8 @@
             <input v-model="form.paid_at" type="datetime-local" class="input" />
           </div>
 
-          <div class="field full">
-            <label class="label">Cita (opcional)</label>
+          <div class="field full" v-if="form.concept === 'appointment'">
+            <label class="label">Cita (obligatoria)</label>
             <input
               v-model="appointmentQuery"
               type="text"
@@ -60,14 +69,41 @@
               :disabled="!form.patient_id"
             />
             <select v-model="form.appointment_id" class="input" :disabled="!form.patient_id || loadingAppointmentOptions">
-              <option value="">Sin cita asociada</option>
+              <option value="">Selecciona cita impaga/parcial</option>
               <option v-for="a in filteredAppointmentOptions" :key="a.id" :value="String(a.id)">
                 {{ appointmentLabel(a) }}
               </option>
             </select>
             <div class="help-text" v-if="loadingAppointmentOptions">Cargando citas...</div>
             <div class="help-text" v-else-if="form.patient_id && filteredAppointmentOptions.length === 0">
-              No hay citas no canceladas con saldo pendiente real para este paciente.
+              No hay citas impagas/parciales sin bono asignado para este paciente.
+            </div>
+          </div>
+
+          <div class="field full" v-if="form.concept === 'package'">
+            <label class="label">Bono (obligatorio)</label>
+            <input
+              v-model="packageQuery"
+              type="text"
+              class="input"
+              placeholder="Buscar bono por estado o importes"
+              :disabled="!form.patient_id"
+            />
+            <select v-model="form.package_id" class="input" :disabled="!form.patient_id || loadingPackageOptions">
+              <option value="">Selecciona bono impago/parcial</option>
+              <option v-for="pkg in filteredPackageOptions" :key="pkg.id" :value="String(pkg.id)">
+                {{ packageLabel(pkg) }}
+              </option>
+            </select>
+            <div class="help-text" v-if="loadingPackageOptions">Cargando bonos...</div>
+            <div class="help-text" v-else-if="form.patient_id && filteredPackageOptions.length === 0">
+              No hay bonos impagos/parciales para este paciente.
+            </div>
+          </div>
+
+          <div class="field full" v-if="form.concept === 'credit'">
+            <div class="help-text">
+              Este pago se registrará como adelanto y quedará como saldo a favor del paciente.
             </div>
           </div>
 
@@ -104,14 +140,19 @@ const errors = reactive({})
 const appointmentOptions = ref([])
 const loadingAppointmentOptions = ref(false)
 const appointmentQuery = ref('')
+const packageOptions = ref([])
+const loadingPackageOptions = ref(false)
+const packageQuery = ref('')
 
 const form = reactive({
   patient_id: '',
+  concept: 'appointment',
   amount: 0,
   method: 'cash',
   status: 'completed',
   paid_at: '',
   appointment_id: '',
+  package_id: '',
   notes: '',
 })
 
@@ -130,6 +171,25 @@ const filteredAppointmentOptions = computed(() => {
       String(option.refunded_amount),
       String(option.debt_amount),
       appointmentLabel(option),
+    ]
+
+    return values.some(v => String(v || '').toLowerCase().includes(q))
+  })
+})
+
+const filteredPackageOptions = computed(() => {
+  const q = (packageQuery.value || '').toLowerCase().trim()
+  if (!q) return packageOptions.value
+
+  return packageOptions.value.filter(option => {
+    const values = [
+      String(option.id),
+      option.status,
+      String(option.price),
+      String(option.completed_amount),
+      String(option.pending_amount),
+      String(option.outstanding_amount),
+      packageLabel(option),
     ]
 
     return values.some(v => String(v || '').toLowerCase().includes(q))
@@ -155,20 +215,34 @@ async function loadForEdit(id) {
     const res = await api.get(`/payments/${id}`)
     const data = res.data || {}
     form.patient_id = data.patient_id ? String(data.patient_id) : ''
+    form.concept = data.concept || (data.appointment_id ? 'appointment' : (data.package_id ? 'package' : 'credit'))
     form.amount = Number(data.amount || 0)
     form.method = data.method || 'cash'
     form.status = data.status || 'completed'
     form.paid_at = toDateTimeLocal(data.paid_at)
     form.appointment_id = data.appointment_id ? String(data.appointment_id) : ''
+    form.package_id = data.package_id ? String(data.package_id) : ''
     form.notes = data.notes || ''
 
     if (form.patient_id) {
-      await loadAppointmentOptions(Number(form.patient_id), data.appointment_id ? Number(data.appointment_id) : null)
+      await Promise.all([
+        loadAppointmentOptions(Number(form.patient_id), data.appointment_id ? Number(data.appointment_id) : null),
+        loadPackageOptions(Number(form.patient_id), data.package_id ? Number(data.package_id) : null),
+      ])
     }
   } catch (e) {
     toast.error('Error cargando pago')
     router.push('/payments')
   }
+}
+
+function packageLabel(pkg) {
+  const price = Number(pkg.price || 0)
+  const completed = Number(pkg.completed_amount || 0)
+  const pending = Number(pkg.pending_amount || 0)
+  const outstanding = Number(pkg.outstanding_amount || 0)
+
+  return `#${pkg.id} · ${pkg.status} · precio ${price.toFixed(2)}€ · pagado ${completed.toFixed(2)}€ · pendiente ${pending.toFixed(2)}€ · saldo ${outstanding.toFixed(2)}€`
 }
 
 function appointmentLabel(appointment) {
@@ -178,6 +252,30 @@ function appointmentLabel(appointment) {
   const debt = Number(appointment.debt_amount || 0)
 
   return `#${appointment.id} · ${start} · ${appointment.payment_status} · deuda ${debt.toFixed(2)}€ · pendiente ${pending.toFixed(2)}€ · reembolsado ${refunded.toFixed(2)}€`
+}
+
+async function loadPackageOptions(patientId, currentPackageId = null) {
+  if (!patientId) {
+    packageOptions.value = []
+    return
+  }
+
+  loadingPackageOptions.value = true
+  try {
+    const res = await api.get('/payments/package-options', {
+      params: {
+        patient_id: patientId,
+        current_package_id: currentPackageId || undefined,
+      },
+    })
+
+    packageOptions.value = Array.isArray(res.data?.data) ? res.data.data : []
+  } catch (e) {
+    packageOptions.value = []
+    errors.general = ['No se pudieron cargar los bonos del paciente']
+  } finally {
+    loadingPackageOptions.value = false
+  }
 }
 
 async function loadAppointmentOptions(patientId, currentAppointmentId = null) {
@@ -222,14 +320,28 @@ async function submit() {
   submitting.value = true
   clearErrors()
 
+  if (form.concept === 'appointment' && !form.appointment_id) {
+    errors.general = ['Debes seleccionar una cita impaga o parcial.']
+    submitting.value = false
+    return
+  }
+
+  if (form.concept === 'package' && !form.package_id) {
+    errors.general = ['Debes seleccionar un bono impago o parcial.']
+    submitting.value = false
+    return
+  }
+
   const payload = {
     patient_id: Number(form.patient_id),
+    concept: form.concept,
     amount: Number(form.amount),
     method: form.method,
     status: form.status,
     notes: form.notes || null,
     paid_at: form.paid_at || null,
-    appointment_id: form.appointment_id ? Number(form.appointment_id) : null,
+    appointment_id: form.concept === 'appointment' && form.appointment_id ? Number(form.appointment_id) : null,
+    package_id: form.concept === 'package' && form.package_id ? Number(form.package_id) : null,
   }
 
   try {
@@ -272,18 +384,41 @@ watch(
   async (value, oldValue) => {
     if (!value) {
       form.appointment_id = ''
+      form.package_id = ''
       appointmentOptions.value = []
+      packageOptions.value = []
       appointmentQuery.value = ''
+      packageQuery.value = ''
       return
     }
 
     const changedPatient = String(value) !== String(oldValue || '')
     if (changedPatient) {
       form.appointment_id = ''
+      form.package_id = ''
+      appointmentQuery.value = ''
+      packageQuery.value = ''
+    }
+
+    await Promise.all([
+      loadAppointmentOptions(Number(value), form.appointment_id ? Number(form.appointment_id) : null),
+      loadPackageOptions(Number(value), form.package_id ? Number(form.package_id) : null),
+    ])
+  }
+)
+
+watch(
+  () => form.concept,
+  (value) => {
+    if (value !== 'appointment') {
+      form.appointment_id = ''
       appointmentQuery.value = ''
     }
 
-    await loadAppointmentOptions(Number(value), form.appointment_id ? Number(form.appointment_id) : null)
+    if (value !== 'package') {
+      form.package_id = ''
+      packageQuery.value = ''
+    }
   }
 )
 </script>

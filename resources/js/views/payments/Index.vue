@@ -27,6 +27,12 @@
           <option value="card">Tarjeta</option>
           <option value="transfer">Transferencia</option>
         </select>
+        <select v-model="filters.concept" @change="load(1)">
+          <option value="">Concepto: todos</option>
+          <option value="appointment">Cita individual</option>
+          <option value="package">Compra de bono</option>
+          <option value="credit">Adelanto</option>
+        </select>
       </div>
 
       <div class="summary">
@@ -38,6 +44,7 @@
         <div>Fecha</div>
         <div>Paciente</div>
         <div>Importe</div>
+        <div>Concepto</div>
         <div>Método</div>
         <div>Estado</div>
         <div></div>
@@ -48,6 +55,7 @@
           <div>{{ formatDate(pay.created_at) }}</div>
           <div>{{ pay.patient?.name ?? `Paciente #${pay.patient_id}` }}</div>
           <div>{{ formatCurrency(pay.amount) }}</div>
+          <div>{{ conceptLabel(pay.concept) }}</div>
           <div>{{ methodLabel(pay.method) }}</div>
           <div><span class="status" :class="pay.status">{{ statusLabel(pay.status) }}</span></div>
           <div class="row-action">
@@ -86,6 +94,7 @@ const filters = ref({
   q: '',
   status: '',
   method: '',
+  concept: '',
 })
 
 function formatCurrency(value) {
@@ -112,6 +121,13 @@ function methodLabel(method) {
   return method || '—'
 }
 
+function conceptLabel(concept) {
+  if (concept === 'appointment') return 'Cita individual'
+  if (concept === 'package') return 'Compra de bono'
+  if (concept === 'credit') return 'Adelanto'
+  return concept || '—'
+}
+
 async function load(page = 1) {
   loading.value = true
   try {
@@ -122,6 +138,7 @@ async function load(page = 1) {
         q: filters.value.q || undefined,
         status: filters.value.status || undefined,
         method: filters.value.method || undefined,
+        concept: filters.value.concept || undefined,
       },
     })
 
@@ -157,14 +174,14 @@ onMounted(async () => {
 .primary { padding:8px 14px; border-radius:9999px; border:2px solid #3b82f6; color:#3b82f6; background:#fff; font-weight:600 }
 .primary:hover { background:#eff6ff }
 
-.filters { display:grid; grid-template-columns:1.6fr repeat(2, 1fr); gap:8px; margin-bottom:10px }
+.filters { display:grid; grid-template-columns:1.6fr repeat(3, 1fr); gap:8px; margin-bottom:10px }
 .filters select, .search-input { padding:8px; border:1px solid #e5e7eb; border-radius:8px; font-size:13px; width:100% }
 
 .summary { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; color:#374151; font-size:14px }
 
 .list { display:flex; flex-direction:column; gap:8px }
-.list-header { display:grid; grid-template-columns: 1.3fr 2fr 1fr 1fr 1fr 120px; gap:10px; color:#6b7280; font-size:13px; font-weight:600; padding:6px 10px }
-.payment-row { display:grid; grid-template-columns: 1.3fr 2fr 1fr 1fr 1fr 120px; gap:10px; background:#fff; border:1px solid #eef2ff22; border-radius:10px; padding:10px; align-items:center; font-size:13px }
+.list-header { display:grid; grid-template-columns: 1.3fr 2fr 1fr 1.2fr 1fr 1fr 120px; gap:10px; color:#6b7280; font-size:13px; font-weight:600; padding:6px 10px }
+.payment-row { display:grid; grid-template-columns: 1.3fr 2fr 1fr 1.2fr 1fr 1fr 120px; gap:10px; background:#fff; border:1px solid #eef2ff22; border-radius:10px; padding:10px; align-items:center; font-size:13px }
 
 .status { padding:5px 8px; border-radius:9999px; font-weight:700; text-transform:capitalize; font-size:11px }
 .status.completed { background:#dcfce7; color:#166534 }

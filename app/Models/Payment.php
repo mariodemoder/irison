@@ -12,7 +12,7 @@ class Payment extends Model
 
     protected $fillable = [
         'patient_id', 'appointment_id',
-        'pack_id', 'amount', 'method', 'status', 'notes', 'paid_at'
+        'package_id', 'concept', 'amount', 'method', 'status', 'notes', 'paid_at'
     ];
 
     protected $casts = [
@@ -35,8 +35,8 @@ class Payment extends Model
         return $this->belongsTo(Appointment::class);
     }
 
-    public function pack(): BelongsTo
+    public function package(): BelongsTo
     {
-        return $this->belongsTo(Pack::class);
+        return $this->belongsTo(Pack::class, 'package_id');
     }
 }

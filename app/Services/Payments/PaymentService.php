@@ -3,11 +3,13 @@
 namespace App\Services\Payments;
 
 use App\Models\Appointment;
+use App\Models\Pack;
 use App\Models\Patient;
 use App\Models\Payment;
 use DomainException;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Validator as ValidationValidator;
 
 class PaymentService
 {
@@ -18,6 +20,20 @@ class PaymentService
             ->where('clinic_id', $clinicId)
             ->where('patient_id', $patientId)
             ->where('status', '!=', 'canceled')
+            ->where(function ($query) use ($currentAppointmentId) {
+                $query->where(function ($subQuery) {
+                    $subQuery->whereIn('payment_status', ['pending', 'partially_paid'])
+                        ->where(function ($paymentTypeQuery) {
+                            $paymentTypeQuery->where('payment_type', '!=', 'bonus')
+                                ->orWhereNull('payment_type');
+                        })
+                        ->whereNull('bonus_id');
+                });
+
+                if ($currentAppointmentId) {
+                    $query->orWhere('id', (int) $currentAppointmentId);
+                }
+            })
             ->orderByDesc('start_time')
             ->get();
 
@@ -41,7 +57,48 @@ class PaymentService
                 'pending_amount' => $pendingAmount,
                 'refunded_amount' => $refundedAmount,
                 'debt_amount' => $debtAmount,
-                '_include' => $debtAmount > 0 || ($currentAppointmentId && (int) $appointment->id === (int) $currentAppointmentId),
+                '_include' => ($currentAppointmentId && (int) $appointment->id === (int) $currentAppointmentId)
+                    || in_array($appointment->payment_status, ['pending', 'partially_paid'], true),
+            ];
+        })->filter(function (array $item) {
+            return $item['_include'] === true;
+        })->map(function (array $item) {
+            unset($item['_include']);
+            return $item;
+        })->values()->toArray();
+    }
+
+    public function packageOptionsForPatient(int $patientId, int $clinicId, ?int $currentPackageId = null): array
+    {
+        $packs = Pack::query()
+            ->with(['payments'])
+            ->where('clinic_id', $clinicId)
+            ->where('patient_id', $patientId)
+            ->orderByDesc('created_at')
+            ->get();
+
+        return $packs->map(function (Pack $pack) use ($currentPackageId) {
+            $completedAmount = (float) $pack->payments
+                ->where('status', 'completed')
+                ->sum('amount');
+
+            $pendingAmount = (float) $pack->payments
+                ->where('status', 'pending')
+                ->sum('amount');
+
+            $price = (float) ($pack->price ?? 0);
+            $outstandingAmount = max($price - $completedAmount, 0);
+            $includeCurrent = $currentPackageId && (int) $pack->id === (int) $currentPackageId;
+            $isUnpaidOrPartial = $outstandingAmount > 0 || $pendingAmount > 0;
+
+            return [
+                'id' => $pack->id,
+                'status' => $pack->status,
+                'price' => $price,
+                'completed_amount' => $completedAmount,
+                'pending_amount' => $pendingAmount,
+                'outstanding_amount' => $outstandingAmount,
+                '_include' => $includeCurrent || $isUnpaidOrPartial,
             ];
         })->filter(function (array $item) {
             return $item['_include'] === true;
@@ -69,6 +126,10 @@ class PaymentService
 
         if (!empty($filters['method']) && in_array($filters['method'], ['cash', 'card', 'transfer'], true)) {
             $query->where('method', $filters['method']);
+        }
+
+        if (!empty($filters['concept']) && in_array($filters['concept'], ['appointment', 'package', 'credit'], true)) {
+            $query->where('concept', $filters['concept']);
         }
 
         if ($q !== '') {
@@ -104,39 +165,32 @@ class PaymentService
 
     public function store(array $input, int $clinicId): array
     {
-        $data = Validator::make($input, [
-            'patient_id' => 'required|integer|exists:patients,id',
-            'appointment_id' => 'nullable|integer|exists:appointments,id',
-            'pack_id' => 'nullable|integer|exists:packs,id',
-            'amount' => 'required|numeric|min:0',
-            'method' => 'required|in:cash,card,transfer',
-            'status' => 'required|in:completed,pending,refunded',
-            'notes' => 'nullable|string',
-            'paid_at' => 'nullable|date',
-        ])->validate();
+        $data = $this->validatePaymentInput($input);
 
         $patient = Patient::find($data['patient_id']);
         if (!$patient || (int) $patient->clinic_id !== $clinicId) {
             throw new DomainException('Paciente inválido para esta clínica');
         }
 
-        $appointment = null;
-        if (!empty($data['appointment_id'])) {
-            $appointment = Appointment::find((int) $data['appointment_id']);
+        $appointment = $this->resolveAppointmentForConcept(
+            $data['concept'],
+            isset($data['appointment_id']) ? (int) $data['appointment_id'] : null,
+            $clinicId,
+            (int) $patient->id
+        );
 
-            if (!$appointment || (int) $appointment->clinic_id !== $clinicId) {
-                throw new DomainException('La cita no pertenece a esta clínica');
-            }
-
-            if ((int) $appointment->patient_id !== (int) $patient->id) {
-                throw new DomainException('La cita no pertenece al paciente seleccionado');
-            }
-        }
+        $package = $this->resolvePackageForConcept(
+            $data['concept'],
+            isset($data['package_id']) ? (int) $data['package_id'] : null,
+            $clinicId,
+            (int) $patient->id
+        );
 
         $payment = Payment::create([
             'patient_id' => (int) $data['patient_id'],
-            'appointment_id' => $data['appointment_id'] ?? null,
-            'pack_id' => $data['pack_id'] ?? null,
+            'concept' => $data['concept'],
+            'appointment_id' => $appointment?->id,
+            'package_id' => $package?->id,
             'amount' => (float) $data['amount'],
             'method' => $data['method'],
             'status' => $data['status'],
@@ -161,16 +215,7 @@ class PaymentService
 
     public function update(Payment $payment, array $input, int $clinicId): array
     {
-        $data = Validator::make($input, [
-            'patient_id' => 'required|integer|exists:patients,id',
-            'appointment_id' => 'nullable|integer|exists:appointments,id',
-            'pack_id' => 'nullable|integer|exists:packs,id',
-            'amount' => 'required|numeric|min:0',
-            'method' => 'required|in:cash,card,transfer',
-            'status' => 'required|in:completed,pending,refunded',
-            'notes' => 'nullable|string',
-            'paid_at' => 'nullable|date',
-        ])->validate();
+        $data = $this->validatePaymentInput($input);
 
         $previousAppointmentId = $payment->appointment_id;
 
@@ -179,23 +224,25 @@ class PaymentService
             throw new DomainException('Paciente inválido para esta clínica');
         }
 
-        $appointment = null;
-        if (!empty($data['appointment_id'])) {
-            $appointment = Appointment::find((int) $data['appointment_id']);
+        $appointment = $this->resolveAppointmentForConcept(
+            $data['concept'],
+            isset($data['appointment_id']) ? (int) $data['appointment_id'] : null,
+            $clinicId,
+            (int) $patient->id
+        );
 
-            if (!$appointment || (int) $appointment->clinic_id !== $clinicId) {
-                throw new DomainException('La cita no pertenece a esta clínica');
-            }
-
-            if ((int) $appointment->patient_id !== (int) $patient->id) {
-                throw new DomainException('La cita no pertenece al paciente seleccionado');
-            }
-        }
+        $package = $this->resolvePackageForConcept(
+            $data['concept'],
+            isset($data['package_id']) ? (int) $data['package_id'] : null,
+            $clinicId,
+            (int) $patient->id
+        );
 
         $payment->update([
             'patient_id' => (int) $data['patient_id'],
-            'appointment_id' => $data['appointment_id'] ?? null,
-            'pack_id' => $data['pack_id'] ?? null,
+            'concept' => $data['concept'],
+            'appointment_id' => $appointment?->id,
+            'package_id' => $package?->id,
             'amount' => (float) $data['amount'],
             'method' => $data['method'],
             'status' => $data['status'],
@@ -203,7 +250,7 @@ class PaymentService
             'paid_at' => $data['paid_at'] ?? $payment->paid_at ?? now(),
         ]);
 
-        if ($previousAppointmentId && (int) $previousAppointmentId !== (int) ($data['appointment_id'] ?? 0)) {
+        if ($previousAppointmentId && (int) $previousAppointmentId !== (int) ($appointment?->id ?? 0)) {
             $previousAppointment = Appointment::find((int) $previousAppointmentId);
             if ($previousAppointment) {
                 $this->syncAppointmentPaymentStatus($previousAppointment);
@@ -220,6 +267,114 @@ class PaymentService
         ];
     }
 
+    private function validatePaymentInput(array $input): array
+    {
+        $validator = Validator::make($input, [
+            'patient_id' => 'required|integer|exists:patients,id',
+            'concept' => 'required|in:appointment,package,credit',
+            'appointment_id' => 'nullable|integer|exists:appointments,id',
+            'package_id' => 'nullable|integer|exists:packs,id',
+            'amount' => 'required|numeric|min:0',
+            'method' => 'required|in:cash,card,transfer',
+            'status' => 'required|in:completed,pending,refunded',
+            'notes' => 'nullable|string',
+            'paid_at' => 'nullable|date',
+        ]);
+
+        $validator->after(function (ValidationValidator $validator) use ($input) {
+            $concept = $input['concept'] ?? null;
+            $hasAppointment = !empty($input['appointment_id']);
+            $hasPackage = !empty($input['package_id']);
+
+            if ($concept === 'appointment') {
+                if (!$hasAppointment) {
+                    $validator->errors()->add('appointment_id', 'Debes seleccionar una cita para este tipo de pago.');
+                }
+
+                if ($hasPackage) {
+                    $validator->errors()->add('package_id', 'Un pago de cita no puede asociarse a un bono.');
+                }
+            }
+
+            if ($concept === 'package') {
+                if (!$hasPackage) {
+                    $validator->errors()->add('package_id', 'Debes seleccionar un bono para este tipo de pago.');
+                }
+
+                if ($hasAppointment) {
+                    $validator->errors()->add('appointment_id', 'Un pago de bono no puede asociarse a una cita.');
+                }
+            }
+
+            if ($concept === 'credit' && ($hasAppointment || $hasPackage)) {
+                $validator->errors()->add('concept', 'Un adelanto no puede asociarse ni a cita ni a bono.');
+            }
+        });
+
+        return $validator->validate();
+    }
+
+    private function resolveAppointmentForConcept(string $concept, ?int $appointmentId, int $clinicId, int $patientId): ?Appointment
+    {
+        if ($concept !== 'appointment' || !$appointmentId) {
+            return null;
+        }
+
+        $appointment = Appointment::find($appointmentId);
+
+        if (!$appointment || (int) $appointment->clinic_id !== $clinicId) {
+            throw new DomainException('La cita no pertenece a esta clínica');
+        }
+
+        if ((int) $appointment->patient_id !== $patientId) {
+            throw new DomainException('La cita no pertenece al paciente seleccionado');
+        }
+
+        if (!in_array($appointment->payment_status, ['pending', 'partially_paid'], true)) {
+            throw new DomainException('Solo se permiten citas impagas o parcialmente pagadas.');
+        }
+
+        if ($appointment->payment_type === 'bonus' || $appointment->bonus_id) {
+            throw new DomainException('La cita seleccionada ya está asociada a un bono.');
+        }
+
+        return $appointment;
+    }
+
+    private function resolvePackageForConcept(string $concept, ?int $packageId, int $clinicId, int $patientId): ?Pack
+    {
+        if ($concept !== 'package' || !$packageId) {
+            return null;
+        }
+
+        $package = Pack::with('payments')->find($packageId);
+
+        if (!$package || (int) $package->clinic_id !== $clinicId) {
+            throw new DomainException('El bono no pertenece a esta clínica');
+        }
+
+        if ((int) $package->patient_id !== $patientId) {
+            throw new DomainException('El bono no pertenece al paciente seleccionado');
+        }
+
+        $completedAmount = (float) $package->payments
+            ->where('status', 'completed')
+            ->sum('amount');
+
+        $pendingAmount = (float) $package->payments
+            ->where('status', 'pending')
+            ->sum('amount');
+
+        $price = (float) ($package->price ?? 0);
+        $outstandingAmount = max($price - $completedAmount, 0);
+
+        if ($outstandingAmount <= 0 && $pendingAmount <= 0) {
+            throw new DomainException('Solo se permiten bonos con pago incompleto o parcial.');
+        }
+
+        return $package;
+    }
+
     private function mapPaginatorItems(LengthAwarePaginator $paginator): array
     {
         return $paginator->getCollection()->transform(function (Payment $payment) {
@@ -232,8 +387,9 @@ class PaymentService
         return [
             'id' => $payment->id,
             'patient_id' => $payment->patient_id,
+            'concept' => $payment->concept,
             'appointment_id' => $payment->appointment_id,
-            'pack_id' => $payment->pack_id,
+            'package_id' => $payment->package_id,
             'amount' => (float) $payment->amount,
             'method' => $payment->method,
             'status' => $payment->status,

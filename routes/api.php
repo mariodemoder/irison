@@ -65,6 +65,7 @@ Route::middleware(['auth:sanctum', 'clinic', 'clinic.active'])->group(function (
 
     // Pagos de clientes: listado, creación y detalle
     Route::get('payments/appointment-options', [\App\Http\Controllers\Api\PaymentController::class, 'appointmentOptions']);
+    Route::get('payments/package-options', [\App\Http\Controllers\Api\PaymentController::class, 'packageOptions']);
     Route::apiResource('payments', \App\Http\Controllers\Api\PaymentController::class)
         ->only(['index', 'store', 'show', 'update']);
 
