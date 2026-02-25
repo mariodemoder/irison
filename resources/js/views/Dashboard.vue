@@ -14,8 +14,30 @@ const loading = ref(true)
 
 const lowBonusPatients = ref([])
 const lowBonusLoading = ref(true)
+const alertsLoading = ref(true)
+const unpaidCompletedAppointments = ref(0)
+const pendingPayments = ref(0)
+const partialPayments = ref(0)
 
 const shortLowBonusList = computed(() => lowBonusPatients.value.slice(0, 5))
+
+const importantAlerts = computed(() => {
+  const items = []
+
+  if (unpaidCompletedAppointments.value > 0) {
+    items.push(`${unpaidCompletedAppointments.value} cita${unpaidCompletedAppointments.value === 1 ? '' : 's'} completada${unpaidCompletedAppointments.value === 1 ? '' : 's'} sin pago.`)
+  }
+
+  if (pendingPayments.value > 0) {
+    items.push(`${pendingPayments.value} pago${pendingPayments.value === 1 ? '' : 's'} pendiente${pendingPayments.value === 1 ? '' : 's'}.`)
+  }
+
+  if (partialPayments.value > 0) {
+    items.push(`${partialPayments.value} pago${partialPayments.value === 1 ? '' : 's'} parcial${partialPayments.value === 1 ? '' : 'es'}.`)
+  }
+
+  return items
+})
 
 const monthlyRevenue = [1200, 1500, 1800, 2100]
 const monthlyRevenueLabels = ['Ene', 'Feb', 'Mar', 'Abr']
@@ -99,6 +121,31 @@ async function fetchLowBonuses() {
   }
 }
 
+async function fetchImportantAlerts() {
+  alertsLoading.value = true
+  try {
+    const [appointmentsRes, pendingPaymentsRes] = await Promise.all([
+      api.get('/appointments'),
+      api.get('/payments', { params: { status: 'pending', per_page: 1 } }),
+    ])
+
+    const appointments = Array.isArray(appointmentsRes.data?.data)
+      ? appointmentsRes.data.data
+      : (Array.isArray(appointmentsRes.data) ? appointmentsRes.data : [])
+
+    unpaidCompletedAppointments.value = appointments.filter(a => a.status === 'completed' && a.payment_status === 'pending').length
+    partialPayments.value = appointments.filter(a => a.payment_status === 'partially_paid').length
+    pendingPayments.value = Number(pendingPaymentsRes.data?.meta?.total || 0)
+  } catch (e) {
+    console.error('Error cargando alertas importantes', e)
+    unpaidCompletedAppointments.value = 0
+    partialPayments.value = 0
+    pendingPayments.value = 0
+  } finally {
+    alertsLoading.value = false
+  }
+}
+
 onMounted(async () => {
   try {
     const res = await api.get('/me')
@@ -113,6 +160,7 @@ onMounted(async () => {
   }
 
   fetchLowBonuses()
+  fetchImportantAlerts()
 })
 </script>
 
@@ -169,6 +217,18 @@ onMounted(async () => {
             <span class="sessions"> · Queda {{ p.sessions_left }} sesión<span v-if="p.sessions_left > 1">es</span></span>
           </li>
         </ul>
+      </div>
+
+      <div class="alerts-inline card-list">
+        <div class="inline-title">Alertas importantes</div>
+        <div v-if="alertsLoading" class="alerts-empty">Cargando alertas...</div>
+        <ul v-else-if="importantAlerts.length" class="alerts-list">
+          <li v-for="alert in importantAlerts" :key="alert" class="alerts-item">
+            <span class="alert-dot" aria-hidden="true"></span>
+            <span>{{ alert }}</span>
+          </li>
+        </ul>
+        <div v-else class="alerts-empty">Sin alertas pendientes.</div>
       </div>
     </div>
   </MainLayout>
@@ -246,6 +306,41 @@ onMounted(async () => {
 }
 
 .sessions {
+  color: var(--text-muted, #6b7280);
+}
+
+.alerts-inline {
+  margin-top: 16px;
+  background: var(--bg-card);
+  border: 1px solid #fdba74;
+  border-radius: 20px;
+  padding: 12px 16px;
+}
+
+.alerts-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.alerts-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  padding: 4px 0;
+}
+
+.alert-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #f59e0b;
+  flex: 0 0 auto;
+}
+
+.alerts-empty {
+  font-size: 13px;
   color: var(--text-muted, #6b7280);
 }
 

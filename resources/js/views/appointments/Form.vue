@@ -29,13 +29,13 @@
           </div>
           <div class="field">
             <label class="label">Inicio</label>
-            <input v-model="form.start_time" type="datetime-local" step="300" class="input" :disabled="isCanceled && mode !== 'reprogram'" />
+            <input v-model="form.start_time" @change="normalizeDateTimeField('start_time')" type="datetime-local" step="300" class="input" :disabled="isCanceled && mode !== 'reprogram'" />
             <div v-if="errors.start_time" class="field-error">{{ errors.start_time[0] }}</div>
           </div>
 
           <div class="field">
             <label class="label">Fin</label>
-            <input v-model="form.end_time" type="datetime-local" step="300" class="input" :disabled="isCanceled && mode !== 'reprogram'" />
+            <input v-model="form.end_time" @change="normalizeDateTimeField('end_time')" type="datetime-local" step="300" class="input" :disabled="isCanceled && mode !== 'reprogram'" />
             <div v-if="errors.end_time" class="field-error">{{ errors.end_time[0] }}</div>
             <div v-if="overlapping.length">
               <div v-if="hasScheduledOverlap" class="field-error">La franja horaria se solapa con otra cita programada.</div>
@@ -75,6 +75,20 @@
             </div>
           </div>
 
+          <div v-if="!isEdit" class="field">
+            <label class="label">Precio</label>
+            <div class="input" style="display:flex;align-items:center;background:#f8fafc">
+              <span>{{ appointmentPriceLabel }}</span>
+            </div>
+          </div>
+
+          <div v-if="!isEdit" class="field">
+            <label class="label">Estado de pago</label>
+            <div class="input" style="display:flex;align-items:center;background:#f8fafc">
+              <span>{{ paymentStatusLabel }}</span>
+            </div>
+          </div>
+
           <div class="field full" v-if="form.payment_type === 'single' && form.patient_id && form.patient_id !== '__create' && availableCredit > 0">
             <label class="label">Crédito disponible</label>
             <div class="inline-alert" style="margin-top:0">
@@ -103,11 +117,11 @@
             </div>
           </div>
 
-          <div v-if="(selectBonus || form.payment_type === 'bonus') && bonuses.length > 0" class="field full">
+          <div v-if="selectBonus || form.payment_type === 'bonus'" class="field full">
             <label class="label">Bono</label>
             <div v-if="bonusesLoading">Cargando bonos...</div>
             <div v-else>
-              <div v-if="bonuses.length === 0" class="alert-subtle">
+              <div v-if="selectableBonuses.length === 0" class="alert-subtle">
                 <div>No hay bonos activos para este paciente.</div>
                 <div style="margin-top:8px">
                   <button type="button" class="muted" @click.prevent="suggestCreateBonus">Sugerir crear bono</button>
@@ -115,9 +129,8 @@
               </div>
               <select v-else v-model="form.use_bonus_id" class="input" style="width:100%">
                 <option value="" disabled>Selecciona un bono</option>
-                <option v-for="b in bonuses" :key="b.id" :value="b.id" :disabled="(b.remaining_sessions <= 0) || isExpiredLocal(b)">
+                <option v-for="b in selectableBonuses" :key="b.id" :value="b.id">
                   {{ b.name ? (b.name + ' — ') : '' }}{{ b.total_sessions }} sesiones — {{ b.remaining_sessions }} restantes{{ b.expires_at ? (' — expira ' + formatDMY(b.expires_at)) : '' }}
-                  <span v-if="b.remaining_sessions <= 0"> — AGOTADO</span>
                 </option>
               </select>
               <div v-if="selectedBonus" class="bonus-details" style="margin-top:8px;padding:8px;border-radius:8px;background:#fffaf0;border:1px solid #ffedd5;color:#92400e;font-size:13px">
@@ -135,7 +148,7 @@
           </div>
 
           <div class="field" style="display:flex; justify-content:flex-end; gap:8px;">
-            <div v-if="form.payment_type === 'single'">
+            <div v-if="isEdit && form.payment_type === 'single'">
               <button type="button" class="muted" @click.prevent="handleSinglePayment" :disabled="submitting">Registrar Pago Simple</button>
             </div>
           </div>
@@ -236,6 +249,11 @@ const hasAvailableBonuses = computed(() => {
   return bonuses.value.some(b => (b.remaining_sessions && b.remaining_sessions > 0) && !isExpiredLocal(b))
 })
 
+const selectableBonuses = computed(() => {
+  if (!bonuses.value || bonuses.value.length === 0) return []
+  return bonuses.value.filter(b => (b.remaining_sessions && b.remaining_sessions > 0) && !isExpiredLocal(b))
+})
+
 const selectedPatient = computed(() => {
   if (!form.patient_id || form.patient_id === '__create') return null
   return patients.value.find(p => String(p.id) === String(form.patient_id)) || null
@@ -244,6 +262,26 @@ const selectedPatient = computed(() => {
 const availableCredit = computed(() => {
   const amount = Number(selectedPatient.value?.available_credit || 0)
   return Number.isFinite(amount) ? amount : 0
+})
+
+const appointmentPriceLabel = computed(() => {
+  if (form.payment_type === 'bonus') {
+    const bonusPrice = Number(selectedBonus.value?.price || 0)
+    const totalSessions = Number(selectedBonus.value?.total_sessions || 0)
+    if (totalSessions > 0) {
+      const perSession = bonusPrice / totalSessions
+      return `${perSession.toFixed(2)}€`
+    }
+    return '0.00€'
+  }
+
+  return 'Pendiente de definir en pago simple'
+})
+
+const paymentStatusLabel = computed(() => {
+  if (form.payment_type === 'bonus') return 'Cubierto por bono'
+  if (form.apply_credit) return 'Parcialmente pagada'
+  return 'Pendiente'
 })
 
 // Keep form.bonus_name in sync with selected bonus id
@@ -367,12 +405,16 @@ async function appointmentCancel() {
 }
 
 function handleSinglePayment() {
-  // On edit allow "pay now" flow, but when creating a new appointment
-  // do not redirect to payments (user requested no redirect on create)
+  // Navigate to payments/create with preloaded query params
   if (isEdit.value && route.params.id) {
-    submit(true)
-  } else {
-    submit(false)
+    router.push({
+      path: '/payments/create',
+      query: {
+        patient_id: form.patient_id,
+        concept: 'appointment',
+        appointment_id: route.params.id,
+      }
+    })
   }
 }
 
@@ -386,6 +428,37 @@ function goToAppointment(id) {
 function goToPatient(id) {
   if (!id || id === '__create') return
   router.push(`/patients/${id}`)
+}
+
+function toDatetimeLocalString(date) {
+  const yyyy = date.getFullYear()
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const dd = String(date.getDate()).padStart(2, '0')
+  const hh = String(date.getHours()).padStart(2, '0')
+  const min = String(date.getMinutes()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}T${hh}:${min}`
+}
+
+function roundDatetimeLocalToNearestMinutes(value, stepMinutes = 5) {
+  if (!value) return value
+  const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/)
+  if (!match) return value
+
+  const [, y, m, d, hh, mm] = match
+  const parsed = new Date(Number(y), Number(m) - 1, Number(d), Number(hh), Number(mm), 0, 0)
+  if (Number.isNaN(parsed.getTime())) return value
+
+  const stepMs = stepMinutes * 60 * 1000
+  const roundedMs = Math.round(parsed.getTime() / stepMs) * stepMs
+  return toDatetimeLocalString(new Date(roundedMs))
+}
+
+function normalizeDateTimeField(fieldName) {
+  const currentValue = form[fieldName]
+  const roundedValue = roundDatetimeLocalToNearestMinutes(currentValue, 5)
+  if (roundedValue !== currentValue) {
+    form[fieldName] = roundedValue
+  }
 }
 
 const isFutureAppointment = computed(() => {
@@ -570,7 +643,7 @@ async function submit(payNow = false) {
       router.push('/appointments/day')
     } else {
       // If user selected 'bonus' as payment type but there are no bonuses, block and show error
-      if (form.payment_type === 'bonus' && (!bonuses.value || bonuses.value.length === 0) && !payload.bonus_id) {
+      if (form.payment_type === 'bonus' && selectableBonuses.value.length === 0 && !payload.bonus_id) {
         errors.general = ['No hay bonos activos disponibles para este paciente']
         submitting.value = false
         return

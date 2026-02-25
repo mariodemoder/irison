@@ -41,6 +41,13 @@
             <div class="value">{{ appointment.payment_type === 'bonus' ? 'Bono' : 'Pago simple' }}</div>
           </div>
 
+          <div v-if="!isCanceled" class="field">
+            <label class="label">Estado de pago</label>
+            <div class="value">
+              <span class="payment-badge" :class="paymentStatusClass">{{ paymentStatusLabel }}</span>
+            </div>
+          </div>
+
           <div v-if="appointment.payment_type === 'bonus'" class="field full">
             <label class="label">Bono asociado</label>
             <div v-if="appointment.bonus" class="value">
@@ -118,6 +125,30 @@ const effectiveStatus = computed(() => {
     }
   }
   return s
+})
+
+const paymentStatusLabel = computed(() => {
+  const ps = appointment.value?.payment_status
+  if (!ps) return 'Impagada'
+  const map = {
+    'pending': 'Impagada',
+    'partially_paid': 'Parcialmente pagada',
+    'paid': 'Pagada',
+    'covered_by_pack': 'Cubierta por bono',
+  }
+  return map[ps] || 'Impagada'
+})
+
+const paymentStatusClass = computed(() => {
+  const ps = appointment.value?.payment_status
+  if (!ps) return 'pending'
+  const map = {
+    'pending': 'pending',
+    'partially_paid': 'partially-paid',
+    'paid': 'paid',
+    'covered_by_pack': 'covered',
+  }
+  return map[ps] || 'pending'
 })
 
 async function load() {
@@ -226,6 +257,13 @@ function goReprogram() {
 .status.scheduled { background:#eef2ff; color:#1e3a8a }
 .status.completed { background:#dcfce7; color:#166534 }
  .status.rescheduled { background:#fff7ed; color:#b45309 }
+
+/* Payment status badges */
+.payment-badge { padding:6px 12px; border-radius:9999px; font-weight:600; font-size:12px; display:inline-block }
+.payment-badge.pending { background:#fee2e2; color:#b91c1c }
+.payment-badge.partially-paid { background:#fef3c7; color:#b45309 }
+.payment-badge.paid { background:#dcfce7; color:#166534 }
+.payment-badge.covered { background:#dbeafe; color:#1e40af }
 
 /* Alinear icono y texto en botones */
 .actions button { display:inline-flex; align-items:center; gap:8px }

@@ -14,7 +14,7 @@
 
           <div class="field full">
             <label class="label">Paciente</label>
-            <select v-model="form.patient_id" class="input" required>
+            <select v-model="form.patient_id" class="input" :disabled="comingFromAppointment" required>
               <option value="">Selecciona paciente</option>
               <option v-for="p in patients" :key="p.id" :value="String(p.id)">
                 {{ p.name }} {{ p.nif ? `— ${p.nif}` : '' }}
@@ -24,7 +24,7 @@
 
           <div class="field full">
             <label class="label">Motivo del ingreso</label>
-            <select v-model="form.concept" class="input" required>
+            <select v-model="form.concept" class="input" :disabled="comingFromAppointment" required>
               <option value="appointment">🧾 Pago de cita individual</option>
               <option value="package">🎁 Compra de bono</option>
               <option value="credit">💰 Adelanto (crédito a favor)</option>
@@ -61,14 +61,18 @@
 
           <div class="field full" v-if="form.concept === 'appointment'">
             <label class="label">Cita (obligatoria)</label>
+            <div v-if="comingFromAppointment && form.appointment_id" style="padding:12px; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:8px; color:#065f46; font-size:13px; margin-bottom:8px">
+              <strong>Cita seleccionada:</strong> #{{ form.appointment_id }}
+            </div>
             <input
+              v-if="!comingFromAppointment"
               v-model="appointmentQuery"
               type="text"
               class="input"
               placeholder="Buscar cita por fecha, estado o saldo pendiente"
               :disabled="!form.patient_id"
             />
-            <select v-model="form.appointment_id" class="input" :disabled="!form.patient_id || loadingAppointmentOptions">
+            <select v-model="form.appointment_id" class="input" :disabled="!form.patient_id || loadingAppointmentOptions || comingFromAppointment">
               <option value="">Selecciona cita impaga/parcial</option>
               <option v-for="a in filteredAppointmentOptions" :key="a.id" :value="String(a.id)">
                 {{ appointmentLabel(a) }}
@@ -143,6 +147,7 @@ const appointmentQuery = ref('')
 const packageOptions = ref([])
 const loadingPackageOptions = ref(false)
 const packageQuery = ref('')
+const comingFromAppointment = ref(false)
 
 const form = reactive({
   patient_id: '',
@@ -353,7 +358,12 @@ async function submit() {
       toast.success('Pago creado')
     }
 
-    router.push('/payments')
+    // If coming from appointment form, navigate back to appointment
+    if (comingFromAppointment.value && form.appointment_id) {
+      router.push(`/appointments/${form.appointment_id}`)
+    } else {
+      router.push('/payments')
+    }
   } catch (e) {
     const msg = e.response?.data?.message || 'Error guardando pago'
     errors.general = [msg]
@@ -363,19 +373,34 @@ async function submit() {
 }
 
 function cancel() {
-  router.push('/payments')
+  if (comingFromAppointment.value && form.appointment_id) {
+    router.push(`/appointments/${form.appointment_id}`)
+  } else {
+    router.push('/payments')
+  }
 }
 
 onMounted(async () => {
   await loadPatients()
 
-  if (!route.params.id) {
+  // Check if coming from appointment form with preloaded params
+  if (route.query.patient_id && route.query.concept === 'appointment' && route.query.appointment_id) {
+    comingFromAppointment.value = true
+    form.patient_id = String(route.query.patient_id)
+    form.concept = 'appointment'
+    form.appointment_id = String(route.query.appointment_id)
     form.paid_at = toDateTimeLocal(new Date().toISOString())
-  }
+    // Load appointment options for this patient
+    await loadAppointmentOptions(Number(form.patient_id), Number(form.appointment_id))
+  } else {
+    if (!route.params.id) {
+      form.paid_at = toDateTimeLocal(new Date().toISOString())
+    }
 
-  if (route.params.id) {
-    isEdit.value = true
-    await loadForEdit(route.params.id)
+    if (route.params.id) {
+      isEdit.value = true
+      await loadForEdit(route.params.id)
+    }
   }
 })
 
@@ -393,7 +418,7 @@ watch(
     }
 
     const changedPatient = String(value) !== String(oldValue || '')
-    if (changedPatient) {
+    if (changedPatient && !comingFromAppointment.value) {
       form.appointment_id = ''
       form.package_id = ''
       appointmentQuery.value = ''

@@ -81,9 +81,11 @@
 
           <div class="history-card">
             <div class="history-title">Pagos</div>
-            <div v-if="payments && payments.length">
+            <div v-if="sortedPayments && sortedPayments.length">
               <ul>
-                <li v-for="pay in payments" :key="pay.id">{{ pay.amount }} — {{ pay.status }}</li>
+                <li v-for="pay in sortedPayments" :key="pay.id">
+                  {{ formatPaymentAmount(pay.amount) }} {{ paymentMethodLabel(pay.method) }} ({{ formatPaymentShortDate(pay.paid_at || pay.created_at) }})
+                </li>
               </ul>
             </div>
             <div v-else class="empty-card">Sin pagos</div>
@@ -117,6 +119,19 @@ const showCanceledAppointments = ref(false)
 const filteredAppointments = computed(() => {
   if (showCanceledAppointments.value) return appointments.value
   return appointments.value.filter(a => a.status !== 'canceled')
+})
+
+const sortedPayments = computed(() => {
+  if (!payments.value || payments.value.length === 0) return []
+
+  const toMs = (pay) => {
+    const raw = pay?.paid_at || pay?.created_at
+    if (!raw) return 0
+    const ts = new Date(raw).getTime()
+    return Number.isNaN(ts) ? 0 : ts
+  }
+
+  return [...payments.value].sort((a, b) => toMs(b) - toMs(a))
 })
 
 async function loadPatient() {
@@ -175,6 +190,32 @@ function createAppointment() {
 
 function toggleCanceledVisibility() {
   showCanceledAppointments.value = !showCanceledAppointments.value
+}
+
+function paymentMethodLabel(method) {
+  const map = {
+    cash: 'efectivo',
+    card: 'tarjeta',
+    transfer: 'transferencia',
+  }
+
+  return map[method] || 'método no definido'
+}
+
+function formatPaymentAmount(amount) {
+  const n = Number(amount || 0)
+  if (!Number.isFinite(n)) return '0€'
+  if (Number.isInteger(n)) return `${n}€`
+  return `${n.toFixed(2)}€`
+}
+
+function formatPaymentShortDate(value) {
+  if (!value) return '—'
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return '—'
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  return `${dd}/${mm}`
 }
 
 async function confirmDelete() {

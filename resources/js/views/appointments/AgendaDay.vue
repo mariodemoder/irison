@@ -35,6 +35,7 @@
           <div>Horario</div>
           <div class="row-left">Paciente</div>
           <div class="row-left">Notas</div>
+          <div>Pago</div>
           <div>Estado</div>
           <div></div>
         </div>
@@ -47,6 +48,10 @@
             </div>
 
             <div class="row-col note time">{{ a.notes ?? '' }}</div>
+
+            <div class="row-col">
+              <span class="payment-status" :class="paymentStatusClass(a.payment_status)">{{ paymentStatusLabel(a.payment_status) }}</span>
+            </div>
             
             <div class="row-col"><span class="status" :class="a.status">{{ statusLabel(a.status) }}</span></div>
             <div class="row-action">
@@ -117,6 +122,26 @@ function goToAppointment(id) {
   router.push(`/appointments/${id}`)
 }
 
+function paymentStatusLabel(status) {
+  const map = {
+    pending: 'Pendiente',
+    partially_paid: 'Parcial',
+    paid: 'Completo',
+    covered_by_pack: 'Completo',
+  }
+  return map[status] || 'Pendiente'
+}
+
+function paymentStatusClass(status) {
+  const map = {
+    pending: 'payment-pending',
+    partially_paid: 'payment-partial',
+    paid: 'payment-complete',
+    covered_by_pack: 'payment-complete',
+  }
+  return map[status] || 'payment-pending'
+}
+
 const filteredAppointments = computed(() => {
   const q = (query.value || '').toLowerCase().trim()
   if (!q) return appointments.value
@@ -169,8 +194,8 @@ const filteredAppointments = computed(() => {
 .search-center, .search-wrapper { position: relative; z-index: 0 }
 
 .list { display:flex; flex-direction:column; gap:8px; overflow-x:auto }
-.list-header { display:grid; grid-template-columns: 140px 1.3fr 2fr 160px 120px; gap:12px; align-items:center; padding:8px 14px; color:#6b7280; font-weight:600; font-size:13px }
-.appointment-row { display:grid; grid-template-columns: 140px 1.3fr 2fr 160px 120px; gap:12px; align-items:center; background:#fff; padding:12px 14px; border-radius:10px; text-decoration:none; color:inherit; border:1px solid #eef2ff22; min-width:700px }
+.list-header { display:grid; grid-template-columns: 140px 1.3fr 2fr 130px 160px 120px; gap:12px; align-items:center; padding:8px 14px; color:#6b7280; font-weight:600; font-size:13px }
+.appointment-row { display:grid; grid-template-columns: 140px 1.3fr 2fr 130px 160px 120px; gap:12px; align-items:center; background:#fff; padding:12px 14px; border-radius:10px; text-decoration:none; color:inherit; border:1px solid #eef2ff22; min-width:820px }
 .appointment-row:hover { box-shadow: 0 10px 24px rgba(2,6,23,0.06); transform: translateY(-2px) }
 .row-left { display:flex; flex-direction:column }
 .row-name { font-weight:600; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
@@ -196,6 +221,11 @@ const filteredAppointments = computed(() => {
 .status.completed { background:#dcfce7; color:#166534 }
  .status.rescheduled { background:#fff7ed; color:#b45309 }
 
+.payment-status { padding:6px 10px; border-radius:9999px; font-weight:700; font-size:12px }
+.payment-pending { background:#fee2e2; color:#b91c1c }
+.payment-partial { background:#fef3c7; color:#92400e }
+.payment-complete { background:#dcfce7; color:#166534 }
+
 .empty { color:#6b7280; padding:12px }
 
 .action-btn { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:8px; text-decoration:none; color:#374151; font-size:13px; border:1px solid transparent }
@@ -212,7 +242,7 @@ const filteredAppointments = computed(() => {
 }
 
 @media (max-width: 480px) {
-  .appointment-row { grid-template-columns: 140px 2fr 220px 160px auto; gap:8px }
+  .appointment-row { grid-template-columns: 140px 2fr 220px 130px 160px auto; gap:8px }
   .row-action { justify-content:flex-start }
 }
 .list-header > div,

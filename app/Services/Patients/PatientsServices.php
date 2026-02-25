@@ -107,11 +107,19 @@ class PatientsServices
             : [];
 
         $payments = $patient->relationLoaded('payments')
-            ? $patient->payments->map(function ($payment) {
+            ? $patient->payments
+                ->sortByDesc(function ($payment) {
+                    return $payment->paid_at ?? $payment->created_at;
+                })
+                ->values()
+                ->map(function ($payment) {
                 return [
                     'id' => $payment->id,
                     'amount' => $payment->amount,
                     'status' => $payment->status,
+                    'method' => $payment->method,
+                    'paid_at' => $payment->paid_at,
+                    'created_at' => $payment->created_at,
                 ];
             })->toArray()
             : [];
