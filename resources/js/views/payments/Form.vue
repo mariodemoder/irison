@@ -64,20 +64,30 @@
             <div v-if="comingFromAppointment && form.appointment_id" style="padding:12px; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:8px; color:#065f46; font-size:13px; margin-bottom:8px">
               <strong>Cita seleccionada:</strong> #{{ form.appointment_id }}
             </div>
-            <input
-              v-if="!comingFromAppointment"
-              v-model="appointmentQuery"
-              type="text"
-              class="input"
-              placeholder="Buscar cita por fecha, estado o saldo pendiente"
-              :disabled="!form.patient_id"
-            />
-            <select v-model="form.appointment_id" class="input" :disabled="!form.patient_id || loadingAppointmentOptions || comingFromAppointment">
-              <option value="">Selecciona cita impaga/parcial</option>
-              <option v-for="a in filteredAppointmentOptions" :key="a.id" :value="String(a.id)">
-                {{ appointmentLabel(a) }}
-              </option>
-            </select>
+            <div v-if="!comingFromAppointment" class="combo-inline">
+              <input
+                ref="appointmentInputEl"
+                v-model="appointmentDisplay"
+                type="text"
+                class="input combo-text"
+                list="appointment-options-list"
+                placeholder="Selecciona cita impaga/parcial"
+                :disabled="!form.patient_id || loadingAppointmentOptions"
+                @input="onAppointmentDisplayInput"
+              />
+              <button
+                type="button"
+                class="combo-side-btn"
+                :disabled="!form.patient_id || loadingAppointmentOptions"
+                @click="handleAppointmentSideButton"
+                :title="hasAppointmentSelection ? 'Limpiar selección' : 'Mostrar opciones'"
+              >
+                {{ hasAppointmentSelection ? '✕' : '▾' }}
+              </button>
+            </div>
+            <datalist id="appointment-options-list">
+              <option v-for="a in filteredAppointmentOptions" :key="a.id" :value="appointmentOptionValue(a)"></option>
+            </datalist>
             <div class="help-text" v-if="loadingAppointmentOptions">Cargando citas...</div>
             <div class="help-text" v-else-if="form.patient_id && filteredAppointmentOptions.length === 0">
               No hay citas impagas/parciales sin bono asignado para este paciente.
@@ -86,19 +96,30 @@
 
           <div class="field full" v-if="form.concept === 'package'">
             <label class="label">Bono (obligatorio)</label>
-            <input
-              v-model="packageQuery"
-              type="text"
-              class="input"
-              placeholder="Buscar bono por estado o importes"
-              :disabled="!form.patient_id"
-            />
-            <select v-model="form.package_id" class="input" :disabled="!form.patient_id || loadingPackageOptions">
-              <option value="">Selecciona bono impago/parcial</option>
-              <option v-for="pkg in filteredPackageOptions" :key="pkg.id" :value="String(pkg.id)">
-                {{ packageLabel(pkg) }}
-              </option>
-            </select>
+            <div class="combo-inline">
+              <input
+                ref="packageInputEl"
+                v-model="packageDisplay"
+                type="text"
+                class="input combo-text"
+                list="package-options-list"
+                placeholder="Selecciona bono impago/parcial"
+                :disabled="!form.patient_id || loadingPackageOptions"
+                @input="onPackageDisplayInput"
+              />
+              <button
+                type="button"
+                class="combo-side-btn"
+                :disabled="!form.patient_id || loadingPackageOptions"
+                @click="handlePackageSideButton"
+                :title="hasPackageSelection ? 'Limpiar selección' : 'Mostrar opciones'"
+              >
+                {{ hasPackageSelection ? '✕' : '▾' }}
+              </button>
+            </div>
+            <datalist id="package-options-list">
+              <option v-for="pkg in filteredPackageOptions" :key="pkg.id" :value="packageOptionValue(pkg)"></option>
+            </datalist>
             <div class="help-text" v-if="loadingPackageOptions">Cargando bonos...</div>
             <div class="help-text" v-else-if="form.patient_id && filteredPackageOptions.length === 0">
               No hay bonos impagos/parciales para este paciente.
@@ -148,6 +169,13 @@ const packageOptions = ref([])
 const loadingPackageOptions = ref(false)
 const packageQuery = ref('')
 const comingFromAppointment = ref(false)
+const appointmentDisplay = ref('')
+const packageDisplay = ref('')
+const appointmentInputEl = ref(null)
+const packageInputEl = ref(null)
+
+const hasAppointmentSelection = computed(() => !!form.appointment_id)
+const hasPackageSelection = computed(() => !!form.package_id)
 
 const form = reactive({
   patient_id: '',
@@ -182,11 +210,20 @@ const filteredAppointmentOptions = computed(() => {
   })
 })
 
+const pendingOrSelectedPackageOptions = computed(() => {
+  return packageOptions.value.filter(option => {
+    const pendingAmount = Number(option.pending_amount || 0)
+    const outstandingAmount = Number(option.outstanding_amount || 0)
+    const isCurrentSelected = form.package_id && String(option.id) === String(form.package_id)
+    return pendingAmount > 0 || outstandingAmount > 0 || isCurrentSelected
+  })
+})
+
 const filteredPackageOptions = computed(() => {
   const q = (packageQuery.value || '').toLowerCase().trim()
-  if (!q) return packageOptions.value
+  if (!q) return pendingOrSelectedPackageOptions.value
 
-  return packageOptions.value.filter(option => {
+  return pendingOrSelectedPackageOptions.value.filter(option => {
     const values = [
       String(option.id),
       option.status,
@@ -234,6 +271,8 @@ async function loadForEdit(id) {
         loadAppointmentOptions(Number(form.patient_id), data.appointment_id ? Number(data.appointment_id) : null),
         loadPackageOptions(Number(form.patient_id), data.package_id ? Number(data.package_id) : null),
       ])
+      syncAppointmentDisplayFromId()
+      syncPackageDisplayFromId()
     }
   } catch (e) {
     toast.error('Error cargando pago')
@@ -242,21 +281,95 @@ async function loadForEdit(id) {
 }
 
 function packageLabel(pkg) {
-  const price = Number(pkg.price || 0)
-  const completed = Number(pkg.completed_amount || 0)
-  const pending = Number(pkg.pending_amount || 0)
-  const outstanding = Number(pkg.outstanding_amount || 0)
+  const name = pkg.name || `Bono #${pkg.id}`
+  const totalSessions = Number(pkg.total_sessions || 0)
+  const expiresAt = formatShortDate(pkg.expires_at)
 
-  return `#${pkg.id} · ${pkg.status} · precio ${price.toFixed(2)}€ · pagado ${completed.toFixed(2)}€ · pendiente ${pending.toFixed(2)}€ · saldo ${outstanding.toFixed(2)}€`
+  return `${name} · ${totalSessions} sesiones · expira ${expiresAt}`
+}
+
+function packageOptionValue(pkg) {
+  return `#${pkg.id} · ${packageLabel(pkg)}`
+}
+
+function formatShortDate(value) {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  const dd = String(date.getDate()).padStart(2, '0')
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const yyyy = date.getFullYear()
+  return `${dd}/${mm}/${yyyy}`
 }
 
 function appointmentLabel(appointment) {
-  const start = appointment.start_time ? new Date(appointment.start_time).toLocaleString('es-ES') : 'Sin fecha'
-  const pending = Number(appointment.pending_amount || 0)
-  const refunded = Number(appointment.refunded_amount || 0)
-  const debt = Number(appointment.debt_amount || 0)
+  const start = appointment.start_time ? new Date(appointment.start_time).toLocaleString('es-ES') : 'Sin fecha inicio'
+  const end = appointment.end_time ? new Date(appointment.end_time).toLocaleString('es-ES') : 'Sin fecha fin'
+  const rawNotes = (appointment.notes || '').trim()
+  const notes = rawNotes
+    ? (rawNotes.length > 30 ? `${rawNotes.slice(0, 30)}...` : rawNotes)
+    : 'Sin notas'
 
-  return `#${appointment.id} · ${start} · ${appointment.payment_status} · deuda ${debt.toFixed(2)}€ · pendiente ${pending.toFixed(2)}€ · reembolsado ${refunded.toFixed(2)}€`
+  return `(${start} - ${end}) - ${notes}`
+}
+
+function appointmentOptionValue(appointment) {
+  return `#${appointment.id} · ${appointmentLabel(appointment)}`
+}
+
+function syncAppointmentDisplayFromId() {
+  if (!form.appointment_id) {
+    appointmentDisplay.value = ''
+    return
+  }
+  const selected = appointmentOptions.value.find(a => String(a.id) === String(form.appointment_id))
+  appointmentDisplay.value = selected ? appointmentOptionValue(selected) : ''
+}
+
+function syncPackageDisplayFromId() {
+  if (!form.package_id) {
+    packageDisplay.value = ''
+    return
+  }
+  const selected = filteredPackageOptions.value.find(p => String(p.id) === String(form.package_id))
+    || packageOptions.value.find(p => String(p.id) === String(form.package_id))
+  packageDisplay.value = selected ? packageOptionValue(selected) : ''
+}
+
+function onAppointmentDisplayInput() {
+  appointmentQuery.value = appointmentDisplay.value
+  const selected = appointmentOptions.value.find(a => appointmentOptionValue(a) === appointmentDisplay.value)
+  form.appointment_id = selected ? String(selected.id) : ''
+}
+
+function onPackageDisplayInput() {
+  packageQuery.value = packageDisplay.value
+  const selected = filteredPackageOptions.value.find(p => packageOptionValue(p) === packageDisplay.value)
+  form.package_id = selected ? String(selected.id) : ''
+}
+
+function handleAppointmentSideButton() {
+  if (hasAppointmentSelection.value) {
+    form.appointment_id = ''
+    appointmentDisplay.value = ''
+    appointmentQuery.value = ''
+  }
+
+  if (appointmentInputEl.value) {
+    appointmentInputEl.value.focus()
+  }
+}
+
+function handlePackageSideButton() {
+  if (hasPackageSelection.value) {
+    form.package_id = ''
+    packageDisplay.value = ''
+    packageQuery.value = ''
+  }
+
+  if (packageInputEl.value) {
+    packageInputEl.value.focus()
+  }
 }
 
 async function loadPackageOptions(patientId, currentPackageId = null) {
@@ -275,6 +388,7 @@ async function loadPackageOptions(patientId, currentPackageId = null) {
     })
 
     packageOptions.value = Array.isArray(res.data?.data) ? res.data.data : []
+    syncPackageDisplayFromId()
   } catch (e) {
     packageOptions.value = []
     errors.general = ['No se pudieron cargar los bonos del paciente']
@@ -299,6 +413,7 @@ async function loadAppointmentOptions(patientId, currentAppointmentId = null) {
     })
 
     appointmentOptions.value = Array.isArray(res.data?.data) ? res.data.data : []
+    syncAppointmentDisplayFromId()
   } catch (e) {
     appointmentOptions.value = []
     errors.general = ['No se pudieron cargar las citas del paciente']
@@ -392,6 +507,7 @@ onMounted(async () => {
     form.paid_at = toDateTimeLocal(new Date().toISOString())
     // Load appointment options for this patient
     await loadAppointmentOptions(Number(form.patient_id), Number(form.appointment_id))
+    syncAppointmentDisplayFromId()
   } else {
     if (!route.params.id) {
       form.paid_at = toDateTimeLocal(new Date().toISOString())
@@ -414,6 +530,8 @@ watch(
       packageOptions.value = []
       appointmentQuery.value = ''
       packageQuery.value = ''
+      appointmentDisplay.value = ''
+      packageDisplay.value = ''
       return
     }
 
@@ -423,6 +541,8 @@ watch(
       form.package_id = ''
       appointmentQuery.value = ''
       packageQuery.value = ''
+      appointmentDisplay.value = ''
+      packageDisplay.value = ''
     }
 
     await Promise.all([
@@ -434,15 +554,22 @@ watch(
 
 watch(
   () => form.concept,
-  (value) => {
+  async (value) => {
     if (value !== 'appointment') {
       form.appointment_id = ''
       appointmentQuery.value = ''
+      appointmentDisplay.value = ''
     }
 
     if (value !== 'package') {
       form.package_id = ''
       packageQuery.value = ''
+      packageDisplay.value = ''
+      return
+    }
+
+    if (form.patient_id) {
+      await loadPackageOptions(Number(form.patient_id), form.package_id ? Number(form.package_id) : null)
     }
   }
 )
@@ -459,6 +586,18 @@ watch(
 .field { display:flex; flex-direction:column }
 .label { font-weight:600; margin-bottom:6px }
 .input { padding:12px; border:1px solid #e5e7eb; border-radius:8px; font-size:14px }
+.combo-inline { display:flex; align-items:center; gap:8px }
+.combo-text { flex:1 }
+.combo-side-btn {
+  height:42px;
+  min-width:42px;
+  border-radius:8px;
+  border:1px solid #e5e7eb;
+  background:#fff;
+  color:#6b7280;
+  font-size:14px;
+}
+.combo-side-btn:disabled { opacity:0.5 }
 .help-text { color:#6b7280; font-size:12px; margin-top:6px }
 .field-error { color:#b91c1c; font-size:13px; margin-top:6px }
 

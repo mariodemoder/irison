@@ -44,16 +44,19 @@ class PaymentController extends Controller
         $data = $request->validate([
             'patient_id' => 'required|integer|exists:patients,id',
             'current_package_id' => 'nullable|integer|exists:packs,id',
+            'only_unpaid' => 'nullable|boolean',
         ]);
 
         $clinicId = (int) Auth::user()->clinic_id;
+        $onlyUnpaid = array_key_exists('only_unpaid', $data) ? (bool) $data['only_unpaid'] : true;
 
         $options = $this->paymentService->packageOptionsForPatient(
             (int) $data['patient_id'],
             $clinicId,
-            isset($data['current_package_id']) ? (int) $data['current_package_id'] : null
+            isset($data['current_package_id']) ? (int) $data['current_package_id'] : null,
+            $onlyUnpaid
         );
-
+        
         return response()->json(['data' => $options]);
     }
 

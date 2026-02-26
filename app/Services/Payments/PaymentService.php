@@ -3,6 +3,7 @@
 namespace App\Services\Payments;
 
 use App\Models\Appointment;
+use App\Models\Bonus;
 use App\Models\Pack;
 use App\Models\Patient;
 use App\Models\Payment;
@@ -52,6 +53,7 @@ class PaymentService
                 'id' => $appointment->id,
                 'start_time' => $appointment->start_time,
                 'end_time' => $appointment->end_time,
+                'notes' => $appointment->notes,
                 'status' => $appointment->status,
                 'payment_status' => $appointment->payment_status,
                 'pending_amount' => $pendingAmount,
@@ -68,43 +70,62 @@ class PaymentService
         })->values()->toArray();
     }
 
-    public function packageOptionsForPatient(int $patientId, int $clinicId, ?int $currentPackageId = null): array
+    public function packageOptionsForPatient(
+        int $patientId,
+        int $clinicId,
+        ?int $currentPackageId = null,
+        bool $onlyUnpaid = true
+    ): array 
     {
-        $packs = Pack::query()
-            ->with(['payments'])
+        $paidBonusIdsQuery = Payment::query()
             ->where('clinic_id', $clinicId)
             ->where('patient_id', $patientId)
+            ->whereNotNull('package_id')
+            ->select('package_id')
+            ->distinct();
+
+        $bonuses = Bonus::query()
+            ->where('clinic_id', $clinicId)
+            ->where('patient_id', $patientId)
+            ->when($onlyUnpaid, function ($query) use ($paidBonusIdsQuery, $currentPackageId) {
+                $query->whereNotIn('id', $paidBonusIdsQuery);
+
+                if ($currentPackageId) {
+                    $query->orWhere('id', (int) $currentPackageId);
+                }
+            })
             ->orderByDesc('created_at')
             ->get();
 
-        return $packs->map(function (Pack $pack) use ($currentPackageId) {
-            $completedAmount = (float) $pack->payments
+        return $bonuses->map(function (Bonus $bonus) use ($clinicId, $patientId) {
+            $completedAmount = (float) Payment::query()
+                ->where('clinic_id', $clinicId)
+                ->where('patient_id', $patientId)
+                ->where('package_id', $bonus->id)
                 ->where('status', 'completed')
                 ->sum('amount');
 
-            $pendingAmount = (float) $pack->payments
+            $pendingAmount = (float) Payment::query()
+                ->where('clinic_id', $clinicId)
+                ->where('patient_id', $patientId)
+                ->where('package_id', $bonus->id)
                 ->where('status', 'pending')
                 ->sum('amount');
 
-            $price = (float) ($pack->price ?? 0);
+            $price = (float) ($bonus->price ?? 0);
             $outstandingAmount = max($price - $completedAmount, 0);
-            $includeCurrent = $currentPackageId && (int) $pack->id === (int) $currentPackageId;
-            $isUnpaidOrPartial = $outstandingAmount > 0 || $pendingAmount > 0;
 
             return [
-                'id' => $pack->id,
-                'status' => $pack->status,
+                'id' => $bonus->id,
+                'status' => $bonus->status,
                 'price' => $price,
                 'completed_amount' => $completedAmount,
                 'pending_amount' => $pendingAmount,
                 'outstanding_amount' => $outstandingAmount,
-                '_include' => $includeCurrent || $isUnpaidOrPartial,
+                'name' => $bonus->name,
+                'total_sessions' => (int) ($bonus->total_sessions ?? 0),
+                'expires_at' => $bonus->expires_at,
             ];
-        })->filter(function (array $item) {
-            return $item['_include'] === true;
-        })->map(function (array $item) {
-            unset($item['_include']);
-            return $item;
         })->values()->toArray();
     }
 
