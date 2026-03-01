@@ -61,7 +61,9 @@ class Patient extends Model
 
     public function creditUsed(): float
     {
-        return (float) $this->creditUsages()->sum('amount');
+        return (float) $this->creditUsages()
+            ->whereNull('reversed_at')
+            ->sum('amount');
     }
 
     public function availableCredit(): float

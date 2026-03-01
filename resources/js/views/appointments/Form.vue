@@ -27,6 +27,17 @@
             <OptionSelect v-model="form.status" :options="statusOptions" :disabled="isCanceled && mode !== 'reprogram'" />
             <div v-if="errors.status" class="field-error">{{ errors.status[0] }}</div>
           </div>
+
+          <div class="full tab-bar">
+            <button type="button" class="tab-btn" :class="{ active: activeTab === 'session' }" @click="activeTab = 'session'">
+              Sesión
+            </button>
+            <button type="button" class="tab-btn" :class="{ active: activeTab === 'payment' }" @click="activeTab = 'payment'">
+              Pago
+            </button>
+          </div>
+
+          <template v-if="activeTab === 'session'">
           <div class="field">
             <label class="label">Inicio</label>
             <input v-model="form.start_time" @change="normalizeDateTimeField('start_time')" type="datetime-local" step="300" class="input" :disabled="isCanceled && mode !== 'reprogram'" />
@@ -60,12 +71,15 @@
             <textarea v-model="form.notes" class="textarea" rows="4" :disabled="isCanceled && mode !== 'reprogram'"></textarea>
             <div v-if="errors.notes" class="field-error">{{ errors.notes[0] }}</div>
           </div>
+          </template>
 
-          <div class="field">
+          <template v-if="activeTab === 'payment'">
+          <div class="field" v-if="hasSelectedPatient">
             <label class="label">Forma de pago</label>
               <div style="display:flex; gap:12px; align-items:center">
               <label style="display:flex; align-items:center; gap:8px"><input type="radio" v-model="form.payment_type" value="single" /> Simple</label>
               <label style="display:flex; align-items:center; gap:8px"><input type="radio" v-model="form.payment_type" value="bonus" :disabled="!hasAvailableBonuses" /> Usar bono</label>
+              <label style="display:flex; align-items:center; gap:8px"><input type="radio" v-model="form.payment_type" value="credit" :disabled="!hasPendingCreditPayments" /> Aplicar Adelanto</label>
             </div>
             <div v-if="form.patient_id && !hasAvailableBonuses" class="inline-alert" style="margin-top:8px">
               <div>Sin bonos disponibles</div>
@@ -73,16 +87,50 @@
                 <button type="button" class="muted" @click.prevent="suggestCreateBonus">Crear bono</button>
               </div>
             </div>
-          </div>
-
-          <div v-if="!isEdit" class="field">
-            <label class="label">Precio</label>
-            <div class="input" style="display:flex;align-items:center;background:#f8fafc">
-              <span>{{ appointmentPriceLabel }}</span>
+            <div v-if="form.patient_id && !hasPendingCreditPayments" class="inline-alert" style="margin-top:8px">
+              <div>Sin adelantos pendientes</div>
             </div>
           </div>
 
-          <div v-if="!isEdit" class="field">
+          <div class="field" v-if="hasSelectedPatient">
+            <label class="label">Precio Sesión</label>
+            <input v-model.number="form.price" type="number" min="0.01" step="0.01" class="input" style="max-width:220px" required />
+          </div>
+
+          <div class="field full" v-if="form.payment_type === 'credit'">
+            <label class="label">Adelanto pendiente</label>
+            <div v-if="pendingCreditPaymentsLoading">Cargando adelantos pendientes...</div>
+            <div v-else>
+              <div v-if="pendingCreditPayments.length === 0" class="alert-subtle">
+                <div>No hay adelantos pendientes para este paciente.</div>
+              </div>
+              <select v-else v-model="form.use_credit_payment_id" class="input" style="width:100%">
+                <option value="" disabled>Selecciona un adelanto pendiente</option>
+                <option v-for="pay in pendingCreditPayments" :key="pay.id" :value="String(pay.id)">
+                  #{{ pay.id }} — Pendiente {{ Number(creditPendingAmountOf(pay) || 0).toFixed(2) }}€ — {{ creditMethodLabel(pay.method) }}
+                </option>
+              </select>
+
+              <div v-if="selectedPendingCreditPayment" style="margin-top:8px; display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:end;">
+                <div class="field" style="margin:0;">
+                  <label class="label">Importe a favor pendiente</label>
+                  <input :value="Number(selectedPendingCreditRemainingAfterSessionAmount || 0).toFixed(2)" type="number" step="0.01" class="input" disabled />
+                </div>
+
+                <div v-if="!isEdit" class="field" style="margin:0;">
+                  <label class="label">Estado de pago</label>
+                  <div class="input" style="display:flex;align-items:center;background:#f8fafc">
+                    <span>{{ paymentStatusLabel }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="errors.use_credit_payment_id" class="field-error">{{ errors.use_credit_payment_id[0] }}</div>
+              <div v-if="errors.price" class="field-error">{{ errors.price[0] }}</div>
+            </div>
+          </div>
+
+          <div v-if="!isEdit && hasSelectedPatient && form.payment_type !== 'credit'" class="field">
             <label class="label">Estado de pago</label>
             <div class="input" style="display:flex;align-items:center;background:#f8fafc">
               <span>{{ paymentStatusLabel }}</span>
@@ -153,9 +201,19 @@
             </div>
           </div>
 
+          <div v-if="form.payment_type === 'credit' && selectedPendingCreditPayment" class="field full">
+            <div class="bonus-details" style="margin-top:8px;padding:8px;border-radius:8px;background:#fffaf0;border:1px solid #ffedd5;color:#92400e;font-size:13px">
+              <div><strong>Adelanto seleccionado</strong></div>
+              <div>Importe: {{ Number(selectedPendingCreditPayment.amount || 0).toFixed(2) }}€</div>
+              <div>Importe a favor pendiente: {{ Number(selectedPendingCreditRemainingAfterSessionAmount || 0).toFixed(2) }}€</div>
+              <div>Método: {{ creditMethodLabel(selectedPendingCreditPayment.method) }}</div>
+            </div>
+          </div>
+          </template>
+
           <div class="actions full action-row">
             <div class="left-actions">
-              <button class="primary" type="submit" :disabled="submitting">Guardar</button>
+              <button class="primary" type="submit" :disabled="submitting || !canSaveAppointment">Guardar</button>
               <button v-if="isEdit && isFutureAppointment" type="button" class="muted" @click.prevent="startReprogram" :disabled="submitting">Reprogramar</button>
               <button type="button" class="muted" @click.prevent="cancel">Volver</button>
             </div>
@@ -203,7 +261,7 @@ const router = useRouter()
 const route = useRoute()
 const isEdit = ref(false)
 const mode = ref(route.query.mode || null)
-const form = reactive({ patient_id: '', status: 'scheduled', start_time: '', end_time: '', notes: '', use_bonus_id: '', bonus_notes: '', bonus_name: '', payment_type: 'single', apply_credit: false, apply_credit_mode: 'auto', apply_credit_amount: '' })
+const form = reactive({ patient_id: '', status: 'scheduled', start_time: '', end_time: '', notes: '', price: '', use_bonus_id: '', use_credit_payment_id: '', bonus_notes: '', bonus_name: '', payment_type: 'single', apply_credit: false, apply_credit_mode: 'auto', apply_credit_amount: '' })
 
 const statusOptions = [
   { value: 'scheduled', label: 'Programada', color: '#99b1ff' },
@@ -223,13 +281,46 @@ const overlapping = ref([])
 const hasScheduledOverlap = computed(() => overlapping.value.some(a => a.status === 'scheduled'))
 let overlapTimer = null
 const selectBonus = ref(false)
+const activeTab = ref('session')
 
 const bonuses = ref([])
 const bonusesLoading = ref(false)
+const pendingCreditPayments = ref([])
+const pendingCreditPaymentsLoading = ref(false)
 
 const selectedBonus = computed(() => {
   if (!form.use_bonus_id || !bonuses.value) return null
   return bonuses.value.find(b => String(b.id) === String(form.use_bonus_id)) || null
+})
+
+const selectedPendingCreditPayment = computed(() => {
+  if (!form.use_credit_payment_id || !pendingCreditPayments.value) return null
+  return pendingCreditPayments.value.find(p => String(p.id) === String(form.use_credit_payment_id)) || null
+})
+
+function creditPendingAmountOf(payment) {
+  const pending = Number(payment?.credit_pending_amount)
+  if (Number.isFinite(pending)) return Math.max(pending, 0)
+
+  const total = Number(payment?.amount || 0)
+  const used = Number(payment?.credit_used_amount || 0)
+  if (!Number.isFinite(total) || !Number.isFinite(used)) return 0
+  return Math.max(total - used, 0)
+}
+
+const selectedPendingCreditRemainingAmount = computed(() => {
+  if (!selectedPendingCreditPayment.value) return 0
+  return creditPendingAmountOf(selectedPendingCreditPayment.value)
+})
+
+const selectedPendingCreditRemainingAfterSessionAmount = computed(() => {
+  const pendingAmount = Number(selectedPendingCreditRemainingAmount.value || 0)
+  const sessionAmount = Number(form.payment_type === 'credit' ? (form.price || 0) : 0)
+
+  if (!Number.isFinite(pendingAmount)) return 0
+  if (!Number.isFinite(sessionAmount) || sessionAmount <= 0) return Math.max(pendingAmount, 0)
+
+  return Math.max(pendingAmount - sessionAmount, 0)
 })
 
 function isExpiredLocal(b) {
@@ -254,6 +345,14 @@ const selectableBonuses = computed(() => {
   return bonuses.value.filter(b => (b.remaining_sessions && b.remaining_sessions > 0) && !isExpiredLocal(b))
 })
 
+const hasPendingCreditPayments = computed(() => {
+  return Array.isArray(pendingCreditPayments.value) && pendingCreditPayments.value.length > 0
+})
+
+const hasSelectedPatient = computed(() => {
+  return !!form.patient_id && form.patient_id !== '__create'
+})
+
 const selectedPatient = computed(() => {
   if (!form.patient_id || form.patient_id === '__create') return null
   return patients.value.find(p => String(p.id) === String(form.patient_id)) || null
@@ -265,24 +364,35 @@ const availableCredit = computed(() => {
 })
 
 const appointmentPriceLabel = computed(() => {
-  if (form.payment_type === 'bonus') {
-    const bonusPrice = Number(selectedBonus.value?.price || 0)
-    const totalSessions = Number(selectedBonus.value?.total_sessions || 0)
-    if (totalSessions > 0) {
-      const perSession = bonusPrice / totalSessions
-      return `${perSession.toFixed(2)}€`
-    }
-    return '0.00€'
-  }
+  const amount = Number(form.price || 0)
+  if (amount > 0) return `${amount.toFixed(2)}€`
+  return '0.00€'
+})
 
-  return 'Pendiente de definir en pago simple'
+const canSaveAppointment = computed(() => {
+  const hasPatient = !!form.patient_id && form.patient_id !== '__create'
+  const hasStart = !!form.start_time
+  const hasEnd = !!form.end_time
+  const hasPrice = Number(form.price || 0) > 0
+
+  return hasPatient && hasStart && hasEnd && hasPrice
 })
 
 const paymentStatusLabel = computed(() => {
   if (form.payment_type === 'bonus') return 'Cubierto por bono'
+  if (form.payment_type === 'credit') return 'Cubierto por adelanto'
   if (form.apply_credit) return 'Parcialmente pagada'
   return 'Pendiente'
 })
+
+function creditMethodLabel(method) {
+  const map = {
+    cash: 'Efectivo',
+    card: 'Tarjeta',
+    transfer: 'Transferencia',
+  }
+  return map[method] || 'Método no definido'
+}
 
 // Keep form.bonus_name in sync with selected bonus id
 watch(() => form.use_bonus_id, (id) => {
@@ -300,11 +410,31 @@ watch(() => form.payment_type, (v) => {
     selectBonus.value = true
     form.apply_credit = false
     form.apply_credit_amount = ''
+    form.use_credit_payment_id = ''
+  } else if (v === 'credit') {
+    selectBonus.value = false
+    form.use_bonus_id = ''
+    form.bonus_notes = ''
+    form.bonus_name = ''
+    form.apply_credit = false
+    form.apply_credit_amount = ''
   } else {
     selectBonus.value = false
     form.use_bonus_id = ''
     form.bonus_notes = ''
     form.bonus_name = ''
+    form.use_credit_payment_id = ''
+  }
+})
+
+watch(() => form.use_credit_payment_id, (id) => {
+  if (!id) return
+
+  const selected = pendingCreditPayments.value.find(p => String(p.id) === String(id))
+  if (!selected) return
+
+  if (form.payment_type === 'credit') {
+    form.price = Number(creditPendingAmountOf(selected)).toFixed(2)
   }
 })
 
@@ -322,10 +452,13 @@ async function onPatientChange() {
   // Load all bonuses for the selected patient so user can choose
   if (form.patient_id && form.patient_id !== '__create') {
     await loadBonusesForPatient(form.patient_id)
+    await loadPendingCreditPaymentsForPatient(form.patient_id)
   } else {
     bonuses.value = []
+    pendingCreditPayments.value = []
     selectBonus.value = false
     form.use_bonus_id = ''
+    form.use_credit_payment_id = ''
   }
 }
 
@@ -344,6 +477,33 @@ async function loadBonusesForPatient(patientId) {
     if (!bonuses.value || bonuses.value.length === 0) {
       selectBonus.value = false
       form.use_bonus_id = ''
+    }
+  }
+}
+
+async function loadPendingCreditPaymentsForPatient(patientId) {
+  pendingCreditPayments.value = []
+  if (!patientId) return
+
+  pendingCreditPaymentsLoading.value = true
+  try {
+    const res = await api.get('/payments', {
+      params: {
+        patient_id: Number(patientId),
+        concept: 'credit',
+        status: 'pending',
+        per_page: 100,
+      },
+    })
+
+    const rows = Array.isArray(res.data?.data) ? res.data.data : []
+    pendingCreditPayments.value = rows
+  } catch (e) {
+    pendingCreditPayments.value = []
+  } finally {
+    pendingCreditPaymentsLoading.value = false
+    if (!pendingCreditPayments.value.length) {
+      form.use_credit_payment_id = ''
     }
   }
 }
@@ -499,6 +659,7 @@ async function loadForEdit(id) {
     form.start_time = toDatetimeLocalValue(data.start_time)
     form.end_time = toDatetimeLocalValue(data.end_time)
     form.notes = data.notes || ''
+    form.price = data.price != null ? Number(data.price) : ''
     // Load bonuses for this patient so we can show the associated bonus if any
     if (form.patient_id) {
       await loadBonusesForPatient(form.patient_id)
@@ -535,6 +696,7 @@ onMounted(async () => {
     form.patient_id = String(preselect)
     // Load bonuses for the preselected patient
     await loadBonusesForPatient(form.patient_id)
+    await loadPendingCreditPaymentsForPatient(form.patient_id)
   }
 })
 
@@ -542,9 +704,12 @@ onMounted(async () => {
 watch(() => form.patient_id, (id) => {
   if (id && id !== '__create') {
     loadBonusesForPatient(id)
+    loadPendingCreditPaymentsForPatient(id)
     return
   }
 
+  pendingCreditPayments.value = []
+  form.use_credit_payment_id = ''
   form.apply_credit = false
   form.apply_credit_amount = ''
 })
@@ -575,6 +740,10 @@ watch(() => route.params.id, (id) => {
     form.start_time = ''
     form.end_time = ''
     form.notes = ''
+    form.price = ''
+    form.use_bonus_id = ''
+    form.use_credit_payment_id = ''
+    form.payment_type = 'single'
     form.apply_credit = false
     form.apply_credit_mode = 'auto'
     form.apply_credit_amount = ''
@@ -611,6 +780,29 @@ async function submit(payNow = false) {
     }
   }
 
+  if (form.payment_type === 'credit' && !form.use_credit_payment_id) {
+    errors.use_credit_payment_id = ['Debes seleccionar un adelanto pendiente.']
+    submitting.value = false
+    return
+  }
+
+  if (form.payment_type === 'credit') {
+    const sessionAmount = Number(form.price || 0)
+    const pendingAmount = Number(selectedPendingCreditRemainingAmount.value || 0)
+
+    if (!sessionAmount || sessionAmount <= 0) {
+      errors.price = ['Debes indicar el precio de la sesión.']
+      submitting.value = false
+      return
+    }
+
+    if (sessionAmount > pendingAmount) {
+      errors.price = ['El importe de la sesión no puede superar el importe a favor pendiente.']
+      submitting.value = false
+      return
+    }
+  }
+
     try {
       // comprobar solapamiento antes de enviar (muestra aviso, pero no bloquea)
       await checkOverlap()
@@ -621,9 +813,12 @@ async function submit(payNow = false) {
       start_time: form.start_time,
       end_time: form.end_time,
       notes: form.notes,
-      payment_type: form.payment_type,
+      price: form.price !== '' && form.price !== null ? Number(form.price) : undefined,
+      payment_type: form.payment_type === 'credit' ? 'single' : form.payment_type,
       use_bonus_id: form.use_bonus_id || undefined,
       bonus_id: form.use_bonus_id || undefined,
+      use_credit_payment_id: form.payment_type === 'credit' ? (form.use_credit_payment_id || undefined) : undefined,
+      use_credit_amount: form.payment_type === 'credit' ? (form.price || undefined) : undefined,
       bonus_notes: form.bonus_notes || undefined,
       bonus_name: form.bonus_name || undefined,
       apply_credit: form.payment_type === 'single' ? form.apply_credit : false,
@@ -645,6 +840,12 @@ async function submit(payNow = false) {
       // If user selected 'bonus' as payment type but there are no bonuses, block and show error
       if (form.payment_type === 'bonus' && selectableBonuses.value.length === 0 && !payload.bonus_id) {
         errors.general = ['No hay bonos activos disponibles para este paciente']
+        submitting.value = false
+        return
+      }
+
+      if (form.payment_type === 'credit' && (!pendingCreditPayments.value.length || !form.use_credit_payment_id)) {
+        errors.general = ['No hay adelantos pendientes disponibles para este paciente']
         submitting.value = false
         return
       }
@@ -692,6 +893,9 @@ async function submit(payNow = false) {
 .grid-form .full { grid-column: 1 / -1 }
 .field { display:flex; flex-direction:column }
 .label { font-weight:600; margin-bottom:6px }
+.tab-bar { display:flex; gap:8px; margin-top:2px }
+.tab-btn { padding:8px 14px; border-radius:9999px; border:1px solid #e5e7eb; background:#fff; font-weight:600; color:#6b7280 }
+.tab-btn.active { border-color:#3b82f6; color:#3b82f6; background:#eff6ff }
 .input, .textarea { padding:12px; border:1px solid #e5e7eb; border-radius:8px; font-size:14px }
 .textarea { resize:vertical }
 .field-error { color:#b91c1c; font-size:13px; margin-top:6px }

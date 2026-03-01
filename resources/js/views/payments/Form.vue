@@ -14,11 +14,12 @@
 
           <div class="field full">
             <label class="label">Paciente</label>
-            <select v-model="form.patient_id" class="input" :disabled="comingFromAppointment" required>
+            <select v-model="form.patient_id" @change="onPatientChange" class="input" :disabled="comingFromAppointment" required>
               <option value="">Selecciona paciente</option>
               <option v-for="p in patients" :key="p.id" :value="String(p.id)">
                 {{ p.name }} {{ p.nif ? `— ${p.nif}` : '' }}
               </option>
+              <option value="__create">+ Crear paciente...</option>
             </select>
           </div>
 
@@ -29,34 +30,6 @@
               <option value="package">🎁 Compra de bono</option>
               <option value="credit">💰 Adelanto (crédito a favor)</option>
             </select>
-          </div>
-
-          <div class="field">
-            <label class="label">Importe (€)</label>
-            <input v-model.number="form.amount" type="number" min="0" step="0.01" class="input" required />
-          </div>
-
-          <div class="field">
-            <label class="label">Método</label>
-            <select v-model="form.method" class="input" required>
-              <option value="cash">Efectivo</option>
-              <option value="card">Tarjeta</option>
-              <option value="transfer">Transferencia</option>
-            </select>
-          </div>
-
-          <div class="field">
-            <label class="label">Estado</label>
-            <select v-model="form.status" class="input" required>
-              <option value="completed">Completado</option>
-              <option value="pending">Pendiente</option>
-              <option value="refunded">Reembolsado</option>
-            </select>
-          </div>
-
-          <div class="field">
-            <label class="label">Fecha de pago</label>
-            <input v-model="form.paid_at" type="datetime-local" class="input" />
           </div>
 
           <div class="field full" v-if="form.concept === 'appointment'">
@@ -131,6 +104,45 @@
               Este pago se registrará como adelanto y quedará como saldo a favor del paciente.
             </div>
           </div>
+          
+          <div class="field" v-if="form.concept === 'package'">
+            <label class="label">Importe (€) Pendiente</label>
+            <input :value="formatMoneyForInput(packagePendingAmount)" type="number" min="0" step="0.01" class="input" readonly disabled />
+          </div>
+
+          <div class="field" v-if="form.concept === 'package'">
+            <label class="label">Importe (€) A pagar</label>
+            <input v-model.number="form.amount" type="number" min="0" step="0.01" class="input" required />
+          </div>
+
+          <div class="field" v-if="form.concept !== 'package'">
+            <label class="label">Importe (€)</label>
+            <input v-model.number="form.amount" type="number" min="0" step="0.01" class="input" required />
+          </div>
+
+          <div class="field">
+            <label class="label">Método</label>
+            <select v-model="form.method" class="input" required>
+              <option value="cash">Efectivo</option>
+              <option value="card">Tarjeta</option>
+              <option value="transfer">Transferencia</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label class="label">Estado</label>
+            <select v-model="form.status" class="input" required>
+              <option value="completed">Completado</option>
+              <option value="pending">Pendiente</option>
+              <option value="refunded">Reembolsado</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label class="label">Fecha de pago</label>
+            <input v-model="form.paid_at" type="datetime-local" class="input" />
+          </div>
+
 
           <div class="field full">
             <label class="label">Notas (opcional)</label>
@@ -151,8 +163,13 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
+import Swal from 'sweetalert2'
 import MainLayout from '../../layouts/MainLayout.vue'
 import api from '../../services/api'
+import {
+  openCreatePatientPopup as sharedOpenCreatePatientPopup,
+  loadPatients as loadPatientsShared,
+} from '../../shared/formHelpers'
 
 const route = useRoute()
 const router = useRouter()
@@ -176,6 +193,28 @@ const packageInputEl = ref(null)
 
 const hasAppointmentSelection = computed(() => !!form.appointment_id)
 const hasPackageSelection = computed(() => !!form.package_id)
+const selectedPackageOption = computed(() => {
+  if (!form.package_id) return null
+  return packageOptions.value.find(option => String(option.id) === String(form.package_id)) || null
+})
+
+function resolvePackageTotalPrice(option) {
+  const raw = option?.price ?? option?.bonus_price ?? option?.bonus?.price ?? 0
+  const value = Number(raw)
+  return Number.isFinite(value) ? value : 0
+}
+
+const packagePendingAmount = computed(() => {
+  const selected = selectedPackageOption.value
+  if (!selected) return 0
+
+  const totalPrice = resolvePackageTotalPrice(selected)
+  const completedAmount = Number(selected.completed_amount || 0)
+  const pendingAmount = Number(selected.pending_amount || 0)
+  const foundPaymentsAmount = completedAmount + pendingAmount
+
+  return Math.max(totalPrice - foundPaymentsAmount, 0)
+})
 
 const form = reactive({
   patient_id: '',
@@ -211,11 +250,21 @@ const filteredAppointmentOptions = computed(() => {
 })
 
 const pendingOrSelectedPackageOptions = computed(() => {
+  const unpaidStatuses = new Set([
+    'pending',
+    'partially_paid',
+    'partial',
+    'unpaid',
+    'incomplete',
+  ])
+
   return packageOptions.value.filter(option => {
     const pendingAmount = Number(option.pending_amount || 0)
     const outstandingAmount = Number(option.outstanding_amount || 0)
+    const status = String(option.status || '').toLowerCase().trim()
+    const isUnpaidByStatus = unpaidStatuses.has(status)
     const isCurrentSelected = form.package_id && String(option.id) === String(form.package_id)
-    return pendingAmount > 0 || outstandingAmount > 0 || isCurrentSelected
+    return pendingAmount > 0 || outstandingAmount > 0 || isUnpaidByStatus || isCurrentSelected
   })
 })
 
@@ -243,13 +292,40 @@ function clearErrors() {
 }
 
 async function loadPatients() {
-  try {
-    const res = await api.get('/patients', { params: { per_page: 100 } })
-    patients.value = Array.isArray(res.data?.data) ? res.data.data : []
-  } catch (e) {
-    patients.value = []
-    errors.general = ['No se pudieron cargar pacientes']
+  patients.value = await loadPatientsShared(api, 100)
+}
+
+async function onPatientChange() {
+  if (comingFromAppointment.value) return
+
+  if (form.patient_id === '__create') {
+    const newPatient = await sharedOpenCreatePatientPopup({ api, Swal, toast })
+
+    if (newPatient && newPatient.id) {
+      patients.value.unshift(newPatient)
+      form.patient_id = String(newPatient.id)
+    } else {
+      form.patient_id = ''
+      appointmentOptions.value = []
+      packageOptions.value = []
+      form.appointment_id = ''
+      form.package_id = ''
+      return
+    }
   }
+
+  if (form.patient_id && form.patient_id !== '__create') {
+    await Promise.all([
+      loadAppointmentOptions(Number(form.patient_id), form.appointment_id ? Number(form.appointment_id) : null),
+      loadPackageOptions(Number(form.patient_id), form.package_id ? Number(form.package_id) : null),
+    ])
+    return
+  }
+
+  appointmentOptions.value = []
+  packageOptions.value = []
+  form.appointment_id = ''
+  form.package_id = ''
 }
 
 async function loadForEdit(id) {
@@ -290,6 +366,12 @@ function packageLabel(pkg) {
 
 function packageOptionValue(pkg) {
   return `#${pkg.id} · ${packageLabel(pkg)}`
+}
+
+function formatMoneyForInput(value) {
+  const amount = Number(value || 0)
+  if (!Number.isFinite(amount)) return '0.00'
+  return amount.toFixed(2)
 }
 
 function formatShortDate(value) {
@@ -387,7 +469,16 @@ async function loadPackageOptions(patientId, currentPackageId = null) {
       },
     })
 
-    packageOptions.value = Array.isArray(res.data?.data) ? res.data.data : []
+    packageOptions.value = Array.isArray(res.data?.data)
+      ? res.data.data.map((option) => ({
+          ...option,
+          price: resolvePackageTotalPrice(option),
+          bonus_price: resolvePackageTotalPrice(option),
+          completed_amount: Number(option?.completed_amount || 0),
+          pending_amount: Number(option?.pending_amount || 0),
+          outstanding_amount: Number(option?.outstanding_amount || 0),
+        }))
+      : []
     syncPackageDisplayFromId()
   } catch (e) {
     packageOptions.value = []
@@ -439,6 +530,12 @@ function toDateTimeLocal(value) {
 async function submit() {
   submitting.value = true
   clearErrors()
+
+  if (!form.patient_id || form.patient_id === '__create') {
+    errors.general = ['Debes seleccionar un paciente válido.']
+    submitting.value = false
+    return
+  }
 
   if (form.concept === 'appointment' && !form.appointment_id) {
     errors.general = ['Debes seleccionar una cita impaga o parcial.']
@@ -498,8 +595,10 @@ function cancel() {
 onMounted(async () => {
   await loadPatients()
 
+  const hasPatientQuery = !!route.query.patient_id
+
   // Check if coming from appointment form with preloaded params
-  if (route.query.patient_id && route.query.concept === 'appointment' && route.query.appointment_id) {
+  if (hasPatientQuery && route.query.concept === 'appointment' && route.query.appointment_id) {
     comingFromAppointment.value = true
     form.patient_id = String(route.query.patient_id)
     form.concept = 'appointment'
@@ -508,6 +607,18 @@ onMounted(async () => {
     // Load appointment options for this patient
     await loadAppointmentOptions(Number(form.patient_id), Number(form.appointment_id))
     syncAppointmentDisplayFromId()
+  } else if (!route.params.id && hasPatientQuery) {
+    form.patient_id = String(route.query.patient_id)
+    form.paid_at = toDateTimeLocal(new Date().toISOString())
+
+    if (typeof route.query.concept === 'string' && ['appointment', 'package', 'credit'].includes(route.query.concept)) {
+      form.concept = route.query.concept
+    }
+
+    await Promise.all([
+      loadAppointmentOptions(Number(form.patient_id)),
+      loadPackageOptions(Number(form.patient_id)),
+    ])
   } else {
     if (!route.params.id) {
       form.paid_at = toDateTimeLocal(new Date().toISOString())
@@ -523,7 +634,7 @@ onMounted(async () => {
 watch(
   () => form.patient_id,
   async (value, oldValue) => {
-    if (!value) {
+    if (!value || value === '__create') {
       form.appointment_id = ''
       form.package_id = ''
       appointmentOptions.value = []
@@ -545,10 +656,12 @@ watch(
       packageDisplay.value = ''
     }
 
-    await Promise.all([
-      loadAppointmentOptions(Number(value), form.appointment_id ? Number(form.appointment_id) : null),
-      loadPackageOptions(Number(value), form.package_id ? Number(form.package_id) : null),
-    ])
+    if (comingFromAppointment.value) {
+      await Promise.all([
+        loadAppointmentOptions(Number(value), form.appointment_id ? Number(form.appointment_id) : null),
+        loadPackageOptions(Number(value), form.package_id ? Number(form.package_id) : null),
+      ])
+    }
   }
 )
 
@@ -570,6 +683,24 @@ watch(
 
     if (form.patient_id) {
       await loadPackageOptions(Number(form.patient_id), form.package_id ? Number(form.package_id) : null)
+      if (!isEdit.value) {
+        form.amount = Number(packagePendingAmount.value || 0)
+      }
+    }
+  }
+)
+
+watch(
+  () => form.package_id,
+  (value) => {
+    if (form.concept !== 'package') return
+    if (!value) {
+      if (!isEdit.value) form.amount = 0
+      return
+    }
+
+    if (!isEdit.value) {
+      form.amount = Number(packagePendingAmount.value || 0)
     }
   }
 )

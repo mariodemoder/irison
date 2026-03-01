@@ -4,6 +4,7 @@ namespace App\Services\Payments;
 
 use App\Models\Appointment;
 use App\Models\Bonus;
+use App\Models\CreditUsage;
 use App\Models\Pack;
 use App\Models\Patient;
 use App\Models\Payment;
@@ -119,6 +120,7 @@ class PaymentService
                 'id' => $bonus->id,
                 'status' => $bonus->status,
                 'price' => $price,
+                'bonus_price' => $price,
                 'completed_amount' => $completedAmount,
                 'pending_amount' => $pendingAmount,
                 'outstanding_amount' => $outstandingAmount,
@@ -405,6 +407,14 @@ class PaymentService
 
     private function mapPayment(Payment $payment): array
     {
+        $creditUsedAmount = (float) CreditUsage::query()
+            ->whereNull('reversed_at')
+            ->where('payment_id', $payment->id)
+            ->where('patient_id', $payment->patient_id)
+            ->sum('amount');
+
+        $creditPendingAmount = max(((float) $payment->amount) - $creditUsedAmount, 0);
+
         return [
             'id' => $payment->id,
             'patient_id' => $payment->patient_id,
@@ -412,6 +422,8 @@ class PaymentService
             'appointment_id' => $payment->appointment_id,
             'package_id' => $payment->package_id,
             'amount' => (float) $payment->amount,
+            'credit_used_amount' => $creditUsedAmount,
+            'credit_pending_amount' => $creditPendingAmount,
             'method' => $payment->method,
             'status' => $payment->status,
             'notes' => $payment->notes,

@@ -3,13 +3,54 @@
     <div class="show-wrapper">
       <div class="show-card">
         <div class="show-header">
-          <h1>Cita</h1>
+          <h1 class="title-row">
+            <span>Cita</span>
+            <span class="status" :class="effectiveStatus">{{ statusLabel(effectiveStatus) }}</span>
+          </h1>
           <div class="header-right">
-            <h2 class="status-wrap"><span class="status" :class="effectiveStatus">{{ statusLabel(effectiveStatus) }}</span></h2>
-            <div class="actions header-actions">
-              <button v-if="isEdit && isFutureAppointment" type="button" class="muted" @click.prevent="goReprogram" :disabled="submitting">
-                Reprogramar
-              </button>
+            <div class="header-top-right">
+              <div v-if="hasQuickActions" class="quick-actions" ref="quickActionsRef">
+                <button
+                  type="button"
+                  class="muted quick-trigger"
+                  @click="toggleQuickActions"
+                  :disabled="cancelling || submitting"
+                  aria-label="Acciones"
+                  title="Acciones"
+                >
+                  <svg class="quick-trigger-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <circle cx="12" cy="5" r="1.8" fill="currentColor" />
+                    <circle cx="12" cy="12" r="1.8" fill="currentColor" />
+                    <circle cx="12" cy="19" r="1.8" fill="currentColor" />
+                  </svg>
+                </button>
+                <div v-if="quickActionsOpen" class="quick-menu">
+                  <span
+                    v-if="canShowReprogramAction"
+                    class="quick-item-wrap"
+                    :title="!canReprogram ? reprogramTooltipMessage : ''"
+                  >
+                    <button
+                      type="button"
+                      class="quick-item"
+                      @click.prevent="runReprogram"
+                      :disabled="!canReprogram || submitting"
+                      :aria-label="!canReprogram ? `${reprogramTooltipMessage}. Reprogramar` : 'Reprogramar'"
+                    >
+                      Reprogramar
+                    </button>
+                  </span>
+                  <button
+                    v-if="canShowCancelAction"
+                    type="button"
+                    class="quick-item danger"
+                    @click.prevent="runCancel"
+                    :disabled="cancelling"
+                  >
+                    Cancelar Cita
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -58,21 +99,10 @@
           </div>
           <div class="actions action-row">
             <div class="left-actions">
-              <template v-if="appointment.status === 'canceled'">
-                <button class="primary" :disabled="!canReprogram" @click.prevent="goReprogram">Reprogramar</button>
-                <div v-if="!canReprogram" class="field-error" style="margin-left:8px">La reprogramación sólo está permitida con al menos 2 horas de antelación.</div>
-              </template>
-              <template v-else>
+              <template v-if="appointment.status !== 'canceled'">
                 <router-link :to="`/appointments/${appointment.id}/edit`" class="primary">Editar</router-link>
               </template>
               <button class="muted" @click="back">Volver</button>
-            </div>
-
-            <div class="right-actions">
-              <button v-if="isEdit && !isCanceled && effectiveStatus !== 'completed'" type="button" class="muted" @click.prevent="appointmentCancel" :disabled="cancelling">
-                <IconCancel />
-                Cancelar Cita
-              </button>
             </div>
           </div>
         </div>
@@ -82,13 +112,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
-import IconCancel from '../../components/icons/IconCancel.vue'
 import { useToast } from 'vue-toastification'
-import Swal from 'sweetalert2'
 import { statusLabel, formatDateShort, formatTime, parseAppointmentDateTime } from '../../shared/appointmentHelpers'
 import { appointmentCancelShared } from '../../shared/formHelpers'
 
@@ -100,6 +128,8 @@ const cancelling = ref(false)
 const submitting = ref(false)
 const canReprogram = ref(false)
 const isEdit = ref(!!route.params.id)
+const quickActionsOpen = ref(false)
+const quickActionsRef = ref(null)
 const isCanceled = computed(() => appointment.value && (appointment.value.status === 'canceled' || appointment.value.status === 'cancelled'))
 const isFutureAppointment = computed(() => {
   try {
@@ -151,6 +181,12 @@ const paymentStatusClass = computed(() => {
   return map[ps] || 'pending'
 })
 
+const reprogramTooltipMessage = 'Reprogramación sólo con al menos 1 hora de antelación'
+
+const canShowReprogramAction = computed(() => isEdit.value && isFutureAppointment.value)
+const canShowCancelAction = computed(() => isEdit.value && !isCanceled.value && effectiveStatus.value !== 'completed')
+const hasQuickActions = computed(() => canShowReprogramAction.value || canShowCancelAction.value)
+
 async function load() {
   loading.value = true
   try {
@@ -175,8 +211,6 @@ async function load() {
 }
 
 // statusLabel moved to shared/appointmentHelpers
-
-onMounted(() => load())
 
 // recompute permission when appointment changes
 function computeReprogramAllowance() {
@@ -226,31 +260,73 @@ function appointmentCancel() {
   appointmentCancelShared(route.params.id, { api, toast, onSuccess: async () => { cancelling.value = true; await load(); cancelling.value = false } }).catch(() => {})
 }
 
+function toggleQuickActions() {
+  quickActionsOpen.value = !quickActionsOpen.value
+}
+
+function closeQuickActions() {
+  quickActionsOpen.value = false
+}
+
+function handleClickOutsideQuickActions(event) {
+  if (!quickActionsOpen.value) return
+  if (!quickActionsRef.value) return
+  if (!quickActionsRef.value.contains(event.target)) {
+    closeQuickActions()
+  }
+}
+
+function runReprogram() {
+  closeQuickActions()
+  goReprogram()
+}
+
+function runCancel() {
+  closeQuickActions()
+  appointmentCancel()
+}
+
 function goReprogram() {
   router.push({ path: `/appointments/${appointment.value.id}/edit`, query: { mode: 'reprogram' } })
 }
+
+onMounted(() => {
+  load()
+  document.addEventListener('click', handleClickOutsideQuickActions)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleClickOutsideQuickActions)
+})
 </script>
 
 <style scoped>
 .show-wrapper { display:flex; justify-content:center; padding:24px }
 .show-card { width:100%; max-width:760px; background: #fff; border-radius:12px; box-shadow: 0 10px 30px rgba(2,6,23,0.06); padding:24px }
 .show-header h1 { margin:0; font-size:22px }
+.title-row { display:inline-flex; align-items:center; gap:10px }
 .form-sub { color:#6b7280; font-size:13px; margin-top:6px }
 
 /* Header layout: title left, status+actions right on one line */
-.show-header { display:flex; justify-content:space-between; align-items:center; gap:12px }
-.header-right { display:flex; align-items:center; gap:12px }
-.status-wrap { margin:0 }
-.header-actions { display:flex; gap:8px; align-items:center; justify-content:flex-end }
+.show-header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px }
+.header-right { display:flex; align-items:flex-start; }
+.header-top-right { display:flex; flex-direction:column; align-items:flex-end; gap:6px }
 .field { margin-top:12px }
 .label { font-weight:600; margin-bottom:6px }
 .value { padding:10px; background:#f8fafc; border-radius:8px }
 .actions { display:flex; gap:12px; margin-top:16px }
 .action-row { display:flex; justify-content:space-between; align-items:center }
 .left-actions { display:flex; gap:12px; align-items:center }
-.right-actions { display:flex; gap:8px; align-items:center }
 .primary { padding: 8px 16px; font-size: 14px; border-radius: 9999px; border: 2px solid #3b82f6; color: #3b82f6; background: #ffffff; font-weight: 600 }
 .muted { padding:8px 14px; border-radius:9999px; border:1px solid #e5e7eb; background:#fff }
+.quick-trigger { width:40px; height:40px; padding:0; display:inline-flex; align-items:center; justify-content:center }
+.quick-trigger-icon { width:18px; height:18px; color:#4b5563 }
+.quick-actions { position:relative }
+.quick-menu { position:absolute; right:0; top:calc(100% + 6px); min-width:180px; background:#fff; border:1px solid #e5e7eb; border-radius:10px; box-shadow:0 10px 24px rgba(2,6,23,0.10); padding:6px; display:flex; flex-direction:column; gap:4px; z-index:20 }
+.quick-item-wrap { display:block }
+.quick-item { text-align:left; padding:8px 10px; border:1px solid transparent; background:#fff; border-radius:8px; font-size:14px; color:#111827 }
+.quick-item:hover { background:#f9fafb }
+.quick-item.danger { color:#b91c1c }
 
 .status { padding:8px 14px; border-radius:9999px; font-weight:700; text-transform:capitalize; display:inline-flex; align-items:center }
 .status.canceled { background:#fff4f4; color:#da7a7a }
@@ -265,9 +341,7 @@ function goReprogram() {
 .payment-badge.paid { background:#dcfce7; color:#166534 }
 .payment-badge.covered { background:#dbeafe; color:#1e40af }
 
-/* Alinear icono y texto en botones */
+/* Alinear texto en botones */
 .actions button { display:inline-flex; align-items:center; gap:8px }
 
-.icon-cancel circle { stroke: currentColor; stroke-width:2.5 }
-.icon-cancel path { stroke: currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round }
 </style>

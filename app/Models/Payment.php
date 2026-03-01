@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\Concerns\BelongsToClinic;
 
 class Payment extends Model
@@ -38,5 +39,10 @@ class Payment extends Model
     public function package(): BelongsTo
     {
         return $this->belongsTo(Pack::class, 'package_id');
+    }
+
+    public function creditUsages(): HasMany
+    {
+        return $this->hasMany(CreditUsage::class);
     }
 }

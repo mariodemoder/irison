@@ -48,7 +48,7 @@
                 <button
                   class="toggle-canceled-btn"
                   @click.prevent="toggleCanceledVisibility"
-                  :title="showCanceledAppointments ? 'Ocultar citas canceladas' : 'Ver citas canceladas'"
+                  :title="showCanceledAppointments ? 'Ver solo citas pendientes' : 'Ver todas las citas'"
                 >
                   🔎
                 </button>
@@ -73,18 +73,27 @@
           </div>
 
           <div class="history-card">
-            <div class="history-title" style="display:flex;justify-content:space-between;align-items:center">
-              <div>Bonos</div>
-            </div>
             <PatientBonuses v-if="patient && patient.id" :patientId="patient.id" @active-bonus-count="v => activeBonusCount = v" />
           </div>
 
           <div class="history-card">
-            <div class="history-title">Pagos</div>
+            <div class="history-title" style="display:flex;justify-content:space-between;align-items:center">
+              <div>Pagos</div>
+              <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end">
+                <button
+                  class="toggle-canceled-btn"
+                  @click.prevent="toggleCompletedPaymentsVisibility"
+                  :title="showCompletedPayments ? 'Ver pagos realizados a Favor' : 'Ver todos los pagos'"
+                >
+                  🔎
+                </button>
+                <button class="primary" @click.prevent="createPayment" style="padding:6px 10px;font-size:13px">Crear</button>
+              </div>
+            </div>
             <div v-if="sortedPayments && sortedPayments.length">
               <ul>
                 <li v-for="pay in sortedPayments" :key="pay.id">
-                  {{ formatPaymentAmount(pay.amount) }} {{ paymentMethodLabel(pay.method) }} ({{ formatPaymentShortDate(pay.paid_at || pay.created_at) }})
+                  {{ formatPaymentAmount(pay.amount) }} {{ paymentMethodLabel(pay.method) }} {{ paymentMethodLabel(pay.concept) }}({{ formatPaymentShortDate(pay.paid_at || pay.created_at) }})
                 </li>
               </ul>
             </div>
@@ -115,14 +124,20 @@ const packs = ref([])
 const payments = ref([])
 const loading = ref(false)
 const showCanceledAppointments = ref(false)
+const showCompletedPayments = ref(false)
 
 const filteredAppointments = computed(() => {
   if (showCanceledAppointments.value) return appointments.value
-  return appointments.value.filter(a => a.status !== 'canceled')
+  return appointments.value.filter(a => a.status === 'scheduled' || a.status === 'rescheduled')
+})
+
+const filteredPayments = computed(() => {
+  if (showCompletedPayments.value) return payments.value
+  return payments.value.filter(p => p.status !== 'completed')
 })
 
 const sortedPayments = computed(() => {
-  if (!payments.value || payments.value.length === 0) return []
+  if (!filteredPayments.value || filteredPayments.value.length === 0) return []
 
   const toMs = (pay) => {
     const raw = pay?.paid_at || pay?.created_at
@@ -131,7 +146,7 @@ const sortedPayments = computed(() => {
     return Number.isNaN(ts) ? 0 : ts
   }
 
-  return [...payments.value].sort((a, b) => toMs(b) - toMs(a))
+  return [...filteredPayments.value].sort((a, b) => toMs(b) - toMs(a))
 })
 
 async function loadPatient() {
@@ -190,6 +205,14 @@ function createAppointment() {
 
 function toggleCanceledVisibility() {
   showCanceledAppointments.value = !showCanceledAppointments.value
+}
+function toggleCompletedPaymentsVisibility() {
+  showCompletedPayments.value = !showCompletedPayments.value
+}
+
+function createPayment() {
+  if (!patient.value || !patient.value.id) return
+  router.push({ path: '/payments/create', query: { patient_id: patient.value.id } })
 }
 
 function paymentMethodLabel(method) {
@@ -269,6 +292,8 @@ async function confirmDelete() {
 .history-card .status { padding:4px 8px; border-radius:9999px; font-weight:700; text-transform:capitalize; font-size:11px }
 .status.canceled { background:#fff4f4; color:#da7a7a }
 .status.scheduled { background:#eef2ff; color:#1e3a8a }
+.status.rescheduled { background:#fffbeb; color:#b45309 }
+.status.reprogrammed { background:#fffbeb; color:#b45309 }
 .status.completed { background:#dcfce7; color:#166534 }
 
 .primary { padding:8px 14px; border-radius:9999px; border:2px solid #3b82f6; color:#3b82f6; background:#fff; font-weight:600 }

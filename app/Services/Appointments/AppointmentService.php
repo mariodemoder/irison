@@ -9,6 +9,7 @@ use App\Models\Appointment;
 use App\Models\Bonus;
 use App\Models\BonusUsage;
 use App\Models\CreditUsage;
+use App\Models\Payment;
 use App\Models\Patient;
 use App\Services\Availability\CheckAvailability;
 use App\Services\Bonus\BonusService;
@@ -71,6 +72,7 @@ class AppointmentService
             }
 
             $this->applyCreditUsage($appointment, $data, 'usage_on_create');
+            $this->syncPendingCreditPaymentUsage($appointment, $data);
 
             return $appointment->load(['patient', 'bonus']);
         });
@@ -114,6 +116,7 @@ class AppointmentService
                 // update appointment first (clear bonus reference)
                 $appointment->update(array_merge($data, ['payment_type' => 'single', 'bonus_id' => null]));
                 app(BonusService::class)->restoreBonusIfCancelled($appointment);
+                $this->syncPendingCreditPaymentUsage($appointment, $data);
 
                 return $appointment->load(['patient', 'bonus']);
             }
@@ -153,6 +156,9 @@ class AppointmentService
                     );
                 }
 
+                // Bonus and pending-credit-payment cannot coexist
+                $this->restorePendingCreditPaymentUsage($appointment);
+
                 return ['appointment' => $appointment->load(['patient', 'bonus']), 'bonus_usage' => $usage];
             }
 
@@ -164,6 +170,7 @@ class AppointmentService
             $appointment->update($data);
 
             $this->applyCreditUsage($appointment, $data, 'usage_on_update');
+            $this->syncPendingCreditPaymentUsage($appointment, $data);
 
             return $appointment->load(['patient', 'bonus']);
         });
@@ -184,6 +191,7 @@ class AppointmentService
             }
 
             $this->restoreCreditOnCancel($appointment);
+            $this->restorePendingCreditPaymentUsage($appointment);
 
             return $appointment;
         });
@@ -249,10 +257,32 @@ private function resolveClinic(array $data)
 
     private function validatePaymentRules(array $data, $clinicId)
     {
+        if (!array_key_exists('price', $data) || $data['price'] === null || $data['price'] === '') {
+            throw new DomainException('Debes indicar el precio de la sesión');
+        }
+
+        if (!is_numeric($data['price']) || (float) $data['price'] <= 0) {
+            throw new DomainException('El precio de la sesión debe ser mayor que cero');
+        }
+
         $wantsCredit = $this->shouldApplyCredit($data);
 
         if ($wantsCredit && (($data['payment_type'] ?? 'single') === 'bonus')) {
             throw new DomainException('No puedes aplicar crédito en una cita pagada con bono');
+        }
+
+        if (!empty($data['use_credit_payment_id']) && (($data['payment_type'] ?? 'single') === 'bonus')) {
+            throw new DomainException('No puedes aplicar un adelanto en una cita pagada con bono');
+        }
+
+        if (!empty($data['use_credit_payment_id']) && $wantsCredit) {
+            throw new DomainException('No puedes combinar adelanto pendiente con aplicar crédito automático/manual');
+        }
+
+        if (array_key_exists('use_credit_amount', $data) && $data['use_credit_amount'] !== null && $data['use_credit_amount'] !== '') {
+            if (!is_numeric($data['use_credit_amount']) || (float) $data['use_credit_amount'] <= 0) {
+                throw new DomainException('El importe de la sesión debe ser mayor que cero');
+            }
         }
 
         if (array_key_exists('apply_credit_amount', $data) && $data['apply_credit_amount'] !== null && $data['apply_credit_amount'] !== '') {
@@ -262,6 +292,21 @@ private function resolveClinic(array $data)
         }
 
         if (($data['payment_type'] ?? null) !== 'bonus') {
+            if (!empty($data['use_credit_payment_id'])) {
+                $payment = $this->validatePendingCreditPayment(
+                    (int) $data['use_credit_payment_id'],
+                    $clinicId,
+                    isset($data['patient_id']) ? (int) $data['patient_id'] : null
+                );
+
+                if (array_key_exists('use_credit_amount', $data) && $data['use_credit_amount'] !== null && $data['use_credit_amount'] !== '') {
+                    $sessionAmount = (float) $data['use_credit_amount'];
+                    $pendingAmount = $this->pendingAmountForCreditPayment($payment);
+                    if ($sessionAmount > $pendingAmount) {
+                        throw new DomainException('El importe de la sesión no puede superar el importe a favor pendiente');
+                    }
+                }
+            }
             return;
         }
 
@@ -285,6 +330,139 @@ private function resolveClinic(array $data)
 
         if ($bonus->isExpired()) {
             throw new DomainException('Bono expirado');
+        }
+    }
+
+    private function validatePendingCreditPayment(int $paymentId, int $clinicId, ?int $patientId): Payment
+    {
+        $payment = Payment::whereKey($paymentId)->lockForUpdate()->first();
+        if (!$payment) {
+            throw new DomainException('Adelanto pendiente no encontrado');
+        }
+
+        if ((int) $payment->clinic_id !== (int) $clinicId) {
+            throw new DomainException('El adelanto no pertenece a esta clínica');
+        }
+
+        if ($patientId !== null && (int) $payment->patient_id !== (int) $patientId) {
+            throw new DomainException('El adelanto no pertenece al paciente seleccionado');
+        }
+
+        if ((string) $payment->concept !== 'credit') {
+            throw new DomainException('El pago seleccionado no es un adelanto');
+        }
+
+        if ((string) $payment->status !== 'pending') {
+            throw new DomainException('El adelanto seleccionado ya no está disponible');
+        }
+
+        return $payment;
+    }
+
+    private function syncPendingCreditPaymentUsage(Appointment $appointment, array $data): void
+    {
+        $selectedPaymentId = isset($data['use_credit_payment_id']) && $data['use_credit_payment_id'] !== ''
+            ? (int) $data['use_credit_payment_id']
+            : null;
+
+        if (!$selectedPaymentId) {
+            $this->restorePendingCreditPaymentUsage($appointment);
+            return;
+        }
+
+        // ensure no stale linkage remains
+        $this->restorePendingCreditPaymentUsage($appointment);
+
+        $payment = $this->validatePendingCreditPayment(
+            $selectedPaymentId,
+            (int) $appointment->clinic_id,
+            (int) $appointment->patient_id
+        );
+
+        $pendingAmount = $this->pendingAmountForCreditPayment($payment);
+        if ($pendingAmount <= 0) {
+            throw new DomainException('El adelanto seleccionado ya no tiene importe disponible');
+        }
+
+        $requestedAmount = array_key_exists('use_credit_amount', $data) && $data['use_credit_amount'] !== null && $data['use_credit_amount'] !== ''
+            ? (float) $data['use_credit_amount']
+            : $pendingAmount;
+
+        if ($requestedAmount <= 0) {
+            throw new DomainException('El importe de la sesión debe ser mayor que cero');
+        }
+
+        if ($requestedAmount > $pendingAmount) {
+            throw new DomainException('El importe de la sesión supera el disponible del adelanto');
+        }
+
+        $remainingAfterUsage = max($pendingAmount - $requestedAmount, 0);
+
+        $payment->update([
+            'status' => $remainingAfterUsage <= 0 ? 'completed' : 'pending',
+            'paid_at' => $payment->paid_at ?? now(),
+        ]);
+
+        CreditUsage::create([
+            'clinic_id' => $appointment->clinic_id,
+            'patient_id' => $appointment->patient_id,
+            'appointment_id' => $appointment->id,
+            'payment_id' => $payment->id,
+            'amount' => $requestedAmount,
+            'reason' => 'usage_pending_credit_payment',
+        ]);
+
+        if ($appointment->payment_status === 'pending') {
+            $appointment->update(['payment_status' => 'partially_paid']);
+        }
+    }
+
+    private function pendingAmountForCreditPayment(Payment $payment): float
+    {
+        $usedAmount = (float) CreditUsage::query()
+            ->whereNull('reversed_at')
+            ->where('payment_id', $payment->id)
+            ->where('patient_id', $payment->patient_id)
+            ->sum('amount');
+
+        return max((float) $payment->amount - $usedAmount, 0.0);
+    }
+
+    private function restorePendingCreditPaymentUsage(Appointment $appointment): void
+    {
+        $paymentIds = CreditUsage::query()
+            ->where('appointment_id', $appointment->id)
+            ->whereNotNull('payment_id')
+            ->whereNull('reversed_at')
+            ->pluck('payment_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($paymentIds->isEmpty()) {
+            return;
+        }
+
+        CreditUsage::query()
+            ->where('appointment_id', $appointment->id)
+            ->whereNotNull('payment_id')
+            ->whereNull('reversed_at')
+            ->update([
+                'reversed_at' => now(),
+                'reversed_reason' => 'appointment_pending_credit_reset',
+            ]);
+
+        foreach ($paymentIds as $paymentId) {
+            $paymentId = (int) $paymentId;
+            if ($paymentId <= 0) {
+                continue;
+            }
+
+            $payment = Payment::whereKey($paymentId)->lockForUpdate()->first();
+            if ($payment && (string) $payment->concept === 'credit' && (int) $payment->patient_id === (int) $appointment->patient_id) {
+                $pendingAmount = $this->pendingAmountForCreditPayment($payment);
+                $payment->update(['status' => $pendingAmount <= 0 ? 'completed' : 'pending']);
+            }
         }
     }
 
@@ -380,18 +558,12 @@ private function resolveClinic(array $data)
 
     private function restoreCreditOnCancel(Appointment $appointment): void
     {
-        $netUsedCredit = (float) $appointment->creditUsages()->sum('amount');
-
-        if ($netUsedCredit <= 0) {
-            return;
-        }
-
-        CreditUsage::create([
-            'clinic_id' => $appointment->clinic_id,
-            'patient_id' => $appointment->patient_id,
-            'appointment_id' => $appointment->id,
-            'amount' => -1 * $netUsedCredit,
-            'reason' => 'reversal_on_cancel',
-        ]);
+        $appointment->creditUsages()
+            ->whereNull('reversed_at')
+            ->whereNull('payment_id')
+            ->update([
+                'reversed_at' => now(),
+                'reversed_reason' => 'appointment_canceled',
+            ]);
     }
 }

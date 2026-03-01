@@ -1,12 +1,12 @@
 <template>
   <div class="patient-bonuses">
     <div style="display:flex; justify-content:space-between; align-items:center">
-      <h3 style="margin:0"></h3>
+      <h3 style="margin:0">Bonos</h3>
       <div style="display:flex;gap:8px;align-items:center">
         <button
           class="toggle-canceled-btn"
           @click="toggleInactiveVisibility"
-          :title="showInactiveBonuses ? 'Ocultar bonos expirados o agotados' : 'Ver bonos expirados o agotados'"
+          :title="showInactiveBonuses ? 'Ver solo bonos disponibles' : 'Ver todos los bonos'"
         >
           🔎
         </button>

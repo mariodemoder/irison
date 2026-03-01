@@ -20,6 +20,7 @@ class Appointment extends Model
         'end_time',
         'status',
         'payment_status',
+        'price',
         'notes',
         'payment_type',
         'bonus_id',
@@ -28,6 +29,7 @@ class Appointment extends Model
     protected $casts = [
         'start_time' => 'datetime:Y-m-d H:i:s',
         'end_time'   => 'datetime:Y-m-d H:i:s',
+        'price' => 'decimal:2',
     ];
 
     public function clinic(): BelongsTo

@@ -72,6 +72,29 @@ body { background: var(--bg-app); color: var(--text-main); }
 .btn.btn-sm:hover { background: #eff6ff }
 .btn.btn-sm.small { padding:6px 10px; font-size:13px }
 
+/* Disabled buttons (global): unified very light gray style across the app */
+button:disabled,
+button[disabled],
+.btn:disabled,
+.btn[disabled],
+.btn--solid:disabled,
+.btn--solid[disabled],
+.btn--ghost:disabled,
+.btn--ghost[disabled],
+.primary:disabled,
+.primary[disabled],
+.muted:disabled,
+.muted[disabled] {
+	background: #f3f4f6 !important;
+	border-color: #e5e7eb !important;
+	color: #9ca3af !important;
+	box-shadow: none !important;
+	cursor: not-allowed !important;
+	opacity: 1 !important;
+	filter: none !important;
+	pointer-events: none !important;
+}
+
 /* Solid primary button (filled) */
 .btn--solid {
 	padding: 10px 16px;
