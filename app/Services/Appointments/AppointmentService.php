@@ -57,6 +57,7 @@ class AppointmentService
 
             $data['clinic_id'] = $clinicId;
             if (isset($data['use_bonus_id'])) {
+                $data['use_bonus_id'] = $this->normalizeBonusId($data['use_bonus_id']);
                 $data['bonus_id'] = $data['use_bonus_id'];
             }
 
@@ -65,7 +66,7 @@ class AppointmentService
             if (($data['payment_type'] ?? null) === 'bonus') {
                 app(BonusService::class)
                     ->useBonusForAppointment(
-                        $data['use_bonus_id'],
+                        (int) $data['use_bonus_id'],
                         $appointment,
                         $data['bonus_notes'] ?? null
                     );
@@ -83,9 +84,10 @@ class AppointmentService
         // If use_bonus_id requested, try to apply via BonusService
         if (!empty($params['use_bonus_id'])) {
             try {
+                $bonusId = $this->normalizeBonusId($params['use_bonus_id']);
                 $usage = app(BonusService::class)
                     ->useBonusForAppointment(
-                        $params['use_bonus_id'],
+                        (int) $bonusId,
                         $appointment,
                         $params['bonus_notes'] ?? null
                     );
@@ -123,7 +125,9 @@ class AppointmentService
 
             // switching to bonus (consume or change)
             if ($newPaymentType === 'bonus') {
-                $targetBonusId = $data['use_bonus_id'] ?? $appointment->bonus_id;
+                $targetBonusId = array_key_exists('use_bonus_id', $data)
+                    ? $this->normalizeBonusId($data['use_bonus_id'])
+                    : ($appointment->bonus_id ? (int) $appointment->bonus_id : null);
 
                 if (empty($targetBonusId)) {
                     throw new DomainException('Debe seleccionar un bono al cambiar a payment_type=bonus');
@@ -164,6 +168,7 @@ class AppointmentService
 
             // default: regular update
             if (isset($data['use_bonus_id'])) {
+                $data['use_bonus_id'] = $this->normalizeBonusId($data['use_bonus_id']);
                 $data['bonus_id'] = $data['use_bonus_id'];
             }
 
@@ -314,7 +319,8 @@ private function resolveClinic(array $data)
             throw new DomainException('Debe seleccionar un bono');
         }
 
-        $bonus = Bonus::find($data['use_bonus_id']);
+        $bonusId = $this->normalizeBonusId($data['use_bonus_id']);
+        $bonus = Bonus::find($bonusId);
 
         if (!$bonus) {
             throw new DomainException('Bono no encontrado');
@@ -357,6 +363,24 @@ private function resolveClinic(array $data)
         }
 
         return $payment;
+    }
+
+    private function normalizeBonusId($bonusId): ?int
+    {
+        if ($bonusId === null || $bonusId === '') {
+            return null;
+        }
+
+        if (!is_numeric($bonusId)) {
+            throw new DomainException('Bono inválido');
+        }
+
+        $normalized = (int) $bonusId;
+        if ($normalized <= 0) {
+            throw new DomainException('Bono inválido');
+        }
+
+        return $normalized;
     }
 
     private function syncPendingCreditPaymentUsage(Appointment $appointment, array $data): void

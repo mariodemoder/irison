@@ -77,7 +77,7 @@
             <div class="value">{{ appointment.notes ?? '—' }}</div>
           </div>
 
-          <div class="field">
+          <div v-if="!isUnpaid" class="field">
             <label class="label">Forma de pago</label>
             <div class="value">{{ appointment.payment_type === 'bonus' ? 'Bono' : 'Pago simple' }}</div>
           </div>
@@ -179,6 +179,11 @@ const paymentStatusClass = computed(() => {
     'covered_by_pack': 'covered',
   }
   return map[ps] || 'pending'
+})
+
+const isUnpaid = computed(() => {
+  const ps = appointment.value?.payment_status
+  return !ps || ps === 'pending'
 })
 
 const reprogramTooltipMessage = 'Reprogramación sólo con al menos 1 hora de antelación'

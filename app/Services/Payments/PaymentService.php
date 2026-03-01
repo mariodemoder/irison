@@ -5,7 +5,6 @@ namespace App\Services\Payments;
 use App\Models\Appointment;
 use App\Models\Bonus;
 use App\Models\CreditUsage;
-use App\Models\Pack;
 use App\Models\Patient;
 use App\Models\Payment;
 use DomainException;
@@ -78,24 +77,26 @@ class PaymentService
         bool $onlyUnpaid = true
     ): array 
     {
-        $paidBonusIdsQuery = Payment::query()
-            ->where('clinic_id', $clinicId)
-            ->where('patient_id', $patientId)
-            ->whereNotNull('package_id')
-            ->select('package_id')
-            ->distinct();
-
         $bonuses = Bonus::query()
-            ->where('clinic_id', $clinicId)
-            ->where('patient_id', $patientId)
-            ->when($onlyUnpaid, function ($query) use ($paidBonusIdsQuery, $currentPackageId) {
-                $query->whereNotIn('id', $paidBonusIdsQuery);
-
-                if ($currentPackageId) {
-                    $query->orWhere('id', (int) $currentPackageId);
-                }
+            ->select('bonuses.*')
+            ->leftJoin('payments as p', function ($join) use ($clinicId, $patientId) {
+                $join->on('p.package_id', '=', 'bonuses.id')
+                    ->where('p.clinic_id', '=', $clinicId)
+                    ->where('p.patient_id', '=', $patientId)
+                    ->where('p.concept', '=', 'package');
             })
-            ->orderByDesc('created_at')
+            ->where('bonuses.clinic_id', $clinicId)
+            ->where('bonuses.patient_id', $patientId)
+            ->when($onlyUnpaid, function ($query) use ($currentPackageId) {
+                $query->where(function ($subQuery) use ($currentPackageId) {
+                    $subQuery->whereNull('p.id');
+
+                    if ($currentPackageId) {
+                        $subQuery->orWhere('bonuses.id', (int) $currentPackageId);
+                    }
+                });
+            })
+            ->orderByDesc('bonuses.created_at')
             ->get();
 
         return $bonuses->map(function (Bonus $bonus) use ($clinicId, $patientId) {
@@ -296,7 +297,7 @@ class PaymentService
             'patient_id' => 'required|integer|exists:patients,id',
             'concept' => 'required|in:appointment,package,credit',
             'appointment_id' => 'nullable|integer|exists:appointments,id',
-            'package_id' => 'nullable|integer|exists:packs,id',
+            'package_id' => 'nullable|integer|exists:bonuses,id',
             'amount' => 'required|numeric|min:0',
             'method' => 'required|in:cash,card,transfer',
             'status' => 'required|in:completed,pending,refunded',
@@ -364,13 +365,13 @@ class PaymentService
         return $appointment;
     }
 
-    private function resolvePackageForConcept(string $concept, ?int $packageId, int $clinicId, int $patientId): ?Pack
+    private function resolvePackageForConcept(string $concept, ?int $packageId, int $clinicId, int $patientId): ?Bonus
     {
         if ($concept !== 'package' || !$packageId) {
             return null;
         }
 
-        $package = Pack::with('payments')->find($packageId);
+        $package = Bonus::find($packageId);
 
         if (!$package || (int) $package->clinic_id !== $clinicId) {
             throw new DomainException('El bono no pertenece a esta clínica');
@@ -380,11 +381,17 @@ class PaymentService
             throw new DomainException('El bono no pertenece al paciente seleccionado');
         }
 
-        $completedAmount = (float) $package->payments
+        $completedAmount = (float) Payment::query()
+            ->where('clinic_id', $clinicId)
+            ->where('patient_id', $patientId)
+            ->where('package_id', $package->id)
             ->where('status', 'completed')
             ->sum('amount');
 
-        $pendingAmount = (float) $package->payments
+        $pendingAmount = (float) Payment::query()
+            ->where('clinic_id', $clinicId)
+            ->where('patient_id', $patientId)
+            ->where('package_id', $package->id)
             ->where('status', 'pending')
             ->sum('amount');
 

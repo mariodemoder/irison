@@ -81,11 +81,8 @@
               <label style="display:flex; align-items:center; gap:8px"><input type="radio" v-model="form.payment_type" value="bonus" :disabled="!hasAvailableBonuses" /> Usar bono</label>
               <label style="display:flex; align-items:center; gap:8px"><input type="radio" v-model="form.payment_type" value="credit" :disabled="!hasPendingCreditPayments" /> Aplicar Adelanto</label>
             </div>
-            <div v-if="form.patient_id && !hasAvailableBonuses" class="inline-alert" style="margin-top:8px">
+            <div v-if="form.patient_id && form.payment_type === 'bonus' && !hasAvailableBonuses" class="inline-alert" style="margin-top:8px">
               <div>Sin bonos disponibles</div>
-              <div>
-                <button type="button" class="muted" @click.prevent="suggestCreateBonus">Crear bono</button>
-              </div>
             </div>
             <div v-if="form.patient_id && !hasPendingCreditPayments" class="inline-alert" style="margin-top:8px">
               <div>Sin adelantos pendientes</div>
@@ -165,18 +162,17 @@
             </div>
           </div>
 
-          <div v-if="selectBonus || form.payment_type === 'bonus'" class="field full">
+          <div v-if="form.payment_type === 'bonus'" class="field full">
             <label class="label">Bono</label>
             <div v-if="bonusesLoading">Cargando bonos...</div>
             <div v-else>
               <div v-if="selectableBonuses.length === 0" class="alert-subtle">
                 <div>No hay bonos activos para este paciente.</div>
-                <div style="margin-top:8px">
-                  <button type="button" class="muted" @click.prevent="suggestCreateBonus">Sugerir crear bono</button>
-                </div>
               </div>
-              <select v-else v-model="form.use_bonus_id" class="input" style="width:100%">
+              <select v-model="form.use_bonus_id" @change="onBonusSelectChange" class="input" style="width:100%">
                 <option value="" disabled>Selecciona un bono</option>
+                <option value="__create_bonus">+ Crear bono...</option>
+                <option v-if="selectableBonuses.length === 0" value="" disabled>No hay bonos disponibles</option>
                 <option v-for="b in selectableBonuses" :key="b.id" :value="b.id">
                   {{ b.name ? (b.name + ' — ') : '' }}{{ b.total_sessions }} sesiones — {{ b.remaining_sessions }} restantes{{ b.expires_at ? (' — expira ' + formatDMY(b.expires_at)) : '' }}
                 </option>
@@ -515,15 +511,89 @@ async function loadPatients() {
   patients.value = await loadPatientsShared(api)
 }
 
-function suggestCreateBonus() {
+async function suggestCreateBonus() {
   const toast = useToast()
   if (!form.patient_id) {
     toast.info('Selecciona primero un paciente')
     return
   }
 
-  // Navegar a la ficha del paciente donde existe la card para crear bonos
-  router.push({ path: `/patients/${form.patient_id}`, query: { open: 'bonuses' } })
+  const result = await Swal.fire({
+    title: 'Crear bono',
+    html: `
+      <div class="swal-card">
+        <div class="create-row">
+          <label for="swal-bonus-name">Nombre</label>
+          <input id="swal-bonus-name" class="input" type="text" required value="Bono" />
+        </div>
+        <div class="create-row">
+          <label for="swal-bonus-sessions">Nº sesiones</label>
+          <input id="swal-bonus-sessions" class="input" type="number" min="1" required value="1" />
+        </div>
+        <div class="create-row">
+          <label for="swal-bonus-price">Precio</label>
+          <input id="swal-bonus-price" class="input" type="number" step="0.01" min="0" value="0" />
+        </div>
+        <div class="create-row">
+          <label for="swal-bonus-expires">Expira (opcional)</label>
+          <input id="swal-bonus-expires" class="input" type="date" />
+        </div>
+      </div>
+    `,
+    showCancelButton: true,
+    confirmButtonText: 'Crear',
+    cancelButtonText: 'Cancelar',
+    customClass: { popup: 'swal-popup-card' },
+    focusConfirm: false,
+    preConfirm: async () => {
+      const name = document.getElementById('swal-bonus-name')?.value?.trim() || 'Bono'
+      const totalSessions = Number(document.getElementById('swal-bonus-sessions')?.value || 0)
+      const price = Number(document.getElementById('swal-bonus-price')?.value || 0)
+      const expiresAt = document.getElementById('swal-bonus-expires')?.value || ''
+
+      if (!Number.isFinite(totalSessions) || totalSessions <= 0) {
+        Swal.showValidationMessage('El número de sesiones debe ser mayor a 0')
+        return false
+      }
+
+      if (!Number.isFinite(price) || price < 0) {
+        Swal.showValidationMessage('El precio debe ser 0 o mayor')
+        return false
+      }
+
+      try {
+        const payload = {
+          name,
+          total_sessions: totalSessions,
+          price,
+        }
+        if (expiresAt) payload.expires_at = expiresAt
+
+        const res = await api.post(`/patients/${form.patient_id}/bonuses`, payload)
+        return (res.data && res.data.data) ? res.data.data : res.data
+      } catch (e) {
+        const message = e?.response?.data?.message || 'Error creando bono'
+        Swal.showValidationMessage(message)
+        return false
+      }
+    },
+  })
+
+  if (!result.isConfirmed || !result.value) return
+
+  const createdBonus = result.value
+  await loadBonusesForPatient(form.patient_id)
+  if (createdBonus?.id) {
+    form.use_bonus_id = String(createdBonus.id)
+  }
+  toast.success('Bono creado')
+}
+
+function onBonusSelectChange() {
+  if (form.use_bonus_id === '__create_bonus') {
+    form.use_bonus_id = ''
+    suggestCreateBonus()
+  }
 }
 
 function cancel() {
@@ -938,6 +1008,8 @@ async function submit(payNow = false) {
 }
 .swal-popup-card .swal2-title { margin-bottom:8px }
 .swal-card { display:flex; flex-direction:column; gap:10px }
+.swal-card .create-row { display:flex; flex-direction:column; gap:6px }
+.swal-card .create-row label { font-weight:600; text-align:left; color:#111827 }
 .swal-card .input { width:100%; padding:10px; border-radius:8px; border:1px solid #e5e7eb; box-sizing:border-box }
 .swal2-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:12px }
 .swal2-actions .primary, .primary { padding: 8px 16px; font-size: 14px; border-radius: 9999px; border: 2px solid #3b82f6; color: #3b82f6; background: #ffffff; font-weight: 600 }

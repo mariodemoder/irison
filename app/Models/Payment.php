@@ -38,7 +38,7 @@ class Payment extends Model
 
     public function package(): BelongsTo
     {
-        return $this->belongsTo(Pack::class, 'package_id');
+        return $this->belongsTo(Bonus::class, 'package_id');
     }
 
     public function creditUsages(): HasMany

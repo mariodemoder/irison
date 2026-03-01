@@ -43,7 +43,7 @@ class PaymentController extends Controller
     {
         $data = $request->validate([
             'patient_id' => 'required|integer|exists:patients,id',
-            'current_package_id' => 'nullable|integer|exists:packs,id',
+            'current_package_id' => 'nullable|integer|exists:bonuses,id',
             'only_unpaid' => 'nullable|boolean',
         ]);
 

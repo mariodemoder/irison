@@ -40,7 +40,7 @@ class Clinic extends Model
 
     public function packs(): HasMany
     {
-        return $this->hasMany(Pack::class);
+        return $this->hasMany(Bonus::class, 'clinic_id');
     }
 
     public function payments(): HasMany

@@ -69,30 +69,20 @@
 
           <div class="field full" v-if="form.concept === 'package'">
             <label class="label">Bono (obligatorio)</label>
-            <div class="combo-inline">
-              <input
-                ref="packageInputEl"
-                v-model="packageDisplay"
-                type="text"
-                class="input combo-text"
-                list="package-options-list"
-                placeholder="Selecciona bono impago/parcial"
-                :disabled="!form.patient_id || loadingPackageOptions"
-                @input="onPackageDisplayInput"
-              />
-              <button
-                type="button"
-                class="combo-side-btn"
-                :disabled="!form.patient_id || loadingPackageOptions"
-                @click="handlePackageSideButton"
-                :title="hasPackageSelection ? 'Limpiar selección' : 'Mostrar opciones'"
-              >
-                {{ hasPackageSelection ? '✕' : '▾' }}
-              </button>
-            </div>
-            <datalist id="package-options-list">
-              <option v-for="pkg in filteredPackageOptions" :key="pkg.id" :value="packageOptionValue(pkg)"></option>
-            </datalist>
+            <select
+              v-model="form.package_id"
+              @change="onPackageSelectChange"
+              class="input"
+              :disabled="!form.patient_id || loadingPackageOptions"
+              style="width:100%"
+            >
+              <option value="" disabled>Selecciona bono impago/parcial</option>
+              <option value="__create_bonus">+ Crear bono...</option>
+              <option v-if="filteredPackageOptions.length === 0" value="" disabled>No hay bonos impagos/parciales</option>
+              <option v-for="pkg in filteredPackageOptions" :key="pkg.id" :value="String(pkg.id)">
+                {{ packageOptionValue(pkg) }}
+              </option>
+            </select>
             <div class="help-text" v-if="loadingPackageOptions">Cargando bonos...</div>
             <div class="help-text" v-else-if="form.patient_id && filteredPackageOptions.length === 0">
               No hay bonos impagos/parciales para este paciente.
@@ -184,17 +174,15 @@ const loadingAppointmentOptions = ref(false)
 const appointmentQuery = ref('')
 const packageOptions = ref([])
 const loadingPackageOptions = ref(false)
-const packageQuery = ref('')
 const comingFromAppointment = ref(false)
 const appointmentDisplay = ref('')
-const packageDisplay = ref('')
 const appointmentInputEl = ref(null)
-const packageInputEl = ref(null)
 
 const hasAppointmentSelection = computed(() => !!form.appointment_id)
 const hasPackageSelection = computed(() => !!form.package_id)
 const selectedPackageOption = computed(() => {
   if (!form.package_id) return null
+  if (String(form.package_id) === '__create_bonus') return null
   return packageOptions.value.find(option => String(option.id) === String(form.package_id)) || null
 })
 
@@ -258,7 +246,7 @@ const pendingOrSelectedPackageOptions = computed(() => {
     'incomplete',
   ])
 
-  return packageOptions.value.filter(option => {
+  const filtered = packageOptions.value.filter(option => {
     const pendingAmount = Number(option.pending_amount || 0)
     const outstandingAmount = Number(option.outstanding_amount || 0)
     const status = String(option.status || '').toLowerCase().trim()
@@ -266,25 +254,18 @@ const pendingOrSelectedPackageOptions = computed(() => {
     const isCurrentSelected = form.package_id && String(option.id) === String(form.package_id)
     return pendingAmount > 0 || outstandingAmount > 0 || isUnpaidByStatus || isCurrentSelected
   })
+
+  return [...filtered].sort((a, b) => {
+    const aPending = Math.max(Number(a.pending_amount || 0), Number(a.outstanding_amount || 0), 0)
+    const bPending = Math.max(Number(b.pending_amount || 0), Number(b.outstanding_amount || 0), 0)
+
+    if (bPending !== aPending) return bPending - aPending
+    return Number(b.id || 0) - Number(a.id || 0)
+  })
 })
 
 const filteredPackageOptions = computed(() => {
-  const q = (packageQuery.value || '').toLowerCase().trim()
-  if (!q) return pendingOrSelectedPackageOptions.value
-
-  return pendingOrSelectedPackageOptions.value.filter(option => {
-    const values = [
-      String(option.id),
-      option.status,
-      String(option.price),
-      String(option.completed_amount),
-      String(option.pending_amount),
-      String(option.outstanding_amount),
-      packageLabel(option),
-    ]
-
-    return values.some(v => String(v || '').toLowerCase().includes(q))
-  })
+  return pendingOrSelectedPackageOptions.value
 })
 
 function clearErrors() {
@@ -315,10 +296,16 @@ async function onPatientChange() {
   }
 
   if (form.patient_id && form.patient_id !== '__create') {
-    await Promise.all([
-      loadAppointmentOptions(Number(form.patient_id), form.appointment_id ? Number(form.appointment_id) : null),
-      loadPackageOptions(Number(form.patient_id), form.package_id ? Number(form.package_id) : null),
-    ])
+    form.appointment_id = ''
+    form.package_id = ''
+    appointmentOptions.value = []
+    packageOptions.value = []
+    appointmentQuery.value = ''
+    appointmentDisplay.value = ''
+
+    if (form.concept === 'appointment') {
+      await loadAppointmentOptions(Number(form.patient_id))
+    }
     return
   }
 
@@ -343,12 +330,13 @@ async function loadForEdit(id) {
     form.notes = data.notes || ''
 
     if (form.patient_id) {
-      await Promise.all([
-        loadAppointmentOptions(Number(form.patient_id), data.appointment_id ? Number(data.appointment_id) : null),
-        loadPackageOptions(Number(form.patient_id), data.package_id ? Number(data.package_id) : null),
-      ])
+      if (form.concept === 'appointment') {
+        await loadAppointmentOptions(Number(form.patient_id), data.appointment_id ? Number(data.appointment_id) : null)
+      }
+      if (form.concept === 'package') {
+        await loadPackageOptions(Number(form.patient_id), data.package_id ? Number(data.package_id) : null)
+      }
       syncAppointmentDisplayFromId()
-      syncPackageDisplayFromId()
     }
   } catch (e) {
     toast.error('Error cargando pago')
@@ -408,26 +396,10 @@ function syncAppointmentDisplayFromId() {
   appointmentDisplay.value = selected ? appointmentOptionValue(selected) : ''
 }
 
-function syncPackageDisplayFromId() {
-  if (!form.package_id) {
-    packageDisplay.value = ''
-    return
-  }
-  const selected = filteredPackageOptions.value.find(p => String(p.id) === String(form.package_id))
-    || packageOptions.value.find(p => String(p.id) === String(form.package_id))
-  packageDisplay.value = selected ? packageOptionValue(selected) : ''
-}
-
 function onAppointmentDisplayInput() {
   appointmentQuery.value = appointmentDisplay.value
   const selected = appointmentOptions.value.find(a => appointmentOptionValue(a) === appointmentDisplay.value)
   form.appointment_id = selected ? String(selected.id) : ''
-}
-
-function onPackageDisplayInput() {
-  packageQuery.value = packageDisplay.value
-  const selected = filteredPackageOptions.value.find(p => packageOptionValue(p) === packageDisplay.value)
-  form.package_id = selected ? String(selected.id) : ''
 }
 
 function handleAppointmentSideButton() {
@@ -442,15 +414,91 @@ function handleAppointmentSideButton() {
   }
 }
 
-function handlePackageSideButton() {
-  if (hasPackageSelection.value) {
-    form.package_id = ''
-    packageDisplay.value = ''
-    packageQuery.value = ''
+async function suggestCreateBonus() {
+  if (!form.patient_id || form.patient_id === '__create') {
+    toast.info('Selecciona primero un paciente')
+    return
   }
 
-  if (packageInputEl.value) {
-    packageInputEl.value.focus()
+  const result = await Swal.fire({
+    title: 'Crear bono',
+    html: `
+      <div class="swal-card">
+        <div class="create-row">
+          <label for="swal-bonus-name">Nombre</label>
+          <input id="swal-bonus-name" class="input" type="text" required value="Bono" />
+        </div>
+        <div class="create-row">
+          <label for="swal-bonus-sessions">Nº sesiones</label>
+          <input id="swal-bonus-sessions" class="input" type="number" min="1" required value="1" />
+        </div>
+        <div class="create-row">
+          <label for="swal-bonus-price">Precio</label>
+          <input id="swal-bonus-price" class="input" type="number" step="0.01" min="0" value="0" />
+        </div>
+        <div class="create-row">
+          <label for="swal-bonus-expires">Expira (opcional)</label>
+          <input id="swal-bonus-expires" class="input" type="date" />
+        </div>
+      </div>
+    `,
+    showCancelButton: true,
+    confirmButtonText: 'Crear',
+    cancelButtonText: 'Cancelar',
+    customClass: { popup: 'swal-popup-card' },
+    focusConfirm: false,
+    preConfirm: async () => {
+      const name = document.getElementById('swal-bonus-name')?.value?.trim() || 'Bono'
+      const totalSessions = Number(document.getElementById('swal-bonus-sessions')?.value || 0)
+      const price = Number(document.getElementById('swal-bonus-price')?.value || 0)
+      const expiresAt = document.getElementById('swal-bonus-expires')?.value || ''
+
+      if (!Number.isFinite(totalSessions) || totalSessions <= 0) {
+        Swal.showValidationMessage('El número de sesiones debe ser mayor a 0')
+        return false
+      }
+
+      if (!Number.isFinite(price) || price < 0) {
+        Swal.showValidationMessage('El precio debe ser 0 o mayor')
+        return false
+      }
+
+      try {
+        const payload = {
+          name,
+          total_sessions: totalSessions,
+          price,
+        }
+        if (expiresAt) payload.expires_at = expiresAt
+
+        const res = await api.post(`/patients/${form.patient_id}/bonuses`, payload)
+        return (res.data && res.data.data) ? res.data.data : res.data
+      } catch (e) {
+        const message = e?.response?.data?.message || 'Error creando bono'
+        Swal.showValidationMessage(message)
+        return false
+      }
+    },
+  })
+
+  if (!result.isConfirmed || !result.value) return
+
+  const createdBonus = result.value
+  const createdPackageId = createdBonus?.id ? Number(createdBonus.id) : null
+  await loadPackageOptions(Number(form.patient_id), createdPackageId || null)
+  if (createdPackageId) {
+    form.package_id = String(createdPackageId)
+  }
+  if (!isEdit.value) {
+    form.amount = Number(packagePendingAmount.value || 0)
+  }
+  toast.success('Bono creado')
+}
+
+async function onPackageSelectChange() {
+  if (form.package_id === '__create_bonus') {
+    form.package_id = ''
+    await suggestCreateBonus()
   }
 }
 
@@ -479,7 +527,6 @@ async function loadPackageOptions(patientId, currentPackageId = null) {
           outstanding_amount: Number(option?.outstanding_amount || 0),
         }))
       : []
-    syncPackageDisplayFromId()
   } catch (e) {
     packageOptions.value = []
     errors.general = ['No se pudieron cargar los bonos del paciente']
@@ -615,10 +662,12 @@ onMounted(async () => {
       form.concept = route.query.concept
     }
 
-    await Promise.all([
-      loadAppointmentOptions(Number(form.patient_id)),
-      loadPackageOptions(Number(form.patient_id)),
-    ])
+    if (form.concept === 'appointment') {
+      await loadAppointmentOptions(Number(form.patient_id))
+    }
+    if (form.concept === 'package') {
+      await loadPackageOptions(Number(form.patient_id))
+    }
   } else {
     if (!route.params.id) {
       form.paid_at = toDateTimeLocal(new Date().toISOString())
@@ -640,9 +689,7 @@ watch(
       appointmentOptions.value = []
       packageOptions.value = []
       appointmentQuery.value = ''
-      packageQuery.value = ''
       appointmentDisplay.value = ''
-      packageDisplay.value = ''
       return
     }
 
@@ -650,17 +697,18 @@ watch(
     if (changedPatient && !comingFromAppointment.value) {
       form.appointment_id = ''
       form.package_id = ''
+      appointmentOptions.value = []
+      packageOptions.value = []
       appointmentQuery.value = ''
-      packageQuery.value = ''
       appointmentDisplay.value = ''
-      packageDisplay.value = ''
+
+      if (form.concept === 'appointment') {
+        await loadAppointmentOptions(Number(value))
+      }
     }
 
     if (comingFromAppointment.value) {
-      await Promise.all([
-        loadAppointmentOptions(Number(value), form.appointment_id ? Number(form.appointment_id) : null),
-        loadPackageOptions(Number(value), form.package_id ? Number(form.package_id) : null),
-      ])
+      await loadAppointmentOptions(Number(value), form.appointment_id ? Number(form.appointment_id) : null)
     }
   }
 )
@@ -670,14 +718,16 @@ watch(
   async (value) => {
     if (value !== 'appointment') {
       form.appointment_id = ''
+      appointmentOptions.value = []
       appointmentQuery.value = ''
       appointmentDisplay.value = ''
+    } else if (form.patient_id) {
+      await loadAppointmentOptions(Number(form.patient_id), form.appointment_id ? Number(form.appointment_id) : null)
     }
 
     if (value !== 'package') {
       form.package_id = ''
-      packageQuery.value = ''
-      packageDisplay.value = ''
+      packageOptions.value = []
       return
     }
 
@@ -747,4 +797,23 @@ watch(
 @media (max-width: 768px) {
   .grid-form { grid-template-columns: 1fr }
 }
+</style>
+
+<style>
+.swal-popup-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(2,6,23,0.06);
+  padding: 18px 18px 16px;
+  max-width: 480px;
+}
+.swal-popup-card .swal2-title { margin-bottom:8px }
+.swal-card { display:flex; flex-direction:column; gap:10px }
+.swal-card .create-row { display:flex; flex-direction:column; gap:6px }
+.swal-card .create-row label { font-weight:600; text-align:left; color:#111827 }
+.swal-card .input { width:100%; padding:10px; border-radius:8px; border:1px solid #e5e7eb; box-sizing:border-box }
+.swal2-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:12px }
+.swal2-actions .primary, .primary { padding: 8px 16px; font-size: 14px; border-radius: 9999px; border: 2px solid #3b82f6; color: #3b82f6; background: #ffffff; font-weight: 600 }
+.swal2-actions .primary:hover, .primary:hover { background:#eff6ff }
+.swal2-actions .muted { padding:8px 14px; border-radius:9999px; border:1px solid #e5e7eb; background:#fff }
 </style>
