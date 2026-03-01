@@ -83,7 +83,7 @@
                 <button
                   class="toggle-canceled-btn"
                   @click.prevent="toggleCompletedPaymentsVisibility"
-                  :title="showCompletedPayments ? 'Ver pagos realizados a Favor' : 'Ver todos los pagos'"
+                  :title="showCompletedPayments ? 'Ver solo pagos a favor (anticipos)' : 'Ver todos los pagos'"
                 >
                   🔎
                 </button>
@@ -91,9 +91,10 @@
               </div>
             </div>
             <div v-if="sortedPayments && sortedPayments.length">
+              <div class="payments-total">Total: {{ formatPaymentAmount(totalPaymentsAmount) }}</div>
               <ul>
                 <li v-for="pay in sortedPayments" :key="pay.id">
-                  {{ formatPaymentAmount(pay.amount) }} {{ paymentMethodLabel(pay.method) }} {{ paymentMethodLabel(pay.concept) }}({{ formatPaymentShortDate(pay.paid_at || pay.created_at) }})
+                  ({{ formatPaymentDate(pay.paid_at || pay.created_at) }}) - {{ formatPaymentAmount(pay.amount) }} {{ paymentMethodLabel(pay.method) }} {{ paymentConceptLabel(pay.concept) }} 
                 </li>
               </ul>
             </div>
@@ -133,7 +134,7 @@ const filteredAppointments = computed(() => {
 
 const filteredPayments = computed(() => {
   if (showCompletedPayments.value) return payments.value
-  return payments.value.filter(p => p.status !== 'completed')
+  return payments.value.filter(p => p.concept === 'credit')
 })
 
 const sortedPayments = computed(() => {
@@ -147,6 +148,10 @@ const sortedPayments = computed(() => {
   }
 
   return [...filteredPayments.value].sort((a, b) => toMs(b) - toMs(a))
+})
+
+const totalPaymentsAmount = computed(() => {
+  return sortedPayments.value.reduce((sum, pay) => sum + Number(pay?.amount || 0), 0)
 })
 
 async function loadPatient() {
@@ -225,6 +230,16 @@ function paymentMethodLabel(method) {
   return map[method] || 'método no definido'
 }
 
+function paymentConceptLabel(concept) {
+  const map = {
+    credit: 'Anticipo',
+    package: 'Bono',
+    appointment: 'Simple',
+  }
+
+  return map[concept] || 'Motivo no definido'
+}
+
 function formatPaymentAmount(amount) {
   const n = Number(amount || 0)
   if (!Number.isFinite(n)) return '0€'
@@ -232,13 +247,14 @@ function formatPaymentAmount(amount) {
   return `${n.toFixed(2)}€`
 }
 
-function formatPaymentShortDate(value) {
+function formatPaymentDate(value) {
   if (!value) return '—'
   const d = new Date(value)
   if (Number.isNaN(d.getTime())) return '—'
   const dd = String(d.getDate()).padStart(2, '0')
   const mm = String(d.getMonth() + 1).padStart(2, '0')
-  return `${dd}/${mm}`
+  const yy = String(d.getFullYear()).slice(-2)
+  return `${dd}/${mm}/${yy}`
 }
 
 async function confirmDelete() {
@@ -288,6 +304,7 @@ async function confirmDelete() {
 .history-card ul { list-style:none; padding:0; margin:0 }
 .history-card li { padding:6px 0; border-bottom:1px dashed #f1f5f9; font-size:12px; color:#334155 }
 .history-card li:last-child { border-bottom: none }
+.payments-total { font-size:12px; font-weight:700; color:#0f172a; margin-bottom:6px }
 
 .history-card .status { padding:4px 8px; border-radius:9999px; font-weight:700; text-transform:capitalize; font-size:11px }
 .status.canceled { background:#fff4f4; color:#da7a7a }

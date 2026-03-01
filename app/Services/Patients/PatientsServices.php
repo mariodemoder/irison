@@ -116,6 +116,8 @@ class PatientsServices
                 return [
                     'id' => $payment->id,
                     'amount' => $payment->amount,
+                    'concept' => $payment->concept,
+                    'amount' => $payment->amount,
                     'status' => $payment->status,
                     'method' => $payment->method,
                     'paid_at' => $payment->paid_at,
