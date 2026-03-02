@@ -52,8 +52,13 @@
           <div>
             <strong>{{ b.name || 'Bono' }}</strong>
           </div>
-          <div class="bonus-badge">
-            {{ statusLabel(b.status) }}
+          <div class="bonus-badges">
+            <div class="bonus-badge">
+              {{ statusLabel(b.status) }}
+            </div>
+            <div class="payment-badge" :class="bonusPaymentClass(b)">
+              {{ bonusPaymentLabel(b) }}
+            </div>
           </div>
         </div>
 
@@ -96,6 +101,7 @@ import { formatDMY } from '../shared/dateHelpers'
 const props = defineProps({ patientId: { type: [String, Number], required: true } })
 const emit = defineEmits(['active-bonus-count'])
 const bonuses = ref([])
+const packagePayments = ref([])
 const showForm = ref(false)
 const showInactiveBonuses = ref(false)
 const form = ref({ name: 'Bono', total_sessions: 1, price: 0, expires_at: '' })
@@ -121,6 +127,28 @@ function normalizeBonus(b) {
     status: b.status ?? (b.remaining_sessions <= 0 ? 'exhausted' : 'active'),
     justCreated: b.justCreated ?? false,
   }
+}
+
+function isExpiredLocal(bonus) {
+  if (!bonus?.expires_at) return false
+  const expiresDate = new Date(bonus.expires_at)
+  if (Number.isNaN(expiresDate.getTime())) return false
+  expiresDate.setHours(23, 59, 59, 999)
+  return expiresDate.getTime() < Date.now()
+}
+
+function isBonusPaidLocal(bonus) {
+  const bonusId = Number(bonus?.id)
+  if (!bonusId) return false
+  return packagePayments.value.some((payment) => Number(payment?.package_id) === bonusId)
+}
+
+function bonusPaymentLabel(bonus) {
+  return isBonusPaidLocal(bonus) ? 'Pago' : 'Impago'
+}
+
+function bonusPaymentClass(bonus) {
+  return isBonusPaidLocal(bonus) ? 'paid' : 'unpaid'
 }
 
 const visibleBonuses = computed(() => {
@@ -152,10 +180,25 @@ watch(bonuses, () => emitActiveCount(), { immediate: true })
 
 async function load() {
   try {
-    const res = await api.get(`/patients/${props.patientId}/bonuses`)
+    const [bonusesRes, paymentsRes] = await Promise.all([
+      api.get(`/patients/${props.patientId}/bonuses`),
+      api.get('/payments', {
+        params: {
+          patient_id: Number(props.patientId),
+          concept: 'package',
+          per_page: 200,
+        },
+      }),
+    ])
+
+    const paymentRows = Array.isArray(paymentsRes.data?.data) ? paymentsRes.data.data : []
+    packagePayments.value = paymentRows
+
+    const res = bonusesRes
     bonuses.value = Array.isArray(res.data.data) ? res.data.data.map(normalizeBonus) : []
   } catch (e) {
     bonuses.value = []
+    packagePayments.value = []
   }
 }
 
@@ -290,11 +333,34 @@ function prefillRenew(b) {
   align-items:center;
 }
 
+.bonus-badges {
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
 .bonus-badge {
   padding:4px 8px;
   border-radius:9999px;
   font-size:11px;
   font-weight:700;
+}
+
+.payment-badge {
+  padding:4px 8px;
+  border-radius:9999px;
+  font-size:11px;
+  font-weight:700;
+}
+
+.payment-badge.paid {
+  background:#dcfce7;
+  color:#166534;
+}
+
+.payment-badge.unpaid {
+  background:#fee2e2;
+  color:#b91c1c;
 }
 
 .big-number {
