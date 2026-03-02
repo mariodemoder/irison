@@ -96,18 +96,35 @@
           </div>
           
           <div class="field" v-if="form.concept === 'package'">
-            <label class="label">Importe (€) Pendiente</label>
-            <input :value="formatMoneyForInput(packagePendingAmount)" type="number" min="0" step="0.01" class="input" readonly disabled />
+            <label class="label">Total a pagar</label>
+            <div class="money-total">{{ formatMoney(packagePendingAmount) }}</div>
           </div>
 
           <div class="field" v-if="form.concept === 'package'">
             <label class="label">Importe (€) A pagar</label>
-            <input v-model.number="form.amount" type="number" min="0" step="0.01" class="input" required />
+            <input
+              :value="formatMoneyForInput(form.amount)"
+              type="text"
+              inputmode="decimal"
+              class="input"
+              :disabled="form.concept === 'package'"
+              required
+              @input="onAmountInput"
+              @blur="onAmountBlur"
+            />
           </div>
 
           <div class="field" v-if="form.concept !== 'package'">
             <label class="label">Importe (€)</label>
-            <input v-model.number="form.amount" type="number" min="0" step="0.01" class="input" required />
+            <input
+              :value="formatMoneyForInput(form.amount)"
+              type="text"
+              inputmode="decimal"
+              class="input"
+              required
+              @input="onAmountInput"
+              @blur="onAmountBlur"
+            />
           </div>
 
           <div class="field">
@@ -121,7 +138,7 @@
 
           <div class="field">
             <label class="label">Estado</label>
-            <select v-model="form.status" class="input" required>
+            <select v-model="form.status" class="input" :disabled="form.concept === 'package'" required>
               <option value="completed">Completado</option>
               <option value="pending">Pendiente</option>
               <option value="refunded">Reembolsado</option>
@@ -360,6 +377,39 @@ function formatMoneyForInput(value) {
   const amount = Number(value || 0)
   if (!Number.isFinite(amount)) return '0.00'
   return amount.toFixed(2)
+}
+
+function parseMoneyInput(rawValue) {
+  const sanitized = String(rawValue || '')
+    .replace(',', '.')
+    .replace(/[^\d.]/g, '')
+
+  const [wholePart = '', ...decimalParts] = sanitized.split('.')
+  const decimalPart = decimalParts.join('').slice(0, 2)
+  const normalized = decimalPart.length > 0 ? `${wholePart}.${decimalPart}` : wholePart
+  const amount = Number(normalized)
+
+  if (!Number.isFinite(amount) || amount < 0) return 0
+  return amount
+}
+
+function onAmountInput(event) {
+  form.amount = parseMoneyInput(event?.target?.value)
+}
+
+function onAmountBlur() {
+  form.amount = Number(Number(form.amount || 0).toFixed(2))
+}
+
+function formatMoney(value) {
+  const amount = Number(value || 0)
+  if (!Number.isFinite(amount)) return '0,00 €'
+  return new Intl.NumberFormat('es-ES', {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount)
 }
 
 function formatShortDate(value) {
@@ -781,6 +831,7 @@ watch(
 .combo-side-btn:disabled { opacity:0.5 }
 .help-text { color:#6b7280; font-size:12px; margin-top:6px }
 .field-error { color:#b91c1c; font-size:13px; margin-top:6px }
+.money-total { padding:12px; border:1px solid #e5e7eb; border-radius:8px; font-size:14px; font-weight:700; background:#f8fafc; color:#0f172a }
 
 .actions { display:flex; gap:12px; align-items:center }
 .primary {
