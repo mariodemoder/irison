@@ -53,7 +53,9 @@
       <div class="list">
         <div v-for="pay in payments" :key="pay.id" class="payment-row">
           <div>{{ formatDate(pay.created_at) }}</div>
-          <div>{{ pay.patient?.name ?? `Paciente #${pay.patient_id}` }}</div>
+              <router-link v-if="pay.patient?.id" :to="`/patients/${pay.patient.id}`" class="patient-link">
+              {{ pay.patient?.name ?? `Paciente #${pay.patient_id}` }}
+            </router-link>
           <div>{{ formatCurrency(pay.amount) }}</div>
           <div>{{ conceptLabel(pay.concept) }}</div>
           <div>{{ methodLabel(pay.method) }}</div>
@@ -78,11 +80,13 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
 import { useToast } from 'vue-toastification'
 
 const toast = useToast()
+const route = useRoute()
 
 const loading = ref(false)
 const payments = ref([])
@@ -96,6 +100,22 @@ const filters = ref({
   method: '',
   concept: '',
 })
+
+function applyQueryFilters() {
+  const allowedStatus = ['completed', 'pending', 'refunded']
+  const allowedMethod = ['cash', 'card', 'transfer']
+  const allowedConcept = ['appointment', 'package', 'credit']
+
+  const queryQ = String(route.query.q || '').trim()
+  const queryStatus = String(route.query.status || '').trim()
+  const queryMethod = String(route.query.method || '').trim()
+  const queryConcept = String(route.query.concept || '').trim()
+
+  filters.value.q = queryQ
+  filters.value.status = allowedStatus.includes(queryStatus) ? queryStatus : ''
+  filters.value.method = allowedMethod.includes(queryMethod) ? queryMethod : ''
+  filters.value.concept = allowedConcept.includes(queryConcept) ? queryConcept : ''
+}
 
 function formatCurrency(value) {
   const number = Number(value || 0)
@@ -161,6 +181,7 @@ function debouncedReload() {
 }
 
 onMounted(async () => {
+  applyQueryFilters()
   await load(1)
 })
 </script>
@@ -199,7 +220,8 @@ onMounted(async () => {
 .pagination-actions { display:flex; gap:8px }
 .icon-btn { width:32px; height:32px; border-radius:8px; border:1px solid #e5e7eb; background:#fff }
 .icon-btn:disabled { opacity:0.45 }
-
+.patient-link { color: var(--secondary); text-decoration: none; font-weight: 600 }
+.patient-link:hover { text-decoration: underline }
 @media (max-width: 900px) {
   .filters, .list-header, .payment-row { grid-template-columns:1fr }
 }

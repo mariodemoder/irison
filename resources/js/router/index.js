@@ -14,6 +14,7 @@ import AppointmentsForm from '../views/appointments/Form.vue'
 import AppointmentsShow from '../views/appointments/Show.vue'
 import PaymentsIndex from '../views/payments/Index.vue'
 import PaymentsForm from '../views/payments/Form.vue'
+import BonusesIndex from '../views/bonuses/Index.vue'
 
 const routes = [
   { path: '/login', component: Login },
@@ -23,6 +24,7 @@ const routes = [
   { path: '/payments', component: PaymentsIndex, meta: { auth: true } },
   { path: '/payments/create', component: PaymentsForm, meta: { auth: true } },
   { path: '/payments/:id/edit', component: PaymentsForm, meta: { auth: true } },
+  { path: '/bonuses', component: BonusesIndex, meta: { auth: true } },
   { path: '/patients', component: PatientsIndex, meta: { auth: true } },
   { path: '/patients/create', component: PatientsForm, meta: { auth: true } },
   { path: '/patients/:id', component: PatientsShow, meta: { auth: true } },

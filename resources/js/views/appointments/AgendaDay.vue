@@ -19,16 +19,31 @@
             </div>
           </div>
 
-          <div class="search-center">
-            <div class="search-wrapper">
-              <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-              <input v-model="query" placeholder="Buscar por nombre o NIF" class="search-input" />
-            </div>
-          </div>
-
           <div class="header-actions">
             <router-link to="/appointments/create" class="btn btn-sm small compact">Nueva cita</router-link>
           </div>
+        </div>
+
+        <div class="filters-row">
+          <div class="search-wrapper">
+            <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input v-model="query" placeholder="Buscar por nombre o NIF" class="search-input" />
+          </div>
+
+          <select v-model="statusFilter" @change="applyRouteFilters">
+            <option value="">Todos</option>
+            <option value="scheduled">Programadas</option>
+            <option value="rescheduled">Reprogramadas</option>
+            <option value="completed">Completadas</option>
+            <option value="canceled">Canceladas</option>
+          </select>
+
+          <select v-model="paymentFilter" @change="applyRouteFilters">
+            <option value="">Todos</option>
+            <option value="pending">Pendiente</option>
+            <option value="partially_paid">Parcial</option>
+            <option value="paid">Completo</option>
+          </select>
         </div>
 
         <div class="list-header">
@@ -66,16 +81,19 @@
 
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
 import { statusLabel, timeClass, formatTimeCalendar } from '../../shared/appointmentHelpers'
 
 const router = useRouter()
+const route = useRoute()
 const appointments = ref([])
 const loading = ref(false)
 const date = ref(new Date().toISOString().slice(0,10))
 const query = ref('')
+const paymentFilter = ref('')
+const statusFilter = ref('')
 const displayDay = computed(() => {
   const d = new Date(date.value)
   return d.getDate()
@@ -89,7 +107,9 @@ const displayMonthYear = computed(() => {
 async function load() {
   loading.value = true
   try {
-    const res = await api.get('/appointments', { params: { date: date.value } })
+    const includeAllDates = String(route.query.all || '') === '1'
+    const params = includeAllDates ? {} : { date: date.value }
+    const res = await api.get('/appointments', { params })
     // si la API devuelve paginación cambia según sea necesario
     appointments.value = Array.isArray(res.data) ? res.data : (res.data.data || [])
   } catch (e) {
@@ -98,6 +118,58 @@ async function load() {
   } finally {
     loading.value = false
   }
+}
+
+function normalizeDateInput(rawDate) {
+  const value = String(rawDate || '').trim()
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null
+}
+
+function syncDateFromRoute() {
+  const routeDate = normalizeDateInput(route.query.date)
+  if (!routeDate) return false
+  if (routeDate === date.value) return false
+
+  date.value = routeDate
+  return true
+}
+
+function normalizeStatusInput(value) {
+  const allowed = ['pending', 'scheduled', 'rescheduled', 'completed', 'canceled']
+  const parsed = String(value || '').trim()
+  return allowed.includes(parsed) ? parsed : ''
+}
+
+function normalizePaymentInput(value) {
+  const allowed = ['unpaid', 'pending', 'partially_paid', 'paid']
+  const parsed = String(value || '').trim()
+  return allowed.includes(parsed) ? parsed : ''
+}
+
+function syncFiltersFromRoute() {
+  const currentStatus = normalizeStatusInput(route.query.status)
+  const currentPayment = String(route.query.unpaid || '') === '1'
+    ? 'unpaid'
+    : normalizePaymentInput(route.query.payment)
+
+  statusFilter.value = currentStatus
+  paymentFilter.value = currentPayment
+}
+
+function applyRouteFilters() {
+  const nextQuery = { ...route.query }
+
+  nextQuery.status = statusFilter.value || undefined
+
+  if (paymentFilter.value === 'unpaid') {
+    nextQuery.unpaid = '1'
+    nextQuery.payment = undefined
+  } else {
+    nextQuery.unpaid = undefined
+    nextQuery.payment = paymentFilter.value || undefined
+  }
+
+  router.replace({ query: nextQuery })
 }
 
 function prevDay() {
@@ -114,8 +186,21 @@ function nextDay() {
 
 onMounted(() => load())
 
+onMounted(() => {
+  syncDateFromRoute()
+  syncFiltersFromRoute()
+})
+
 watch(date, () => {
   load()
+})
+
+watch(() => route.query, () => {
+  syncFiltersFromRoute()
+  const changedDate = syncDateFromRoute()
+  if (!changedDate) {
+    load()
+  }
 })
 
 function goToAppointment(id) {
@@ -144,11 +229,52 @@ function paymentStatusClass(status) {
 
 const filteredAppointments = computed(() => {
   const q = (query.value || '').toLowerCase().trim()
-  if (!q) return appointments.value
-  return appointments.value.filter(a => {
+  const showOnlyUnpaid = paymentFilter.value === 'unpaid'
+  const routeStatusFilter = statusFilter.value
+  const routePaymentFilter = paymentFilter.value
+
+  return appointments.value.filter((a) => {
+    if (routeStatusFilter === 'completed' && a?.status !== 'completed') {
+      return false
+    }
+
+    if (routeStatusFilter === 'canceled' && a?.status !== 'canceled') {
+      return false
+    }
+
+    if (routeStatusFilter === 'pending' && ['completed', 'canceled'].includes(a?.status)) {
+      return false
+    }
+
+    if (routeStatusFilter === 'scheduled' && a?.status !== 'scheduled') {
+      return false
+    }
+
+    if (routeStatusFilter === 'rescheduled' && a?.status !== 'rescheduled') {
+      return false
+    }
+
+    if (showOnlyUnpaid && !['pending', 'partially_paid'].includes(a?.payment_status)) {
+      return false
+    }
+
+    if (routePaymentFilter === 'pending' && a?.payment_status !== 'pending') {
+      return false
+    }
+
+    if (routePaymentFilter === 'partially_paid' && a?.payment_status !== 'partially_paid') {
+      return false
+    }
+
+    if (routePaymentFilter === 'paid' && !['paid', 'covered_by_pack'].includes(a?.payment_status)) {
+      return false
+    }
+
+    if (!q) return true
+
     const name = a.patient?.name ?? ''
     const nif = a.patient?.nif ?? ''
-    return [name, nif].some(f => f && String(f).toLowerCase().includes(q))
+    return [name, nif].some((f) => f && String(f).toLowerCase().includes(q))
   })
 })
 
@@ -159,7 +285,7 @@ const filteredAppointments = computed(() => {
 <style scoped>
 *, ::before, ::after { box-sizing: border-box; border-width: 0; border-style: solid; border-color: #e5e7eb }
 
-.page-header { display:grid; grid-template-columns: 230px 1fr 160px; align-items:center; gap:0px; margin-bottom:16px }
+.page-header { display:grid; grid-template-columns: 230px 160px; justify-content:space-between; align-items:center; gap:0px; margin-bottom:16px }
 
 .page-header h1 { margin:0; font-size:20px; font-weight:800 }
 .form-sub { color:#6b7280; font-size:13px; margin-top:4px }
@@ -187,7 +313,21 @@ const filteredAppointments = computed(() => {
   .page-header { grid-template-columns: 1fr auto }
 }
 
-.search-center { display:flex; justify-content:flex-end; align-items:center }
+.filters-row {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+  align-items: center;
+}
+
+.filters-row select {
+  padding: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 13px;
+  background: #fff;
+}
 
 /* Ensure mini calendar sits above the search area to avoid being covered */
 .mini-cal-wrapper { position: relative; z-index: 20 }
@@ -239,6 +379,10 @@ const filteredAppointments = computed(() => {
 
 @media (max-width: 900px) {
   .page-header { grid-template-columns: 1fr auto }
+
+  .filters-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 480px) {

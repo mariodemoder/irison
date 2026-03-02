@@ -15,25 +15,75 @@ const loading = ref(true)
 const lowBonusPatients = ref([])
 const lowBonusLoading = ref(true)
 const alertsLoading = ref(true)
-const unpaidCompletedAppointments = ref(0)
-const pendingPayments = ref(0)
-const partialPayments = ref(0)
+const todaySummaryLoading = ref(true)
+const todaySummary = ref({
+  total: 0,
+  completed: 0,
+  canceled: 0,
+  pending: 0,
+})
+const unpaidBonusesCount = ref(0)
+const creditInFavorAmount = ref(0)
+const unpaidSessionsCount = ref(0)
+
+const currencyFormatter = new Intl.NumberFormat('es-ES', {
+  style: 'currency',
+  currency: 'EUR',
+})
 
 const shortLowBonusList = computed(() => lowBonusPatients.value.slice(0, 5))
+
+const todayLabel = computed(() => {
+  return new Date().toLocaleDateString('es-ES', {
+    weekday: 'long',
+    day: '2-digit',
+    month: '2-digit',
+  })
+})
+
+const todayDateQuery = computed(() => todayIsoDate())
 
 const importantAlerts = computed(() => {
   const items = []
 
-  if (unpaidCompletedAppointments.value > 0) {
-    items.push(`${unpaidCompletedAppointments.value} cita${unpaidCompletedAppointments.value === 1 ? '' : 's'} completada${unpaidCompletedAppointments.value === 1 ? '' : 's'} sin pago.`)
+  if (unpaidBonusesCount.value > 0) {
+    items.push({
+      key: 'unpaid-bonuses',
+      text: `${unpaidBonusesCount.value} bono${unpaidBonusesCount.value === 1 ? '' : 's'} impago${unpaidBonusesCount.value === 1 ? '' : 's'}.`,
+      to: {
+        path: '/bonuses',
+        query: {
+          payment_state: 'unpaid',
+        },
+      },
+    })
   }
 
-  if (pendingPayments.value > 0) {
-    items.push(`${pendingPayments.value} pago${pendingPayments.value === 1 ? '' : 's'} pendiente${pendingPayments.value === 1 ? '' : 's'}.`)
+  if (creditInFavorAmount.value > 0) {
+    items.push({
+      key: 'credit-in-favor',
+      text: `Créditos a favor: ${currencyFormatter.format(creditInFavorAmount.value)}.`,
+      to: {
+        path: '/patients',
+        query: {
+          has_credit: '1',
+        },
+      },
+    })
   }
 
-  if (partialPayments.value > 0) {
-    items.push(`${partialPayments.value} pago${partialPayments.value === 1 ? '' : 's'} parcial${partialPayments.value === 1 ? '' : 'es'}.`)
+  if (unpaidSessionsCount.value > 0) {
+    items.push({
+      key: 'unpaid-sessions',
+      text: `${unpaidSessionsCount.value} sesi${unpaidSessionsCount.value === 1 ? 'ón' : 'ones'} impaga${unpaidSessionsCount.value === 1 ? '' : 's'}.`,
+      to: {
+        path: '/appointments/day',
+        query: {
+          unpaid: '1',
+          all: '1',
+        },
+      },
+    })
   }
 
   return items
@@ -124,26 +174,102 @@ async function fetchLowBonuses() {
 async function fetchImportantAlerts() {
   alertsLoading.value = true
   try {
-    const [appointmentsRes, pendingPaymentsRes] = await Promise.all([
+    const [appointmentsRes, unpaidBonusesRes, totalCreditInFavor] = await Promise.all([
       api.get('/appointments'),
-      api.get('/payments', { params: { status: 'pending', per_page: 1 } }),
+      api.get('/bonuses/unpaid-summary'),
+      fetchTotalCreditInFavor(),
     ])
 
     const appointments = Array.isArray(appointmentsRes.data?.data)
       ? appointmentsRes.data.data
       : (Array.isArray(appointmentsRes.data) ? appointmentsRes.data : [])
 
-    unpaidCompletedAppointments.value = appointments.filter(a => a.status === 'completed' && a.payment_status === 'pending').length
-    partialPayments.value = appointments.filter(a => a.payment_status === 'partially_paid').length
-    pendingPayments.value = Number(pendingPaymentsRes.data?.meta?.total || 0)
+    unpaidSessionsCount.value = appointments.filter((appointment) => {
+      const paymentStatus = appointment?.payment_status
+      const status = appointment?.status
+
+      return status !== 'canceled' && ['pending', 'partially_paid'].includes(paymentStatus)
+    }).length
+
+    unpaidBonusesCount.value = Number(unpaidBonusesRes.data?.data?.total || 0)
+    creditInFavorAmount.value = totalCreditInFavor
   } catch (e) {
     console.error('Error cargando alertas importantes', e)
-    unpaidCompletedAppointments.value = 0
-    partialPayments.value = 0
-    pendingPayments.value = 0
+    unpaidBonusesCount.value = 0
+    creditInFavorAmount.value = 0
+    unpaidSessionsCount.value = 0
   } finally {
     alertsLoading.value = false
   }
+}
+
+function todayIsoDate() {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+
+  return `${year}-${month}-${day}`
+}
+
+async function fetchTodaySummary() {
+  todaySummaryLoading.value = true
+
+  try {
+    const res = await api.get('/appointments', {
+      params: {
+        date: todayIsoDate(),
+      },
+    })
+
+    const appointments = Array.isArray(res.data?.data)
+      ? res.data.data
+      : (Array.isArray(res.data) ? res.data : [])
+
+    const completed = appointments.filter((appointment) => appointment?.status === 'completed').length
+    const canceled = appointments.filter((appointment) => appointment?.status === 'canceled').length
+    const pending = appointments.filter((appointment) => !['completed', 'canceled'].includes(appointment?.status)).length
+
+    todaySummary.value = {
+      total: appointments.length,
+      completed,
+      canceled,
+      pending,
+    }
+  } catch (e) {
+    console.error('Error cargando resumen del día', e)
+    todaySummary.value = {
+      total: 0,
+      completed: 0,
+      canceled: 0,
+      pending: 0,
+    }
+  } finally {
+    todaySummaryLoading.value = false
+  }
+}
+
+async function fetchTotalCreditInFavor() {
+  let total = 0
+  let currentPage = 1
+  let lastPage = 1
+
+  do {
+    const response = await api.get('/patients', {
+      params: {
+        per_page: 100,
+        page: currentPage,
+      },
+    })
+
+    const patients = Array.isArray(response.data?.data) ? response.data.data : []
+    total += patients.reduce((sum, patient) => sum + Number(patient?.available_credit || 0), 0)
+
+    lastPage = Number(response.data?.meta?.last_page || currentPage)
+    currentPage += 1
+  } while (currentPage <= lastPage)
+
+  return Number(total.toFixed(2))
 }
 
 onMounted(async () => {
@@ -160,6 +286,7 @@ onMounted(async () => {
   }
 
   fetchLowBonuses()
+  fetchTodaySummary()
   fetchImportantAlerts()
 })
 </script>
@@ -169,10 +296,34 @@ onMounted(async () => {
     <div v-if="loading">Cargando...</div>
 
     <div v-else class="dashboard-container">
-      <header class="dashboard-header">
-        <h1>Dashboard</h1>
-        <div class="clinic-badge">{{ clinic?.name ?? 'FisioMeca' }}</div>
-      </header>
+      <section class="today-summary">
+        <div class="inline-title">Resumen del día</div>
+        <div class="today-subtitle">Hoy · {{ todayLabel }}</div>
+
+        <div v-if="todaySummaryLoading" class="alerts-empty">Cargando resumen de hoy...</div>
+
+        <div v-else class="today-grid">
+          <router-link class="today-card" :to="{ path: '/appointments/day', query: { date: todayDateQuery } }">
+            <div class="today-label"><span class="today-icon" aria-hidden="true"></span> Citas hoy</div>
+            <div class="today-value">{{ todaySummary.total }}</div>
+          </router-link>
+
+          <router-link class="today-card" :to="{ path: '/appointments/day', query: { date: todayDateQuery, status: 'completed' } }">
+            <div class="today-label"><span class="today-icon" aria-hidden="true"></span> Citas completadas</div>
+            <div class="today-value">{{ todaySummary.completed }}</div>
+          </router-link>
+
+          <router-link class="today-card" :to="{ path: '/appointments/day', query: { date: todayDateQuery, status: 'canceled' } }">
+            <div class="today-label"><span class="today-icon" aria-hidden="true"></span> Canceladas</div>
+            <div class="today-value">{{ todaySummary.canceled }}</div>
+          </router-link>
+
+          <router-link class="today-card" :to="{ path: '/appointments/day', query: { date: todayDateQuery, status: 'pending' } }">
+            <div class="today-label"><span class="today-icon" aria-hidden="true"></span> Pendientes</div>
+            <div class="today-value">{{ todaySummary.pending }}</div>
+          </router-link>
+        </div>
+      </section>
 
       <div class="dashboard-grid">
         <StatsCard
@@ -223,9 +374,9 @@ onMounted(async () => {
         <div class="inline-title">Alertas importantes</div>
         <div v-if="alertsLoading" class="alerts-empty">Cargando alertas...</div>
         <ul v-else-if="importantAlerts.length" class="alerts-list">
-          <li v-for="alert in importantAlerts" :key="alert" class="alerts-item">
+          <li v-for="alert in importantAlerts" :key="alert.key" class="alerts-item">
             <span class="alert-dot" aria-hidden="true"></span>
-            <span>{{ alert }}</span>
+            <router-link :to="alert.to" class="alert-link">{{ alert.text }}</router-link>
           </li>
         </ul>
         <div v-else class="alerts-empty">Sin alertas pendientes.</div>
@@ -265,6 +416,65 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 24px;
+}
+
+.today-summary {
+  margin-bottom: 20px;
+  background: var(--bg-card);
+  border: 1px solid #94a3b8;
+  border-radius: 20px;
+  padding: 16px 20px;
+}
+
+.today-subtitle {
+  margin-top: -2px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  color: var(--text-muted, #6b7280);
+  text-transform: capitalize;
+}
+
+.today-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.today-card {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: var(--bg-app);
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.today-card:hover {
+  border-color: rgba(37, 99, 235, 0.4);
+}
+
+.today-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted, #6b7280);
+}
+
+.today-icon {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #3b82f6;
+  flex: 0 0 auto;
+}
+
+.today-value {
+  margin-top: 4px;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.1;
 }
 
 .bonus-inline {
@@ -312,7 +522,7 @@ onMounted(async () => {
 .alerts-inline {
   margin-top: 16px;
   background: var(--bg-card);
-  border: 1px solid #fdba74;
+  border: 1px solid #93c5fd;
   border-radius: 20px;
   padding: 12px 16px;
 }
@@ -331,11 +541,20 @@ onMounted(async () => {
   padding: 4px 0;
 }
 
+.alert-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.alert-link:hover {
+  text-decoration: underline;
+}
+
 .alert-dot {
   width: 8px;
   height: 8px;
   border-radius: 999px;
-  background: #f59e0b;
+  background: #3b82f6;
   flex: 0 0 auto;
 }
 
@@ -350,6 +569,10 @@ onMounted(async () => {
   }
 
   .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .today-grid {
     grid-template-columns: 1fr;
   }
 }

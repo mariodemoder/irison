@@ -15,6 +15,13 @@ class BonusController extends Controller
     {
     }
 
+    public function index(Request $request): JsonResponse
+    {
+        $clinicId = app()->has('activeClinic') ? app()->get('activeClinic')->id : null;
+
+        return response()->json($this->bonusService->index($request->all(), $clinicId));
+    }
+
     public function forPatient(Request $request, Patient $patient): JsonResponse
     {
         $clinicId = app()->has('activeClinic') ? app()->get('activeClinic')->id : null;
@@ -76,5 +83,16 @@ class BonusController extends Controller
         $mapped = $this->bonusService->expiring($clinicId);
 
         return response()->json($mapped);
+    }
+
+    public function unpaidSummary(): JsonResponse
+    {
+        $clinicId = app()->has('activeClinic') ? app()->get('activeClinic')->id : null;
+
+        return response()->json([
+            'data' => [
+                'total' => $this->bonusService->unpaidCount($clinicId),
+            ],
+        ]);
     }
 }

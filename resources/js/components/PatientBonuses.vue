@@ -101,7 +101,6 @@ import { formatDMY } from '../shared/dateHelpers'
 const props = defineProps({ patientId: { type: [String, Number], required: true } })
 const emit = defineEmits(['active-bonus-count'])
 const bonuses = ref([])
-const packagePayments = ref([])
 const showForm = ref(false)
 const showInactiveBonuses = ref(false)
 const form = ref({ name: 'Bono', total_sessions: 1, price: 0, expires_at: '' })
@@ -125,6 +124,7 @@ function normalizeBonus(b) {
     remaining_sessions: b.remaining_sessions != null ? Number(b.remaining_sessions) : 0,
     expires_at: b.expires_at ?? null,
     status: b.status ?? (b.remaining_sessions <= 0 ? 'exhausted' : 'active'),
+    is_paid: Boolean(b.is_paid),
     justCreated: b.justCreated ?? false,
   }
 }
@@ -138,9 +138,7 @@ function isExpiredLocal(bonus) {
 }
 
 function isBonusPaidLocal(bonus) {
-  const bonusId = Number(bonus?.id)
-  if (!bonusId) return false
-  return packagePayments.value.some((payment) => Number(payment?.package_id) === bonusId)
+  return Boolean(bonus?.is_paid)
 }
 
 function bonusPaymentLabel(bonus) {
@@ -180,25 +178,10 @@ watch(bonuses, () => emitActiveCount(), { immediate: true })
 
 async function load() {
   try {
-    const [bonusesRes, paymentsRes] = await Promise.all([
-      api.get(`/patients/${props.patientId}/bonuses`),
-      api.get('/payments', {
-        params: {
-          patient_id: Number(props.patientId),
-          concept: 'package',
-          per_page: 200,
-        },
-      }),
-    ])
-
-    const paymentRows = Array.isArray(paymentsRes.data?.data) ? paymentsRes.data.data : []
-    packagePayments.value = paymentRows
-
-    const res = bonusesRes
+    const res = await api.get(`/patients/${props.patientId}/bonuses`)
     bonuses.value = Array.isArray(res.data.data) ? res.data.data.map(normalizeBonus) : []
   } catch (e) {
     bonuses.value = []
-    packagePayments.value = []
   }
 }
 

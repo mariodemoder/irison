@@ -7,6 +7,7 @@ use App\Models\Bonus;
 use App\Models\CreditUsage;
 use App\Models\Patient;
 use App\Models\Payment;
+use App\Services\Bonus\BonusService;
 use DomainException;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Validator;
@@ -14,6 +15,10 @@ use Illuminate\Validation\Validator as ValidationValidator;
 
 class PaymentService
 {
+    public function __construct(private readonly BonusService $bonusService)
+    {
+    }
+
     public function appointmentOptionsForPatient(int $patientId, int $clinicId, ?int $currentAppointmentId = null): array
     {
         $appointments = Appointment::query()
@@ -77,27 +82,12 @@ class PaymentService
         bool $onlyUnpaid = true
     ): array 
     {
-        $bonuses = Bonus::query()
-            ->select('bonuses.*')
-            ->leftJoin('payments as p', function ($join) use ($clinicId, $patientId) {
-                $join->on('p.package_id', '=', 'bonuses.id')
-                    ->where('p.clinic_id', '=', $clinicId)
-                    ->where('p.patient_id', '=', $patientId)
-                    ->where('p.concept', '=', 'package');
-            })
-            ->where('bonuses.clinic_id', $clinicId)
-            ->where('bonuses.patient_id', $patientId)
-            ->when($onlyUnpaid, function ($query) use ($currentPackageId) {
-                $query->where(function ($subQuery) use ($currentPackageId) {
-                    $subQuery->whereNull('p.id');
-
-                    if ($currentPackageId) {
-                        $subQuery->orWhere('bonuses.id', (int) $currentPackageId);
-                    }
-                });
-            })
-            ->orderByDesc('bonuses.created_at')
-            ->get();
+        $bonuses = $this->bonusService->packageCandidatesForPatient(
+            $patientId,
+            $clinicId,
+            $onlyUnpaid,
+            $currentPackageId
+        );
 
         return $bonuses->map(function (Bonus $bonus) use ($clinicId, $patientId) {
             $completedAmount = (float) Payment::query()

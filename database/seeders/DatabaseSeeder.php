@@ -35,5 +35,9 @@ class DatabaseSeeder extends Seeder
 
         // Pacientes de prueba
         $this->call(PatientSeeder::class);
+
+        if (app()->environment(['local', 'testing'])) {
+            $this->call(TestAppointmentsTodayTomorrowSeeder::class);
+        }
     }
 }

@@ -79,9 +79,20 @@ const toast = useToast()
 
 const filteredPatients = computed(() => {
   const q = (query.value || '').toLowerCase().trim()
-  if (!q) return patients.value
-  return patients.value.filter(p => {
-    return [p.name, p.nif, p.phone, p.email].some(f => f && String(f).toLowerCase().includes(q))
+  const hasCreditFilter = String(route.query.has_credit || '') === '1'
+
+  return patients.value.filter((p) => {
+    const matchesCredit = !hasCreditFilter || Number(p?.available_credit || 0) > 0
+
+    if (!matchesCredit) {
+      return false
+    }
+
+    if (!q) {
+      return true
+    }
+
+    return [p.name, p.nif, p.phone, p.email].some((f) => f && String(f).toLowerCase().includes(q))
   })
 })
 
