@@ -83,7 +83,6 @@
           </div>
 
           <div v-if="!isCanceled" class="field">
-            <label class="label">Estado de pago</label>
             <div class="value">
               <span class="payment-badge" :class="paymentStatusClass">{{ paymentStatusLabel }}</span>
             </div>
@@ -159,14 +158,14 @@ const effectiveStatus = computed(() => {
 
 const paymentStatusLabel = computed(() => {
   const ps = appointment.value?.payment_status
-  if (!ps) return 'Impagada'
+  if (!ps) return 'Pago Pendiente'
   const map = {
-    'pending': 'Impagada',
-    'partially_paid': 'Parcialmente pagada',
+    'pending': 'Pago Pendiente',
+    'partially_paid': 'Parcialmente Pagada',
     'paid': 'Pagada',
     'covered_by_pack': 'Cubierta por bono',
   }
-  return map[ps] || 'Impagada'
+  return map[ps] || 'Pago Pendiente'
 })
 
 const paymentStatusClass = computed(() => {

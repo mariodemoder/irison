@@ -50,8 +50,8 @@
           <div>Horario</div>
           <div class="row-left">Paciente</div>
           <div class="row-left">Notas</div>
-          <div>Pago</div>
           <div>Estado</div>
+          <div>Pago</div>
           <div></div>
         </div>
 
@@ -63,14 +63,12 @@
             </div>
 
             <div class="row-col note time">{{ a.notes ?? '' }}</div>
-
+            <div class="row-col"><span class="status" :class="a.status">{{ statusLabel(a.status) }}</span></div>
             <div class="row-col">
               <span class="payment-status" :class="paymentStatusClass(a.payment_status)">{{ paymentStatusLabel(a.payment_status) }}</span>
             </div>
-            
-            <div class="row-col"><span class="status" :class="a.status">{{ statusLabel(a.status) }}</span></div>
             <div class="row-action">
-              <router-link :to="`/appointments/${a.id}/edit`" class="action-btn datos" @click.stop>✎ Editar</router-link>
+              <router-link :to="`/appointments/${a.id}/edit`" class="action-btn datos" @click.stop>✎ Editar Cita</router-link>
             </div>
           </div>
           <div v-if="filteredAppointments.length === 0" class="empty">No hay citas para esta fecha.</div>

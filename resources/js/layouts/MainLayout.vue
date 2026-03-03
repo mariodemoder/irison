@@ -1,9 +1,9 @@
 <template>
   <div class="layout-shell min-h-screen bg-gray-50">
     <aside v-show="open" class="sidebar" :class="{ compact: compactMode }">
-      <div class="logo-wrap">
+      <button class="logo-wrap" type="button" @click="toggleMenuMode" :title="isMobile ? 'Mostrar/ocultar menú' : 'Expandir/contraer menú'">
         <img :src="logo" alt="Logo" class="sidebar-logo" />
-      </div>
+      </button>
 
       <nav class="space-y-1">
         <router-link
@@ -47,9 +47,6 @@
     <div class="app-column" :class="columnClasses">
       <header class="h-14 bg-white border-b flex items-center px-4 justify-between">
         <div class="flex items-center gap-4">
-          <button class="menu-toggle-btn" @click="toggleMenuMode" :title="isMobile ? 'Mostrar/ocultar menú' : 'Cambiar modo de menú'">
-            {{ isMobile ? '☰' : (compactMode ? '☰' : '⇤') }}
-          </button>
         </div>
 
         <div class="flex items-center gap-4">
@@ -235,6 +232,11 @@ function isActive(base) {
   margin-bottom: 24px;
   display: flex;
   justify-content: center;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
 }
 
 .sidebar-logo {
@@ -301,14 +303,6 @@ function isActive(base) {
 
 .app-column.with-sidebar-compact {
   padding-left: 86px;
-}
-
-.menu-toggle-btn {
-  border: 1px solid #e5e7eb;
-  background: #fff;
-  border-radius: 8px;
-  padding: 6px 10px;
-  font-size: 14px;
 }
 
 /* Estilos mínimos: el diseño depende de utilidades de Tailwind si está disponible. */

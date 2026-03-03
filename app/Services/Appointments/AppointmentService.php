@@ -26,7 +26,7 @@ class AppointmentService
             ->where('end_time', '<', Carbon::now())
             ->update(['status' => 'completed']);
 
-        $query = Appointment::with('patient');
+        $query = Appointment::with(['patient', 'payments', 'creditUsages']);
 
         if (!empty($filters['date'])) {
             $date = Carbon::parse($filters['date']);

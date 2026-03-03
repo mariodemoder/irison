@@ -2,18 +2,11 @@
 import { ref, onMounted, computed } from 'vue'
 import MainLayout from '../layouts/MainLayout.vue'
 import api from '../services/api'
-import StatsCard from '../components/dashboard/StatsCard.vue'
 import LineChartCard from '../components/dashboard/LineChartCard.vue'
 import BarChartCard from '../components/dashboard/BarChartCard.vue'
 
-const user = ref(null)
-const clinic = ref(null)
-const status = ref('blocked')
-const trial_ends_at = ref(null)
 const loading = ref(true)
 
-const lowBonusPatients = ref([])
-const lowBonusLoading = ref(true)
 const alertsLoading = ref(true)
 const todaySummaryLoading = ref(true)
 const todaySummary = ref({
@@ -21,6 +14,13 @@ const todaySummary = ref({
   completed: 0,
   canceled: 0,
   pending: 0,
+})
+const todayFinancial = ref({
+  collectedAmount: 0,
+  bonusSessionsUsed: 0,
+  bonusSessionsValue: 0,
+  creditAppliedAmount: 0,
+  totalProductionAmount: 0,
 })
 const unpaidBonusesCount = ref(0)
 const creditInFavorAmount = ref(0)
@@ -31,7 +31,7 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
   currency: 'EUR',
 })
 
-const shortLowBonusList = computed(() => lowBonusPatients.value.slice(0, 5))
+const REAL_PAYMENT_METHODS = new Set(['cash', 'card', 'transfer', 'bizum', 'stripe'])
 
 const todayLabel = computed(() => {
   return new Date().toLocaleDateString('es-ES', {
@@ -94,82 +94,6 @@ const monthlyRevenueLabels = ['Ene', 'Feb', 'Mar', 'Abr']
 const weeklyAppointments = [20, 35, 28, 40]
 const weeklyAppointmentsLabels = ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4']
 
-const daysLeft = computed(() => {
-  if (!trial_ends_at.value) return null
-  const end = new Date(trial_ends_at.value)
-  const now = new Date()
-  const diff = end.getTime() - now.getTime()
-  return Math.ceil(diff / (1000 * 60 * 60 * 24))
-})
-
-const subscriptionState = computed(() => {
-  if (status.value === 'active') return { color: 'green', label: 'Suscripción activa' }
-  if (status.value === 'trial') {
-    if (daysLeft.value === null) return { color: 'red', label: 'Trial (sin fecha)' }
-    if (daysLeft.value > 7 && daysLeft.value < 15) return { color: 'yellow', label: `Te quedan ${daysLeft.value} días de prueba` }
-    if (daysLeft.value > 0 && daysLeft.value < 7) return { color: 'red', label: `Te quedan ${daysLeft.value} días de prueba` }
-    if (daysLeft.value >= 15) return { color: 'yellow', label: `Te quedan ${daysLeft.value} días de prueba` }
-    return { color: 'red', label: 'Tu prueba ha finalizado' }
-  }
-  return { color: 'red', label: 'Suscripción vencida' }
-})
-
-const subscriptionValue = computed(() => {
-  if (status.value === 'active') return 'Activa'
-  if (status.value === 'trial') return daysLeft.value && daysLeft.value > 0 ? `${daysLeft.value} días` : 'Finalizada'
-  return 'Vencida'
-})
-
-const bonusSummary = computed(() => {
-  if (lowBonusLoading.value) return 'Cargando...'
-  return `${lowBonusPatients.value.length}`
-})
-
-const bonusSubtitle = computed(() => {
-  if (lowBonusLoading.value) return 'Bonos por agotarse'
-  if (!lowBonusPatients.value.length) return 'Sin bonos por agotarse'
-  return `Mostrando ${shortLowBonusList.value.length} de ${lowBonusPatients.value.length}`
-})
-
-async function subscribe() {
-  try {
-    const res = await api.post('/stripe/checkout')
-    window.location.href = res.data.url
-  } catch (e) {
-    console.error('Error creando checkout', e)
-  }
-}
-
-async function subscribeFake() {
-  try {
-    const res = await api.post('/subscribe/fake')
-    clinic.value = res.data.clinic
-    status.value = res.data.status_clinic || status.value
-    trial_ends_at.value = res.data.trial_ends_at || trial_ends_at.value
-  } catch (e) {
-    console.error('Error activando suscripción fake', e)
-  }
-}
-
-async function fetchLowBonuses() {
-  try {
-    const res = await api.get('/bonuses/expiring')
-    lowBonusPatients.value = (res.data || []).map((item) => {
-      const bonusObj = item.bonus ?? item.bono ?? {}
-      return {
-        id: item.patient_id ?? item.id ?? item.patient?.id,
-        patient_name: item.patient_name ?? item.patient?.name ?? item.name ?? '—',
-        bonus_name: item.bonus_name ?? bonusObj.name ?? bonusObj.title ?? bonusObj.descripcion ?? '—',
-        expires_at: item.expires_at ?? bonusObj.expires_at ?? bonusObj.expiration ?? bonusObj.expiresAt ?? null,
-        sessions_left: item.sessions_left ?? item.remaining_sessions ?? item.sessions ?? 0,
-      }
-    })
-  } catch (e) {
-    console.error('Error cargando bonos por agotarse', e)
-  } finally {
-    lowBonusLoading.value = false
-  }
-}
 
 async function fetchImportantAlerts() {
   alertsLoading.value = true
@@ -212,6 +136,54 @@ function todayIsoDate() {
   return `${year}-${month}-${day}`
 }
 
+function isSameDateString(dateValue, targetIsoDate) {
+  if (!dateValue) return false
+  if (typeof dateValue === 'string' && dateValue.length >= 10) {
+    return dateValue.slice(0, 10) === targetIsoDate
+  }
+
+  const parsed = new Date(dateValue)
+  if (Number.isNaN(parsed.getTime())) return false
+
+  const year = parsed.getFullYear()
+  const month = String(parsed.getMonth() + 1).padStart(2, '0')
+  const day = String(parsed.getDate()).padStart(2, '0')
+
+  return `${year}-${month}-${day}` === targetIsoDate
+}
+
+async function fetchTodayCashCollected() {
+  const targetDate = todayIsoDate()
+  let total = 0
+  let currentPage = 1
+  let lastPage = 1
+
+  do {
+    const response = await api.get('/payments', {
+      params: {
+        status: 'completed',
+        per_page: 100,
+        page: currentPage,
+      },
+    })
+
+    const rows = Array.isArray(response.data?.data) ? response.data.data : []
+
+    total += rows.reduce((sum, payment) => {
+      const method = String(payment?.method || '').toLowerCase()
+      if (!REAL_PAYMENT_METHODS.has(method)) return sum
+      if (!isSameDateString(payment?.paid_at, targetDate)) return sum
+
+      return sum + Number(payment?.amount || 0)
+    }, 0)
+
+    lastPage = Number(response.data?.meta?.last_page || currentPage)
+    currentPage += 1
+  } while (currentPage <= lastPage)
+
+  return Number(total.toFixed(2))
+}
+
 async function fetchTodaySummary() {
   todaySummaryLoading.value = true
 
@@ -230,11 +202,45 @@ async function fetchTodaySummary() {
     const canceled = appointments.filter((appointment) => appointment?.status === 'canceled').length
     const pending = appointments.filter((appointment) => !['completed', 'canceled'].includes(appointment?.status)).length
 
+    const activeAppointments = appointments.filter((appointment) => appointment?.status !== 'canceled')
+
+    const collectedAmount = await fetchTodayCashCollected()
+
+    const bonusAppointments = activeAppointments.filter((appointment) => {
+      const paymentType = String(appointment?.payment_type || '')
+      const paymentStatus = String(appointment?.payment_status || '')
+      const hasBonusId = Boolean(appointment?.bonus_id)
+
+      return paymentType === 'bonus' || paymentStatus === 'covered_by_pack' || hasBonusId
+    })
+
+    const bonusSessionsUsed = bonusAppointments.length
+    const bonusSessionsValue = bonusAppointments.reduce((sum, appointment) => {
+      return sum + Number(appointment?.price || 0)
+    }, 0)
+
+    const creditAppliedAmount = activeAppointments.reduce((sum, appointment) => {
+      const creditUsages = Array.isArray(appointment?.credit_usages) ? appointment.credit_usages : []
+      const usageAmount = creditUsages
+        .filter((usage) => !usage?.reversed_at)
+        .reduce((usageSum, usage) => usageSum + Number(usage?.amount || 0), 0)
+
+      return sum + usageAmount
+    }, 0)
+
     todaySummary.value = {
       total: appointments.length,
       completed,
       canceled,
       pending,
+    }
+
+    todayFinancial.value = {
+      collectedAmount: Number(collectedAmount.toFixed(2)),
+      bonusSessionsUsed,
+      bonusSessionsValue: Number(bonusSessionsValue.toFixed(2)),
+      creditAppliedAmount: Number(creditAppliedAmount.toFixed(2)),
+      totalProductionAmount: Number((collectedAmount + bonusSessionsValue + creditAppliedAmount).toFixed(2)),
     }
   } catch (e) {
     console.error('Error cargando resumen del día', e)
@@ -243,6 +249,13 @@ async function fetchTodaySummary() {
       completed: 0,
       canceled: 0,
       pending: 0,
+    }
+    todayFinancial.value = {
+      collectedAmount: 0,
+      bonusSessionsUsed: 0,
+      bonusSessionsValue: 0,
+      creditAppliedAmount: 0,
+      totalProductionAmount: 0,
     }
   } finally {
     todaySummaryLoading.value = false
@@ -273,19 +286,7 @@ async function fetchTotalCreditInFavor() {
 }
 
 onMounted(async () => {
-  try {
-    const res = await api.get('/me')
-    user.value = res.data.user
-    clinic.value = res.data.clinic
-    status.value = res.data.status || status.value
-    trial_ends_at.value = res.data.trial_ends_at || null
-  } catch (e) {
-    console.error('Error cargando /me', e)
-  } finally {
-    loading.value = false
-  }
-
-  fetchLowBonuses()
+  loading.value = false
   fetchTodaySummary()
   fetchImportantAlerts()
 })
@@ -297,54 +298,106 @@ onMounted(async () => {
 
     <div v-else class="dashboard-container">
       <section class="today-summary">
-        <div class="inline-title">Resumen del día</div>
-        <div class="today-subtitle">Hoy · {{ todayLabel }}</div>
-
+        <div class="summary-title">Resumen del día - Hoy · {{ todayLabel }}</div>
+        
         <div v-if="todaySummaryLoading" class="alerts-empty">Cargando resumen de hoy...</div>
 
         <div v-else class="today-grid">
           <router-link class="today-card" :to="{ path: '/appointments/day', query: { date: todayDateQuery } }">
-            <div class="today-label"><span class="today-icon" aria-hidden="true"></span> Citas hoy</div>
+            <div class="today-label"><span class="today-icon today" aria-hidden="true"></span> Citas hoy</div>
             <div class="today-value">{{ todaySummary.total }}</div>
           </router-link>
 
           <router-link class="today-card" :to="{ path: '/appointments/day', query: { date: todayDateQuery, status: 'completed' } }">
-            <div class="today-label"><span class="today-icon" aria-hidden="true"></span> Citas completadas</div>
+            <div class="today-label"><span class="today-icon completed" aria-hidden="true"></span> Citas completadas</div>
             <div class="today-value">{{ todaySummary.completed }}</div>
           </router-link>
 
           <router-link class="today-card" :to="{ path: '/appointments/day', query: { date: todayDateQuery, status: 'canceled' } }">
-            <div class="today-label"><span class="today-icon" aria-hidden="true"></span> Canceladas</div>
+            <div class="today-label"><span class="today-icon canceled" aria-hidden="true"></span> Canceladas</div>
             <div class="today-value">{{ todaySummary.canceled }}</div>
           </router-link>
 
           <router-link class="today-card" :to="{ path: '/appointments/day', query: { date: todayDateQuery, status: 'pending' } }">
-            <div class="today-label"><span class="today-icon" aria-hidden="true"></span> Pendientes</div>
+            <div class="today-label"><span class="today-icon pending" aria-hidden="true"></span> Pendientes</div>
             <div class="today-value">{{ todaySummary.pending }}</div>
           </router-link>
         </div>
+
+        <div v-if="!todaySummaryLoading" class="today-finance">
+                    <div class="today-finance-grid">
+            <div class="today-card today-finance-card">
+              <div class="today-label">
+                <span class="finance-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="6" width="18" height="12" rx="2"></rect>
+                    <circle cx="12" cy="12" r="2.5"></circle>
+                    <path d="M7 12h.01M17 12h.01"></path>
+                  </svg>
+                </span>
+                Total cobrado hoy
+              </div>
+              <div class="today-value">{{ currencyFormatter.format(todayFinancial.collectedAmount) }}</div>
+              <div class="today-finance-note">efectivo/tarjeta</div>
+            </div>
+
+            <div class="today-card today-finance-card">
+              <div class="today-label">
+                <span class="finance-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4z"></path>
+                    <path d="M12 6v12"></path>
+                  </svg>
+                </span>
+                Sesiones por bono
+              </div>
+              <div class="today-value">{{ todayFinancial.bonusSessionsUsed }}</div>
+              <div class="today-finance-note">valor {{ currencyFormatter.format(todayFinancial.bonusSessionsValue) }}</div>
+            </div>
+
+            <div class="today-card today-finance-card">
+              <div class="today-label">
+                <span class="finance-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2.5" y="5" width="19" height="14" rx="2"></rect>
+                    <path d="M2.5 10h19M7 15h4"></path>
+                  </svg>
+                </span>
+                Crédito aplicado
+              </div>
+              <div class="today-value">{{ currencyFormatter.format(todayFinancial.creditAppliedAmount) }}</div>
+              <div class="today-finance-note">descontado hoy</div>
+            </div>
+
+            <div class="today-card today-finance-card">
+              <div class="today-label">
+                <span class="finance-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 16l5-5 4 3 7-7"></path>
+                    <path d="M14 7h6v6"></path>
+                  </svg>
+                </span>
+                Producción total del día
+              </div>
+              <div class="today-value">{{ currencyFormatter.format(todayFinancial.totalProductionAmount) }}</div>
+              <div class="today-finance-note">real + bono + crédito</div>
+            </div>
+          </div>
+        </div>
       </section>
 
+      <div class="alerts-inline card-list">
+        <div class="inline-title">Alertas importantes</div>
+        <div v-if="alertsLoading" class="alerts-empty">Cargando alertas...</div>
+        <ul v-else-if="importantAlerts.length" class="alerts-list">
+          <li v-for="alert in importantAlerts" :key="alert.key" class="alerts-item">
+            <span class="alert-dot" aria-hidden="true"></span>
+            <router-link :to="alert.to" class="alert-link">{{ alert.text }}</router-link>
+          </li>
+        </ul>
+        <div v-else class="alerts-empty">Sin alertas pendientes.</div>
+      </div>
       <div class="dashboard-grid">
-        <StatsCard
-          title="Suscripción"
-          :value="subscriptionValue"
-          :subtitle="subscriptionState.label"
-          :details="`Usuario: ${user?.name ?? '—'}`"
-        >
-          <template #actions>
-            <button v-if="status === 'blocked'" class="btn btn-sm" @click.prevent="subscribe">Activar plan (Stripe)</button>
-            <button v-if="status === 'blocked'" class="btn btn-sm" @click.prevent="subscribeFake">Activar plan (fake)</button>
-          </template>
-        </StatsCard>
-
-        <StatsCard
-          title="Bonos"
-          :value="bonusSummary"
-          :subtitle="bonusSubtitle"
-          :details="shortLowBonusList.length ? `${shortLowBonusList[0].patient_name} · ${shortLowBonusList[0].bonus_name}` : '—'"
-        />
-
         <LineChartCard
           title="Ingresos mensuales"
           :labels="monthlyRevenueLabels"
@@ -358,29 +411,7 @@ onMounted(async () => {
         />
       </div>
 
-      <div v-if="shortLowBonusList.length" class="bonus-inline card-list">
-        <div class="inline-title">Bonos por agotarse</div>
-        <ul>
-          <li v-for="p in shortLowBonusList" :key="`${p.id}-${p.bonus_name}`">
-            Paciente <router-link :to="`/patients/${p.id}`">{{ p.patient_name }}</router-link>
-            · Bono: <strong>{{ p.bonus_name }}</strong>
-            <span v-if="p.expires_at"> · expira {{ p.expires_at }}</span>
-            <span class="sessions"> · Queda {{ p.sessions_left }} sesión<span v-if="p.sessions_left > 1">es</span></span>
-          </li>
-        </ul>
-      </div>
 
-      <div class="alerts-inline card-list">
-        <div class="inline-title">Alertas importantes</div>
-        <div v-if="alertsLoading" class="alerts-empty">Cargando alertas...</div>
-        <ul v-else-if="importantAlerts.length" class="alerts-list">
-          <li v-for="alert in importantAlerts" :key="alert.key" class="alerts-item">
-            <span class="alert-dot" aria-hidden="true"></span>
-            <router-link :to="alert.to" class="alert-link">{{ alert.text }}</router-link>
-          </li>
-        </ul>
-        <div v-else class="alerts-empty">Sin alertas pendientes.</div>
-      </div>
     </div>
   </MainLayout>
 </template>
@@ -413,6 +444,7 @@ onMounted(async () => {
 }
 
 .dashboard-grid {
+  margin-top: 24px;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 24px;
@@ -424,6 +456,20 @@ onMounted(async () => {
   border: 1px solid #94a3b8;
   border-radius: 20px;
   padding: 16px 20px;
+  padding-top: 30px;
+  position: relative;
+}
+
+.summary-title {
+  position: absolute;
+  top: -14px;
+  left: 24px;
+  background: var(--secondary);
+  color: white;
+  padding: 6px 16px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .today-subtitle {
@@ -470,6 +516,19 @@ onMounted(async () => {
   flex: 0 0 auto;
 }
 
+.today-icon.today,
+.today-icon.pending {
+  background: #3b82f6;
+}
+
+.today-icon.completed {
+  background: #22c55e;
+}
+
+.today-icon.canceled {
+  background: #fca5a5;
+}
+
 .today-value {
   margin-top: 4px;
   font-size: 22px;
@@ -477,46 +536,43 @@ onMounted(async () => {
   line-height: 1.1;
 }
 
-.bonus-inline {
-  margin-top: 24px;
-  background: var(--bg-card);
-  border: 1px solid #94a3b8;
-  border-radius: 20px;
-  padding: 16px 20px;
+.today-finance {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(15, 23, 42, 0.12);
+}
+
+.today-finance-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.today-finance-card {
+  display: block;
+}
+
+.today-finance-note {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-muted, #6b7280);
+}
+
+.finance-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  color: #2563eb;
+}
+
+.finance-icon svg {
+  width: 100%;
+  height: 100%;
 }
 
 .inline-title {
   font-weight: 700;
   margin-bottom: 8px;
-}
-
-.bonus-inline ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.bonus-inline li {
-  padding: 6px 0;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
-}
-
-.bonus-inline li:last-child {
-  border-bottom: none;
-}
-
-.bonus-inline a {
-  color: var(--secondary);
-  text-decoration: none;
-  font-weight: 600;
-}
-
-.bonus-inline a:hover {
-  text-decoration: underline;
-}
-
-.sessions {
-  color: var(--text-muted, #6b7280);
 }
 
 .alerts-inline {
@@ -554,7 +610,7 @@ onMounted(async () => {
   width: 8px;
   height: 8px;
   border-radius: 999px;
-  background: #3b82f6;
+  background: #fd8331;
   flex: 0 0 auto;
 }
 
@@ -570,9 +626,14 @@ onMounted(async () => {
 
   .dashboard-grid {
     grid-template-columns: 1fr;
+
   }
 
   .today-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .today-finance-grid {
     grid-template-columns: 1fr;
   }
 }

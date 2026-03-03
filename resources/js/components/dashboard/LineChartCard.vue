@@ -9,9 +9,9 @@
 
 <script setup>
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Chart, LineController, LineElement, PointElement, CategoryScale, LinearScale, Tooltip, Legend } from 'chart.js'
+import { Chart, LineController, LineElement, PointElement, CategoryScale, LinearScale, Tooltip, Legend, Filler } from 'chart.js'
 
-Chart.register(LineController, LineElement, PointElement, CategoryScale, LinearScale, Tooltip, Legend)
+Chart.register(LineController, LineElement, PointElement, CategoryScale, LinearScale, Tooltip, Legend, Filler)
 
 const props = defineProps({
   title: { type: String, required: true },

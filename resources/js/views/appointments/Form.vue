@@ -128,10 +128,11 @@
           </div>
 
           <div v-if="!isEdit && hasSelectedPatient && form.payment_type !== 'credit'" class="field">
-            <label class="label">Estado de pago</label>
-            <div class="input" style="display:flex;align-items:center;background:#f8fafc">
-              <span>{{ paymentStatusLabel }}</span>
+           <div v-if="!isCanceled" class="field">
+            <div class="value">
+              <span class="payment-badge" :class="paymentStatusClass">{{ paymentStatusLabel }}</span>
             </div>
+          </div>
           </div>
 
           <div class="field full" v-if="form.payment_type === 'single' && form.patient_id && form.patient_id !== '__create' && availableCredit > 0">
@@ -380,6 +381,8 @@ const paymentStatusLabel = computed(() => {
   if (form.apply_credit) return 'Parcialmente pagada'
   return 'Pendiente'
 })
+
+
 
 function creditMethodLabel(method) {
   const map = {
