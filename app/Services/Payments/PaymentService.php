@@ -8,6 +8,7 @@ use App\Models\CreditUsage;
 use App\Models\Patient;
 use App\Models\Payment;
 use App\Services\Bonus\BonusService;
+use App\Services\Appointments\AppointmentPendingPaymentService;
 use DomainException;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Validator;
@@ -15,7 +16,10 @@ use Illuminate\Validation\Validator as ValidationValidator;
 
 class PaymentService
 {
-    public function __construct(private readonly BonusService $bonusService)
+    public function __construct(
+        private readonly BonusService $bonusService,
+        private readonly AppointmentPendingPaymentService $appointmentPendingPaymentService
+    )
     {
     }
 
@@ -44,9 +48,7 @@ class PaymentService
             ->get();
 
         return $appointments->map(function (Appointment $appointment) use ($currentAppointmentId) {
-            $pendingAmount = (float) $appointment->payments
-                ->where('status', 'pending')
-                ->sum('amount');
+            $pendingAmount = $this->appointmentPendingPaymentService->calculatePendingAmount($appointment);
 
             $refundedAmount = (float) $appointment->payments
                 ->where('status', 'refunded')
@@ -132,6 +134,10 @@ class PaymentService
 
         if (!empty($filters['patient_id'])) {
             $query->where('patient_id', (int) $filters['patient_id']);
+        }
+
+        if (!empty($filters['appointment_id'])) {
+            $query->where('appointment_id', (int) $filters['appointment_id']);
         }
 
         if (!empty($filters['status']) && in_array($filters['status'], ['completed', 'pending', 'refunded'], true)) {
@@ -437,29 +443,6 @@ class PaymentService
 
     private function syncAppointmentPaymentStatus(Appointment $appointment): void
     {
-        if ($appointment->payment_type === 'bonus' || $appointment->bonus_id) {
-            $appointment->update(['payment_status' => 'covered_by_pack']);
-            return;
-        }
-
-        $completedTotal = (float) $appointment->payments()
-            ->where('status', 'completed')
-            ->sum('amount');
-
-        $hasPending = $appointment->payments()
-            ->where('status', 'pending')
-            ->exists();
-
-        if ($completedTotal <= 0.0) {
-            $appointment->update(['payment_status' => 'pending']);
-            return;
-        }
-
-        if ($hasPending) {
-            $appointment->update(['payment_status' => 'partially_paid']);
-            return;
-        }
-
-        $appointment->update(['payment_status' => 'paid']);
+        $this->appointmentPendingPaymentService->syncPaymentStatus($appointment);
     }
 }

@@ -77,9 +77,19 @@
             <div class="value">{{ appointment.notes ?? '—' }}</div>
           </div>
 
-          <div v-if="!isUnpaid" class="field">
+          <div class="field">
+            <label class="label">Precio</label>
+            <div class="value">{{ appointmentPriceLabel }}</div>
+          </div>
+
+          <div v-if="!hasBonusCoverage" class="field">
+            <label class="label">Importe pendiente de pago</label>
+            <div class="value">{{ appointmentPendingPaymentLabel }}</div>
+          </div>
+
+          <div v-if="!isUnpaid && !hasBonusCoverage" class="field">
             <label class="label">Forma de pago</label>
-            <div class="value">{{ appointment.payment_type === 'bonus' ? 'Bono' : 'Pago simple' }}</div>
+            <div class="value">{{ hasBonusCoverage ? 'Cubierto por Bono' : 'Pago simple' }}</div>
           </div>
 
           <div v-if="!isCanceled" class="field">
@@ -179,6 +189,26 @@ const paymentStatusClass = computed(() => {
   }
   return map[ps] || 'pending'
 })
+
+const appointmentPriceAmount = computed(() => {
+  const amount = Number(appointment.value?.price || 0)
+  return Number.isFinite(amount) && amount > 0 ? amount : 0
+})
+
+const appointmentPendingPaymentAmount = computed(() => {
+  const sessionPrice = appointmentPriceAmount.value
+  const pendingFromApi = Number(appointment.value?.pending_payment_amount)
+
+  if (Number.isFinite(pendingFromApi) && pendingFromApi >= 0) {
+    return Number(pendingFromApi.toFixed(2))
+  }
+
+  return Number(sessionPrice.toFixed(2))
+})
+
+const appointmentPriceLabel = computed(() => `${appointmentPriceAmount.value.toFixed(2)}€`)
+const appointmentPendingPaymentLabel = computed(() => `${appointmentPendingPaymentAmount.value.toFixed(2)}€`)
+const hasBonusCoverage = computed(() => Boolean(appointment.value?.bonus_id))
 
 const isUnpaid = computed(() => {
   const ps = appointment.value?.payment_status

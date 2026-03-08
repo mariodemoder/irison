@@ -103,12 +103,13 @@
           <div class="field" v-if="form.concept === 'package'">
             <label class="label">Importe (€) A pagar</label>
             <input
-              :value="formatMoneyForInput(form.amount)"
+              :value="amountInputValue"
               type="text"
               inputmode="decimal"
               class="input"
               :disabled="form.concept === 'package'"
               required
+              @focus="onAmountFocus"
               @input="onAmountInput"
               @blur="onAmountBlur"
             />
@@ -117,11 +118,12 @@
           <div class="field" v-if="form.concept !== 'package'">
             <label class="label">Importe (€)</label>
             <input
-              :value="formatMoneyForInput(form.amount)"
+              :value="amountInputValue"
               type="text"
               inputmode="decimal"
               class="input"
               required
+              @focus="onAmountFocus"
               @input="onAmountInput"
               @blur="onAmountBlur"
             />
@@ -232,6 +234,8 @@ const form = reactive({
   package_id: '',
   notes: '',
 })
+const amountInputFocused = ref(false)
+const amountInputDraft = ref('')
 
 const filteredAppointmentOptions = computed(() => {
   const q = (appointmentQuery.value || '').toLowerCase().trim()
@@ -283,6 +287,14 @@ const pendingOrSelectedPackageOptions = computed(() => {
 
 const filteredPackageOptions = computed(() => {
   return pendingOrSelectedPackageOptions.value
+})
+
+const amountInputValue = computed(() => {
+  if (amountInputFocused.value) {
+    return amountInputDraft.value
+  }
+
+  return formatMoneyForInput(form.amount)
 })
 
 function clearErrors() {
@@ -379,25 +391,72 @@ function formatMoneyForInput(value) {
   return amount.toFixed(2)
 }
 
-function parseMoneyInput(rawValue) {
-  const sanitized = String(rawValue || '')
-    .replace(',', '.')
-    .replace(/[^\d.]/g, '')
+function formatMoneyForEditing(value) {
+  const amount = Number(value || 0)
+  if (!Number.isFinite(amount) || amount === 0) return ''
 
-  const [wholePart = '', ...decimalParts] = sanitized.split('.')
-  const decimalPart = decimalParts.join('').slice(0, 2)
-  const normalized = decimalPart.length > 0 ? `${wholePart}.${decimalPart}` : wholePart
+  return String(amount)
+}
+
+function normalizeMoneyDraft(rawValue) {
+  const raw = String(rawValue || '').replace(',', '.')
+  let normalized = ''
+  let hasDot = false
+
+  for (const character of raw) {
+    if (/\d/.test(character)) {
+      normalized += character
+      continue
+    }
+
+    if (character === '.' && !hasDot) {
+      normalized += character
+      hasDot = true
+    }
+  }
+
+  if (normalized.startsWith('.')) {
+    normalized = `0${normalized}`
+  }
+
+  if (hasDot) {
+    const [wholePart = '', decimalPart = ''] = normalized.split('.')
+    return `${wholePart}.${decimalPart.slice(0, 2)}`
+  }
+
+  return normalized
+}
+
+function parseMoneyInput(rawValue) {
+  const normalized = normalizeMoneyDraft(rawValue)
+
+  if (!normalized || normalized === '.') return 0
+
   const amount = Number(normalized)
 
   if (!Number.isFinite(amount) || amount < 0) return 0
   return amount
 }
 
+function onAmountFocus() {
+  amountInputFocused.value = true
+  amountInputDraft.value = formatMoneyForEditing(form.amount)
+}
+
 function onAmountInput(event) {
-  form.amount = parseMoneyInput(event?.target?.value)
+  const normalizedDraft = normalizeMoneyDraft(event?.target?.value)
+  amountInputDraft.value = normalizedDraft
+
+  if (event?.target) {
+    event.target.value = normalizedDraft
+  }
+
+  form.amount = parseMoneyInput(normalizedDraft)
 }
 
 function onAmountBlur() {
+  amountInputFocused.value = false
+  amountInputDraft.value = ''
   form.amount = Number(Number(form.amount || 0).toFixed(2))
 }
 

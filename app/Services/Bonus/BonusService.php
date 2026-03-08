@@ -264,7 +264,7 @@ class BonusService
 
             // Check remaining
             if ($bonus->remaining_sessions <= 0) {
-                throw new \Exception('No quedan sesiones en el bono');
+                throw new \Exception('El bono seleccionado no está disponible');
             }
 
             // Prevent double use for same appointment

@@ -13,12 +13,17 @@ use App\Models\Payment;
 use App\Models\Patient;
 use App\Services\Availability\CheckAvailability;
 use App\Services\Bonus\BonusService;
+use App\Services\Appointments\AppointmentPendingPaymentService;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use DomainException;
 
 class AppointmentService
 {
+    public function __construct(private readonly AppointmentPendingPaymentService $appointmentPendingPaymentService)
+    {
+    }
+
     public function list(array $filters)
     {
         // Auto-complete scheduled whose end_time passed
@@ -43,7 +48,11 @@ class AppointmentService
             }
         }
 
-        return $query->orderBy('start_time')->get();
+        $appointments = $query->orderBy('start_time')->get();
+
+        return $appointments->map(function (Appointment $appointment) {
+            return $this->attachPendingPaymentAmount($appointment);
+        });
     }
 
     public function create(array $data)
@@ -74,6 +83,7 @@ class AppointmentService
 
             $this->applyCreditUsage($appointment, $data, 'usage_on_create');
             $this->syncPendingCreditPaymentUsage($appointment, $data);
+            $this->appointmentPendingPaymentService->syncPaymentStatus($appointment);
 
             return $appointment->load(['patient', 'bonus']);
         });
@@ -99,8 +109,8 @@ class AppointmentService
             }
         }
 
-        $appointment->load(['bonus', 'patient', 'creditUsages']);
-        return $appointment;
+        $appointment->load(['bonus', 'patient', 'creditUsages', 'payments']);
+        return $this->attachPendingPaymentAmount($appointment);
     }
 
     public function update(Appointment $appointment, array $data)
@@ -119,6 +129,7 @@ class AppointmentService
                 $appointment->update(array_merge($data, ['payment_type' => 'single', 'bonus_id' => null]));
                 app(BonusService::class)->restoreBonusIfCancelled($appointment);
                 $this->syncPendingCreditPaymentUsage($appointment, $data);
+                $this->appointmentPendingPaymentService->syncPaymentStatus($appointment);
 
                 return $appointment->load(['patient', 'bonus']);
             }
@@ -133,7 +144,11 @@ class AppointmentService
                     throw new DomainException('Debe seleccionar un bono al cambiar a payment_type=bonus');
                 }
 
-                $this->validateBonusForAppointment($targetBonusId, $appointment);
+                $targetStatus = array_key_exists('status', $data)
+                    ? (string) $data['status']
+                    : (string) ($appointment->status ?? '');
+
+                $this->validateBonusForAppointment($targetBonusId, $appointment, $targetStatus);
 
                 $bonusService = app(BonusService::class);
 
@@ -162,6 +177,7 @@ class AppointmentService
 
                 // Bonus and pending-credit-payment cannot coexist
                 $this->restorePendingCreditPaymentUsage($appointment);
+                $this->appointmentPendingPaymentService->syncPaymentStatus($appointment);
 
                 return ['appointment' => $appointment->load(['patient', 'bonus']), 'bonus_usage' => $usage];
             }
@@ -176,6 +192,7 @@ class AppointmentService
 
             $this->applyCreditUsage($appointment, $data, 'usage_on_update');
             $this->syncPendingCreditPaymentUsage($appointment, $data);
+            $this->appointmentPendingPaymentService->syncPaymentStatus($appointment);
 
             return $appointment->load(['patient', 'bonus']);
         });
@@ -262,6 +279,8 @@ private function resolveClinic(array $data)
 
     private function validatePaymentRules(array $data, $clinicId)
     {
+        $targetStatus = strtolower(trim((string) ($data['status'] ?? 'scheduled')));
+
         if (!array_key_exists('price', $data) || $data['price'] === null || $data['price'] === '') {
             throw new DomainException('Debes indicar el precio de la sesión');
         }
@@ -330,12 +349,14 @@ private function resolveClinic(array $data)
             throw new DomainException('Bono no pertenece a esta clínica');
         }
 
-        if ($bonus->remaining_sessions <= 0) {
-            throw new DomainException('Bono agotado');
-        }
+        if ($this->shouldValidateBonusAvailabilityForStatus($targetStatus)) {
+            if ($bonus->remaining_sessions <= 0) {
+                throw new DomainException('El bono seleccionado no está disponible');
+            }
 
-        if ($bonus->isExpired()) {
-            throw new DomainException('Bono expirado');
+            if ($bonus->isExpired()) {
+                throw new DomainException('Bono expirado');
+            }
         }
     }
 
@@ -436,9 +457,7 @@ private function resolveClinic(array $data)
             'reason' => 'usage_pending_credit_payment',
         ]);
 
-        if ($appointment->payment_status === 'pending') {
-            $appointment->update(['payment_status' => 'partially_paid']);
-        }
+        $this->appointmentPendingPaymentService->syncPaymentStatus($appointment);
     }
 
     private function pendingAmountForCreditPayment(Payment $payment): float
@@ -495,7 +514,7 @@ private function resolveClinic(array $data)
         return isset($data['start_time']) || isset($data['end_time']);
     }
 
-    private function validateBonusForAppointment($bonusId, Appointment $appointment)
+    private function validateBonusForAppointment($bonusId, Appointment $appointment, ?string $targetStatus = null)
     {
         $bonus = Bonus::find($bonusId);
 
@@ -512,13 +531,21 @@ private function resolveClinic(array $data)
             throw new DomainException('El bono no pertenece a esta clínica');
         }
 
-        if ($bonus->remaining_sessions <= 0) {
-            throw new DomainException('Bono agotado');
-        }
+        $normalizedStatus = strtolower(trim((string) ($targetStatus ?? $appointment->status ?? '')));
+        if ($this->shouldValidateBonusAvailabilityForStatus($normalizedStatus)) {
+            if ($bonus->remaining_sessions <= 0) {
+                throw new DomainException('El bono seleccionado no está disponible');
+            }
 
-        if ($bonus->isExpired()) {
-            throw new DomainException('Bono expirado');
+            if ($bonus->isExpired()) {
+                throw new DomainException('Bono expirado');
+            }
         }
+    }
+
+    private function shouldValidateBonusAvailabilityForStatus(string $status): bool
+    {
+        return !in_array($status, ['completed', 'canceled', 'cancelled'], true);
     }
 
     private function shouldApplyCredit(array $data): bool
@@ -575,9 +602,7 @@ private function resolveClinic(array $data)
             'reason' => $reason,
         ]);
 
-        if ($appointment->payment_status === 'pending') {
-            $appointment->update(['payment_status' => 'partially_paid']);
-        }
+        $this->appointmentPendingPaymentService->syncPaymentStatus($appointment);
     }
 
     private function restoreCreditOnCancel(Appointment $appointment): void
@@ -589,5 +614,15 @@ private function resolveClinic(array $data)
                 'reversed_at' => now(),
                 'reversed_reason' => 'appointment_canceled',
             ]);
+    }
+
+    private function attachPendingPaymentAmount(Appointment $appointment): Appointment
+    {
+        $appointment->setAttribute(
+            'pending_payment_amount',
+            $this->appointmentPendingPaymentService->calculatePendingAmount($appointment)
+        );
+
+        return $appointment;
     }
 }

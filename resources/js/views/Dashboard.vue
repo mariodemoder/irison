@@ -25,6 +25,11 @@ const todayFinancial = ref({
 const unpaidBonusesCount = ref(0)
 const creditInFavorAmount = ref(0)
 const unpaidSessionsCount = ref(0)
+const unpaidSessionsTodayCount = ref(0)
+const completedUnpaidAppointmentsCount = ref(0)
+const partialAppointmentsCount = ref(0)
+const exhaustedBonusPatientsCount = ref(0)
+const patientsWithCreditCount = ref(0)
 
 const currencyFormatter = new Intl.NumberFormat('es-ES', {
   style: 'currency',
@@ -74,8 +79,8 @@ const importantAlerts = computed(() => {
 
   if (unpaidSessionsCount.value > 0) {
     items.push({
-      key: 'unpaid-sessions',
-      text: `${unpaidSessionsCount.value} sesi${unpaidSessionsCount.value === 1 ? 'ón' : 'ones'} impaga${unpaidSessionsCount.value === 1 ? '' : 's'}.`,
+      key: 'unpaid-sessions-total',
+      text: `${unpaidSessionsCount.value} sesi${unpaidSessionsCount.value === 1 ? 'ón' : 'ones'} impaga${unpaidSessionsCount.value === 1 ? '' : 's'} totales.`,
       to: {
         path: '/appointments/day',
         query: {
@@ -86,7 +91,73 @@ const importantAlerts = computed(() => {
     })
   }
 
+  if (unpaidSessionsTodayCount.value > 0) {
+    items.push({
+      key: 'unpaid-sessions-today',
+      text: `${unpaidSessionsTodayCount.value} sesi${unpaidSessionsTodayCount.value === 1 ? 'ón' : 'ones'} impaga${unpaidSessionsTodayCount.value === 1 ? '' : 's'} de hoy.`,
+      to: {
+        path: '/appointments/day',
+        query: {
+          date: todayIsoDate(),
+          unpaid: '1',
+        },
+      },
+    })
+  }
+
   return items
+})
+
+const riskAlerts = computed(() => {
+  return [
+    {
+      key: 'risk-completed-unpaid',
+      value: completedUnpaidAppointmentsCount.value,
+      text: 'Citas completadas sin pagar',
+      to: {
+        path: '/appointments/day',
+        query: {
+          status: 'completed',
+          unpaid: '1',
+          all: '1',
+        },
+      },
+    },
+    {
+      key: 'risk-partials',
+      value: partialAppointmentsCount.value,
+      text: 'Citas parciales',
+      to: {
+        path: '/appointments/day',
+        query: {
+          payment: 'partially_paid',
+          all: '1',
+        },
+      },
+    },
+    {
+      key: 'risk-exhausted-bonus',
+      value: exhaustedBonusPatientsCount.value,
+      text: 'Pacientes con bono agotado',
+      to: {
+        path: '/bonuses',
+        query: {
+          status: 'exhausted',
+        },
+      },
+    },
+    {
+      key: 'risk-credit-available',
+      value: patientsWithCreditCount.value,
+      text: 'Pacientes con crédito disponible',
+      to: {
+        path: '/patients',
+        query: {
+          has_credit: '1',
+        },
+      },
+    },
+  ]
 })
 
 const monthlyRevenue = [1200, 1500, 1800, 2100]
@@ -98,30 +169,36 @@ const weeklyAppointmentsLabels = ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4']
 async function fetchImportantAlerts() {
   alertsLoading.value = true
   try {
-    const [appointmentsRes, unpaidBonusesRes, totalCreditInFavor] = await Promise.all([
+    const [appointmentsRes, unpaidBonusesRes, creditInFavorMetrics, exhaustedPatientsCount] = await Promise.all([
       api.get('/appointments'),
       api.get('/bonuses/unpaid-summary'),
-      fetchTotalCreditInFavor(),
+      fetchCreditInFavorMetrics(),
+      fetchExhaustedBonusPatientsCount(),
     ])
 
     const appointments = Array.isArray(appointmentsRes.data?.data)
       ? appointmentsRes.data.data
       : (Array.isArray(appointmentsRes.data) ? appointmentsRes.data : [])
 
-    unpaidSessionsCount.value = appointments.filter((appointment) => {
-      const paymentStatus = appointment?.payment_status
-      const status = appointment?.status
-
-      return status !== 'canceled' && ['pending', 'partially_paid'].includes(paymentStatus)
-    }).length
+    unpaidSessionsCount.value = countUnpaidSessions(appointments, 'all')
+    unpaidSessionsTodayCount.value = countUnpaidSessions(appointments, 'today')
+    completedUnpaidAppointmentsCount.value = countAppointmentsByRisk(appointments, 'completed_unpaid')
+    partialAppointmentsCount.value = countAppointmentsByRisk(appointments, 'partial')
 
     unpaidBonusesCount.value = Number(unpaidBonusesRes.data?.data?.total || 0)
-    creditInFavorAmount.value = totalCreditInFavor
+    creditInFavorAmount.value = creditInFavorMetrics.totalAmount
+    patientsWithCreditCount.value = creditInFavorMetrics.patientsCount
+    exhaustedBonusPatientsCount.value = exhaustedPatientsCount
   } catch (e) {
     console.error('Error cargando alertas importantes', e)
     unpaidBonusesCount.value = 0
     creditInFavorAmount.value = 0
     unpaidSessionsCount.value = 0
+    unpaidSessionsTodayCount.value = 0
+    completedUnpaidAppointmentsCount.value = 0
+    partialAppointmentsCount.value = 0
+    exhaustedBonusPatientsCount.value = 0
+    patientsWithCreditCount.value = 0
   } finally {
     alertsLoading.value = false
   }
@@ -150,6 +227,56 @@ function isSameDateString(dateValue, targetIsoDate) {
   const day = String(parsed.getDate()).padStart(2, '0')
 
   return `${year}-${month}-${day}` === targetIsoDate
+}
+
+function isUnpaidAppointment(appointment) {
+  const paymentStatus = appointment?.payment_status
+  const status = appointment?.status
+
+  return status !== 'canceled' && ['pending', 'partially_paid'].includes(paymentStatus)
+}
+
+function getAppointmentDateValue(appointment) {
+  return appointment?.date
+    || appointment?.appointment_date
+    || appointment?.starts_at
+    || appointment?.start_at
+    || appointment?.scheduled_at
+    || appointment?.scheduled_for
+    || null
+}
+
+function countUnpaidSessions(appointments, scope = 'all') {
+  if (scope === 'all') {
+    return appointments.filter((appointment) => isUnpaidAppointment(appointment)).length
+  }
+
+  if (scope === 'today') {
+    const targetDate = todayIsoDate()
+    return appointments.filter((appointment) => {
+      if (!isUnpaidAppointment(appointment)) return false
+      return isSameDateString(getAppointmentDateValue(appointment), targetDate)
+    }).length
+  }
+
+  return 0
+}
+
+function countAppointmentsByRisk(appointments, riskType) {
+  if (riskType === 'completed_unpaid') {
+    return appointments.filter((appointment) => {
+      const pendingAmount = Number(appointment?.pending_payment_amount || 0)
+      return appointment?.status === 'completed' && pendingAmount > 0
+    }).length
+  }
+
+  if (riskType === 'partial') {
+    return appointments.filter((appointment) => {
+      return appointment?.status !== 'canceled' && String(appointment?.payment_status || '') === 'partially_paid'
+    }).length
+  }
+
+  return 0
 }
 
 async function fetchTodayCashCollected() {
@@ -262,8 +389,9 @@ async function fetchTodaySummary() {
   }
 }
 
-async function fetchTotalCreditInFavor() {
-  let total = 0
+async function fetchCreditInFavorMetrics() {
+  let totalAmount = 0
+  let patientsCount = 0
   let currentPage = 1
   let lastPage = 1
 
@@ -276,13 +404,52 @@ async function fetchTotalCreditInFavor() {
     })
 
     const patients = Array.isArray(response.data?.data) ? response.data.data : []
-    total += patients.reduce((sum, patient) => sum + Number(patient?.available_credit || 0), 0)
+    patients.forEach((patient) => {
+      const availableCredit = Number(patient?.available_credit || 0)
+      if (availableCredit > 0) {
+        totalAmount += availableCredit
+        patientsCount += 1
+      }
+    })
 
     lastPage = Number(response.data?.meta?.last_page || currentPage)
     currentPage += 1
   } while (currentPage <= lastPage)
 
-  return Number(total.toFixed(2))
+  return {
+    totalAmount: Number(totalAmount.toFixed(2)),
+    patientsCount,
+  }
+}
+
+async function fetchExhaustedBonusPatientsCount() {
+  const patientIds = new Set()
+  let currentPage = 1
+  let lastPage = 1
+
+  do {
+    const response = await api.get('/bonuses', {
+      params: {
+        status: 'exhausted',
+        per_page: 100,
+        page: currentPage,
+      },
+    })
+
+    const bonuses = Array.isArray(response.data?.data) ? response.data.data : []
+
+    bonuses.forEach((bonus) => {
+      const patientId = Number(bonus?.patient_id || bonus?.patient?.id || 0)
+      if (patientId > 0) {
+        patientIds.add(patientId)
+      }
+    })
+
+    lastPage = Number(response.data?.meta?.last_page || currentPage)
+    currentPage += 1
+  } while (currentPage <= lastPage)
+
+  return patientIds.size
 }
 
 onMounted(async () => {
@@ -397,6 +564,19 @@ onMounted(async () => {
         </ul>
         <div v-else class="alerts-empty">Sin alertas pendientes.</div>
       </div>
+
+      <div class="alerts-inline card-list risks-inline">
+        <div class="inline-title">Pendientes importantes · Riesgos</div>
+        <div class="alerts-subtitle">Estos son puntos donde se pierde dinero.</div>
+        <div v-if="alertsLoading" class="alerts-empty">Cargando riesgos...</div>
+        <ul v-else class="alerts-list">
+          <li v-for="risk in riskAlerts" :key="risk.key" class="alerts-item">
+            <span class="alert-dot" aria-hidden="true"></span>
+            <router-link :to="risk.to" class="alert-link">{{ risk.text }}: {{ risk.value }}</router-link>
+          </li>
+        </ul>
+      </div>
+
       <div class="dashboard-grid">
         <LineChartCard
           title="Ingresos mensuales"
@@ -581,6 +761,17 @@ onMounted(async () => {
   border: 1px solid #93c5fd;
   border-radius: 20px;
   padding: 12px 16px;
+}
+
+.risks-inline {
+  margin-top: 12px;
+}
+
+.alerts-subtitle {
+  margin-top: -2px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: var(--text-muted, #6b7280);
 }
 
 .alerts-list {

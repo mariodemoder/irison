@@ -43,18 +43,19 @@
             <input v-model="form.start_time" @change="normalizeDateTimeField('start_time')" type="datetime-local" step="300" class="input" :disabled="isCanceled && mode !== 'reprogram'" />
             <div v-if="errors.start_time" class="field-error">{{ errors.start_time[0] }}</div>
           </div>
+          
 
           <div class="field">
             <label class="label">Fin</label>
             <input v-model="form.end_time" @change="normalizeDateTimeField('end_time')" type="datetime-local" step="300" class="input" :disabled="isCanceled && mode !== 'reprogram'" />
             <div v-if="errors.end_time" class="field-error">{{ errors.end_time[0] }}</div>
             <div v-if="overlapping.length">
-              <div v-if="hasScheduledOverlap" class="field-error">La franja horaria se solapa con otra cita programada.</div>
               <ul class="overlap-list">
                 <li v-for="a in overlapping" :key="a.id" class="overlap-item">
                   <div style="display:flex; gap:8px; align-items:center;">
                     <div style="flex:1">
-                      <strong>{{ formatDate(a.start_time) }} - {{ formatDate(a.end_time) }}</strong>
+                      <div class="overlap-alert-subtle">La franja horaria se solapa con esta cita.</div>
+                      {{ formatDate(a.start_time) }} - {{ formatDate(a.end_time) }}
                       <div style="color:#374151">{{ a.patient?.name || a.patient_name || 'Paciente desconocido' }}</div>
                     </div>
                     <div>
@@ -65,7 +66,10 @@
               </ul>
             </div>
           </div>
-
+        <div class="field" v-if="hasSelectedPatient">
+                    <label class="label">Precio Sesión</label>
+                    <input v-model.number="form.price" type="number" min="0.01" step="0.01" class="input" style="max-width:220px" required />
+                  </div>
           <div class="field full">
             <label class="label">Notas</label>
             <textarea v-model="form.notes" class="textarea" rows="4" :disabled="isCanceled && mode !== 'reprogram'"></textarea>
@@ -88,12 +92,6 @@
               <div>Sin adelantos pendientes</div>
             </div>
           </div>
-
-          <div class="field" v-if="hasSelectedPatient">
-            <label class="label">Precio Sesión</label>
-            <input v-model.number="form.price" type="number" min="0.01" step="0.01" class="input" style="max-width:220px" required />
-          </div>
-
           <div class="field full" v-if="form.payment_type === 'credit'">
             <label class="label">Adelanto pendiente</label>
             <div v-if="pendingCreditPaymentsLoading">Cargando adelantos pendientes...</div>
@@ -133,6 +131,12 @@
               <span class="payment-badge" :class="paymentStatusClass">{{ paymentStatusLabel }}</span>
             </div>
           </div>
+          </div>
+
+          <div class="field" v-if="activeTab === 'payment' && hasSelectedPatient">
+            <label class="label">Importe pendiente de pago</label>
+            <input :value="appointmentPendingPaymentAmount.toFixed(2)" type="number" step="0.01" class="input" disabled />
+            <div class="help-text" v-if="isEdit">Calculado con la regla central de la app.</div>
           </div>
 
           <div class="field full" v-if="form.payment_type === 'single' && form.patient_id && form.patient_id !== '__create' && availableCredit > 0">
@@ -284,6 +288,7 @@ const bonuses = ref([])
 const bonusesLoading = ref(false)
 const pendingCreditPayments = ref([])
 const pendingCreditPaymentsLoading = ref(false)
+const appointmentCoveredAmount = ref(0)
 
 const selectedBonus = computed(() => {
   if (!form.use_bonus_id || !bonuses.value) return null
@@ -364,6 +369,18 @@ const appointmentPriceLabel = computed(() => {
   const amount = Number(form.price || 0)
   if (amount > 0) return `${amount.toFixed(2)}€`
   return '0.00€'
+})
+
+const appointmentPendingPaymentAmount = computed(() => {
+  if (form.payment_type === 'bonus' || form.use_bonus_id) return 0
+
+  const sessionPrice = Number(form.price || 0)
+  const coveredAmount = Number(appointmentCoveredAmount.value || 0)
+
+  if (!Number.isFinite(sessionPrice) || sessionPrice <= 0) return 0
+  if (!Number.isFinite(coveredAmount) || coveredAmount <= 0) return Number(sessionPrice.toFixed(2))
+
+  return Number(Math.max(sessionPrice - coveredAmount, 0).toFixed(2))
 })
 
 const canSaveAppointment = computed(() => {
@@ -733,6 +750,13 @@ async function loadForEdit(id) {
     form.end_time = toDatetimeLocalValue(data.end_time)
     form.notes = data.notes || ''
     form.price = data.price != null ? Number(data.price) : ''
+    const currentPrice = Number(data.price || 0)
+    const pendingFromApi = Number(data.pending_payment_amount || 0)
+    if (Number.isFinite(currentPrice) && currentPrice > 0 && Number.isFinite(pendingFromApi) && pendingFromApi >= 0) {
+      appointmentCoveredAmount.value = Number(Math.max(currentPrice - pendingFromApi, 0).toFixed(2))
+    } else {
+      appointmentCoveredAmount.value = 0
+    }
     // Load bonuses for this patient so we can show the associated bonus if any
     if (form.patient_id) {
       await loadBonusesForPatient(form.patient_id)
@@ -820,6 +844,7 @@ watch(() => route.params.id, (id) => {
     form.apply_credit = false
     form.apply_credit_mode = 'auto'
     form.apply_credit_amount = ''
+    appointmentCoveredAmount.value = 0
     Object.keys(errors).forEach(k => delete errors[k])
   }
 })
@@ -831,6 +856,24 @@ watch(() => [form.start_time, form.end_time], () => {
 async function submit(payNow = false) {
   submitting.value = true
   Object.keys(errors).forEach(k => delete errors[k])
+
+  const intendedStatus = mode.value === 'reprogram' ? 'rescheduled' : String(form.status || '')
+  const shouldValidatePastDateTime = !isEdit.value || ['scheduled', 'rescheduled'].includes(intendedStatus)
+  const shouldShowBonusExhaustedAlert = ['scheduled', 'rescheduled'].includes(intendedStatus)
+
+  if (shouldValidatePastDateTime && form.start_time) {
+    const selectedStartDate = new Date(form.start_time)
+    if (!Number.isNaN(selectedStartDate.getTime()) && selectedStartDate.getTime() < Date.now()) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Fecha y Hora ya han pasado',
+        text: 'Fecha y Hora ya han pasado',
+      })
+      submitting.value = false
+      return
+    }
+  }
+
   // If trying to reprogram a canceled appointment, ensure it's allowed
   if (isCanceled.value && mode.value === 'reprogram' && !canReprogramInForm.value) {
     errors.general = ['Reprogramación no permitida fuera del plazo de 1 horas antes del inicio']
@@ -936,7 +979,7 @@ async function submit(payNow = false) {
           // Backend may return structured validation errors or a simple error message
           // Show SweetAlert if it's a concurrency error about exhausted bonus
           const serverError = data.error || data.message || ''
-          if (typeof serverError === 'string' && serverError.indexOf('Bono agotado') !== -1) {
+          if (shouldShowBonusExhaustedAlert && typeof serverError === 'string' && serverError.indexOf('Bono agotado') !== -1) {
             Swal.fire({ icon: 'error', title: 'Bono agotado', text: 'Bono agotado' })
             errors.general = [serverError]
           }
@@ -998,6 +1041,10 @@ async function submit(payNow = false) {
 
 .inline-alert { display:flex; flex-direction:column; gap:6px; background: #f8fafc; border: 1px solid #e6edf3; padding:8px; border-radius:8px; color:#334155; font-size:13px; max-width:360px }
 .inline-alert button { padding:6px 10px; font-size:13px }
+
+.overlap-list { list-style:none; margin:8px 0 0; padding:0; display:flex; flex-direction:column; gap:8px }
+.overlap-item { border:1px solid #e5e7eb; border-radius:8px; padding:8px; background:#fff }
+.overlap-alert-subtle { margin-top:6px; background:#fffbeb; border:1px solid #fde68a; padding:6px 8px; border-radius:8px; color:#92400e; font-size:12px }
 </style>
 
 /* Estilos globales para el popup de creación de paciente */
