@@ -48,6 +48,37 @@
                 <input class="input" v-model="form.clinic_name" />
               </div>
 
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div>
+                  <label class="label">NIF</label>
+                  <input class="input" v-model="form.clinic_nif" />
+                </div>
+                <div>
+                  <label class="label">Código postal</label>
+                  <input class="input" v-model="form.clinic_zip" />
+                </div>
+              </div>
+
+              <div>
+                <label class="label">Dirección</label>
+                <input class="input" v-model="form.clinic_address" />
+              </div>
+
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+                <div>
+                  <label class="label">Localidad</label>
+                  <input class="input" v-model="form.clinic_locality" />
+                </div>
+                <div>
+                  <label class="label">Provincia</label>
+                  <input class="input" v-model="form.clinic_province" />
+                </div>
+                <div>
+                  <label class="label">País</label>
+                  <input class="input" v-model="form.clinic_country" />
+                </div>
+              </div>
+
               <div style="display:flex;gap:8px">
                 <button class="btn btn-sm" type="submit" :disabled="saving">Guardar</button>
                 <button class="btn btn-sm" type="button" @click.prevent="reload">Cancelar</button>
@@ -129,7 +160,17 @@ const trial_ends_at = ref(null)
 const loading = ref(true)
 const saving = ref(false)
 
-const form = ref({ name: '', email: '', clinic_name: '' })
+const form = ref({
+  name: '',
+  email: '',
+  clinic_name: '',
+  clinic_nif: '',
+  clinic_address: '',
+  clinic_locality: '',
+  clinic_province: '',
+  clinic_country: '',
+  clinic_zip: '',
+})
 
 // pestañas: 'datos' | 'seguridad' | 'subscripcion'
 const activeTab = ref('datos')
@@ -174,6 +215,12 @@ async function load() {
     form.value.name = user.value?.name ?? ''
     form.value.email = user.value?.email ?? ''
     form.value.clinic_name = clinic.value?.name ?? ''
+    form.value.clinic_nif = clinic.value?.nif ?? ''
+    form.value.clinic_address = clinic.value?.address ?? ''
+    form.value.clinic_locality = clinic.value?.locality ?? ''
+    form.value.clinic_province = clinic.value?.province ?? ''
+    form.value.clinic_country = clinic.value?.country ?? ''
+    form.value.clinic_zip = clinic.value?.zip ?? ''
   } catch (e) {
     console.error('Error cargando /me', e)
     toast.error('Error cargando datos de usuario')
@@ -192,7 +239,15 @@ async function save() {
     const payload = {
       name: form.value.name,
       email: form.value.email,
-      clinic: { name: form.value.clinic_name }
+      clinic: {
+        name: form.value.clinic_name,
+        nif: form.value.clinic_nif,
+        address: form.value.clinic_address,
+        locality: form.value.clinic_locality,
+        province: form.value.clinic_province,
+        country: form.value.clinic_country,
+        zip: form.value.clinic_zip,
+      }
     }
     // Intentamos PUT a /me (backend debe aceptar actualización parcial)
     const res = await api.put('/me', payload)

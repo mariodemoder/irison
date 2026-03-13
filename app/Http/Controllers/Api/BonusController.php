@@ -84,15 +84,4 @@ class BonusController extends Controller
 
         return response()->json($mapped);
     }
-
-    public function unpaidSummary(): JsonResponse
-    {
-        $clinicId = app()->has('activeClinic') ? app()->get('activeClinic')->id : null;
-
-        return response()->json([
-            'data' => [
-                'total' => $this->bonusService->unpaidCount($clinicId),
-            ],
-        ]);
-    }
 }

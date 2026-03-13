@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AppointmentController;
 use App\Http\Controllers\Api\PatientController;
 use App\Http\Controllers\API\RegisterController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\DashboardSummaryController;
 
 /*
 |--------------------------------------------------------------------------
@@ -58,11 +59,13 @@ Route::middleware(['auth:sanctum', 'clinic', 'clinic.active'])->group(function (
     Route::post('patients/{patient}/bonuses', [\App\Http\Controllers\Api\BonusController::class, 'storeForPatient']);
     // Listado compacto para UI: pacientes con bonos con 1 sesión restante
     Route::get('bonuses/expiring', [\App\Http\Controllers\Api\BonusController::class, 'expiring']);
-    Route::get('bonuses/unpaid-summary', [\App\Http\Controllers\Api\BonusController::class, 'unpaidSummary']);
     Route::apiResource('bonuses', \App\Http\Controllers\Api\BonusController::class)->only(['index','show','update','destroy']);
 
     // Citas: CRUD multitenant
     Route::apiResource('appointments', AppointmentController::class);
+
+    // Dashboard: resumen agregado para minimizar llamadas del frontend
+    Route::get('dashboard/summary', DashboardSummaryController::class);
 
     // Pagos de clientes: listado, creación y detalle
     Route::get('payments/appointment-options', [\App\Http\Controllers\Api\PaymentController::class, 'appointmentOptions']);
@@ -98,5 +101,6 @@ Route::middleware(['auth:sanctum', 'clinic', 'clinic.active'])->group(function (
 // Información del usuario autenticado (`/me`): debe estar disponible
 // aunque el trial haya expirado, por eso no incluimos `clinic.active`.
 Route::middleware(['auth:sanctum', 'clinic'])->get('/me', \App\Http\Controllers\Api\MeController::class);
+Route::middleware(['auth:sanctum', 'clinic'])->put('/me', [\App\Http\Controllers\Api\MeController::class, 'update']);
 
 
