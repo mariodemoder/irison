@@ -60,6 +60,7 @@ Route::middleware(['auth:sanctum', 'clinic', 'clinic.active'])->group(function (
     // Listado compacto para UI: pacientes con bonos con 1 sesión restante
     Route::get('bonuses/expiring', [\App\Http\Controllers\Api\BonusController::class, 'expiring']);
     Route::apiResource('bonuses', \App\Http\Controllers\Api\BonusController::class)->only(['index','show','update','destroy']);
+    Route::post('bonuses/{bonus}/invoice', [\App\Http\Controllers\Api\BonusController::class, 'issueInvoice']);
 
     // Citas: CRUD multitenant
     Route::apiResource('appointments', AppointmentController::class);
@@ -72,6 +73,11 @@ Route::middleware(['auth:sanctum', 'clinic', 'clinic.active'])->group(function (
     Route::get('payments/package-options', [\App\Http\Controllers\Api\PaymentController::class, 'packageOptions']);
     Route::apiResource('payments', \App\Http\Controllers\Api\PaymentController::class)
         ->only(['index', 'store', 'show', 'update']);
+
+    // Facturación (solo lectura): listado y detalle de facturas/documentos
+    Route::get('documents/{document}/pdf', [\App\Http\Controllers\Api\DocumentController::class, 'pdf']);
+    Route::apiResource('documents', \App\Http\Controllers\Api\DocumentController::class)
+        ->only(['index', 'show']);
 
     // Checkout con Stripe (inicia flujo de pago desde UI autenticada)
     Route::post('/stripe/checkout', \App\Http\Controllers\Api\StripeCheckoutController::class);
@@ -90,6 +96,7 @@ Route::middleware(['auth:sanctum', 'clinic', 'clinic.active'])->group(function (
 
     // Cancelar cita (acción sobre recurso protegido)
     Route::post('appointments/{appointment}/cancel', [\App\Http\Controllers\Api\AppointmentController::class, 'cancel']);
+    Route::post('appointments/{appointment}/invoice', [\App\Http\Controllers\Api\AppointmentController::class, 'issueInvoice']);
 
 });
 

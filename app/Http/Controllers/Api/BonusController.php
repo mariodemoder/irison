@@ -7,11 +7,15 @@ use Illuminate\Http\Request;
 use App\Models\Patient;
 use App\Models\Bonus;
 use App\Services\Bonus\BonusService;
+use App\Services\Documents\InvoicingService;
 use Illuminate\Http\JsonResponse;
 
 class BonusController extends Controller
 {
-    public function __construct(private readonly BonusService $bonusService)
+    public function __construct(
+        private readonly BonusService $bonusService,
+        private readonly InvoicingService $invoicingService,
+    )
     {
     }
 
@@ -69,8 +73,12 @@ class BonusController extends Controller
 
     public function destroy(Bonus $bonus): JsonResponse
     {
-        $this->bonusService->deleteBonus($bonus);
-        return response()->json([], 204);
+        try {
+            $this->bonusService->deleteBonus($bonus);
+            return response()->json([], 204);
+        } catch (\DomainException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
     }
 
     /**
@@ -83,5 +91,28 @@ class BonusController extends Controller
         $mapped = $this->bonusService->expiring($clinicId);
 
         return response()->json($mapped);
+    }
+
+    public function issueInvoice(Request $request, Bonus $bonus): JsonResponse
+    {
+        $user = $request->user();
+
+        if (!$user || (int) $user->clinic_id !== (int) $bonus->clinic_id) {
+            return response()->json([
+                'message' => 'No autorizado para emitir factura en este bono.',
+            ], 403);
+        }
+
+        $result = $this->invoicingService->issueForBonus($bonus, $user);
+        $document = $result['document'];
+        $created = (bool) $result['created'];
+
+        return response()->json([
+            'message' => $created ? 'Factura del bono emitida correctamente.' : 'El bono ya tenía una factura emitida.',
+            'data' => [
+                'id' => $document->id,
+                'counter' => $document->counter,
+            ],
+        ], $created ? 201 : 200);
     }
 }

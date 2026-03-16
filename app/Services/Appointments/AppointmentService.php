@@ -190,7 +190,7 @@ class AppointmentService
 
             $appointment->update($data);
 
-            $this->applyCreditUsage($appointment, $data, 'usage_on_update');
+            $this->applyCreditUsage($appointment, $data, 'usage_on_update', true);
             $this->syncPendingCreditPaymentUsage($appointment, $data);
             $this->appointmentPendingPaymentService->syncPaymentStatus($appointment);
 
@@ -477,6 +477,7 @@ private function resolveClinic(array $data)
             ->where('appointment_id', $appointment->id)
             ->whereNotNull('payment_id')
             ->whereNull('reversed_at')
+            ->where('reason', 'usage_pending_credit_payment')
             ->pluck('payment_id')
             ->filter()
             ->unique()
@@ -490,6 +491,7 @@ private function resolveClinic(array $data)
             ->where('appointment_id', $appointment->id)
             ->whereNotNull('payment_id')
             ->whereNull('reversed_at')
+            ->where('reason', 'usage_pending_credit_payment')
             ->update([
                 'reversed_at' => now(),
                 'reversed_reason' => 'appointment_pending_credit_reset',
@@ -558,8 +560,12 @@ private function resolveClinic(array $data)
         return $applyFlag || $hasAmount;
     }
 
-    private function applyCreditUsage(Appointment $appointment, array $data, string $reason): void
+    private function applyCreditUsage(Appointment $appointment, array $data, string $reason, bool $resetExisting = false): void
     {
+        if ($resetExisting) {
+            $this->restoreAppliedCreditUsage($appointment, 'appointment_credit_usage_replaced');
+        }
+
         if (!$this->shouldApplyCredit($data)) {
             return;
         }
@@ -578,42 +584,137 @@ private function resolveClinic(array $data)
             throw new DomainException('El paciente no tiene crédito disponible');
         }
 
+        $pendingAppointmentAmount = $this->appointmentPendingPaymentService->calculatePendingAmount($appointment);
+        if ($pendingAppointmentAmount <= 0) {
+            return;
+        }
+
         $manualAmount = array_key_exists('apply_credit_amount', $data)
             && $data['apply_credit_amount'] !== null
             && $data['apply_credit_amount'] !== ''
             ? (float) $data['apply_credit_amount']
             : null;
 
-        $amountToApply = $manualAmount !== null ? $manualAmount : $availableCredit;
+        $requestedAmount = $manualAmount !== null ? $manualAmount : $availableCredit;
+        $amountToApply = min($requestedAmount, $availableCredit, $pendingAppointmentAmount);
 
         if ($amountToApply <= 0) {
             throw new DomainException('El importe de crédito a aplicar debe ser mayor que cero');
         }
 
-        if ($amountToApply > $availableCredit) {
+        if ($requestedAmount > $availableCredit) {
             throw new DomainException('El importe supera el crédito disponible del paciente');
         }
 
-        CreditUsage::create([
-            'clinic_id' => $appointment->clinic_id,
-            'patient_id' => $appointment->patient_id,
-            'appointment_id' => $appointment->id,
-            'amount' => $amountToApply,
-            'reason' => $reason,
-        ]);
+        $remainingToApply = $amountToApply;
+
+        $creditPayments = Payment::query()
+            ->where('clinic_id', $appointment->clinic_id)
+            ->where('patient_id', $appointment->patient_id)
+            ->where('concept', 'credit')
+            ->where('status', 'completed')
+            ->orderByRaw('COALESCE(paid_at, created_at) ASC')
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get();
+
+        foreach ($creditPayments as $payment) {
+            if ($remainingToApply <= 0) {
+                break;
+            }
+
+            $paymentPendingAmount = $this->pendingAmountForCreditPayment($payment);
+            if ($paymentPendingAmount <= 0) {
+                continue;
+            }
+
+            $chunkAmount = min($remainingToApply, $paymentPendingAmount);
+            if ($chunkAmount <= 0) {
+                continue;
+            }
+
+            CreditUsage::create([
+                'clinic_id' => $appointment->clinic_id,
+                'patient_id' => $appointment->patient_id,
+                'appointment_id' => $appointment->id,
+                'payment_id' => $payment->id,
+                'amount' => $chunkAmount,
+                'reason' => $reason,
+            ]);
+
+            $remainingToApply -= $chunkAmount;
+        }
+
+        if ($remainingToApply > 0.0001) {
+            throw new DomainException('No se pudo aplicar todo el crédito solicitado. Intenta de nuevo.');
+        }
 
         $this->appointmentPendingPaymentService->syncPaymentStatus($appointment);
     }
 
     private function restoreCreditOnCancel(Appointment $appointment): void
     {
+        $paymentIds = CreditUsage::query()
+            ->where('appointment_id', $appointment->id)
+            ->whereNotNull('payment_id')
+            ->whereNull('reversed_at')
+            ->pluck('payment_id')
+            ->filter()
+            ->unique()
+            ->values();
+
         $appointment->creditUsages()
             ->whereNull('reversed_at')
-            ->whereNull('payment_id')
             ->update([
                 'reversed_at' => now(),
                 'reversed_reason' => 'appointment_canceled',
             ]);
+
+        foreach ($paymentIds as $paymentId) {
+            $paymentId = (int) $paymentId;
+            if ($paymentId <= 0) {
+                continue;
+            }
+
+            $payment = Payment::whereKey($paymentId)->lockForUpdate()->first();
+            if ($payment && (string) $payment->concept === 'credit' && (int) $payment->patient_id === (int) $appointment->patient_id) {
+                $pendingAmount = $this->pendingAmountForCreditPayment($payment);
+                $payment->update(['status' => $pendingAmount <= 0 ? 'completed' : 'pending']);
+            }
+        }
+    }
+
+    private function restoreAppliedCreditUsage(Appointment $appointment, string $reversedReason): void
+    {
+        $activeUsageQuery = CreditUsage::query()
+            ->where('appointment_id', $appointment->id)
+            ->whereNull('reversed_at')
+            ->whereIn('reason', ['usage_on_create', 'usage_on_update']);
+
+        $paymentIds = (clone $activeUsageQuery)
+            ->whereNotNull('payment_id')
+            ->pluck('payment_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        $activeUsageQuery->update([
+            'reversed_at' => now(),
+            'reversed_reason' => $reversedReason,
+        ]);
+
+        foreach ($paymentIds as $paymentId) {
+            $paymentId = (int) $paymentId;
+            if ($paymentId <= 0) {
+                continue;
+            }
+
+            $payment = Payment::whereKey($paymentId)->lockForUpdate()->first();
+            if ($payment && (string) $payment->concept === 'credit' && (int) $payment->patient_id === (int) $appointment->patient_id) {
+                $pendingAmount = $this->pendingAmountForCreditPayment($payment);
+                $payment->update(['status' => $pendingAmount <= 0 ? 'completed' : 'pending']);
+            }
+        }
     }
 
     private function attachPendingPaymentAmount(Appointment $appointment): Appointment

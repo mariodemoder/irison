@@ -50,7 +50,7 @@
       >
         <div class="bonus-header">
           <div>
-            <strong>{{ b.name || 'Bono' }}</strong>
+            <strong>{{ bonusTitle(b) }}</strong>
           </div>
           <div class="bonus-badges">
             <div class="bonus-badge">
@@ -81,8 +81,33 @@
             Renovar
           </button>
 
-          <button @click="confirmDeleteBonus(b)" class="action-btn">
-            🗑️
+          <button
+            type="button"
+            class="action-btn"
+            :title="b.invoice_id ? 'Ver factura' : 'Facturar bono'"
+            :disabled="invoicingBonusId === b.id"
+            @click="goInvoiceFromBonus(b)"
+          >
+            <span v-if="invoicingBonusId === b.id">…</span>
+            <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="btn-icon">
+              <path d="M7 3h8l4 4v14H7z"></path>
+              <path d="M15 3v4h4"></path>
+              <path d="M10 12h6M10 16h6"></path>
+            </svg>
+          </button>
+
+          <button
+            @click="confirmDeleteBonus(b)"
+            class="action-btn"
+            :title="b.invoice_id ? 'No se puede eliminar: bono facturado' : 'Eliminar bono'"
+            :disabled="Boolean(b.invoice_id)"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="btn-icon">
+              <path d="M3 6h18"></path>
+              <path d="M8 6V4h8v2"></path>
+              <path d="M19 6l-1 14H6L5 6"></path>
+              <path d="M10 11v6M14 11v6"></path>
+            </svg>
           </button>
         </div>
       </div>
@@ -93,6 +118,7 @@
 
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import Swal from 'sweetalert2'
 import api from '../services/api'
 import { useToast } from 'vue-toastification'
@@ -105,6 +131,8 @@ const showForm = ref(false)
 const showInactiveBonuses = ref(false)
 const form = ref({ name: 'Bono', total_sessions: 1, price: 0, expires_at: '' })
 const toast = useToast()
+const router = useRouter()
+const invoicingBonusId = ref(null)
 
 function statusLabel(status) {
   switch (status) {
@@ -119,7 +147,9 @@ function statusLabel(status) {
 function normalizeBonus(b) {
   return {
     id: b.id,
+    counter: b.counter ?? null,
     name: b.name ?? null,
+    invoice_id: b.invoice_id != null ? Number(b.invoice_id) : null,
     total_sessions: b.total_sessions != null ? Number(b.total_sessions) : 0,
     remaining_sessions: b.remaining_sessions != null ? Number(b.remaining_sessions) : 0,
     expires_at: b.expires_at ?? null,
@@ -127,6 +157,17 @@ function normalizeBonus(b) {
     is_paid: Boolean(b.is_paid),
     justCreated: b.justCreated ?? false,
   }
+}
+
+function bonusTitle(bonus) {
+  const counter = (bonus?.counter ?? '').toString().trim()
+  const name = (bonus?.name ?? '').toString().trim()
+
+  if (counter && name) return `${counter} ${name}`
+  if (counter) return counter
+  if (name) return name
+
+  return 'Bono'
 }
 
 function isExpiredLocal(bonus) {
@@ -219,6 +260,11 @@ async function deleteBonus(id) {
 }
 
 async function confirmDeleteBonus(bonus) {
+  if (bonus?.invoice_id) {
+    toast.error('No se puede eliminar un bono que ya está facturado')
+    return
+  }
+
   const res = await Swal.fire({
     title: `Eliminar bono`,
     text: `¿Eliminar el bono de ${bonus.total_sessions} sesiones?`,
@@ -230,6 +276,34 @@ async function confirmDeleteBonus(bonus) {
 
   if (!res.isConfirmed) return
   await deleteBonus(bonus.id)
+}
+
+async function goInvoiceFromBonus(bonus) {
+  if (!bonus?.id) return
+
+  if (bonus.invoice_id) {
+    router.push(`/invoices/${bonus.invoice_id}`)
+    return
+  }
+
+  invoicingBonusId.value = bonus.id
+  try {
+    const res = await api.post(`/bonuses/${bonus.id}/invoice`)
+    const invoiceId = Number(res.data?.data?.id || 0)
+
+    if (invoiceId > 0) {
+      bonus.invoice_id = invoiceId
+      toast.success(res.data?.message || 'Factura emitida correctamente')
+      router.push(`/invoices/${invoiceId}`)
+      return
+    }
+
+    toast.error('No se pudo obtener la factura creada')
+  } catch (e) {
+    toast.error(e?.response?.data?.message || 'No se pudo emitir la factura del bono')
+  } finally {
+    invoicingBonusId.value = null
+  }
 }
 
 onMounted(load)
@@ -250,6 +324,8 @@ function prefillRenew(b) {
 .primary { padding:6px 12px; border-radius:9999px; border:2px solid #3b82f6; color:#3b82f6; background:#fff }
 .muted { padding:6px 12px; border-radius:8px; border:1px solid #e5e7eb; background:#fff }
 .action-btn { padding:4px 8px; border-radius:8px; border:1px solid #e5e7eb; background:#fff; font-size:12px }
+.action-btn:disabled { opacity:0.45; cursor:not-allowed }
+.btn-icon { width:14px; height:14px; display:block }
 
 .toggle-canceled-btn {
   width:32px;

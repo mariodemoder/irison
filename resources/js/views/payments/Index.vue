@@ -42,6 +42,7 @@
 
       <div class="list-header">
         <div>Fecha</div>
+        <div>Número</div>
         <div>Paciente</div>
         <div>Importe</div>
         <div>Concepto</div>
@@ -52,7 +53,8 @@
 
       <div class="list">
         <div v-for="pay in payments" :key="pay.id" class="payment-row">
-          <div>{{ formatDate(pay.created_at) }}</div>
+          <div>{{ formatDateOnlyDay(pay.created_at) }}</div>
+          <div>{{ pay.counter || '—' }}</div>
               <router-link v-if="pay.patient?.id" :to="`/patients/${pay.patient.id}`" class="patient-link">
               {{ pay.patient?.name ?? `Paciente #${pay.patient_id}` }}
             </router-link>
@@ -84,6 +86,7 @@ import { useRoute } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
 import { useToast } from 'vue-toastification'
+import { formatDateOnlyDay } from '../../shared/dateHelpers'
 
 const toast = useToast()
 const route = useRoute()
@@ -120,11 +123,6 @@ function applyQueryFilters() {
 function formatCurrency(value) {
   const number = Number(value || 0)
   return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(number)
-}
-
-function formatDate(dateValue) {
-  if (!dateValue) return '—'
-  return new Date(dateValue).toLocaleString('es-ES')
 }
 
 function statusLabel(status) {
@@ -201,8 +199,8 @@ onMounted(async () => {
 .summary { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; color:#374151; font-size:14px }
 
 .list { display:flex; flex-direction:column; gap:8px }
-.list-header { display:grid; grid-template-columns: 1.3fr 2fr 1fr 1.2fr 1fr 1fr 120px; gap:10px; color:#6b7280; font-size:13px; font-weight:600; padding:6px 10px }
-.payment-row { display:grid; grid-template-columns: 1.3fr 2fr 1fr 1.2fr 1fr 1fr 120px; gap:10px; background:#fff; border:1px solid #eef2ff22; border-radius:10px; padding:10px; align-items:center; font-size:13px }
+.list-header { display:grid; grid-template-columns: 1.3fr 1.1fr 2fr 1fr 1.2fr 1fr 1fr 120px; gap:10px; color:#6b7280; font-size:13px; font-weight:600; padding:6px 10px }
+.payment-row { display:grid; grid-template-columns: 1.3fr 1.1fr 2fr 1fr 1.2fr 1fr 1fr 120px; gap:10px; background:#fff; border:1px solid #eef2ff22; border-radius:10px; padding:10px; align-items:center; font-size:13px }
 
 .status { padding:5px 8px; border-radius:9999px; font-weight:700; text-transform:capitalize; font-size:11px }
 .status.completed { background:#dcfce7; color:#166534 }

@@ -36,17 +36,20 @@
 
       <div class="list-header">
         <div>Fecha</div>
+        <div>Número</div>
         <div>Paciente</div>
         <div>Bono</div>
         <div>Sesiones</div>
         <div>Precio</div>
         <div>Estado</div>
         <div>Pago</div>
+        <div>Factura</div>
       </div>
 
       <div class="list">
         <div v-for="bonus in bonuses" :key="bonus.id" class="payment-row">
-          <div>{{ formatDate(bonus.created_at) }}</div>
+          <div>{{ formatDateOnlyDay(bonus.created_at) }}</div>
+          <div>{{ bonus.counter || '—' }}</div>
           <div>
             <router-link v-if="bonus.patient?.id" :to="`/patients/${bonus.patient.id}`" class="patient-link">
               {{ bonus.patient?.name ?? `Paciente #${bonus.patient_id}` }}
@@ -58,6 +61,24 @@
           <div>{{ formatCurrency(bonus.price) }}</div>
           <div><span class="status" :class="bonus.status">{{ statusLabel(bonus.status) }}</span></div>
           <div><span class="status" :class="bonus.is_paid ? 'completed' : 'pending'">{{ bonus.is_paid ? 'Pagado' : 'Impago' }}</span></div>
+          <div>
+            <router-link
+              v-if="bonus.invoice_id"
+              :to="`/invoices/${bonus.invoice_id}`"
+              class="invoice-link"
+            >
+              Ver factura
+            </router-link>
+            <button
+              v-else
+              type="button"
+              class="secondary"
+              :disabled="loading || invoicingId === bonus.id"
+              @click="issueBonusInvoice(bonus)"
+            >
+              {{ invoicingId === bonus.id ? 'Facturando...' : 'Facturar' }}
+            </button>
+          </div>
         </div>
         <div v-if="!loading && bonuses.length === 0" class="empty">Sin bonos registrados.</div>
       </div>
@@ -75,18 +96,21 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
 import { useToast } from 'vue-toastification'
+import { formatDateOnlyDay } from '../../shared/dateHelpers'
 
 const toast = useToast()
 const route = useRoute()
+const router = useRouter()
 
 const loading = ref(false)
 const bonuses = ref([])
 const meta = ref(null)
 const summary = ref({ count: 0, total_amount: 0 })
+const invoicingId = ref(null)
 let searchTimer = null
 
 const filters = ref({
@@ -111,11 +135,6 @@ function applyQueryFilters() {
 function formatCurrency(value) {
   const number = Number(value || 0)
   return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(number)
-}
-
-function formatDate(dateValue) {
-  if (!dateValue) return '—'
-  return new Date(dateValue).toLocaleString('es-ES')
 }
 
 function statusLabel(status) {
@@ -157,6 +176,30 @@ function debouncedReload() {
   searchTimer = setTimeout(() => load(1), 250)
 }
 
+async function issueBonusInvoice(bonus) {
+  if (!bonus?.id || bonus?.invoice_id) return
+
+  invoicingId.value = bonus.id
+
+  try {
+    const res = await api.post(`/bonuses/${bonus.id}/invoice`)
+    const invoiceId = Number(res.data?.data?.id || 0)
+
+    if (invoiceId > 0) {
+      bonus.invoice_id = invoiceId
+      toast.success(res.data?.message || 'Factura emitida correctamente')
+      router.push(`/invoices/${invoiceId}`)
+      return
+    }
+
+    toast.error('No se pudo obtener la factura creada')
+  } catch (e) {
+    toast.error(e?.response?.data?.message || 'Error emitiendo factura del bono')
+  } finally {
+    invoicingId.value = null
+  }
+}
+
 onMounted(async () => {
   applyQueryFilters()
   await load(1)
@@ -178,8 +221,8 @@ onMounted(async () => {
 .summary { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; color:#374151; font-size:14px }
 
 .list { display:flex; flex-direction:column; gap:8px }
-.list-header { display:grid; grid-template-columns: 1.3fr 2fr 1.5fr 1fr 1fr 1.2fr 1fr; gap:10px; color:#6b7280; font-size:13px; font-weight:600; padding:6px 10px }
-.payment-row { display:grid; grid-template-columns: 1.3fr 2fr 1.5fr 1fr 1fr 1.2fr 1fr; gap:10px; background:#fff; border:1px solid #eef2ff22; border-radius:10px; padding:10px; align-items:center; font-size:13px }
+.list-header { display:grid; grid-template-columns: 1.2fr 1.1fr 1.8fr 1.4fr 1fr 1fr 1.1fr 1fr 1.2fr; gap:10px; color:#6b7280; font-size:13px; font-weight:600; padding:6px 10px }
+.payment-row { display:grid; grid-template-columns: 1.2fr 1.1fr 1.8fr 1.4fr 1fr 1fr 1.1fr 1fr 1.2fr; gap:10px; background:#fff; border:1px solid #eef2ff22; border-radius:10px; padding:10px; align-items:center; font-size:13px }
 
 .status { padding:5px 8px; border-radius:9999px; font-weight:700; text-transform:capitalize; font-size:11px; white-space:nowrap; display:inline-block }
 .status.completed { background:#dcfce7; color:#166534 }
@@ -191,6 +234,12 @@ onMounted(async () => {
 
 .patient-link { color: var(--secondary); text-decoration: none; font-weight: 600 }
 .patient-link:hover { text-decoration: underline }
+
+.invoice-link { color: var(--secondary); text-decoration: none; font-weight: 600 }
+.invoice-link:hover { text-decoration: underline }
+
+.secondary { padding:6px 10px; border-radius:8px; border:1px solid #e5e7eb; background:#fff; font-size:12px; font-weight:600; cursor:pointer }
+.secondary:disabled { opacity:0.55; cursor:not-allowed }
 
 .empty { color:#6b7280; padding:12px }
 

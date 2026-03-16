@@ -53,6 +53,11 @@ class Clinic extends Model
         return $this->hasMany(Reminder::class);
     }
 
+    public function counters(): HasMany
+    {
+        return $this->hasMany(Counter::class, 'clinic_id');
+    }
+
     public function currentSubscription()
     {
         // Preferir suscripción activa; si no existe, devolver la más reciente

@@ -23,6 +23,7 @@ class Appointment extends Model
         'status',
         'payment_status',
         'price',
+        'invoice_id',
         'notes',
         'payment_type',
         'bonus_id',
@@ -74,6 +75,11 @@ class Appointment extends Model
     public function bonus(): BelongsTo
     {
         return $this->belongsTo(Bonus::class, 'bonus_id');
+    }
+
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(Document::class, 'invoice_id');
     }
 
     /**

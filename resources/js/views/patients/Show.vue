@@ -10,7 +10,15 @@
           <div style="display:flex;gap:8px">
             <button class="primary" @click.prevent="goEdit" style="padding:6px 12px;font-size:13px">Editar</button>
             <button class="primary" @click.prevent="viewHistory" style="padding:6px 12px;font-size:13px">Ver Historia Clínica</button>
-            <button class="action-btn" @click.prevent="confirmDelete" style="padding:6px 12px;font-size:13px">🗑️ Eliminar</button>
+            <button class="action-btn" @click.prevent="confirmDelete" style="padding:6px 12px;font-size:13px;display:flex;gap:6px;align-items:center">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:14px;height:14px">
+                <path d="M3 6h18"></path>
+                <path d="M8 6V4h8v2"></path>
+                <path d="M19 6l-1 14H6L5 6"></path>
+                <path d="M10 11v6M14 11v6"></path>
+              </svg>
+              <span>Eliminar</span>
+            </button>
             <button class="muted" @click.prevent="goBack" style="padding:6px 12px;font-size:13px">Volver</button>
           </div>
         </div>
@@ -50,7 +58,10 @@
                   @click.prevent="toggleCanceledVisibility"
                   :title="showCanceledAppointments ? 'Ver solo citas pendientes' : 'Ver todas las citas'"
                 >
-                  🔎
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:14px;height:14px">
+                    <circle cx="11" cy="11" r="7"></circle>
+                    <path d="M21 21l-4.3-4.3"></path>
+                  </svg>
                 </button>
                 <button class="primary" @click.prevent="createAppointment" style="padding:6px 10px;font-size:13px">Crear</button>
               </div>
@@ -85,7 +96,10 @@
                   @click.prevent="toggleCompletedPaymentsVisibility"
                   :title="showCompletedPayments ? 'Ver solo pagos a favor (anticipos)' : 'Ver todos los pagos'"
                 >
-                  🔎
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:14px;height:14px">
+                    <circle cx="11" cy="11" r="7"></circle>
+                    <path d="M21 21l-4.3-4.3"></path>
+                  </svg>
                 </button>
                 <button class="primary" @click.prevent="createPayment" style="padding:6px 10px;font-size:13px">Crear</button>
               </div>

@@ -48,6 +48,10 @@ class PatientsServices
             'nif' => ['nullable', 'string', 'max:50', 'regex:/\\d/'],
             'phone' => 'nullable|string|max:50',
             'email' => 'nullable|email|max:255',
+            'address' => 'nullable|string|max:255',
+            'zip' => 'nullable|string|max:20',
+            'province' => 'nullable|string|max:120',
+            'country' => 'nullable|string|max:120',
             'birth_date' => 'nullable|date',
             'notes' => 'nullable|string',
         ])->validate();
@@ -71,6 +75,10 @@ class PatientsServices
             'nif' => $nifResult['nif'],
             'phone' => $data['phone'] ?? null,
             'email' => $data['email'] ?? null,
+            'address' => $data['address'] ?? null,
+            'zip' => $data['zip'] ?? null,
+            'province' => $data['province'] ?? null,
+            'country' => $data['country'] ?? null,
             'birth_date' => $data['birth_date'] ?? null,
             'notes' => $data['notes'] ?? null,
         ]);
@@ -143,6 +151,10 @@ class PatientsServices
             'name' => $patient->name,
             'phone' => $patient->phone,
             'email' => $patient->email,
+            'address' => $patient->address,
+            'zip' => $patient->zip,
+            'province' => $patient->province,
+            'country' => $patient->country,
             'birth_date' => $patient->birth_date,
             'notes' => $patient->notes,
             'available_credit' => $patient->availableCredit(),
@@ -170,6 +182,10 @@ class PatientsServices
             ],
             'phone' => 'nullable|string|max:50',
             'email' => 'nullable|email|max:255',
+            'address' => 'nullable|string|max:255',
+            'zip' => 'nullable|string|max:20',
+            'province' => 'nullable|string|max:120',
+            'country' => 'nullable|string|max:120',
             'birth_date' => 'nullable|date',
             'notes' => 'nullable|string',
         ])->validate();
@@ -196,7 +212,7 @@ class PatientsServices
             $payload['nif'] = $nifResult['nif'];
         }
 
-        foreach (['phone', 'email', 'birth_date', 'notes'] as $field) {
+        foreach (['phone', 'email', 'address', 'zip', 'province', 'country', 'birth_date', 'notes'] as $field) {
             if (array_key_exists($field, $data)) {
                 $payload[$field] = $data[$field];
             }
@@ -235,6 +251,10 @@ class PatientsServices
             'name' => $patient->name,
             'phone' => $patient->phone,
             'email' => $patient->email,
+            'address' => $patient->address,
+            'zip' => $patient->zip,
+            'province' => $patient->province,
+            'country' => $patient->country,
             'birth_date' => $patient->birth_date,
             'notes' => $patient->notes,
             'available_credit' => $patient->availableCredit(),

@@ -28,7 +28,7 @@ class CheckAvailability
         $errors = [];
 
         if ($start->gte($end)) {
-            $errors[] = 'La hora de inicio debe ser anterior a la hora de fin.';
+            $errors[] = 'La Fecha y hora de inicio debe ser anterior a la fecha y hora de fin.';
         }
 
         if ($patientId !== null) {

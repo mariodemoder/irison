@@ -7,12 +7,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
 use App\Models\Concerns\BelongsToClinic;
+use App\Services\Counters\CounterService;
 
 class Bonus extends Model
 {
     use BelongsToClinic;
     protected $fillable = [
-        'clinic_id', 'patient_id', 'name', 'total_sessions', 'remaining_sessions', 'price', 'expires_at'
+        'clinic_id', 'patient_id', 'name', 'total_sessions', 'remaining_sessions', 'price', 'invoice_id', 'counter', 'expires_at'
     ];
 
     protected $casts = [
@@ -23,6 +24,17 @@ class Bonus extends Model
     // Expose computed status in model JSON form
     protected $appends = ['status'];
 
+    protected static function booted(): void
+    {
+        static::creating(function (Bonus $bonus) {
+            if (!empty($bonus->counter) || empty($bonus->clinic_id)) {
+                return;
+            }
+
+            $bonus->counter = app(CounterService::class)->nextFormatted((int) $bonus->clinic_id, 'bonuses');
+        });
+    }
+
     public function clinic(): BelongsTo
     {
         return $this->belongsTo(Clinic::class);
@@ -31,6 +43,11 @@ class Bonus extends Model
     public function patient(): BelongsTo
     {
         return $this->belongsTo(Patient::class);
+    }
+
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(Document::class, 'invoice_id');
     }
 
     public function usages(): HasMany

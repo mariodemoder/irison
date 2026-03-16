@@ -41,6 +41,30 @@
           </div>
 
           <div class="field full">
+            <label class="label">Dirección</label>
+            <input v-model="form.address" type="text" class="input" />
+            <div v-if="errors.address" class="field-error">{{ errors.address[0] }}</div>
+          </div>
+
+          <div class="field">
+            <label class="label">ZIP</label>
+            <input v-model="form.zip" type="text" class="input" />
+            <div v-if="errors.zip" class="field-error">{{ errors.zip[0] }}</div>
+          </div>
+
+          <div class="field">
+            <label class="label">Provincia</label>
+            <input v-model="form.province" type="text" class="input" />
+            <div v-if="errors.province" class="field-error">{{ errors.province[0] }}</div>
+          </div>
+
+          <div class="field full">
+            <label class="label">País</label>
+            <input v-model="form.country" type="text" class="input" />
+            <div v-if="errors.country" class="field-error">{{ errors.country[0] }}</div>
+          </div>
+
+          <div class="field full">
             <label class="label">Notas</label>
             <textarea v-model="form.notes" class="textarea" rows="4"></textarea>
             <div v-if="errors.notes" class="field-error">{{ errors.notes[0] }}</div>
@@ -66,7 +90,7 @@ import { useToast } from 'vue-toastification'
 const router = useRouter()
 const route = useRoute()
 const isEdit = ref(false)
-const form = reactive({ name: '', nif: '', phone: '', email: '', notes: '' })
+const form = reactive({ name: '', nif: '', phone: '', email: '', address: '', zip: '', province: '', country: '', notes: '' })
 const errors = reactive({})
 const submitting = ref(false)
 const duplicateId = ref(null)
@@ -107,6 +131,10 @@ async function loadForEdit(id) {
     form.nif = data.nif ?? ''
     form.phone = data.phone ?? ''
     form.email = data.email ?? ''
+    form.address = data.address ?? ''
+    form.zip = data.zip ?? ''
+    form.province = data.province ?? ''
+    form.country = data.country ?? ''
     form.notes = data.notes ?? ''
   } catch (e) {
     console.error('Error cargando paciente para edición', e)
@@ -139,6 +167,10 @@ watch(() => route.params.id, (id) => {
     form.nif = ''
     form.phone = ''
     form.email = ''
+    form.address = ''
+    form.zip = ''
+    form.province = ''
+    form.country = ''
     form.notes = ''
     Object.keys(errors).forEach(k => delete errors[k])
   }

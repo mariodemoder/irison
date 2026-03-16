@@ -20,6 +20,7 @@
     },
     "dependencies": {
         "chart.js": "^4.5.1",
+        "puppeteer": "^24.39.1",
         "sweetalert2": "^11.26.18",
         "vue": "^3.5.27",
         "vue-router": "^4.6.4",

@@ -32,12 +32,17 @@
             <button type="button" class="tab-btn" :class="{ active: activeTab === 'session' }" @click="activeTab = 'session'">
               Sesión
             </button>
-            <button type="button" class="tab-btn" :class="{ active: activeTab === 'payment' }" @click="activeTab = 'payment'">
-              Pago
+            <button type="button" class="tab-btn" :class="{ active: activeTab === 'billing' && !appointmentInvoiceId }" @click="handleBillingTabClick">
+              {{ appointmentInvoiceId ? 'Ver Factura' : 'Facturar' }}
+            </button>
+            <button v-if="showPaymentTab" type="button" class="tab-btn" :class="{ active: activeTab === 'payment' }" @click="activeTab = 'payment'">
+              Registrar Pago
             </button>
           </div>
 
           <template v-if="activeTab === 'session'">
+          <div class="full tab-content-card">
+            <div class="tab-content-grid">
           <div class="field">
             <label class="label">Inicio</label>
             <input v-model="form.start_time" @change="normalizeDateTimeField('start_time')" type="datetime-local" step="300" class="input" :disabled="isCanceled && mode !== 'reprogram'" />
@@ -49,6 +54,7 @@
             <label class="label">Fin</label>
             <input v-model="form.end_time" @change="normalizeDateTimeField('end_time')" type="datetime-local" step="300" class="input" :disabled="isCanceled && mode !== 'reprogram'" />
             <div v-if="errors.end_time" class="field-error">{{ errors.end_time[0] }}</div>
+            <div v-if="calendarErrorMessage" class="calendar-inline-alert">{{ calendarErrorMessage }}</div>
             <div v-if="overlapping.length">
               <ul class="overlap-list">
                 <li v-for="a in overlapping" :key="a.id" class="overlap-item">
@@ -75,20 +81,64 @@
             <textarea v-model="form.notes" class="textarea" rows="4" :disabled="isCanceled && mode !== 'reprogram'"></textarea>
             <div v-if="errors.notes" class="field-error">{{ errors.notes[0] }}</div>
           </div>
+            </div>
+          </div>
           </template>
 
-          <template v-if="activeTab === 'payment'">
+          <template v-if="activeTab === 'billing'">
+          <div class="full tab-content-card">
+            <div class="tab-content-grid">
+          <div class="field full" v-if="hasSelectedPatient">
+            <label class="label">Datos de Facturación</label>
+            <div class="billing-preview-box">
+              <div class="billing-preview-grid">
+                <div><strong>Nombre:</strong> {{ selectedPatient?.name || '—' }}</div>
+                <div><strong>NIF:</strong> {{ selectedPatient?.nif || '—' }}</div>
+                <div><strong>Domicilio:</strong> {{ selectedPatient?.address || '—' }}</div>
+                <div><strong>Teléfono:</strong> {{ selectedPatient?.phone || '—' }}</div>
+              </div>
+
+              <div class="billing-preview-detail"><strong>Detalle:</strong> {{ form.notes || '—' }}</div>
+              <div class="billing-preview-amount"><strong>Importe:</strong> {{ appointmentPriceLabel }}</div>
+            </div>
+
+            <div v-if="isEdit" style="margin-top:10px; display:flex; gap:8px; align-items:center;">
+              <button
+                type="button"
+                class="primary"
+                @click.prevent="emitInvoice"
+                :disabled="issuingInvoice"
+              >
+                {{ appointmentInvoiceId ? 'Ver factura' : (issuingInvoice ? 'Emitiendo...' : 'Emitir Factura') }}
+              </button>
+            </div>
+          </div>
+
+          <div class="field full" v-else>
+            <div class="alert-subtle">Selecciona un paciente para ver los datos de facturación.</div>
+          </div>
+            </div>
+          </div>
+          </template>
+
+          <template v-if="activeTab === 'payment' && showPaymentTab">
+          <div class="full tab-content-card">
+            <div class="tab-content-grid">
+          <div class="field" v-if="hasSelectedPatient">
+            <label class="label">Pendiente de pago</label>
+            <input :value="appointmentPendingPaymentAmount.toFixed(2)" type="number" step="0.01" class="input" disabled />
+          </div>
+
           <div class="field" v-if="hasSelectedPatient">
             <label class="label">Forma de pago</label>
               <div style="display:flex; gap:12px; align-items:center">
               <label style="display:flex; align-items:center; gap:8px"><input type="radio" v-model="form.payment_type" value="single" /> Simple</label>
               <label style="display:flex; align-items:center; gap:8px"><input type="radio" v-model="form.payment_type" value="bonus" :disabled="!hasAvailableBonuses" /> Usar bono</label>
-              <label style="display:flex; align-items:center; gap:8px"><input type="radio" v-model="form.payment_type" value="credit" :disabled="!hasPendingCreditPayments" /> Aplicar Adelanto</label>
             </div>
-            <div v-if="form.patient_id && form.payment_type === 'bonus' && !hasAvailableBonuses" class="inline-alert" style="margin-top:8px">
-              <div>Sin bonos disponibles</div>
+            <div v-if="form.patient_id && form.payment_type === 'bonus' && hasAvailableBonuses" class="inline-alert" style="margin-top:8px">
+              <div>Con bonos disponibles</div>
             </div>
-            <div v-if="form.patient_id && !hasPendingCreditPayments" class="inline-alert" style="margin-top:8px">
+            <div v-if="form.patient_id && form.patient_id !== '__create' && form.payment_type === 'single' && availableCredit <= 0" class="inline-alert" style="margin-top:8px">
               <div>Sin adelantos pendientes</div>
             </div>
           </div>
@@ -131,12 +181,6 @@
               <span class="payment-badge" :class="paymentStatusClass">{{ paymentStatusLabel }}</span>
             </div>
           </div>
-          </div>
-
-          <div class="field" v-if="activeTab === 'payment' && hasSelectedPatient">
-            <label class="label">Importe pendiente de pago</label>
-            <input :value="appointmentPendingPaymentAmount.toFixed(2)" type="number" step="0.01" class="input" disabled />
-            <div class="help-text" v-if="isEdit">Calculado con la regla central de la app.</div>
           </div>
 
           <div class="field full" v-if="form.payment_type === 'single' && form.patient_id && form.patient_id !== '__create' && availableCredit > 0">
@@ -182,13 +226,6 @@
                   {{ b.name ? (b.name + ' — ') : '' }}{{ b.total_sessions }} sesiones — {{ b.remaining_sessions }} restantes{{ b.expires_at ? (' — expira ' + formatDMY(b.expires_at)) : '' }}
                 </option>
               </select>
-              <div v-if="selectedBonus" class="bonus-details" style="margin-top:8px;padding:8px;border-radius:8px;background:#fffaf0;border:1px solid #ffedd5;color:#92400e;font-size:13px">
-                <div><strong>Bono seleccionado</strong></div>
-                <div v-if="selectedBonus.name">Nombre: {{ selectedBonus.name }}</div>
-                <div>Sesiones totales: {{ selectedBonus.total_sessions }}</div>
-                <div>Sesiones restantes: {{ selectedBonus.remaining_sessions }}</div>
-                <div v-if="selectedBonus.expires_at">Expira: {{ formatDMY(selectedBonus.expires_at) }}</div>
-              </div>
               <div v-if="errors.use_bonus_id || errors.bonus_id" class="field-error">{{ (errors.use_bonus_id || errors.bonus_id)[0] }}</div>
             </div>
 
@@ -208,6 +245,8 @@
               <div>Importe: {{ Number(selectedPendingCreditPayment.amount || 0).toFixed(2) }}€</div>
               <div>Importe a favor pendiente: {{ Number(selectedPendingCreditRemainingAfterSessionAmount || 0).toFixed(2) }}€</div>
               <div>Método: {{ creditMethodLabel(selectedPendingCreditPayment.method) }}</div>
+            </div>
+          </div>
             </div>
           </div>
           </template>
@@ -277,6 +316,7 @@ const errors = reactive({})
 const submitting = ref(false)
 const cancelling = ref(false)
 const loading = ref(false)
+const calendarInfoMessage = ref('')
 const patients = ref([])
 const overlapping = ref([])
 const hasScheduledOverlap = computed(() => overlapping.value.some(a => a.status === 'scheduled'))
@@ -289,6 +329,9 @@ const bonusesLoading = ref(false)
 const pendingCreditPayments = ref([])
 const pendingCreditPaymentsLoading = ref(false)
 const appointmentCoveredAmount = ref(0)
+const issuingInvoice = ref(false)
+const appointmentInvoiceId = ref(null)
+const appointmentPaymentStatus = ref('')
 
 const selectedBonus = computed(() => {
   if (!form.use_bonus_id || !bonuses.value) return null
@@ -383,6 +426,19 @@ const appointmentPendingPaymentAmount = computed(() => {
   return Number(Math.max(sessionPrice - coveredAmount, 0).toFixed(2))
 })
 
+const isPaidAppointment = computed(() => {
+  if (!isEdit.value) return false
+
+  const status = String(appointmentPaymentStatus.value || '').toLowerCase()
+  if (status === 'paid' || status === 'covered_by_pack') return true
+
+  const pending = Number(appointmentPendingPaymentAmount.value || 0)
+  const price = Number(form.price || 0)
+  return Number.isFinite(price) && price > 0 && Number.isFinite(pending) && pending <= 0
+})
+
+const showPaymentTab = computed(() => !isPaidAppointment.value)
+
 const canSaveAppointment = computed(() => {
   const hasPatient = !!form.patient_id && form.patient_id !== '__create'
   const hasStart = !!form.start_time
@@ -390,6 +446,30 @@ const canSaveAppointment = computed(() => {
   const hasPrice = Number(form.price || 0) > 0
 
   return hasPatient && hasStart && hasEnd && hasPrice
+})
+
+const calendarErrorMessage = computed(() => {
+  if (calendarInfoMessage.value) {
+    return calendarInfoMessage.value
+  }
+
+  const pickMessage = (value) => {
+    if (Array.isArray(value) && value.length > 0) return String(value[0] || '')
+    if (typeof value === 'string') return value
+    return ''
+  }
+
+  const startMessage = pickMessage(errors.start_time)
+  const endMessage = pickMessage(errors.end_time)
+  const generalMessage = pickMessage(errors.general)
+
+  const messages = [startMessage, endMessage, generalMessage]
+  const target = messages.find((message) => {
+    const text = String(message || '').toLowerCase()
+    return text.includes('hora de inicio') && text.includes('hora de fin')
+  })
+
+  return target || ''
 })
 
 const paymentStatusLabel = computed(() => {
@@ -668,6 +748,44 @@ function handleSinglePayment() {
   }
 }
 
+function handleBillingTabClick() {
+  if (appointmentInvoiceId.value) {
+    router.push(`/invoices/${appointmentInvoiceId.value}`)
+    return
+  }
+
+  activeTab.value = 'billing'
+}
+
+async function emitInvoice() {
+  if (!isEdit.value || !route.params.id) return
+
+  if (appointmentInvoiceId.value) {
+    router.push(`/invoices/${appointmentInvoiceId.value}`)
+    return
+  }
+
+  issuingInvoice.value = true
+  const toast = useToast()
+
+  try {
+    const res = await api.post(`/appointments/${route.params.id}/invoice`)
+    const documentId = res.data?.data?.id
+
+    toast.success(res.data?.message || 'Factura emitida correctamente')
+
+    if (documentId) {
+      appointmentInvoiceId.value = Number(documentId)
+      router.push(`/invoices/${documentId}`)
+    }
+  } catch (e) {
+    const message = e?.response?.data?.message || 'No se pudo emitir la factura'
+    toast.error(message)
+  } finally {
+    issuingInvoice.value = false
+  }
+}
+
 // formatDate moved to shared/appointmentHelpers
 
 function goToAppointment(id) {
@@ -750,6 +868,8 @@ async function loadForEdit(id) {
     form.end_time = toDatetimeLocalValue(data.end_time)
     form.notes = data.notes || ''
     form.price = data.price != null ? Number(data.price) : ''
+    appointmentInvoiceId.value = data.invoice_id ? Number(data.invoice_id) : null
+    appointmentPaymentStatus.value = String(data.payment_status || '')
     const currentPrice = Number(data.price || 0)
     const pendingFromApi = Number(data.pending_payment_amount || 0)
     if (Number.isFinite(currentPrice) && currentPrice > 0 && Number.isFinite(pendingFromApi) && pendingFromApi >= 0) {
@@ -817,6 +937,12 @@ watch(() => form.apply_credit_mode, (modeValue) => {
   }
 })
 
+watch(() => showPaymentTab.value, (visible) => {
+  if (!visible && activeTab.value === 'payment') {
+    activeTab.value = 'session'
+  }
+})
+
 // When toggling 'selectBonus', ensure bonuses are loaded
 watch(() => selectBonus.value, (v) => {
   if (v && form.patient_id) loadBonusesForPatient(form.patient_id)
@@ -844,17 +970,21 @@ watch(() => route.params.id, (id) => {
     form.apply_credit = false
     form.apply_credit_mode = 'auto'
     form.apply_credit_amount = ''
+    appointmentInvoiceId.value = null
+    appointmentPaymentStatus.value = ''
     appointmentCoveredAmount.value = 0
     Object.keys(errors).forEach(k => delete errors[k])
   }
 })
 
 watch(() => [form.start_time, form.end_time], () => {
+  calendarInfoMessage.value = ''
   checkOverlap()
 })
 
 async function submit(payNow = false) {
   submitting.value = true
+  calendarInfoMessage.value = ''
   Object.keys(errors).forEach(k => delete errors[k])
 
   const intendedStatus = mode.value === 'reprogram' ? 'rescheduled' : String(form.status || '')
@@ -975,10 +1105,18 @@ async function submit(payNow = false) {
     if (e.response) {
       const status = e.response.status
       const data = e.response.data || {}
+      const serverError = data.error || data.message || ''
+
+      if (status === 400) {
+        if (typeof serverError === 'string' && serverError.trim()) {
+          calendarInfoMessage.value = serverError
+        }
+        return
+      }
+
         if (status === 422) {
           // Backend may return structured validation errors or a simple error message
           // Show SweetAlert if it's a concurrency error about exhausted bonus
-          const serverError = data.error || data.message || ''
           if (shouldShowBonusExhaustedAlert && typeof serverError === 'string' && serverError.indexOf('Bono agotado') !== -1) {
             Swal.fire({ icon: 'error', title: 'Bono agotado', text: 'Bono agotado' })
             errors.general = [serverError]
@@ -1007,6 +1145,9 @@ async function submit(payNow = false) {
 
 .grid-form { display:grid; grid-template-columns: repeat(2, 1fr); gap:12px }
 .grid-form .full { grid-column: 1 / -1 }
+.tab-content-card { border:1px solid #e5e7eb; border-radius:12px; padding:12px; background:#fff; min-height:0; height:auto }
+.tab-content-grid { display:grid; grid-template-columns: repeat(2, 1fr); gap:12px; align-content:start }
+.tab-content-grid .full { grid-column: 1 / -1 }
 .field { display:flex; flex-direction:column }
 .label { font-weight:600; margin-bottom:6px }
 .tab-bar { display:flex; gap:8px; margin-top:2px }
@@ -1015,6 +1156,7 @@ async function submit(payNow = false) {
 .input, .textarea { padding:12px; border:1px solid #e5e7eb; border-radius:8px; font-size:14px }
 .textarea { resize:vertical }
 .field-error { color:#b91c1c; font-size:13px; margin-top:6px }
+.calendar-inline-alert { margin-top:6px; background:#f3f4f6; border:1px solid #e5e7eb; padding:6px 8px; border-radius:8px; color:#4b5563; font-size:12px }
 
 .actions { display:flex; gap:12px; align-items:center }
 .actions .muted { color:#6b7280; text-decoration:none }
@@ -1028,6 +1170,11 @@ async function submit(payNow = false) {
 
 @media (max-width: 768px) {
   .grid-form { grid-template-columns: 1fr }
+  .tab-content-grid { grid-template-columns: 1fr }
+}
+
+@media (min-width: 1024px) {
+  .tab-content-card { min-height:420px }
 }
 
 .icon-cancel { width:16px; height:16px; margin-right:8px; vertical-align:middle; color:#ef4444 }
@@ -1045,6 +1192,15 @@ async function submit(payNow = false) {
 .overlap-list { list-style:none; margin:8px 0 0; padding:0; display:flex; flex-direction:column; gap:8px }
 .overlap-item { border:1px solid #e5e7eb; border-radius:8px; padding:8px; background:#fff }
 .overlap-alert-subtle { margin-top:6px; background:#fffbeb; border:1px solid #fde68a; padding:6px 8px; border-radius:8px; color:#92400e; font-size:12px }
+
+.billing-preview-box { background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:10px; color:#92400e; font-size:13px }
+.billing-preview-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px 12px }
+.billing-preview-detail { margin-top:10px }
+.billing-preview-amount { margin-top:8px; font-size:14px }
+
+@media (max-width: 768px) {
+  .billing-preview-grid { grid-template-columns:1fr }
+}
 </style>
 
 /* Estilos globales para el popup de creación de paciente */

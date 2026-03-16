@@ -11,4 +11,13 @@ export function formatDMY(v) {
   }
 }
 
-export default { formatDMY }
+export function formatDateOnlyDay(v, locale = 'es-ES') {
+  if (!v) return '—'
+
+  const date = new Date(v)
+  if (Number.isNaN(date.getTime())) return '—'
+
+  return date.toLocaleDateString(locale)
+}
+
+export default { formatDMY, formatDateOnlyDay }

@@ -207,6 +207,7 @@ class PaymentService
         );
 
         $payment = Payment::create([
+            'clinic_id' => $clinicId,
             'patient_id' => (int) $data['patient_id'],
             'concept' => $data['concept'],
             'appointment_id' => $appointment?->id,
@@ -420,6 +421,7 @@ class PaymentService
 
         return [
             'id' => $payment->id,
+            'counter' => $payment->counter,
             'patient_id' => $payment->patient_id,
             'concept' => $payment->concept,
             'appointment_id' => $payment->appointment_id,

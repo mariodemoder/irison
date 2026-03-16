@@ -148,10 +148,12 @@ class BonusService
 
             return [
                 'id' => $bonus->id,
+                'counter' => $bonus->counter,
                 'name' => $bonus->name,
                 'total_sessions' => (int) $bonus->total_sessions,
                 'remaining_sessions' => (int) $bonus->remaining_sessions,
-                'price' => $bonus->price ?? 0,
+                    'price' => (float) ($bonus->price ?? 0),
+                    'invoice_id' => $bonus->invoice_id ? (int) $bonus->invoice_id : null,
                 'expires_at' => $bonus->expires_at ? $bonus->expires_at->toDateString() : null,
                 'status' => $bonus->status,
                 'is_paid' => $isPaid,
@@ -192,6 +194,10 @@ class BonusService
 
     public function deleteBonus(Bonus $bonus): void
     {
+        if (!empty($bonus->invoice_id)) {
+            throw new DomainException('No se puede eliminar un bono que ya está facturado');
+        }
+
         $bonus->delete();
     }
 
@@ -340,6 +346,7 @@ class BonusService
 
             return [
                 'id' => $bonus->id,
+                'counter' => $bonus->counter,
                 'clinic_id' => $bonus->clinic_id,
                 'patient_id' => $bonus->patient_id,
                 'name' => $bonus->name,
@@ -349,6 +356,7 @@ class BonusService
                 'expires_at' => $bonus->expires_at,
                 'status' => $bonus->status,
                 'is_paid' => $isPaid,
+                    'invoice_id' => $bonus->invoice_id ? (int) $bonus->invoice_id : null,
                 'created_at' => $bonus->created_at,
                 'updated_at' => $bonus->updated_at,
                 'patient' => $bonus->patient ? [
