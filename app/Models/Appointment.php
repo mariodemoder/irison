@@ -17,6 +17,7 @@ class Appointment extends Model
     use BelongsToClinic;
 
     protected $fillable = [
+        'clinic_id',
         'patient_id',
         'start_time',
         'end_time',

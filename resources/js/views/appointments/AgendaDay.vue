@@ -1,28 +1,33 @@
 <template>
   <MainLayout>
     <div>
-      <div class="page-header">
-          <div class="mini-cal-wrapper">
-            <div class="mini-cal-vert" aria-hidden="false">
-              <button @click.prevent="nextDay" class="vert-btn up" aria-label="Avanzar un día">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 15 12 9 18 15"></polyline></svg>
-              </button>
-              <button @click.prevent="prevDay" class="vert-btn down" aria-label="Retroceder un día">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="18 9 12 15 6 9"></polyline></svg>
-              </button>
-            </div>
+      <CalendarHeader
+        view="day"
+        :label="dayLabel"
+        @prev="prevDay"
+        @next="nextDay"
+        @today="goToToday"
+      />
 
+      <div class="header-secondary">
+        <div class="header-secondary-left">
+          <div class="mini-cal-wrapper">
             <div class="mini-cal">
-              <div class="cal-day">{{ displayDay }}</div>
-              <div class="cal-month">{{ displayMonthYear }}</div>
-              <input id="agenda-date" name="date" type="date" v-model="date" class="mini-date" aria-label="Seleccionar fecha" />
+              <div class="cal-day" :class="{ 'cal-dimmed': isAllMode }">{{ displayDay }}</div>
+              <div class="cal-month" :class="{ 'cal-dimmed': isAllMode }">{{ displayMonthYear }}</div>
+              <input id="agenda-date" name="date" type="date" v-model="date" class="mini-date" :disabled="isAllMode" aria-label="Seleccionar fecha" />
             </div>
           </div>
 
-          <div class="header-actions">
-            <router-link to="/appointments/create" class="btn btn-sm small compact">Nueva cita</router-link>
+          <div class="scope-bar" role="group" aria-label="Ámbito de fechas">
+            <button :class="['scope-btn', isAllMode && 'scope-active']" @click="setMode(true)">Ver todo</button>
           </div>
         </div>
+
+        <router-link to="/appointments/create" class="btn btn-sm small compact header-create-btn">
+          Nueva cita
+        </router-link>
+      </div>
 
         <div class="filters-row">
           <div class="search-wrapper">
@@ -42,7 +47,7 @@
             <option value="">Todos</option>
             <option value="pending">Pendiente</option>
             <option value="partially_paid">Parcial</option>
-            <option value="paid">Completo</option>
+            <option value="paid">Pagado</option>
           </select>
         </div>
 
@@ -56,22 +61,44 @@
         </div>
 
         <div class="list">
-          <div v-for="a in filteredAppointments" :key="a.id" class="appointment-row" role="button" tabindex="0" @click="goToAppointment(a.id)" @keydown.enter="goToAppointment(a.id)">
-            <div :class="['row-col','time', timeClass(a.status)]">{{ formatTimeCalendar(a.start_time) }} - {{ formatTimeCalendar(a.end_time) }}</div>
-            <div class="row-left">
-              <div class="row-name">{{ a.patient?.nif ?? '—' }} - {{ a.patient?.name ?? ('Paciente #' + a.patient_id) }}</div>
+          <template v-for="item in listWithGaps" :key="item._type === 'gap' ? `gap-${item.from}` : item.id">
+
+            <!-- Hueco libre -->
+            <div v-if="item._type === 'gap'" class="gap-row" role="button" tabindex="0" @click="goToNewWithGap(item)" @keydown.enter="goToNewWithGap(item)">
+              <svg class="gap-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <span class="gap-time">{{ hhmm(item.from) }} – {{ hhmm(item.to) }}</span>
+              <span class="gap-dur">{{ item.duration }} min libres</span>
+              <span class="gap-cta">+ Nueva cita</span>
             </div>
 
-            <div class="row-col note time">{{ a.notes ?? '' }}</div>
-            <div class="row-col"><span class="status" :class="a.status">{{ statusLabel(a.status) }}</span></div>
-            <div class="row-col">
-              <span class="payment-status" :class="paymentStatusClass(a.payment_status)">{{ paymentStatusLabel(a.payment_status) }}</span>
+            <!-- Cita -->
+            <div v-else class="appointment-row" role="button" tabindex="0" @click="goToAppointment(item.id)" @keydown.enter="goToAppointment(item.id)">
+              <div :class="['row-col','time', timeClass(item.status)]">
+                <span v-if="isAllMode" class="row-date">{{ formatDateShort(item.start_time) }} · </span>{{ formatTimeCalendar(item.start_time) }} - {{ formatTimeCalendar(item.end_time) }}
+              </div>
+              <div class="row-left">
+                <div class="row-name">{{ item.patient?.nif ?? '—' }} - {{ item.patient?.name ?? ('Paciente #' + item.patient_id) }}</div>
+              </div>
+              <div class="row-col note time">{{ item.notes ?? '' }}</div>
+              <div class="row-col"><span class="status" :class="item.status">{{ statusLabel(item.status) }}</span></div>
+              <div class="row-col">
+                <span class="payment-status" :class="paymentStatusClass(item.payment_status)">{{ paymentStatusLabel(item.payment_status) }}</span>
+              </div>
+              <div class="row-action">
+                <router-link :to="`/appointments/${item.id}/edit`" class="action-btn datos" @click.stop>✎ Editar</router-link>
+              </div>
             </div>
-            <div class="row-action">
-              <router-link :to="`/appointments/${a.id}/edit`" class="action-btn datos" @click.stop>✎ Editar Cita</router-link>
-            </div>
+
+          </template>
+          <div v-if="filteredAppointments.length === 0" class="empty">{{ isAllMode ? 'No hay citas con los filtros seleccionados.' : 'No hay citas para esta fecha.' }}</div>
+        </div>
+
+        <div v-if="isAllMode && filteredAppointments.length > 0" class="pagination">
+          <div class="pagination-info">Página {{ currentPage }} / {{ totalPages }} — {{ filteredAppointments.length }} citas</div>
+          <div class="pagination-actions">
+            <button class="icon-btn" :disabled="currentPage <= 1" @click="prevPage">‹</button>
+            <button class="icon-btn" :disabled="currentPage >= totalPages" @click="nextPage">›</button>
           </div>
-          <div v-if="filteredAppointments.length === 0" class="empty">No hay citas para esta fecha.</div>
         </div>
       </div>
   </MainLayout>
@@ -82,6 +109,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
+import CalendarHeader from '../../components/calendar/CalendarHeader.vue'
 import { statusLabel, timeClass, formatTimeCalendar } from '../../shared/appointmentHelpers'
 
 const router = useRouter()
@@ -89,9 +117,12 @@ const route = useRoute()
 const appointments = ref([])
 const loading = ref(false)
 const date = ref(new Date().toISOString().slice(0,10))
+const isAllMode = computed(() => String(route.query.all || '') === '1')
 const query = ref('')
 const paymentFilter = ref('')
 const statusFilter = ref('')
+const pageSize = 10
+const currentPage = ref(1)
 const displayDay = computed(() => {
   const d = new Date(date.value)
   return d.getDate()
@@ -100,13 +131,32 @@ const displayMonthYear = computed(() => {
   const d = new Date(date.value)
   return d.toLocaleString(undefined, { month: 'short', year: 'numeric' })
 })
+const dayLabel = computed(() => {
+  const d = new Date(`${date.value}T00:00:00`)
+  return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
+})
 
+
+function setMode(all) {
+  const today = new Date().toISOString().slice(0, 10)
+  if (!all) date.value = today
+  router.replace({ query: { ...route.query, all: all ? '1' : undefined, date: all ? route.query.date : today } })
+}
+
+function formatDateShort(dt) {
+  if (!dt) return ''
+  const d = new Date(String(dt).replace(' ', 'T'))
+  if (isNaN(d.getTime())) return ''
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const yyyy = d.getFullYear()
+  return `${dd}/${mm}/${yyyy}`
+}
 
 async function load() {
   loading.value = true
   try {
-    const includeAllDates = String(route.query.all || '') === '1'
-    const params = includeAllDates ? {} : { date: date.value }
+    const params = isAllMode.value ? {} : { date: date.value }
     const res = await api.get('/appointments', { params })
     // si la API devuelve paginación cambia según sea necesario
     appointments.value = Array.isArray(res.data) ? res.data : (res.data.data || [])
@@ -170,16 +220,38 @@ function applyRouteFilters() {
   router.replace({ query: nextQuery })
 }
 
+function prevPage() {
+  if (currentPage.value > 1) {
+    currentPage.value -= 1
+  }
+}
+
+function nextPage() {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value += 1
+  }
+}
+
 function prevDay() {
   const d = new Date(date.value)
   d.setDate(d.getDate() - 1)
-  date.value = d.toISOString().slice(0,10)
+  const nextDate = d.toISOString().slice(0,10)
+  date.value = nextDate
+  router.replace({ query: { ...route.query, all: undefined, date: nextDate } })
 }
 
 function nextDay() {
   const d = new Date(date.value)
   d.setDate(d.getDate() + 1)
-  date.value = d.toISOString().slice(0,10)
+  const nextDate = d.toISOString().slice(0,10)
+  date.value = nextDate
+  router.replace({ query: { ...route.query, all: undefined, date: nextDate } })
+}
+
+function goToToday() {
+  const today = new Date().toISOString().slice(0,10)
+  date.value = today
+  router.replace({ query: { ...route.query, all: undefined, date: today } })
 }
 
 onMounted(() => load())
@@ -209,8 +281,8 @@ function paymentStatusLabel(status) {
   const map = {
     pending: 'Pendiente',
     partially_paid: 'Parcial',
-    paid: 'Completo',
-    covered_by_pack: 'Completo',
+    paid: 'Pagado',
+    covered_by_pack: 'Cubierto por bono',
   }
   return map[status] || 'Pendiente'
 }
@@ -276,16 +348,83 @@ const filteredAppointments = computed(() => {
   })
 })
 
+const totalPages = computed(() => {
+  if (!isAllMode.value) return 1
+  const total = filteredAppointments.value.length
+  return Math.max(1, Math.ceil(total / pageSize))
+})
+
+const paginatedAppointments = computed(() => {
+  if (!isAllMode.value) return filteredAppointments.value
+  const start = (currentPage.value - 1) * pageSize
+  return filteredAppointments.value.slice(start, start + pageSize)
+})
+
 // statusLabel and timeClass moved to shared/appointmentHelpers
+
+function parseMin(dtStr) {
+  const m = String(dtStr || '').match(/[ T](\d{2}):(\d{2})/)
+  return m ? Number(m[1]) * 60 + Number(m[2]) : 0
+}
+
+function hhmm(totalMin) {
+  return `${String(Math.floor(totalMin / 60)).padStart(2, '0')}:${String(totalMin % 60).padStart(2, '0')}`
+}
+
+function goToNewWithGap(item) {
+  const pad = n => String(n).padStart(2, '0')
+  const toISO = min => `${date.value}T${pad(Math.floor(min / 60))}:${pad(min % 60)}`
+  router.push({ path: '/appointments/create', query: { start: toISO(item.from), end: toISO(item.to) } })
+}
+
+const listWithGaps = computed(() => {
+  if (isAllMode.value) {
+    return paginatedAppointments.value.map(a => ({ _type: 'appt', ...a }))
+  }
+
+  const sorted = [...filteredAppointments.value].sort((a, b) => parseMin(a.start_time) - parseMin(b.start_time))
+  const result = []
+  let lastEnd = null
+
+  for (const a of sorted) {
+    const sm = parseMin(a.start_time)
+    const em = parseMin(a.end_time)
+
+    if (lastEnd !== null && a.status !== 'canceled') {
+      const gap = sm - lastEnd
+      if (gap >= 15) {
+        result.push({ _type: 'gap', from: lastEnd, to: sm, duration: gap })
+      }
+    }
+
+    result.push({ _type: 'appt', ...a })
+
+    if (a.status !== 'canceled') {
+      lastEnd = lastEnd === null ? em : Math.max(lastEnd, em)
+    }
+  }
+
+  return result
+})
+
+watch([query, paymentFilter, statusFilter, isAllMode], () => {
+  currentPage.value = 1
+})
+
+watch(totalPages, (pages) => {
+  if (currentPage.value > pages) {
+    currentPage.value = pages
+  }
+})
 </script>
 
 .style-reset { }
 <style scoped>
 *, ::before, ::after { box-sizing: border-box; border-width: 0; border-style: solid; border-color: #e5e7eb }
 
-.page-header { display:grid; grid-template-columns: 230px 160px; justify-content:space-between; align-items:center; gap:0px; margin-bottom:16px }
+.header-secondary { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; flex-wrap:wrap }
+.header-secondary-left { display:flex; align-items:center; gap:12px; flex-wrap:wrap }
 
-.page-header h1 { margin:0; font-size:20px; font-weight:800 }
 .form-sub { color:#6b7280; font-size:13px; margin-top:4px }
 .calendar-card { display:flex; align-items:center; gap:12px; background:#fff; padding:10px; border-radius:10px; border:1px solid #eef2ff22 }
 .cal-left, .cal-right { width:36px }
@@ -296,10 +435,6 @@ const filteredAppointments = computed(() => {
 
 .mini-cal { display:flex; flex-direction:row; align-items:center; gap:12px; padding:8px 12px; background:#fff; border-radius:10px; border:1px solid #eef2ff22; width:230px; box-shadow: 0 4px 10px rgba(2,6,23,0.03) }
 .mini-cal-wrapper { display:flex; align-items:center; gap:10px }
-.mini-cal-vert { display:flex; flex-direction:column; gap:6px }
-.vert-btn { background:transparent; border:1px solid transparent; padding:6px; border-radius:8px; cursor:pointer; color:#374151; display:flex; align-items:center; justify-content:center }
-.vert-btn svg { width:18px; height:18px; display:block }
-.vert-btn:hover { background:#f1f5f9 }
 .mini-cal .cal-day { font-size:20px; font-weight:800 }
 .mini-cal .cal-month { font-size:13px; color:#6b7280 }
 .mini-cal .cal-meta { display:flex; flex-direction:column; line-height:1 }
@@ -308,7 +443,6 @@ const filteredAppointments = computed(() => {
 
 @media (max-width: 900px) {
   .mini-cal { width:100%; max-width:240px }
-  .page-header { grid-template-columns: 1fr auto }
 }
 
 .filters-row {
@@ -366,17 +500,47 @@ const filteredAppointments = computed(() => {
 
 .empty { color:#6b7280; padding:12px }
 
+/* Fila de hueco libre */
+.gap-row { display:flex; align-items:center; gap:8px; padding:7px 14px; border-radius:8px; background:#f0fdf4; border:1px dashed #86efac; color:#166534; font-size:13px; cursor:pointer; transition:background .12s }
+.gap-row:hover { background:#dcfce7; border-color:#4ade80 }
+.gap-icon { width:15px; height:15px; flex-shrink:0; opacity:.7 }
+.gap-time { font-weight:700; white-space:nowrap }
+.gap-dur { color:#16a34a; font-size:12px; margin-left:2px }
+.gap-cta { margin-left:auto; font-size:12px; font-weight:700; color:#15803d; padding:2px 10px; border:1px solid #86efac; border-radius:6px; white-space:nowrap }
+
 .action-btn { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:8px; text-decoration:none; color:#374151; font-size:13px; border:1px solid transparent }
 .action-btn.datos { background:#fff; border-color:#e5e7eb; color:#374151 }
 
-/* Botón "Nueva cita" más compacto */
-.btn.small.compact { padding:6px 30px; min-width:0; width:auto; }
+/* Botón "Nueva cita" solo para vista día */
+.btn { display:inline-flex; align-items:center; justify-content:center; text-decoration:none; cursor:pointer }
+.btn.btn-sm { padding:6px 12px; font-size:13px; border-radius:9999px; border:2px solid #3b82f6; color:#3b82f6; background:#ffffff; font-weight:600; width:auto; box-shadow:none; margin-top:0; transition:background .15s, color .15s, border-color .15s }
+.btn.btn-sm.small,
+.btn.btn-sm.small.compact { padding:6px 10px; font-size:13px }
+.btn.btn-sm:hover { background:#eff6ff; border-color:#2563eb; color:#2563eb }
+.header-create-btn { margin-left:auto }
 
-/* Alineación de búsqueda y acciones a la derecha */
-.header-actions { display:flex; gap:8px; align-items:center; justify-self:end }
+/* Toggle Hoy / Semana — en cabecera, no debajo */
+.scope-bar { display:flex; gap:0; border:1px solid #e5e7eb; border-radius:9px; overflow:hidden; width:fit-content }
+.scope-btn { padding:6px 16px; font-size:13px; font-weight:600; color:#6b7280; background:#fff; border:none; cursor:pointer; transition:background .12s, color .12s }
+.scope-btn:not(:last-child) { border-right:1px solid #e5e7eb }
+.scope-btn:hover:not(.scope-active) { background:#f1f5f9 }
+.scope-active { background:#4f46e5; color:#fff }
+
+/* Mini-cal deshabilitado en modo Ver Todo */
+.cal-dimmed { opacity:.4 }
+.mini-date:disabled { opacity:.4; cursor:default }
+
+/* Fecha corta en modo Ver Todo */
+.row-date { display:inline; font-size:13px; font-weight:600; color:#6b7280 }
+
+.pagination { margin-top:12px; display:flex; justify-content:flex-end; gap:12px; align-items:center }
+.pagination-info { color:#6b7280; font-size:13px }
+.pagination-actions { display:flex; gap:8px }
+.icon-btn { width:32px; height:32px; border-radius:8px; border:1px solid #e5e7eb; background:#fff }
+.icon-btn:disabled { opacity:0.45; cursor:not-allowed }
 
 @media (max-width: 900px) {
-  .page-header { grid-template-columns: 1fr auto }
+  .header-secondary { justify-content:flex-start }
 
   .filters-row {
     grid-template-columns: 1fr;

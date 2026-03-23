@@ -10,12 +10,17 @@ class BonusUsage extends Model
 {
     use BelongsToClinic;
     protected $fillable = [
-        'bonus_id', 'appointment_id', 'used_at', 'notes'
+        'clinic_id', 'bonus_id', 'appointment_id', 'used_at', 'notes'
     ];
 
     protected $casts = [
         'used_at' => 'datetime',
     ];
+
+    public function clinic(): BelongsTo
+    {
+        return $this->belongsTo(Clinic::class);
+    }
 
     public function bonus(): BelongsTo
     {

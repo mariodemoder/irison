@@ -98,11 +98,11 @@
                 <div><strong>Teléfono:</strong> {{ selectedPatient?.phone || '—' }}</div>
               </div>
 
-              <div class="billing-preview-detail"><strong>Detalle:</strong> {{ form.notes || '—' }}</div>
-              <div class="billing-preview-amount"><strong>Importe:</strong> {{ appointmentPriceLabel }}</div>
+              <div class="billing-preview-detail"><strong>Detalle:</strong> {{ billingDetailLabel }}</div>
+              <div class="billing-preview-amount"><strong>Importe:</strong> {{ billingAmountLabel }}</div>
             </div>
 
-            <div v-if="isEdit" style="margin-top:10px; display:flex; gap:8px; align-items:center;">
+            <div v-if="isEdit && !isCoveredByBonus" style="margin-top:10px; display:flex; gap:8px; align-items:center;">
               <button
                 type="button"
                 class="primary"
@@ -111,6 +111,24 @@
               >
                 {{ appointmentInvoiceId ? 'Ver factura' : (issuingInvoice ? 'Emitiendo...' : 'Emitir Factura') }}
               </button>
+            </div>
+
+            <div v-else-if="isEdit && isCoveredByBonus" class="billing-bonus-info">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="btn-icon">
+                <path d="M7 3h8l4 4v14H7z"></path>
+                <path d="M15 3v4h4"></path>
+                <path d="M10 12h6M10 16h6"></path>
+              </svg>
+              <span>Factura gestionada por el bono.</span>
+              <button
+                v-if="bonusInvoiceId"
+                type="button"
+                class="billing-bonus-link"
+                @click.prevent="goToBonusInvoice"
+              >
+                Ver factura
+              </button>
+              <span v-else class="billing-bonus-muted">Sin factura de bono emitida</span>
             </div>
           </div>
 
@@ -223,9 +241,12 @@
                 <option value="__create_bonus">+ Crear bono...</option>
                 <option v-if="selectableBonuses.length === 0" value="" disabled>No hay bonos disponibles</option>
                 <option v-for="b in selectableBonuses" :key="b.id" :value="b.id">
-                  {{ b.name ? (b.name + ' — ') : '' }}{{ b.total_sessions }} sesiones — {{ b.remaining_sessions }} restantes{{ b.expires_at ? (' — expira ' + formatDMY(b.expires_at)) : '' }}
+                  {{ b.name ? (b.name + ' — ') : '' }}{{ b.total_sessions }} sesiones — {{ b.remaining_sessions }} restantes — {{ Number(b.price || 0).toFixed(2) }}€{{ b.expires_at ? (' — expira ' + formatDMY(b.expires_at)) : '' }}
                 </option>
               </select>
+              <div v-if="selectedBonus && selectedBonusSessionPrice > 0" class="hint-text" style="margin-top:6px;">
+                Precio por sesión aplicado: {{ selectedBonusSessionPrice.toFixed(2) }}€ ({{ Number(selectedBonus.price || 0).toFixed(2) }}€ / {{ selectedBonus.total_sessions }} sesiones)
+              </div>
               <div v-if="errors.use_bonus_id || errors.bonus_id" class="field-error">{{ (errors.use_bonus_id || errors.bonus_id)[0] }}</div>
             </div>
 
@@ -311,6 +332,8 @@ const statusOptions = [
 ]
 const isCanceled = ref(false)
 const originalStart = ref(null)
+const originalStartLocal = ref('')
+const originalEndLocal = ref('')
 const canReprogramInForm = ref(false)
 const errors = reactive({})
 const submitting = ref(false)
@@ -336,6 +359,26 @@ const appointmentPaymentStatus = ref('')
 const selectedBonus = computed(() => {
   if (!form.use_bonus_id || !bonuses.value) return null
   return bonuses.value.find(b => String(b.id) === String(form.use_bonus_id)) || null
+})
+
+const selectedBonusSessionPrice = computed(() => {
+  const bonusPrice = Number(selectedBonus.value?.price || 0)
+  const totalSessions = Number(selectedBonus.value?.total_sessions || 0)
+
+  if (!Number.isFinite(bonusPrice) || bonusPrice <= 0) return 0
+  if (!Number.isFinite(totalSessions) || totalSessions <= 0) return 0
+
+  return Number((bonusPrice / totalSessions).toFixed(2))
+})
+
+const effectiveSessionPrice = computed(() => {
+  if (form.payment_type === 'bonus' || form.use_bonus_id) {
+    return selectedBonusSessionPrice.value
+  }
+
+  const amount = Number(form.price || 0)
+  if (!Number.isFinite(amount) || amount <= 0) return 0
+  return Number(amount.toFixed(2))
 })
 
 const selectedPendingCreditPayment = computed(() => {
@@ -409,9 +452,52 @@ const availableCredit = computed(() => {
 })
 
 const appointmentPriceLabel = computed(() => {
-  const amount = Number(form.price || 0)
+  const amount = Number(effectiveSessionPrice.value || 0)
   if (amount > 0) return `${amount.toFixed(2)}€`
   return '0.00€'
+})
+
+const isCoveredByBonus = computed(() => {
+  const persistedStatus = String(appointmentPaymentStatus.value || '').toLowerCase()
+  if (persistedStatus === 'covered_by_pack') return true
+  return form.payment_type === 'bonus' || !!form.use_bonus_id
+})
+
+const bonusInvoiceId = computed(() => {
+  const value = Number(selectedBonus.value?.invoice_id || 0)
+  return Number.isFinite(value) && value > 0 ? value : null
+})
+
+const billingDetailLabel = computed(() => {
+  if (!isCoveredByBonus.value) {
+    return form.notes || '—'
+  }
+
+  const selectedBonusName = selectedBonus.value?.name || form.bonus_name || ''
+  const base = selectedBonusName ? `Sesión cubierta por bono: ${selectedBonusName}` : 'Sesión cubierta por bono'
+
+  if (form.bonus_notes) {
+    return `${base} — ${form.bonus_notes}`
+  }
+
+  return base
+})
+
+const billingAmountLabel = computed(() => {
+  if (!isCoveredByBonus.value) {
+    return appointmentPriceLabel.value
+  }
+
+  const bonusAmount = Number(selectedBonusSessionPrice.value || 0)
+  const totalSessions = Number(selectedBonus.value?.total_sessions || 0)
+  if (Number.isFinite(bonusAmount) && bonusAmount > 0) {
+    if (Number.isFinite(totalSessions) && totalSessions > 0) {
+      return `${bonusAmount.toFixed(2)}€ (bono / ${totalSessions} sesiones)`
+    }
+    return `${bonusAmount.toFixed(2)}€ (bono)`
+  }
+
+  return 'Cubierto por bono'
 })
 
 const appointmentPendingPaymentAmount = computed(() => {
@@ -431,10 +517,7 @@ const isPaidAppointment = computed(() => {
 
   const status = String(appointmentPaymentStatus.value || '').toLowerCase()
   if (status === 'paid' || status === 'covered_by_pack') return true
-
-  const pending = Number(appointmentPendingPaymentAmount.value || 0)
-  const price = Number(form.price || 0)
-  return Number.isFinite(price) && price > 0 && Number.isFinite(pending) && pending <= 0
+  return false
 })
 
 const showPaymentTab = computed(() => !isPaidAppointment.value)
@@ -443,7 +526,7 @@ const canSaveAppointment = computed(() => {
   const hasPatient = !!form.patient_id && form.patient_id !== '__create'
   const hasStart = !!form.start_time
   const hasEnd = !!form.end_time
-  const hasPrice = Number(form.price || 0) > 0
+  const hasPrice = Number(effectiveSessionPrice.value || 0) > 0
 
   return hasPatient && hasStart && hasEnd && hasPrice
 })
@@ -451,6 +534,11 @@ const canSaveAppointment = computed(() => {
 const calendarErrorMessage = computed(() => {
   if (calendarInfoMessage.value) {
     return calendarInfoMessage.value
+  }
+
+  const isCalendarRangeMessage = (message) => {
+    const text = String(message || '').toLowerCase()
+    return text.includes('hora de inicio') && text.includes('hora de fin')
   }
 
   const pickMessage = (value) => {
@@ -464,10 +552,7 @@ const calendarErrorMessage = computed(() => {
   const generalMessage = pickMessage(errors.general)
 
   const messages = [startMessage, endMessage, generalMessage]
-  const target = messages.find((message) => {
-    const text = String(message || '').toLowerCase()
-    return text.includes('hora de inicio') && text.includes('hora de fin')
-  })
+  const target = messages.find((message) => isCalendarRangeMessage(message))
 
   return target || ''
 })
@@ -507,6 +592,9 @@ watch(() => form.payment_type, (v) => {
     form.apply_credit = false
     form.apply_credit_amount = ''
     form.use_credit_payment_id = ''
+    if (selectedBonusSessionPrice.value > 0) {
+      form.price = selectedBonusSessionPrice.value
+    }
   } else if (v === 'credit') {
     selectBonus.value = false
     form.use_bonus_id = ''
@@ -520,6 +608,14 @@ watch(() => form.payment_type, (v) => {
     form.bonus_notes = ''
     form.bonus_name = ''
     form.use_credit_payment_id = ''
+  }
+})
+
+watch([() => form.use_bonus_id, () => form.payment_type, selectedBonusSessionPrice], () => {
+  if (form.payment_type !== 'bonus') return
+
+  if (selectedBonusSessionPrice.value > 0) {
+    form.price = selectedBonusSessionPrice.value
   }
 })
 
@@ -757,8 +853,20 @@ function handleBillingTabClick() {
   activeTab.value = 'billing'
 }
 
+function goToBonusInvoice() {
+  if (!bonusInvoiceId.value) return
+  router.push(`/invoices/${bonusInvoiceId.value}`)
+}
+
 async function emitInvoice() {
   if (!isEdit.value || !route.params.id) return
+
+  if (isCoveredByBonus.value) {
+    if (bonusInvoiceId.value) {
+      router.push(`/invoices/${bonusInvoiceId.value}`)
+    }
+    return
+  }
 
   if (appointmentInvoiceId.value) {
     router.push(`/invoices/${appointmentInvoiceId.value}`)
@@ -866,6 +974,8 @@ async function loadForEdit(id) {
     }
     form.start_time = toDatetimeLocalValue(data.start_time)
     form.end_time = toDatetimeLocalValue(data.end_time)
+    originalStartLocal.value = form.start_time || ''
+    originalEndLocal.value = form.end_time || ''
     form.notes = data.notes || ''
     form.price = data.price != null ? Number(data.price) : ''
     appointmentInvoiceId.value = data.invoice_id ? Number(data.invoice_id) : null
@@ -915,6 +1025,12 @@ onMounted(async () => {
     await loadBonusesForPatient(form.patient_id)
     await loadPendingCreditPaymentsForPatient(form.patient_id)
   }
+
+  // Pre-fill start/end from query params (e.g. coming from a free gap or week cell)
+  if (!isEdit.value) {
+    if (route.query.start) form.start_time = route.query.start
+    if (route.query.end)   form.end_time   = route.query.end
+  }
 })
 
 // When selecting patient, load bonuses for that patient
@@ -958,6 +1074,8 @@ watch(() => route.params.id, (id) => {
     loadForEdit(id)
   } else {
     isEdit.value = false
+    originalStartLocal.value = ''
+    originalEndLocal.value = ''
     form.patient_id = ''
     form.status = 'scheduled'
     form.start_time = ''
@@ -978,8 +1096,11 @@ watch(() => route.params.id, (id) => {
 })
 
 watch(() => [form.start_time, form.end_time], () => {
-  calendarInfoMessage.value = ''
   checkOverlap()
+})
+
+watch(() => form.end_time, () => {
+  calendarInfoMessage.value = ''
 })
 
 async function submit(payNow = false) {
@@ -988,17 +1109,16 @@ async function submit(payNow = false) {
   Object.keys(errors).forEach(k => delete errors[k])
 
   const intendedStatus = mode.value === 'reprogram' ? 'rescheduled' : String(form.status || '')
-  const shouldValidatePastDateTime = !isEdit.value || ['scheduled', 'rescheduled'].includes(intendedStatus)
+  const endTimeChanged = isEdit.value && (
+    (form.end_time || '') !== (originalEndLocal.value || '')
+  )
+  const shouldValidatePastDateTime = isEdit.value && endTimeChanged && ['scheduled', 'rescheduled'].includes(intendedStatus)
   const shouldShowBonusExhaustedAlert = ['scheduled', 'rescheduled'].includes(intendedStatus)
 
-  if (shouldValidatePastDateTime && form.start_time) {
-    const selectedStartDate = new Date(form.start_time)
-    if (!Number.isNaN(selectedStartDate.getTime()) && selectedStartDate.getTime() < Date.now()) {
-      await Swal.fire({
-        icon: 'warning',
-        title: 'Fecha y Hora ya han pasado',
-        text: 'Fecha y Hora ya han pasado',
-      })
+  if (shouldValidatePastDateTime && form.end_time) {
+    const selectedEndDate = new Date(form.end_time)
+    if (!Number.isNaN(selectedEndDate.getTime()) && selectedEndDate.getTime() < Date.now()) {
+      calendarInfoMessage.value = 'La fecha y hora de fin ya han pasado.'
       submitting.value = false
       return
     }
@@ -1059,7 +1179,7 @@ async function submit(payNow = false) {
       start_time: form.start_time,
       end_time: form.end_time,
       notes: form.notes,
-      price: form.price !== '' && form.price !== null ? Number(form.price) : undefined,
+      price: effectiveSessionPrice.value > 0 ? Number(effectiveSessionPrice.value) : undefined,
       payment_type: form.payment_type === 'credit' ? 'single' : form.payment_type,
       use_bonus_id: form.use_bonus_id || undefined,
       bonus_id: form.use_bonus_id || undefined,
@@ -1123,6 +1243,23 @@ async function submit(payNow = false) {
           }
           const eobj = data.errors || {}
           Object.assign(errors, eobj)
+
+          const rangeCandidates = [
+            serverError,
+            ...(Array.isArray(eobj.start_time) ? eobj.start_time : []),
+            ...(Array.isArray(eobj.end_time) ? eobj.end_time : []),
+            ...(Array.isArray(eobj.general) ? eobj.general : []),
+          ]
+
+          const rangeMessage = rangeCandidates.find((message) => {
+            const text = String(message || '').toLowerCase()
+            return text.includes('hora de inicio') && text.includes('hora de fin')
+          })
+
+          if (rangeMessage) {
+            calendarInfoMessage.value = String(rangeMessage)
+          }
+
           // If there is a top-level message that's not validation, include it
           if (!Object.keys(eobj).length && serverError) errors.general = [serverError]
         } else {
@@ -1156,7 +1293,7 @@ async function submit(payNow = false) {
 .input, .textarea { padding:12px; border:1px solid #e5e7eb; border-radius:8px; font-size:14px }
 .textarea { resize:vertical }
 .field-error { color:#b91c1c; font-size:13px; margin-top:6px }
-.calendar-inline-alert { margin-top:6px; background:#f3f4f6; border:1px solid #e5e7eb; padding:6px 8px; border-radius:8px; color:#4b5563; font-size:12px }
+.calendar-inline-alert { margin-top:6px; background:#fffbeb; border:1px solid #fde68a; padding:6px 8px; border-radius:8px; color:#92400e; font-size:12px }
 
 .actions { display:flex; gap:12px; align-items:center }
 .actions .muted { color:#6b7280; text-decoration:none }
@@ -1197,6 +1334,12 @@ async function submit(payNow = false) {
 .billing-preview-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px 12px }
 .billing-preview-detail { margin-top:10px }
 .billing-preview-amount { margin-top:8px; font-size:14px }
+
+.billing-bonus-info { margin-top:10px; display:flex; align-items:center; gap:8px; background:#f8fafc; border:1px solid #e6edf3; border-radius:8px; padding:8px 10px; color:#334155; font-size:13px }
+.btn-icon { width:16px; height:16px; color:#64748b; flex-shrink:0 }
+.billing-bonus-link { margin-left:auto; padding:4px 10px; border-radius:9999px; border:1px solid #dbeafe; color:#1d4ed8; background:#eff6ff; font-size:12px; font-weight:600; cursor:pointer }
+.billing-bonus-link:hover { background:#dbeafe }
+.billing-bonus-muted { margin-left:auto; color:#64748b; font-size:12px }
 
 @media (max-width: 768px) {
   .billing-preview-grid { grid-template-columns:1fr }

@@ -15,7 +15,7 @@ class Patient extends Model
     use BelongsToClinic, SoftDeletes;
       
     protected $fillable = [
-        'first_name', 'last_name', 'phone', 'email',
+        'clinic_id', 'first_name', 'last_name', 'phone', 'email',
         'birth_date', 'notes', 'nif', 'address', 'zip', 'province', 'country'
     ];
 

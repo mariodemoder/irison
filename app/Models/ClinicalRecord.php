@@ -13,7 +13,7 @@ class ClinicalRecord extends Model
     public $timestamps = false;
 
     protected $fillable = [
-         'patient_id', 'appointment_id', 'notes'
+         'clinic_id', 'patient_id', 'appointment_id', 'notes'
     ];
 
     public function clinic(): BelongsTo

@@ -11,7 +11,7 @@ class Reminder extends Model
     use BelongsToClinic;
     
     protected $fillable = [
-        'appointment_id', 'channel',
+        'clinic_id', 'appointment_id', 'channel',
         'sent_at', 'status'
     ];
 

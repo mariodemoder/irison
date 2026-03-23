@@ -67,6 +67,9 @@
             <span class="big-number">{{ b.remaining_sessions }}</span>
             <span class="muted-text">/ {{ b.total_sessions }} sesiones</span>
           </div>
+          <div class="bonus-price">
+            Precio: {{ formatBonusPrice(b.price) }}
+          </div>
           <div class="expiry">
             Expira: {{ b.expires_at ? formatDMY(b.expires_at) : '—' }}
           </div>
@@ -152,11 +155,18 @@ function normalizeBonus(b) {
     invoice_id: b.invoice_id != null ? Number(b.invoice_id) : null,
     total_sessions: b.total_sessions != null ? Number(b.total_sessions) : 0,
     remaining_sessions: b.remaining_sessions != null ? Number(b.remaining_sessions) : 0,
+    price: b.price != null ? Number(b.price) : 0,
     expires_at: b.expires_at ?? null,
     status: b.status ?? (b.remaining_sessions <= 0 ? 'exhausted' : 'active'),
     is_paid: Boolean(b.is_paid),
     justCreated: b.justCreated ?? false,
   }
+}
+
+function formatBonusPrice(value) {
+  const amount = Number(value)
+  if (!Number.isFinite(amount) || amount < 0) return '0.00€'
+  return `${amount.toFixed(2)}€`
 }
 
 function bonusTitle(bonus) {
@@ -436,6 +446,13 @@ function prefillRenew(b) {
 .expiry {
   font-size:12px;
   color:#6b7280;
+  margin-top:4px;
+}
+
+.bonus-price {
+  font-size:13px;
+  color:#111827;
+  font-weight:600;
   margin-top:4px;
 }
 

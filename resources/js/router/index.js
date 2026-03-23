@@ -10,6 +10,7 @@ import PatientsShow from '../views/patients/Show.vue'
 import ClinicalHistory from '../views/patients/ClinicalHistory.vue'
 import Profile from '../views/Profile.vue'
 import AgendaDay from '../views/appointments/AgendaDay.vue'
+import AgendaWeek from '../views/appointments/AgendaWeek.vue'
 import AppointmentsForm from '../views/appointments/Form.vue'
 import AppointmentsShow from '../views/appointments/Show.vue'
 import PaymentsIndex from '../views/payments/Index.vue'
@@ -37,6 +38,7 @@ const routes = [
   { path: '/billing/required', component: BillingRequired, meta: { auth: true } },
   { path: '/appointments', redirect: '/appointments/day', meta: { auth: true } },
   { path: '/appointments/day', component: AgendaDay, meta: { auth: true } },
+  { path: '/appointments/week', component: AgendaWeek, meta: { auth: true } },
   { path: '/appointments/create', component: AppointmentsForm, meta: { auth: true } },
   { path: '/appointments/:id', component: AppointmentsShow, meta: { auth: true } },
   { path: '/appointments/:id/edit', component: AppointmentsForm, meta: { auth: true } },
