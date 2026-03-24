@@ -40,42 +40,46 @@
         <div>Total: <strong>{{ formatCurrency(summary.total_amount) }}</strong></div>
       </div>
 
-      <div class="list-header">
-        <div>Fecha</div>
-        <div>Número</div>
-        <div>Paciente</div>
-        <div>Importe</div>
-        <div>Concepto</div>
-        <div>Método</div>
-        <div>Estado</div>
-        <div></div>
-      </div>
+      <AppLoading v-if="loading" message="Cargando pagos..." />
 
-      <div class="list">
-        <div v-for="pay in payments" :key="pay.id" class="payment-row">
-          <div>{{ formatDateOnlyDay(pay.created_at) }}</div>
-          <div>{{ pay.counter || '—' }}</div>
-              <router-link v-if="pay.patient?.id" :to="`/patients/${pay.patient.id}`" class="patient-link">
-              {{ pay.patient?.name ?? `Paciente #${pay.patient_id}` }}
-            </router-link>
-          <div>{{ formatCurrency(pay.amount) }}</div>
-          <div>{{ conceptLabel(pay.concept) }}</div>
-          <div>{{ methodLabel(pay.method) }}</div>
-          <div><span class="status" :class="pay.status">{{ statusLabel(pay.status) }}</span></div>
-          <div class="row-action">
-            <router-link :to="`/payments/${pay.id}/edit`" class="action-btn datos">✎ Editar</router-link>
+      <template v-else>
+        <div class="list-header">
+          <div>Fecha</div>
+          <div>Número</div>
+          <div>Paciente</div>
+          <div>Importe</div>
+          <div>Concepto</div>
+          <div>Método</div>
+          <div>Estado</div>
+          <div></div>
+        </div>
+
+        <div class="list">
+          <div v-for="pay in payments" :key="pay.id" class="payment-row">
+            <div>{{ formatDateOnlyDay(pay.created_at) }}</div>
+            <div>{{ pay.counter || '—' }}</div>
+                <router-link v-if="pay.patient?.id" :to="`/patients/${pay.patient.id}`" class="patient-link">
+                {{ pay.patient?.name ?? `Paciente #${pay.patient_id}` }}
+              </router-link>
+            <div>{{ formatCurrency(pay.amount) }}</div>
+            <div>{{ conceptLabel(pay.concept) }}</div>
+            <div>{{ methodLabel(pay.method) }}</div>
+            <div><span class="status" :class="pay.status">{{ statusLabel(pay.status) }}</span></div>
+            <div class="row-action">
+              <router-link :to="`/payments/${pay.id}/edit`" class="action-btn datos">✎ Editar</router-link>
+            </div>
+          </div>
+          <div v-if="payments.length === 0" class="empty">Sin pagos registrados.</div>
+        </div>
+
+        <div v-if="meta" class="pagination">
+          <div class="pagination-info">Página {{ meta.current_page }} / {{ meta.last_page }} — {{ meta.total }} pagos</div>
+          <div class="pagination-actions">
+            <button :disabled="meta.current_page <= 1" @click="load(meta.current_page - 1)" class="icon-btn">‹</button>
+            <button :disabled="meta.current_page >= meta.last_page" @click="load(meta.current_page + 1)" class="icon-btn">›</button>
           </div>
         </div>
-        <div v-if="!loading && payments.length === 0" class="empty">Sin pagos registrados.</div>
-      </div>
-
-      <div v-if="meta" class="pagination">
-        <div class="pagination-info">Página {{ meta.current_page }} / {{ meta.last_page }} — {{ meta.total }} pagos</div>
-        <div class="pagination-actions">
-          <button :disabled="meta.current_page <= 1" @click="load(meta.current_page - 1)" class="icon-btn">‹</button>
-          <button :disabled="meta.current_page >= meta.last_page" @click="load(meta.current_page + 1)" class="icon-btn">›</button>
-        </div>
-      </div>
+      </template>
     </div>
   </MainLayout>
 </template>
@@ -85,6 +89,7 @@ import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
+import AppLoading from '../../components/AppLoading.vue'
 import { useToast } from 'vue-toastification'
 import { formatDateOnlyDay } from '../../shared/dateHelpers'
 

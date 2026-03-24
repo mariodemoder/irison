@@ -34,62 +34,66 @@
         <div>Total: <strong>{{ formatCurrency(summary.total_amount) }}</strong></div>
       </div>
 
-      <div class="list-header">
-        <div>Fecha</div>
-        <div>Número</div>
-        <div>Paciente</div>
-        <div>Bono</div>
-        <div>Sesiones</div>
-        <div>Precio</div>
-        <div>Estado</div>
-        <div>Pago</div>
-        <div>Factura</div>
-      </div>
+      <AppLoading v-if="loading" message="Cargando bonos..." />
 
-      <div class="list">
-        <div v-for="bonus in bonuses" :key="bonus.id" class="payment-row">
-          <div>{{ formatDateOnlyDay(bonus.created_at) }}</div>
-          <div>{{ bonus.counter || '—' }}</div>
-          <div>
-            <router-link v-if="bonus.patient?.id" :to="`/patients/${bonus.patient.id}`" class="patient-link">
-              {{ bonus.patient?.name ?? `Paciente #${bonus.patient_id}` }}
-            </router-link>
-            <span v-else>{{ bonus.patient?.name ?? `Paciente #${bonus.patient_id}` }}</span>
+      <template v-else>
+        <div class="list-header">
+          <div>Fecha</div>
+          <div>Número</div>
+          <div>Paciente</div>
+          <div>Bono</div>
+          <div>Sesiones</div>
+          <div>Precio</div>
+          <div>Estado</div>
+          <div>Pago</div>
+          <div>Factura</div>
+        </div>
+
+        <div class="list">
+          <div v-for="bonus in bonuses" :key="bonus.id" class="payment-row">
+            <div>{{ formatDateOnlyDay(bonus.created_at) }}</div>
+            <div>{{ bonus.counter || '—' }}</div>
+            <div>
+              <router-link v-if="bonus.patient?.id" :to="`/patients/${bonus.patient.id}`" class="patient-link">
+                {{ bonus.patient?.name ?? `Paciente #${bonus.patient_id}` }}
+              </router-link>
+              <span v-else>{{ bonus.patient?.name ?? `Paciente #${bonus.patient_id}` }}</span>
+            </div>
+            <div>{{ bonus.name || `Bono #${bonus.id}` }}</div>
+            <div>{{ bonus.remaining_sessions }}/{{ bonus.total_sessions }}</div>
+            <div>{{ formatCurrency(bonus.price) }}</div>
+            <div><span class="status" :class="bonus.status">{{ statusLabel(bonus.status) }}</span></div>
+            <div><span class="status" :class="bonus.is_paid ? 'completed' : 'pending'">{{ bonus.is_paid ? 'Pagado' : 'Impago' }}</span></div>
+            <div>
+              <router-link
+                v-if="bonus.invoice_id"
+                :to="`/invoices/${bonus.invoice_id}`"
+                class="invoice-link"
+              >
+                Ver factura
+              </router-link>
+              <button
+                v-else
+                type="button"
+                class="secondary"
+                :disabled="loading || invoicingId === bonus.id"
+                @click="issueBonusInvoice(bonus)"
+              >
+                {{ invoicingId === bonus.id ? 'Facturando...' : 'Facturar' }}
+              </button>
+            </div>
           </div>
-          <div>{{ bonus.name || `Bono #${bonus.id}` }}</div>
-          <div>{{ bonus.remaining_sessions }}/{{ bonus.total_sessions }}</div>
-          <div>{{ formatCurrency(bonus.price) }}</div>
-          <div><span class="status" :class="bonus.status">{{ statusLabel(bonus.status) }}</span></div>
-          <div><span class="status" :class="bonus.is_paid ? 'completed' : 'pending'">{{ bonus.is_paid ? 'Pagado' : 'Impago' }}</span></div>
-          <div>
-            <router-link
-              v-if="bonus.invoice_id"
-              :to="`/invoices/${bonus.invoice_id}`"
-              class="invoice-link"
-            >
-              Ver factura
-            </router-link>
-            <button
-              v-else
-              type="button"
-              class="secondary"
-              :disabled="loading || invoicingId === bonus.id"
-              @click="issueBonusInvoice(bonus)"
-            >
-              {{ invoicingId === bonus.id ? 'Facturando...' : 'Facturar' }}
-            </button>
+          <div v-if="bonuses.length === 0" class="empty">Sin bonos registrados.</div>
+        </div>
+
+        <div v-if="meta" class="pagination">
+          <div class="pagination-info">Página {{ meta.current_page }} / {{ meta.last_page }} — {{ meta.total }} bonos</div>
+          <div class="pagination-actions">
+            <button :disabled="meta.current_page <= 1" @click="load(meta.current_page - 1)" class="icon-btn">‹</button>
+            <button :disabled="meta.current_page >= meta.last_page" @click="load(meta.current_page + 1)" class="icon-btn">›</button>
           </div>
         </div>
-        <div v-if="!loading && bonuses.length === 0" class="empty">Sin bonos registrados.</div>
-      </div>
-
-      <div v-if="meta" class="pagination">
-        <div class="pagination-info">Página {{ meta.current_page }} / {{ meta.last_page }} — {{ meta.total }} bonos</div>
-        <div class="pagination-actions">
-          <button :disabled="meta.current_page <= 1" @click="load(meta.current_page - 1)" class="icon-btn">‹</button>
-          <button :disabled="meta.current_page >= meta.last_page" @click="load(meta.current_page + 1)" class="icon-btn">›</button>
-        </div>
-      </div>
+      </template>
     </div>
   </MainLayout>
 </template>
@@ -99,6 +103,7 @@ import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
+import AppLoading from '../../components/AppLoading.vue'
 import { useToast } from 'vue-toastification'
 import { formatDateOnlyDay } from '../../shared/dateHelpers'
 

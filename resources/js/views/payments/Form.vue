@@ -61,7 +61,7 @@
             <datalist id="appointment-options-list">
               <option v-for="a in filteredAppointmentOptions" :key="a.id" :value="appointmentOptionValue(a)"></option>
             </datalist>
-            <div class="help-text" v-if="loadingAppointmentOptions">Cargando citas...</div>
+            <AppLoading v-if="loadingAppointmentOptions" compact message="Cargando citas..." />
             <div class="help-text" v-else-if="form.patient_id && filteredAppointmentOptions.length === 0">
               No hay citas impagas/parciales sin bono asignado para este paciente.
             </div>
@@ -83,7 +83,7 @@
                 {{ packageOptionValue(pkg) }}
               </option>
             </select>
-            <div class="help-text" v-if="loadingPackageOptions">Cargando bonos...</div>
+            <AppLoading v-if="loadingPackageOptions" compact message="Cargando bonos..." />
             <div class="help-text" v-else-if="form.patient_id && filteredPackageOptions.length === 0">
               No hay bonos impagos/parciales para este paciente.
             </div>
@@ -174,6 +174,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import Swal from 'sweetalert2'
 import MainLayout from '../../layouts/MainLayout.vue'
+import AppLoading from '../../components/AppLoading.vue'
 import api from '../../services/api'
 import {
   openCreatePatientPopup as sharedOpenCreatePatientPopup,

@@ -10,7 +10,7 @@
           <button type="button" class="muted" @click="goBack">Volver</button>
         </div>
 
-        <div v-if="loading" class="alert-subtle">Cargando factura...</div>
+        <AppLoading v-if="loading" message="Cargando factura..." />
 
         <div v-else-if="documentData" class="details-grid">
           <div class="field"><label class="label">Fecha</label><div class="value">{{ formatDateOnlyDay(documentData.date || documentData.created_at) }}</div></div>
@@ -41,6 +41,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
+import AppLoading from '../../components/AppLoading.vue'
 import { useToast } from 'vue-toastification'
 import { formatDateOnlyDay } from '../../shared/dateHelpers'
 

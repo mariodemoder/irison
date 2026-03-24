@@ -4,6 +4,7 @@ import MainLayout from '../layouts/MainLayout.vue'
 import api from '../services/api'
 import LineChartCard from '../components/dashboard/LineChartCard.vue'
 import BarChartCard from '../components/dashboard/BarChartCard.vue'
+import AppLoading from '../components/AppLoading.vue'
 
 const loading = ref(true)
 
@@ -286,13 +287,13 @@ onMounted(async () => {
 
 <template>
   <MainLayout>
-    <div v-if="loading">Cargando...</div>
+    <AppLoading v-if="loading" message="Cargando dashboard..." />
 
     <div v-else class="dashboard-container">
       <section class="today-summary">
         <div class="summary-title">Resumen del día - Hoy · {{ todayLabel }}</div>
         
-        <div v-if="todaySummaryLoading" class="alerts-empty">Cargando resumen de hoy...</div>
+        <AppLoading v-if="todaySummaryLoading" compact message="Cargando resumen de hoy..." />
 
         <div v-else class="today-grid">
           <router-link class="today-card" :to="{ path: '/appointments/day', query: { date: todayDateQuery } }">
@@ -380,7 +381,7 @@ onMounted(async () => {
 
       <div class="alerts-inline card-list">
         <div class="inline-title">Alertas importantes</div>
-        <div v-if="alertsLoading" class="alerts-empty">Cargando alertas...</div>
+        <AppLoading v-if="alertsLoading" compact message="Cargando alertas..." />
         <ul v-else-if="importantAlerts.length" class="alerts-list">
           <li v-for="alert in importantAlerts" :key="alert.key" class="alerts-item">
             <span class="alert-dot" aria-hidden="true"></span>
@@ -393,7 +394,7 @@ onMounted(async () => {
       <div class="alerts-inline card-list risks-inline">
         <div class="inline-title">Pendientes importantes · Riesgos</div>
         <div class="alerts-subtitle">Estos son puntos donde se pierde dinero.</div>
-        <div v-if="alertsLoading" class="alerts-empty">Cargando riesgos...</div>
+        <AppLoading v-if="alertsLoading" compact message="Cargando riesgos..." />
         <ul v-else class="alerts-list">
           <li v-for="risk in riskAlerts" :key="risk.key" class="alerts-item">
             <span class="alert-dot" aria-hidden="true"></span>

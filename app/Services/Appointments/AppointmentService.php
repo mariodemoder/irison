@@ -228,10 +228,10 @@ class AppointmentService
 
 private function resolveClinic(array $data)
 {
-    // bound() es explícito para bindings del contenedor
-    if (app()->bound('activeClinic')) {
-        $clinic = app('activeClinic');
-        return $clinic->id ?? null;
+    $clinicId = currentClinicId();
+
+    if ($clinicId) {
+        return $clinicId;
     }
 
     return $data['clinic_id'] ?? null;

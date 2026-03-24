@@ -27,84 +27,88 @@
         <div>Total: <strong>{{ formatCurrency(summary.total_amount) }}</strong></div>
       </div>
 
-      <div class="list-header">
-        <div>Número</div>
-        <div>Fecha</div>
-        <div>Tipo</div>
-        <div>Paciente</div>
-        <div>Importe</div>
-        <div>Estado de pago</div>
-        <div>PDF</div>
-      </div>
+      <AppLoading v-if="loading" message="Cargando facturas..." />
 
-      <div class="list">
-        <div
-          v-for="doc in documents"
-          :key="doc.id"
-          class="invoice-row"
-          role="button"
-          tabindex="0"
-          @click="goToShow(doc.id)"
-          @keydown.enter.prevent="goToShow(doc.id)"
-        >
-          <div>{{ doc.counter }}</div>
-          <div>{{ formatDateOnlyDay(doc.date || doc.created_at) }}</div>
-           <div>
-            <span class="type-chip">
-              <svg v-if="doc.typeinvoice === 'package'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="type-icon">
-                <rect x="3" y="8" width="18" height="4" rx="1"></rect>
-                <path d="M4 12h16v8H4z"></path>
-                <path d="M12 8v12"></path>
-                <path d="M12 8c-1.8 0-3-1.2-3-2.5S10 3 12 5.5"></path>
-                <path d="M12 8c1.8 0 3-1.2 3-2.5S14 3 12 5.5"></path>
-              </svg>
-              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="type-icon">
-                <path d="M7 3h8l4 4v14H7z"></path>
-                <path d="M15 3v4h4"></path>
-                <path d="M10 12h6M10 16h6"></path>
-              </svg>
-              <span>{{ typeInvoiceLabel(doc.typeinvoice) }}</span>
-            </span>
+      <template v-else>
+        <div class="list-header">
+          <div>Número</div>
+          <div>Fecha</div>
+          <div>Tipo</div>
+          <div>Paciente</div>
+          <div>Importe</div>
+          <div>Estado de pago</div>
+          <div>PDF</div>
+        </div>
+
+        <div class="list">
+          <div
+            v-for="doc in documents"
+            :key="doc.id"
+            class="invoice-row"
+            role="button"
+            tabindex="0"
+            @click="goToShow(doc.id)"
+            @keydown.enter.prevent="goToShow(doc.id)"
+          >
+            <div>{{ doc.counter }}</div>
+            <div>{{ formatDateOnlyDay(doc.date || doc.created_at) }}</div>
+            <div>
+              <span class="type-chip">
+                <svg v-if="doc.typeinvoice === 'package'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="type-icon">
+                  <rect x="3" y="8" width="18" height="4" rx="1"></rect>
+                  <path d="M4 12h16v8H4z"></path>
+                  <path d="M12 8v12"></path>
+                  <path d="M12 8c-1.8 0-3-1.2-3-2.5S10 3 12 5.5"></path>
+                  <path d="M12 8c1.8 0 3-1.2 3-2.5S14 3 12 5.5"></path>
+                </svg>
+                <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="type-icon">
+                  <path d="M7 3h8l4 4v14H7z"></path>
+                  <path d="M15 3v4h4"></path>
+                  <path d="M10 12h6M10 16h6"></path>
+                </svg>
+                <span>{{ typeInvoiceLabel(doc.typeinvoice) }}</span>
+              </span>
+            </div>
+            <div>{{ patientLabel(doc) }}</div>
+            <div>{{ formatCurrency(doc.amount) }}</div>
+            <div><span class="status" :class="doc.status">{{ statusLabel(doc.status) }}</span></div>
+            <div class="pdf-actions">
+              <button
+                type="button"
+                class="pdf-btn"
+                title="Vista previa PDF"
+                @click.stop="previewPdf(doc)"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="pdf-icon">
+                  <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"></path>
+                  <circle cx="12" cy="12" r="2.5"></circle>
+                </svg>
+              </button>
+              <button
+                type="button"
+                class="pdf-btn"
+                title="Descargar PDF"
+                @click.stop="downloadPdf(doc)"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="pdf-icon">
+                  <path d="M12 4v11"></path>
+                  <path d="M8.5 11.5L12 15l3.5-3.5"></path>
+                  <path d="M5 19h14"></path>
+                </svg>
+              </button>
+            </div>
           </div>
-          <div>{{ patientLabel(doc) }}</div>
-          <div>{{ formatCurrency(doc.amount) }}</div>
-          <div><span class="status" :class="doc.status">{{ statusLabel(doc.status) }}</span></div>
-          <div class="pdf-actions">
-            <button
-              type="button"
-              class="pdf-btn"
-              title="Vista previa PDF"
-              @click.stop="previewPdf(doc)"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="pdf-icon">
-                <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"></path>
-                <circle cx="12" cy="12" r="2.5"></circle>
-              </svg>
-            </button>
-            <button
-              type="button"
-              class="pdf-btn"
-              title="Descargar PDF"
-              @click.stop="downloadPdf(doc)"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="pdf-icon">
-                <path d="M12 4v11"></path>
-                <path d="M8.5 11.5L12 15l3.5-3.5"></path>
-                <path d="M5 19h14"></path>
-              </svg>
-            </button>
+          <div v-if="documents.length === 0" class="empty">Sin facturas registradas.</div>
+        </div>
+
+        <div v-if="meta" class="pagination">
+          <div class="pagination-info">Página {{ meta.current_page }} / {{ meta.last_page }} — {{ meta.total }} facturas</div>
+          <div class="pagination-actions">
+            <button :disabled="meta.current_page <= 1" @click="load(meta.current_page - 1)" class="icon-btn">‹</button>
+            <button :disabled="meta.current_page >= meta.last_page" @click="load(meta.current_page + 1)" class="icon-btn">›</button>
           </div>
         </div>
-        <div v-if="!loading && documents.length === 0" class="empty">Sin facturas registradas.</div>
-      </div>
-
-      <div v-if="meta" class="pagination">
-        <div class="pagination-info">Página {{ meta.current_page }} / {{ meta.last_page }} — {{ meta.total }} facturas</div>
-        <div class="pagination-actions">
-          <button :disabled="meta.current_page <= 1" @click="load(meta.current_page - 1)" class="icon-btn">‹</button>
-          <button :disabled="meta.current_page >= meta.last_page" @click="load(meta.current_page + 1)" class="icon-btn">›</button>
-        </div>
-      </div>
+      </template>
     </div>
   </MainLayout>
 </template>
@@ -114,6 +118,7 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
+import AppLoading from '../../components/AppLoading.vue'
 import { useToast } from 'vue-toastification'
 import { formatDateOnlyDay } from '../../shared/dateHelpers'
 

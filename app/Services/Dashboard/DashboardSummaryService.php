@@ -153,7 +153,7 @@ class DashboardSummaryService
             ->count();
 
         return [
-            'unpaidBonusesCount' => (int) $this->bonusService->unpaidCount(app()->has('activeClinic') ? app('activeClinic')->id : null),
+            'unpaidBonusesCount' => (int) $this->bonusService->unpaidCount(currentClinicId()),
             'creditInFavorAmount' => $creditMetrics['totalAmount'],
             'unpaidSessionsCount' => (int) $unpaidSessionsCount,
             'unpaidSessionsTodayCount' => (int) $unpaidSessionsTodayCount,

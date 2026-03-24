@@ -21,14 +21,14 @@ class BonusController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $clinicId = app()->has('activeClinic') ? app()->get('activeClinic')->id : null;
+        $clinicId = currentClinicId();
 
         return response()->json($this->bonusService->index($request->all(), $clinicId));
     }
 
     public function forPatient(Request $request, Patient $patient): JsonResponse
     {
-        $clinicId = app()->has('activeClinic') ? app()->get('activeClinic')->id : null;
+        $clinicId = currentClinicId();
         $activeOnly = $request->filled('active')
             && in_array($request->input('active'), ['1', 'true', 'yes', 1, true], true);
         $mapped = $this->bonusService->forPatient($patient->id, $clinicId, $activeOnly);
@@ -45,7 +45,7 @@ class BonusController extends Controller
             'expires_at' => 'nullable|date',
         ]);
 
-        $clinicId = app()->has('activeClinic') ? app()->get('activeClinic')->id : null;
+        $clinicId = currentClinicId();
         $bonus = $this->bonusService->createForPatient($patient->id, $data, $clinicId);
 
         return response()->json(['data' => $bonus], 201);
@@ -87,7 +87,7 @@ class BonusController extends Controller
      */
     public function expiring(): JsonResponse
     {
-        $clinicId = app()->has('activeClinic') ? app()->get('activeClinic')->id : null;
+        $clinicId = currentClinicId();
         $mapped = $this->bonusService->expiring($clinicId);
 
         return response()->json($mapped);

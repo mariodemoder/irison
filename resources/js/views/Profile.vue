@@ -20,7 +20,7 @@
         </div>
       </div>
 
-      <div v-if="loading">Cargando...</div>
+      <AppLoading v-if="loading" message="Cargando perfil..." />
 
       <div v-else>
         <div style="max-width:760px">
@@ -212,6 +212,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import MainLayout from '../layouts/MainLayout.vue'
+import AppLoading from '../components/AppLoading.vue'
 import api from '../services/api'
 import { useToast } from 'vue-toastification'
 import logout from '../utils/logout'

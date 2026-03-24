@@ -23,7 +23,7 @@ class DashboardSummaryController extends Controller
             $block = 'all';
         }
 
-        $clinicId = app()->has('activeClinic') ? (int) app('activeClinic')->id : 0;
+        $clinicId = (int) (currentClinicId() ?? 0);
         $userId = (int) ($request->user()?->id ?? 0);
         $today = now()->toDateString();
 

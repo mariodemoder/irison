@@ -10,13 +10,15 @@ class ClinicScope implements Scope
 {
     public function apply(Builder $builder, Model $model): void
     {
-        if (!app()->has('activeClinic')) {
+        $clinicId = currentClinicId();
+
+        if (! $clinicId) {
             return;
         }
 
         $builder->where(
             $model->getTable() . '.clinic_id',
-            app('activeClinic')->id
+            $clinicId
         );
     }
 }

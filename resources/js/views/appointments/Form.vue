@@ -162,7 +162,7 @@
           </div>
           <div class="field full" v-if="form.payment_type === 'credit'">
             <label class="label">Adelanto pendiente</label>
-            <div v-if="pendingCreditPaymentsLoading">Cargando adelantos pendientes...</div>
+            <AppLoading v-if="pendingCreditPaymentsLoading" compact message="Cargando adelantos pendientes..." />
             <div v-else>
               <div v-if="pendingCreditPayments.length === 0" class="alert-subtle">
                 <div>No hay adelantos pendientes para este paciente.</div>
@@ -231,7 +231,7 @@
 
           <div v-if="form.payment_type === 'bonus'" class="field full">
             <label class="label">Bono</label>
-            <div v-if="bonusesLoading">Cargando bonos...</div>
+            <AppLoading v-if="bonusesLoading" compact message="Cargando bonos..." />
             <div v-else>
               <div v-if="selectableBonuses.length === 0" class="alert-subtle">
                 <div>No hay bonos activos para este paciente.</div>
@@ -301,6 +301,7 @@ import { reactive, ref, onMounted, watch, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
+import AppLoading from '../../components/AppLoading.vue'
 import IconCancel from '../../components/icons/IconCancel.vue'
 import OptionSelect from '../../components/OptionSelect.vue'
 import { useToast } from 'vue-toastification'

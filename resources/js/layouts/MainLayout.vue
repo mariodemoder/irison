@@ -79,8 +79,8 @@
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import logo from '../assets/fisiomeca.svg'
-import api from '../services/api'
 import logout from '../utils/logout'
+import { meUser, meClinic, meStatus, meTrialEndsAt, ensureMeLoaded } from '../shared/meCache'
 
 const MENU_OPEN_KEY = 'layout_menu_open'
 const MENU_COMPACT_KEY = 'layout_menu_compact'
@@ -102,11 +102,10 @@ const navItems = [
   { path: '/bonuses', label: 'Bonos' },
 ]
 
-const user = ref(null)
-const clinic = ref(null)
-const status = ref('blocked')
-const trial_ends_at = ref(null)
-const loading = ref(true)
+const user = meUser
+const clinic = meClinic
+const status = meStatus
+const trial_ends_at = meTrialEndsAt
 
 const daysLeft = computed(() => {
   if (!trial_ends_at.value) return null
@@ -157,16 +156,10 @@ onMounted(async () => {
   window.addEventListener('resize', syncViewportMode)
 
   try {
-    const res = await api.get('/me')
-    user.value = res.data.user
-    clinic.value = res.data.clinic
-    status.value = res.data.status || status.value
-    trial_ends_at.value = res.data.trial_ends_at || null
+    await ensureMeLoaded()
   } catch (e) {
     // silencioso: no bloquear layout si falla
     console.error('Error cargando /me en MainLayout', e)
-  } finally {
-    loading.value = false
   }
 })
 

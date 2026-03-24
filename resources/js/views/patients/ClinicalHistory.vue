@@ -13,7 +13,7 @@
         </div>
 
         <div style="margin-top:18px">
-          <div v-if="loading" class="empty-card">Cargando historia...</div>
+          <AppLoading v-if="loading" message="Cargando historia..." />
 
           <div v-else>
             <div v-if="appointments.length">
@@ -44,6 +44,7 @@
 
 <script setup>
 import MainLayout from '../../layouts/MainLayout.vue'
+import AppLoading from '../../components/AppLoading.vue'
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../../services/api'

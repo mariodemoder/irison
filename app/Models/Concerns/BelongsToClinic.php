@@ -11,8 +11,8 @@ trait BelongsToClinic
         static::addGlobalScope(new ClinicScope);
 
         static::creating(function ($model) {
-            if (!$model->clinic_id && app()->has('activeClinic')) {
-                $model->clinic_id = app('activeClinic')->id;
+            if (! $model->clinic_id && currentClinicId()) {
+                $model->clinic_id = currentClinicId();
             }
         });
     }

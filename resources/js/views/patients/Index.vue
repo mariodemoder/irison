@@ -17,7 +17,7 @@
         <router-link to="/patients/create" class="btn btn-sm small">Nuevo paciente</router-link>
       </div>
 
-      <div v-if="loading">Cargando...</div>
+      <AppLoading v-if="loading" message="Cargando pacientes..." />
 
       <div v-else>
         
@@ -66,6 +66,7 @@ import { useToast } from 'vue-toastification'
 import Swal from 'sweetalert2'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
+import AppLoading from '../../components/AppLoading.vue'
 
 const patients = ref([])
 const meta = ref(null)

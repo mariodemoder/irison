@@ -54,7 +54,7 @@
             </div>
           </div>
         </div>
-        <div v-if="loading">Cargando...</div>
+        <AppLoading v-if="loading" message="Cargando cita..." />
 
         <div v-else>
           <div class="field full">
@@ -125,6 +125,7 @@ import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
+import AppLoading from '../../components/AppLoading.vue'
 import { useToast } from 'vue-toastification'
 import { statusLabel, formatDateShort, formatTime, parseAppointmentDateTime } from '../../shared/appointmentHelpers'
 import { appointmentCancelShared } from '../../shared/formHelpers'
