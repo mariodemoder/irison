@@ -69,7 +69,7 @@
               <router-link :to="`/payments/${pay.id}/edit`" class="action-btn datos">✎ Editar</router-link>
             </div>
           </div>
-          <div v-if="payments.length === 0" class="empty">Sin pagos registrados.</div>
+          <EmptyIndexState v-if="payments.length === 0" />
         </div>
 
         <div v-if="meta" class="pagination">
@@ -90,6 +90,7 @@ import { useRoute } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
 import AppLoading from '../../components/AppLoading.vue'
+import EmptyIndexState from '../../components/EmptyIndexState.vue'
 import { useToast } from 'vue-toastification'
 import { formatDateOnlyDay } from '../../shared/dateHelpers'
 

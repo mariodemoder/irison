@@ -6,6 +6,9 @@
           <h1>Facturación</h1>
           <div class="form-sub">Listado de facturas</div>
         </div>
+        <div>
+          <router-link to="/appointments/day" class="primary">Gestionar en Cita</router-link>
+        </div>
       </div>
 
       <div class="filters">
@@ -98,7 +101,7 @@
               </button>
             </div>
           </div>
-          <div v-if="documents.length === 0" class="empty">Sin facturas registradas.</div>
+          <EmptyIndexState v-if="documents.length === 0" />
         </div>
 
         <div v-if="meta" class="pagination">
@@ -119,6 +122,7 @@ import { useRouter } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
 import AppLoading from '../../components/AppLoading.vue'
+import EmptyIndexState from '../../components/EmptyIndexState.vue'
 import { useToast } from 'vue-toastification'
 import { formatDateOnlyDay } from '../../shared/dateHelpers'
 

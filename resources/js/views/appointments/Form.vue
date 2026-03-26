@@ -3,8 +3,11 @@
     <div class="form-wrapper">
       <div class="form-card">
         <div class="form-header">
-          <h1>{{ isEdit ? 'Editar cita' : 'Nueva cita' }}</h1>
-          <p class="form-sub">{{ isEdit ? 'Modifica la fecha, hora y notas de la cita.' : 'Crea una nueva cita.' }}</p>
+          <div>
+            <h1>{{ isEdit ? 'Editar cita' : 'Nueva cita' }}</h1>
+            <p class="form-sub">{{ isEdit ? 'Modifica la fecha, hora y notas de la cita.' : 'Crea una nueva cita.' }}</p>
+          </div>
+          <button type="button" class="muted" @click.prevent="cancel">Volver</button>
         </div>
 
         <form class="grid-form" @submit.prevent="submit">
@@ -38,6 +41,7 @@
             <button v-if="showPaymentTab" type="button" class="tab-btn" :class="{ active: activeTab === 'payment' }" @click="activeTab = 'payment'">
               Registrar Pago
             </button>
+            <span v-else class="tab-btn tab-btn-success">Pago Realizado</span>
           </div>
 
           <template v-if="activeTab === 'session'">
@@ -276,11 +280,10 @@
             <div class="left-actions">
               <button class="primary" type="submit" :disabled="submitting || !canSaveAppointment">Guardar</button>
               <button v-if="isEdit && isFutureAppointment" type="button" class="muted" @click.prevent="startReprogram" :disabled="submitting">Reprogramar</button>
-              <button type="button" class="muted" @click.prevent="cancel">Volver</button>
             </div>
 
             <div class="right-actions">
-              <button v-if="isEdit && !isCanceled" type="button" class="muted" @click.prevent="appointmentCancel" :disabled="cancelling">
+              <button v-if="isEdit && !isCanceled && !isCompletedAppointment" type="button" class="muted" @click.prevent="appointmentCancel" :disabled="cancelling">
                 <IconCancel />
                 Cancelar Cita
               </button>
@@ -522,6 +525,11 @@ const isPaidAppointment = computed(() => {
 })
 
 const showPaymentTab = computed(() => !isPaidAppointment.value)
+
+const isCompletedAppointment = computed(() => {
+  const status = String(form.status || '').toLowerCase()
+  return status === 'completed'
+})
 
 const canSaveAppointment = computed(() => {
   const hasPatient = !!form.patient_id && form.patient_id !== '__create'
@@ -840,6 +848,7 @@ function handleSinglePayment() {
         patient_id: form.patient_id,
         concept: 'appointment',
         appointment_id: route.params.id,
+        amount: String(Number(appointmentPendingPaymentAmount.value || 0).toFixed(2)),
       }
     })
   }
@@ -847,7 +856,7 @@ function handleSinglePayment() {
 
 function handleBillingTabClick() {
   if (appointmentInvoiceId.value) {
-    router.push(`/invoices/${appointmentInvoiceId.value}`)
+    goToInvoiceFromAppointment(appointmentInvoiceId.value)
     return
   }
 
@@ -856,7 +865,20 @@ function handleBillingTabClick() {
 
 function goToBonusInvoice() {
   if (!bonusInvoiceId.value) return
-  router.push(`/invoices/${bonusInvoiceId.value}`)
+  goToInvoiceFromAppointment(bonusInvoiceId.value)
+}
+
+function goToInvoiceFromAppointment(invoiceId) {
+  if (!invoiceId) return
+
+  const appointmentId = Number(route.params.id || 0)
+
+  router.push({
+    path: `/invoices/${invoiceId}`,
+    query: appointmentId > 0
+      ? { from: 'appointment', appointment_id: String(appointmentId) }
+      : undefined,
+  })
 }
 
 async function emitInvoice() {
@@ -864,13 +886,13 @@ async function emitInvoice() {
 
   if (isCoveredByBonus.value) {
     if (bonusInvoiceId.value) {
-      router.push(`/invoices/${bonusInvoiceId.value}`)
+      goToInvoiceFromAppointment(bonusInvoiceId.value)
     }
     return
   }
 
   if (appointmentInvoiceId.value) {
-    router.push(`/invoices/${appointmentInvoiceId.value}`)
+    goToInvoiceFromAppointment(appointmentInvoiceId.value)
     return
   }
 
@@ -885,7 +907,7 @@ async function emitInvoice() {
 
     if (documentId) {
       appointmentInvoiceId.value = Number(documentId)
-      router.push(`/invoices/${documentId}`)
+      goToInvoiceFromAppointment(documentId)
     }
   } catch (e) {
     const message = e?.response?.data?.message || 'No se pudo emitir la factura'
@@ -1278,6 +1300,7 @@ async function submit(payNow = false) {
 <style scoped>
 .form-wrapper { display:flex; justify-content:center; padding:24px }
 .form-card { width:100%; max-width:760px; background: #fff; border-radius:12px; box-shadow: 0 10px 30px rgba(2,6,23,0.06); padding:24px }
+.form-header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px }
 .form-header h1 { margin:0; font-size:22px }
 .form-sub { color:#6b7280; font-size:13px; margin-top:6px }
 
@@ -1291,6 +1314,7 @@ async function submit(payNow = false) {
 .tab-bar { display:flex; gap:8px; margin-top:2px }
 .tab-btn { padding:8px 14px; border-radius:9999px; border:1px solid #e5e7eb; background:#fff; font-weight:600; color:#6b7280 }
 .tab-btn.active { border-color:#3b82f6; color:#3b82f6; background:#eff6ff }
+.tab-btn-success { border-color:#86efac; color:#166534; background:#dcfce7 }
 .input, .textarea { padding:12px; border:1px solid #e5e7eb; border-radius:8px; font-size:14px }
 .textarea { resize:vertical }
 .field-error { color:#b91c1c; font-size:13px; margin-top:6px }
@@ -1300,7 +1324,6 @@ async function submit(payNow = false) {
 .actions .muted { color:#6b7280; text-decoration:none }
 .primary { padding: 8px 16px; font-size: 14px; border-radius: 9999px; border: 2px solid #3b82f6; color: #3b82f6; background: #ffffff; font-weight: 600 }
 .primary:hover { background: #eff6ff }
-.muted { padding:8px 14px; border-radius:9999px; border:1px solid #e5e7eb; background:#fff }
 
 .action-row { display:flex; justify-content:space-between; align-items:center }
 .left-actions { display:flex; gap:12px; align-items:center }
@@ -1364,7 +1387,5 @@ async function submit(payNow = false) {
 .swal2-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:12px }
 .swal2-actions .primary, .primary { padding: 8px 16px; font-size: 14px; border-radius: 9999px; border: 2px solid #3b82f6; color: #3b82f6; background: #ffffff; font-weight: 600 }
 .swal2-actions .primary:hover, .primary:hover { background:#eff6ff }
-.swal2-actions .muted { padding:8px 14px; border-radius:9999px; border:1px solid #e5e7eb; background:#fff }
-
 
 </style>

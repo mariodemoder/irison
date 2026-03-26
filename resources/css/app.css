@@ -119,6 +119,10 @@ button[disabled],
 	border: 2px solid #e5e7eb;
 }
 
+/* Muted pill button — used for "Volver" and secondary actions across all views */
+.muted { padding:8px 14px; border-radius:9999px; border:1px solid #e5e7eb; background:#fff; cursor:pointer }
+.muted:hover { background:#f9fafb }
+
 /* Warning variant — subtle orange used for destructive/attention actions */
 .warning {
 	padding: 8px 16px;

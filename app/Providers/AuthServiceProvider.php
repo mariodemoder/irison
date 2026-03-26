@@ -10,7 +10,8 @@ use App\Models\{
     ClinicalRecord,
     Bonus,
     Payment,
-    Reminder
+    Reminder,
+    Document
 };
 
 use App\Policies\{
@@ -19,7 +20,8 @@ use App\Policies\{
     ClinicalRecordPolicy,
     PackPolicy,
     PaymentPolicy,
-    ReminderPolicy
+    ReminderPolicy,
+    DocumentPolicy
 };
 
 class AuthServiceProvider extends ServiceProvider
@@ -31,6 +33,7 @@ class AuthServiceProvider extends ServiceProvider
         Bonus::class          => PackPolicy::class,
         Payment::class        => PaymentPolicy::class,
         Reminder::class       => ReminderPolicy::class,
+        Document::class       => DocumentPolicy::class,
     ];
 
     public function boot(): void

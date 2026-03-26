@@ -30,6 +30,7 @@ class DashboardSummaryService
 
         $todaySummary = $this->buildTodaySummary($startOfDay, $endOfDay);
         $todayFinancial = $this->buildTodayFinancial($startOfDay, $endOfDay);
+        $charts = $this->buildCharts($today);
         $importantAlerts = $this->buildImportantAlerts($startOfDay, $endOfDay, $creditMetrics);
         $riskAlerts = $this->buildRiskAlerts($todayDate, $creditMetrics);
 
@@ -37,6 +38,7 @@ class DashboardSummaryService
             'data' => [
                 'today_summary' => $todaySummary,
                 'today_financial' => $todayFinancial,
+                'charts' => $charts,
                 'important_alerts' => $importantAlerts,
                 'risk_alerts' => $riskAlerts,
                 'date' => $todayDate,
@@ -54,6 +56,7 @@ class DashboardSummaryService
             'data' => [
                 'today_summary' => $this->buildTodaySummary($startOfDay, $endOfDay),
                 'today_financial' => $this->buildTodayFinancial($startOfDay, $endOfDay),
+                'charts' => $this->buildCharts($today),
                 'date' => $today->toDateString(),
             ],
         ];
@@ -214,6 +217,74 @@ class DashboardSummaryService
             'partialAppointmentsCount' => $partialAppointmentsCount,
             'exhaustedBonusPatientsCount' => $exhaustedBonusPatientsCount,
             'patientsWithCreditCount' => $creditMetrics['patientsCount'],
+        ];
+    }
+
+    private function buildCharts(Carbon $baseDate): array
+    {
+        return [
+            'monthly_revenue' => $this->buildMonthlyRevenueChart($baseDate),
+            'weekly_appointments' => $this->buildWeeklyAppointmentsChart($baseDate),
+        ];
+    }
+
+    private function buildMonthlyRevenueChart(Carbon $baseDate): array
+    {
+        $labels = [];
+        $values = [];
+
+        $monthStart = $baseDate->copy()->startOfMonth()->subMonths(3);
+
+        for ($i = 0; $i < 4; $i++) {
+            $start = $monthStart->copy()->addMonths($i)->startOfMonth();
+            $end = $start->copy()->endOfMonth();
+
+            $amount = (float) Payment::query()
+                ->where('status', 'completed')
+                ->whereIn('method', self::REAL_PAYMENT_METHODS)
+                ->whereBetween('paid_at', [$start, $end])
+                ->sum('amount');
+
+            $labels[] = ucfirst($start->locale('es')->isoFormat('MMM'));
+            $values[] = round($amount, 2);
+        }
+
+        return [
+            'labels' => $labels,
+            'values' => $values,
+        ];
+    }
+
+    private function buildWeeklyAppointmentsChart(Carbon $baseDate): array
+    {
+        $labels = [];
+        $values = [];
+
+        $weekStart = $baseDate->copy()->startOfWeek(Carbon::MONDAY)->subWeeks(3);
+
+        for ($i = 0; $i < 4; $i++) {
+            $start = $weekStart->copy()->addWeeks($i)->startOfWeek(Carbon::MONDAY);
+            $end = $start->copy()->endOfWeek(Carbon::SUNDAY);
+
+            $count = (int) Appointment::query()
+                ->whereBetween('start_time', [$start, $end])
+                ->where(function ($query) {
+                    $query->whereNull('status')
+                        ->orWhere('status', '!=', 'canceled');
+                })
+                ->count();
+
+            $labels[] = sprintf(
+                '%s–%s',
+                $start->copy()->locale('es')->isoFormat('DD MMM'),
+                $end->copy()->locale('es')->isoFormat('DD MMM')
+            );
+            $values[] = $count;
+        }
+
+        return [
+            'labels' => $labels,
+            'values' => $values,
         ];
     }
 

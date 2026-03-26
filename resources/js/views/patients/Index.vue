@@ -41,6 +41,7 @@
               <!-- <button class="action-btn" @click.prevent="deletePatient(p)" :disabled="deletingId===p.id" style="margin-left:6px">🗑️ Eliminar</button> -->
             </div>
           </div>
+          <EmptyIndexState v-if="filteredPatients.length === 0" />
         </div>
 
         <div v-if="meta" class="pagination">
@@ -67,6 +68,7 @@ import Swal from 'sweetalert2'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
 import AppLoading from '../../components/AppLoading.vue'
+import EmptyIndexState from '../../components/EmptyIndexState.vue'
 
 const patients = ref([])
 const meta = ref(null)

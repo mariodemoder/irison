@@ -19,7 +19,7 @@
               </svg>
               <span>Eliminar</span>
             </button>
-            <button class="muted" @click.prevent="goBack" style="padding:6px 12px;font-size:13px">Volver</button>
+            <button class="muted" @click.prevent="goBack">Volver</button>
           </div>
         </div>
         <br>
@@ -129,6 +129,7 @@ import { useRoute, useRouter } from 'vue-router'
 import api from '../../services/api'
 import { useToast } from 'vue-toastification'
 import Swal from 'sweetalert2'
+import { goBackWithStack } from '../../shared/navigationHelpers'
 
 const route = useRoute()
 const router = useRouter()
@@ -205,11 +206,7 @@ function viewHistory() {
 }
 
 function goBack() {
-  if (window.history.length > 1) {
-    router.back()
-  } else {
-    router.push('/patients')
-  }
+  goBackWithStack(router, '/patients')
 }
 
 function goToAppointment(id) {

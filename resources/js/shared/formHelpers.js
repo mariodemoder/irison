@@ -1,4 +1,5 @@
 import { findOverlaps, confirmAndCancel } from './appointmentHelpers'
+import { goBackWithPriority } from './navigationHelpers'
 
 export async function openCreatePatientPopup({ api, Swal, toast } = {}) {
   const { value: formValues } = await Swal.fire({
@@ -79,19 +80,19 @@ export async function checkOverlapShared({ start, end, currentId = null, api, Sw
 export function goBack(router, route) {
   const from = route.query.from
   const id = route.params.id
+
+  let priorityPath = ''
+
   if (from === 'day') {
-    router.push('/appointments/day')
-    return
+    priorityPath = '/appointments/day'
+  } else if (from === 'show' && id) {
+    priorityPath = `/appointments/${id}`
   }
-  if (from === 'show' && id) {
-    router.push(`/appointments/${id}`)
-    return
-  }
-  if (window.history.length > 1) {
-    router.back()
-  } else {
-    router.push('/appointments/day')
-  }
+
+  goBackWithPriority(router, {
+    priorityPath,
+    fallbackPath: '/appointments/day',
+  })
 }
 
 export function startReprogramShared(router, route) {

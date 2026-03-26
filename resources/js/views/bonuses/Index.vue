@@ -7,7 +7,7 @@
           <div class="form-sub">Listado y búsqueda de bonos</div>
         </div>
         <div>
-          <router-link to="/patients" class="primary">Gestionar en pacientes</router-link>
+          <router-link to="/patients" class="primary">Gestionar en paciente</router-link>
         </div>
       </div>
 
@@ -83,7 +83,7 @@
               </button>
             </div>
           </div>
-          <div v-if="bonuses.length === 0" class="empty">Sin bonos registrados.</div>
+          <EmptyIndexState v-if="bonuses.length === 0" />
         </div>
 
         <div v-if="meta" class="pagination">
@@ -104,6 +104,7 @@ import { useRoute, useRouter } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
 import AppLoading from '../../components/AppLoading.vue'
+import EmptyIndexState from '../../components/EmptyIndexState.vue'
 import { useToast } from 'vue-toastification'
 import { formatDateOnlyDay } from '../../shared/dateHelpers'
 

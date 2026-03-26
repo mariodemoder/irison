@@ -90,7 +90,7 @@
             </div>
 
           </template>
-          <div v-if="filteredAppointments.length === 0" class="empty">{{ isAllMode ? 'No hay citas con los filtros seleccionados.' : 'No hay citas para esta fecha.' }}</div>
+          <EmptyIndexState v-if="filteredAppointments.length === 0" />
         </div>
 
         <div v-if="isAllMode && filteredAppointments.length > 0" class="pagination">
@@ -110,6 +110,7 @@ import { useRoute, useRouter } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
 import CalendarHeader from '../../components/calendar/CalendarHeader.vue'
+import EmptyIndexState from '../../components/EmptyIndexState.vue'
 import { statusLabel, timeClass, formatTimeCalendar } from '../../shared/appointmentHelpers'
 
 const router = useRouter()

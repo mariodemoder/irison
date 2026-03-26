@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Services\Appointments\AppointmentService;
 use App\Services\Documents\InvoicingService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Gate;
 
 class AppointmentController extends Controller
 {
@@ -21,11 +22,15 @@ class AppointmentController extends Controller
 
     public function index(Request $request)
     {
+        Gate::authorize('viewAny', Appointment::class);
+
         return $this->appointmentService->list($request->all());
     }
 
     public function store(Request $request)
     {
+        Gate::authorize('create', Appointment::class);
+
         $data = $request->all();
 
         try {
@@ -39,11 +44,15 @@ class AppointmentController extends Controller
 
     public function show(Request $request, Appointment $appointment)
     {
+        Gate::authorize('view', $appointment);
+
         return $this->appointmentService->show($appointment, $request->all());
     }
 
     public function update(Request $request, Appointment $appointment)
     {
+        Gate::authorize('update', $appointment);
+
         $data = $request->all();
 
         try {
@@ -56,6 +65,8 @@ class AppointmentController extends Controller
 
     public function cancel(Appointment $appointment)
     {
+        Gate::authorize('update', $appointment);
+
         try {
             return $this->appointmentService->cancel($appointment);
         } catch (\DomainException $e) {
@@ -76,19 +87,17 @@ class AppointmentController extends Controller
 
     public function destroy(Appointment $appointment)
     {
+        Gate::authorize('delete', $appointment);
+
         $this->appointmentService->delete($appointment);
         return response()->noContent();
     }
 
     public function issueInvoice(Request $request, Appointment $appointment): JsonResponse
     {
-        $user = $request->user();
+        Gate::authorize('issueInvoice', $appointment);
 
-        if (!$user || (int) $user->clinic_id !== (int) $appointment->clinic_id) {
-            return response()->json([
-                'message' => 'No autorizado para emitir factura en esta cita.',
-            ], 403);
-        }
+        $user = $request->user();
 
         $result = $this->invoicingService->issueForAppointment($appointment, $user);
         $document = $result['document'];

@@ -4,8 +4,11 @@
     <div class="form-wrapper">
       <div class="form-card">
         <div class="form-header">
-          <h1>{{ isEdit ? 'Editar paciente' : 'Nuevo paciente' }}</h1>
+          <div>
+            <h1>{{ isEdit ? 'Editar paciente' : 'Nuevo paciente' }}</h1>
             <p class="form-sub">{{ isEdit ? 'Edita los datos del paciente.' : 'Crea un nuevo paciente para gestionar sus citas y pagos.' }}</p>
+          </div>
+          <button type="button" class="muted" @click.prevent="cancel">Volver</button>
         </div>
 
         <form class="grid-form" @submit.prevent="submit">
@@ -72,7 +75,6 @@
 
           <div class="actions full">
             <button class="primary" type="submit" :disabled="submitting">Guardar</button>
-            <button type="button" class="muted" @click.prevent="cancel">Cancelar</button>
           </div>
         </form>
       </div>
@@ -227,6 +229,7 @@ async function submit() {
 <style scoped>
 .form-wrapper { display:flex; justify-content:center; padding:24px }
 .form-card { width:100%; max-width:760px; background: #fff; border-radius:12px; box-shadow: 0 10px 30px rgba(2,6,23,0.06); padding:24px }
+.form-header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px }
 .form-header h1 { margin:0; font-size:22px }
 .form-sub { color:#6b7280; font-size:13px; margin-top:6px }
 

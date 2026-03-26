@@ -53,6 +53,7 @@ Route::middleware(['auth:sanctum', 'clinic', 'clinic.active'])->group(function (
 
     // Pacientes: CRUD multitenant
     Route::apiResource('patients', PatientController::class);
+    Route::get('patients/{patient}/history/pdf', [\App\Http\Controllers\Api\PatientHistoryPdfController::class, 'pdf']);
 
     // Bonos: endpoints mínimos (list/create for patient + resource actions)
     Route::get('patients/{patient}/bonuses', [\App\Http\Controllers\Api\BonusController::class, 'forPatient']);

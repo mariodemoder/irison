@@ -9,6 +9,7 @@ use App\Models\Bonus;
 use App\Services\Bonus\BonusService;
 use App\Services\Documents\InvoicingService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Gate;
 
 class BonusController extends Controller
 {
@@ -21,6 +22,8 @@ class BonusController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize('viewAny', Bonus::class);
+
         $clinicId = currentClinicId();
 
         return response()->json($this->bonusService->index($request->all(), $clinicId));
@@ -28,6 +31,9 @@ class BonusController extends Controller
 
     public function forPatient(Request $request, Patient $patient): JsonResponse
     {
+        Gate::authorize('view', $patient);
+        Gate::authorize('viewAny', Bonus::class);
+
         $clinicId = currentClinicId();
         $activeOnly = $request->filled('active')
             && in_array($request->input('active'), ['1', 'true', 'yes', 1, true], true);
@@ -38,6 +44,9 @@ class BonusController extends Controller
 
     public function storeForPatient(Request $request, Patient $patient): JsonResponse
     {
+        Gate::authorize('view', $patient);
+        Gate::authorize('create', Bonus::class);
+
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'total_sessions' => 'required|integer|min:1',
@@ -53,11 +62,15 @@ class BonusController extends Controller
 
     public function show(Bonus $bonus): JsonResponse
     {
+        Gate::authorize('view', $bonus);
+
         return response()->json(['data' => $bonus]);
     }
 
     public function update(Request $request, Bonus $bonus): JsonResponse
     {
+        Gate::authorize('update', $bonus);
+
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'total_sessions' => 'sometimes|integer|min:1',
@@ -73,6 +86,8 @@ class BonusController extends Controller
 
     public function destroy(Bonus $bonus): JsonResponse
     {
+        Gate::authorize('delete', $bonus);
+
         try {
             $this->bonusService->deleteBonus($bonus);
             return response()->json([], 204);
@@ -87,6 +102,8 @@ class BonusController extends Controller
      */
     public function expiring(): JsonResponse
     {
+        Gate::authorize('viewAny', Bonus::class);
+
         $clinicId = currentClinicId();
         $mapped = $this->bonusService->expiring($clinicId);
 
@@ -95,13 +112,9 @@ class BonusController extends Controller
 
     public function issueInvoice(Request $request, Bonus $bonus): JsonResponse
     {
-        $user = $request->user();
+        Gate::authorize('issueInvoice', $bonus);
 
-        if (!$user || (int) $user->clinic_id !== (int) $bonus->clinic_id) {
-            return response()->json([
-                'message' => 'No autorizado para emitir factura en este bono.',
-            ], 403);
-        }
+        $user = $request->user();
 
         $result = $this->invoicingService->issueForBonus($bonus, $user);
         $document = $result['document'];

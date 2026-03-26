@@ -684,6 +684,12 @@ function toDateTimeLocal(value) {
   return `${year}-${month}-${day}T${hours}:${minutes}`
 }
 
+function parseRouteAmount(value) {
+  const parsed = Number(String(value ?? '').replace(',', '.'))
+  if (!Number.isFinite(parsed) || parsed < 0) return null
+  return Number(parsed.toFixed(2))
+}
+
 async function submit() {
   submitting.value = true
   clearErrors()
@@ -761,6 +767,12 @@ onMounted(async () => {
     form.concept = 'appointment'
     form.appointment_id = String(route.query.appointment_id)
     form.paid_at = toDateTimeLocal(new Date().toISOString())
+
+    const pendingAmountFromQuery = parseRouteAmount(route.query.amount)
+    if (pendingAmountFromQuery !== null) {
+      form.amount = pendingAmountFromQuery
+    }
+
     // Load appointment options for this patient
     await loadAppointmentOptions(Number(form.patient_id), Number(form.appointment_id))
     syncAppointmentDisplayFromId()
@@ -926,5 +938,4 @@ watch(
 .swal2-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:12px }
 .swal2-actions .primary, .primary { padding: 8px 16px; font-size: 14px; border-radius: 9999px; border: 2px solid #3b82f6; color: #3b82f6; background: #ffffff; font-weight: 600 }
 .swal2-actions .primary:hover, .primary:hover { background:#eff6ff }
-.swal2-actions .muted { padding:8px 14px; border-radius:9999px; border:1px solid #e5e7eb; background:#fff }
 </style>

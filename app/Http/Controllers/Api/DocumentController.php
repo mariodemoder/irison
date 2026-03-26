@@ -7,12 +7,15 @@ use App\Models\Document;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Gate;
 use Spatie\Browsershot\Browsershot;
 
 class DocumentController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize('viewAny', Document::class);
+
         $validated = $request->validate([
             'q' => ['nullable', 'string', 'max:255'],
             'status' => ['nullable', 'in:issued,draft,cancelled'],
@@ -93,7 +96,7 @@ class DocumentController extends Controller
 
     public function show(Request $request, Document $document): JsonResponse
     {
-        $this->ensureClinicAccessOr404($request, $document);
+        Gate::authorize('view', $document);
 
         $document->load(['patient:id,first_name,last_name,nif,email,phone,address,zip']);
 
@@ -137,7 +140,7 @@ class DocumentController extends Controller
 
     public function pdf(Request $request, Document $document): Response
     {
-        $this->ensureClinicAccessOr404($request, $document);
+        Gate::authorize('view', $document);
 
         $document->load(['patient:id,first_name,last_name,nif,email,phone,address,zip']);
 
@@ -156,14 +159,5 @@ class DocumentController extends Controller
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="' . $filename . '"',
         ]);
-    }
-
-    private function ensureClinicAccessOr404(Request $request, Document $document): void
-    {
-        $user = $request->user();
-
-        if (!$user || (int) $document->clinic_id !== (int) $user->clinic_id) {
-            abort(404);
-        }
     }
 }

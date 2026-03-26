@@ -9,6 +9,7 @@
           </h1>
           <div class="header-right">
             <div class="header-top-right">
+              <button class="muted" @click="back">Volver</button>
               <div v-if="hasQuickActions" class="quick-actions" ref="quickActionsRef">
                 <button
                   type="button"
@@ -111,7 +112,6 @@
               <template v-if="appointment.status !== 'canceled'">
                 <router-link :to="`/appointments/${appointment.id}/edit`" class="primary">Editar</router-link>
               </template>
-              <button class="muted" @click="back">Volver</button>
             </div>
           </div>
         </div>
@@ -129,6 +129,7 @@ import AppLoading from '../../components/AppLoading.vue'
 import { useToast } from 'vue-toastification'
 import { statusLabel, formatDateShort, formatTime, parseAppointmentDateTime } from '../../shared/appointmentHelpers'
 import { appointmentCancelShared } from '../../shared/formHelpers'
+import { goBackWithStack } from '../../shared/navigationHelpers'
 
 const route = useRoute()
 const router = useRouter()
@@ -273,7 +274,7 @@ function computeReprogramAllowance() {
 })()
 
 function back() {
-  router.push('/appointments/day')
+  goBackWithStack(router, '/appointments/day')
 }
 
 async function cancel() {
@@ -353,7 +354,6 @@ onBeforeUnmount(() => {
 .action-row { display:flex; justify-content:space-between; align-items:center }
 .left-actions { display:flex; gap:12px; align-items:center }
 .primary { padding: 8px 16px; font-size: 14px; border-radius: 9999px; border: 2px solid #3b82f6; color: #3b82f6; background: #ffffff; font-weight: 600 }
-.muted { padding:8px 14px; border-radius:9999px; border:1px solid #e5e7eb; background:#fff }
 .quick-trigger { width:40px; height:40px; padding:0; display:inline-flex; align-items:center; justify-content:center }
 .quick-trigger-icon { width:18px; height:18px; color:#4b5563 }
 .quick-actions { position:relative }

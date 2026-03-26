@@ -9,6 +9,7 @@ use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 
 class PaymentController extends Controller
 {
@@ -18,11 +19,15 @@ class PaymentController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize('viewAny', Payment::class);
+
         return response()->json($this->paymentService->index($request->all()));
     }
 
     public function appointmentOptions(Request $request): JsonResponse
     {
+        Gate::authorize('create', Payment::class);
+
         $data = $request->validate([
             'patient_id' => 'required|integer|exists:patients,id',
             'current_appointment_id' => 'nullable|integer|exists:appointments,id',
@@ -41,6 +46,8 @@ class PaymentController extends Controller
 
     public function packageOptions(Request $request): JsonResponse
     {
+        Gate::authorize('create', Payment::class);
+
         $data = $request->validate([
             'patient_id' => 'required|integer|exists:patients,id',
             'current_package_id' => 'nullable|integer|exists:bonuses,id',
@@ -62,6 +69,8 @@ class PaymentController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        Gate::authorize('create', Payment::class);
+
         try {
             $clinicId = (int) Auth::user()->clinic_id;
             $result = $this->paymentService->store($request->all(), $clinicId);
@@ -74,11 +83,15 @@ class PaymentController extends Controller
 
     public function show(Payment $payment): JsonResponse
     {
+        Gate::authorize('view', $payment);
+
         return response()->json($this->paymentService->show($payment));
     }
 
     public function update(Request $request, Payment $payment): JsonResponse
     {
+        Gate::authorize('update', $payment);
+
         try {
             $clinicId = (int) Auth::user()->clinic_id;
             $result = $this->paymentService->update($payment, $request->all(), $clinicId);

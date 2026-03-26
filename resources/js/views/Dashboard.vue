@@ -160,10 +160,10 @@ const riskAlerts = computed(() => {
   ]
 })
 
-const monthlyRevenue = [1200, 1500, 1800, 2100]
-const monthlyRevenueLabels = ['Ene', 'Feb', 'Mar', 'Abr']
-const weeklyAppointments = [20, 35, 28, 40]
-const weeklyAppointmentsLabels = ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4']
+const monthlyRevenue = ref([0, 0, 0, 0])
+const monthlyRevenueLabels = ref(['Mes 1', 'Mes 2', 'Mes 3', 'Mes 4'])
+const weeklyAppointments = ref([0, 0, 0, 0])
+const weeklyAppointmentsLabels = ref(['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'])
 
 function todayIsoDate() {
   const now = new Date()
@@ -204,6 +204,35 @@ function resetAlertsAndRisks() {
   patientsWithCreditCount.value = 0
 }
 
+function resetCharts() {
+  monthlyRevenue.value = [0, 0, 0, 0]
+  monthlyRevenueLabels.value = ['Mes 1', 'Mes 2', 'Mes 3', 'Mes 4']
+  weeklyAppointments.value = [0, 0, 0, 0]
+  weeklyAppointmentsLabels.value = ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4']
+}
+
+function normalizeChartSeries(series, fallbackLabels, fallbackValues) {
+  const labels = Array.isArray(series?.labels)
+    ? series.labels.map((item) => String(item || '').trim() || '—')
+    : fallbackLabels
+
+  const values = Array.isArray(series?.values)
+    ? series.values.map((item) => Number(item || 0))
+    : fallbackValues
+
+  if (!labels.length || labels.length !== values.length) {
+    return {
+      labels: fallbackLabels,
+      values: fallbackValues,
+    }
+  }
+
+  return {
+    labels,
+    values,
+  }
+}
+
 async function fetchDashboardCards() {
   todaySummaryLoading.value = true
 
@@ -237,11 +266,29 @@ async function fetchDashboardCards() {
       creditAppliedAmount: Number(financial.creditAppliedAmount || 0),
       totalProductionAmount: Number(financial.totalProductionAmount || 0),
     }
+
+    const charts = data.charts ?? {}
+    const monthly = normalizeChartSeries(
+      charts.monthly_revenue,
+      ['Mes 1', 'Mes 2', 'Mes 3', 'Mes 4'],
+      [0, 0, 0, 0]
+    )
+    monthlyRevenueLabels.value = monthly.labels
+    monthlyRevenue.value = monthly.values
+
+    const weekly = normalizeChartSeries(
+      charts.weekly_appointments,
+      ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'],
+      [0, 0, 0, 0]
+    )
+    weeklyAppointmentsLabels.value = weekly.labels
+    weeklyAppointments.value = weekly.values
   } catch (e) {
     console.error('Error cargando tarjetas del dashboard', e)
     dashboardDate.value = todayIsoDate()
     resetTodaySummary()
     resetTodayFinancial()
+    resetCharts()
   } finally {
     todaySummaryLoading.value = false
     loading.value = false

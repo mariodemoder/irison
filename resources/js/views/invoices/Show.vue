@@ -44,6 +44,7 @@ import MainLayout from '../../layouts/MainLayout.vue'
 import AppLoading from '../../components/AppLoading.vue'
 import { useToast } from 'vue-toastification'
 import { formatDateOnlyDay } from '../../shared/dateHelpers'
+import { goBackWithPriority } from '../../shared/navigationHelpers'
 
 const toast = useToast()
 const route = useRoute()
@@ -73,7 +74,13 @@ function statusLabel(status) {
 }
 
 function goBack() {
-  router.push('/invoices')
+  const from = String(route.query.from || '').toLowerCase()
+  const appointmentId = Number(route.query.appointment_id || 0)
+
+  goBackWithPriority(router, {
+    priorityPath: from === 'appointment' && appointmentId > 0 ? `/appointments/${appointmentId}` : '',
+    fallbackPath: '/invoices',
+  })
 }
 
 async function load() {
@@ -114,7 +121,6 @@ onMounted(async () => {
 .status.cancelled { background:#f3f4f6; color:#374151 }
 
 .alert-subtle { background:#f8fafc; border:1px solid #e6edf3; padding:10px; border-radius:8px; color:#334155; font-size:14px }
-.muted { padding:8px 14px; border-radius:9999px; border:1px solid #e5e7eb; background:#fff }
 
 @media (max-width: 768px) {
   .details-grid { grid-template-columns:1fr }
