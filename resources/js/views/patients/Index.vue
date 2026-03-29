@@ -41,7 +41,8 @@
               <!-- <button class="action-btn" @click.prevent="deletePatient(p)" :disabled="deletingId===p.id" style="margin-left:6px">🗑️ Eliminar</button> -->
             </div>
           </div>
-          <EmptyIndexState v-if="filteredPatients.length === 0" />
+          <EmptyIndexState v-if="filteredPatients.length === 0 && !hasActiveFilters" />
+          <div v-else-if="filteredPatients.length === 0" class="empty">No hay resultados para los filtros aplicados.</div>
         </div>
 
         <div v-if="meta" class="pagination">
@@ -97,6 +98,12 @@ const filteredPatients = computed(() => {
 
     return [p.name, p.nif, p.phone, p.email].some((f) => f && String(f).toLowerCase().includes(q))
   })
+})
+
+const hasActiveFilters = computed(() => {
+  const q = String(query.value || '').trim()
+  const hasCreditFilter = String(route.query.has_credit || '') === '1'
+  return Boolean(q) || hasCreditFilter
 })
 
 async function load(page = 1) {
@@ -182,6 +189,7 @@ function goToPatient(id) {
 .row-sub { color:#6b7280; font-size:13px }
 .row-col { color:#374151; font-size:13px }
 .row-action { display:flex; align-items:center; justify-content:center; color:#6b7280 }
+.empty { color:#6b7280; padding:12px; text-align:center }
 
 .action-btn { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:8px; text-decoration:none; color:#374151; font-size:13px; border:1px solid transparent }
 .action-btn.history { background:#eef2ff; border-color: #dbeafe; color:#1e3a8a }

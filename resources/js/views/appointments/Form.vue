@@ -38,10 +38,9 @@
             <button type="button" class="tab-btn" :class="{ active: activeTab === 'billing' && !appointmentInvoiceId }" @click="handleBillingTabClick">
               {{ appointmentInvoiceId ? 'Ver Factura' : 'Facturar' }}
             </button>
-            <button v-if="showPaymentTab" type="button" class="tab-btn" :class="{ active: activeTab === 'payment' }" @click="activeTab = 'payment'">
-              Registrar Pago
+            <button type="button" class="tab-btn" :class="[{ active: activeTab === 'payment' }, { 'tab-btn-success': isPaidAppointment }]" @click="activeTab = 'payment'">
+              {{ isPaidAppointment ? 'Pago Realizado' : 'Registrar Pago' }}
             </button>
-            <span v-else class="tab-btn tab-btn-success">Pago Realizado</span>
           </div>
 
           <template v-if="activeTab === 'session'">
@@ -143,11 +142,16 @@
           </div>
           </template>
 
-          <template v-if="activeTab === 'payment' && showPaymentTab">
+          <template v-if="activeTab === 'payment'">
           <div class="full tab-content-card">
             <div class="tab-content-grid">
+          <div v-if="isPaidAppointment" class="field full">
+            <div class="alert-subtle">Cita Completamente Paga</div>
+          </div>
+
+          <template v-if="!isPaidAppointment">
           <div class="field" v-if="hasSelectedPatient">
-            <label class="label">Pendiente de pago</label>
+            <label class="label">Importe Pendiente</label>
             <input :value="appointmentPendingPaymentAmount.toFixed(2)" type="number" step="0.01" class="input" disabled />
           </div>
 
@@ -174,7 +178,7 @@
               <select v-else v-model="form.use_credit_payment_id" class="input" style="width:100%">
                 <option value="" disabled>Selecciona un adelanto pendiente</option>
                 <option v-for="pay in pendingCreditPayments" :key="pay.id" :value="String(pay.id)">
-                  #{{ pay.id }} — Pendiente {{ Number(creditPendingAmountOf(pay) || 0).toFixed(2) }}€ — {{ creditMethodLabel(pay.method) }}
+                  {{ pay.counter }} — Pendiente {{ Number(creditPendingAmountOf(pay) || 0).toFixed(2) }}€ — {{ creditMethodLabel(pay.method) }}
                 </option>
               </select>
 
@@ -205,30 +209,60 @@
           </div>
           </div>
 
-          <div class="field full" v-if="form.payment_type === 'single' && form.patient_id && form.patient_id !== '__create' && availableCredit > 0">
-            <label class="label">Crédito disponible</label>
-            <div class="inline-alert" style="margin-top:0">
-              <div>Saldo a favor: <strong>{{ availableCredit.toFixed(2) }}€</strong></div>
+          <div class="field full" v-if="form.payment_type === 'single' && form.patient_id && form.patient_id !== '__create' && availableCredit > 0" style="background:#fef3c7; border:1px solid #fcd34d; border-radius:12px; padding:16px; margin:8px 0">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:12px">
+              <div>
+                <div style="display:flex; align-items:center; gap:8px; font-size:16px; font-weight:700; color:#92400e">
+                  <span>Crédito disponible</span>
+                  <span>Saldo a favor: {{ availableCredit.toFixed(2) }}€</span>
+                </div>
+              </div>
             </div>
 
-            <div style="margin-top:10px; display:flex; flex-direction:column; gap:8px;">
-              <label style="display:flex; align-items:center; gap:8px">
-                <input type="checkbox" v-model="form.apply_credit" /> Aplicar crédito en esta cita
+            <div style="display:flex; flex-direction:column; gap:10px">
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer">
+                <input type="checkbox" v-model="form.apply_credit" /> <span style="color:#92400e; font-weight:500">Aplicar crédito en esta cita</span>
               </label>
 
-              <div v-if="form.apply_credit" style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
-                <label style="display:flex; align-items:center; gap:6px"><input type="radio" v-model="form.apply_credit_mode" value="auto" /> Automático</label>
-                <label style="display:flex; align-items:center; gap:6px"><input type="radio" v-model="form.apply_credit_mode" value="manual" /> Manual</label>
-                <input
-                  v-if="form.apply_credit_mode === 'manual'"
-                  v-model="form.apply_credit_amount"
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  class="input"
-                  style="max-width:180px"
-                  placeholder="Importe a aplicar"
-                />
+              <div v-if="form.apply_credit" style="display:flex; flex-direction:column; gap:12px; padding-top:8px; border-top:1px solid #fcd34d">
+                <div style="display:flex; flex-direction:column; gap:10px">
+                  <div style="display:flex; align-items:flex-start; gap:8px">
+                    <label style="display:flex; align-items:center; gap:6px; color:#92400e; cursor:pointer"><input type="radio" v-model="form.apply_credit_mode" value="auto" /> Aplicar Automático</label>
+                  </div>
+                  <div style="margin-left:24px; font-size:12px; color:#7c2d12; line-height:1.4">
+                    Se usará el crédito a favor disponible para cancelar el importe pendiente de pago.
+                  </div>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:10px">
+                  <div style="display:flex; align-items:center; gap:8px">
+                    <label style="display:flex; align-items:center; gap:6px; color:#92400e; cursor:pointer"><input type="radio" v-model="form.apply_credit_mode" value="manual" /> Aplicar Específico</label>
+                  </div>
+                  <div style="margin-left:24px; font-size:12px; color:#7c2d12; line-height:1.4">
+                    Se usará un monto ingresado para cancelar el importe pendiente de pago.
+                  </div>
+                  <input
+                    v-if="form.apply_credit_mode === 'manual'"
+                    v-model="form.apply_credit_amount"
+                    type="number"
+                    min="0.01"
+                    :max="availableCredit"
+                    step="0.01"
+                    class="input"
+                    style="max-width:180px; background:#fff; border:1px solid #fbbf24; margin-left:24px"
+                    placeholder="Importe a aplicar"
+                  />
+                </div>
+                <div v-if="form.apply_credit_mode === 'manual' && Number(form.apply_credit_amount) > availableCredit && form.apply_credit_amount" style="padding:8px 12px; background:#fef2f2; border:1px solid #fecaca; border-radius:8px; color:#b91c1c; font-size:13px">
+                  El importe no puede ser mayor a {{ availableCredit.toFixed(2) }}€
+                </div>
+                <div v-if="errors.apply_credit_error && errors.apply_credit_error[0]" style="padding:8px 12px; background:#fef2f2; border:1px solid #fecaca; border-radius:8px; color:#b91c1c; font-size:13px">
+                  {{ errors.apply_credit_error[0] }}
+                </div>
+                <div v-if="applyCreditConfirmed" style="padding:8px 12px; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:8px; color:#065f46; font-size:13px">
+                  El adelanto quedó listo para aplicarse al guardar la cita.
+                </div>
+                <button type="button" style="align-self:flex-start; padding:8px 16px; background:#f59e0b; border:none; border-radius:8px; color:#fff; font-weight:600; cursor:pointer; font-size:14px" @click.prevent="confirmApplyCredit">Aplicar Crédito</button>
               </div>
             </div>
           </div>
@@ -259,8 +293,36 @@
           </div>
 
           <div class="field" style="display:flex; justify-content:flex-end; gap:8px;">
-            <div v-if="isEdit && form.payment_type === 'single'">
+            <div v-if="isEdit && form.payment_type === 'single' && !form.apply_credit && !applyCreditConfirmed">
               <button type="button" class="muted" @click.prevent="handleSinglePayment" :disabled="submitting">Registrar Pago Simple</button>
+            </div>
+          </div>
+          </template>
+
+          <div v-if="isEdit" class="field full">
+            <label class="label">Historial de Pagos</label>
+            <div v-if="sortedAppointmentPayments.length === 0" class="alert-subtle">
+              <div>Cita sin pagos asociados.</div>
+            </div>
+            <div v-else class="appointment-payments-list">
+              <div v-for="entry in sortedAppointmentPayments" :key="entry._key" class="appointment-payment-item">
+                <div class="appointment-payment-main">
+                  <span v-if="entry.counter" class="appointment-payment-counter">{{ entry.counter }}</span>
+                  <span>{{ formatAppointmentPaymentDate(entry.paid_at || entry.created_at) }}</span>
+                  <span>{{ formatAppointmentPaymentAmount(entry.amount) }}</span>
+                  <span v-if="entry._type === 'payment'">{{ appointmentPaymentMethodLabel(entry.method) }}</span>
+                  
+                </div>
+                <span
+                  class="appointment-payment-status"
+                  :class="entry._type === 'credit_usage' ? 'credit' : paymentApplicationStatusClass(entry)"
+                >
+                  {{ entry._type === 'credit_usage'
+                    ? 'Crédito aplicado'
+                    : paymentApplicationStatusLabel(entry)
+                  }}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -275,6 +337,10 @@
             </div>
           </div>
           </template>
+
+          <div v-if="errors.general && errors.general[0]" class="field full" style="background:#fef2f2;border:1px solid #fecaca;padding:10px 14px;border-radius:8px;color:#b91c1c;font-size:13px">
+            {{ errors.general[0] }}
+          </div>
 
           <div class="actions full action-row">
             <div class="left-actions">
@@ -327,6 +393,7 @@ const route = useRoute()
 const isEdit = ref(false)
 const mode = ref(route.query.mode || null)
 const form = reactive({ patient_id: '', status: 'scheduled', start_time: '', end_time: '', notes: '', price: '', use_bonus_id: '', use_credit_payment_id: '', bonus_notes: '', bonus_name: '', payment_type: 'single', apply_credit: false, apply_credit_mode: 'auto', apply_credit_amount: '' })
+const applyCreditConfirmed = ref(false)
 
 const statusOptions = [
   { value: 'scheduled', label: 'Programada', color: '#99b1ff' },
@@ -355,6 +422,8 @@ const bonuses = ref([])
 const bonusesLoading = ref(false)
 const pendingCreditPayments = ref([])
 const pendingCreditPaymentsLoading = ref(false)
+const appointmentPayments = ref([])
+const appointmentCreditUsages = ref([])
 const appointmentCoveredAmount = ref(0)
 const issuingInvoice = ref(false)
 const appointmentInvoiceId = ref(null)
@@ -441,6 +510,24 @@ const hasPendingCreditPayments = computed(() => {
   return Array.isArray(pendingCreditPayments.value) && pendingCreditPayments.value.length > 0
 })
 
+const sortedAppointmentPayments = computed(() => {
+  const paymentItems = appointmentPayments.value.map(p => ({
+    ...p,
+    _type: 'payment',
+    _key: `pay-${p.id}`,
+    _date: new Date(p.paid_at || p.created_at || 0).getTime(),
+  }))
+  const creditItems = appointmentCreditUsages.value
+    .filter(c => !c.reversed_at)
+    .map(c => ({
+      ...c,
+      _type: 'credit_usage',
+      _key: `cu-${c.id}`,
+      _date: new Date(c.created_at || 0).getTime(),
+    }))
+  return [...paymentItems, ...creditItems].sort((a, b) => b._date - a._date)
+})
+
 const hasSelectedPatient = computed(() => {
   return !!form.patient_id && form.patient_id !== '__create'
 })
@@ -524,7 +611,7 @@ const isPaidAppointment = computed(() => {
   return false
 })
 
-const showPaymentTab = computed(() => !isPaidAppointment.value)
+const showPaymentTab = computed(() => true)
 
 const isCompletedAppointment = computed(() => {
   const status = String(form.status || '').toLowerCase()
@@ -569,7 +656,7 @@ const calendarErrorMessage = computed(() => {
 const paymentStatusLabel = computed(() => {
   if (form.payment_type === 'bonus') return 'Cubierto por bono'
   if (form.payment_type === 'credit') return 'Cubierto por adelanto'
-  if (form.apply_credit) return 'Parcialmente pagada'
+  if (applyCreditConfirmed.value) return 'Parcialmente pagada'
   return 'Pendiente'
 })
 
@@ -582,6 +669,61 @@ function creditMethodLabel(method) {
     transfer: 'Transferencia',
   }
   return map[method] || 'Método no definido'
+}
+
+function appointmentPaymentMethodLabel(method) {
+  return creditMethodLabel(method)
+}
+
+function paymentApplicationStatusLabel(payment) {
+  const concept = String(payment?.concept || '')
+  if (concept !== 'credit') return 'Aplicado'
+
+  const amount = Number(payment?.amount || 0)
+  const hasRawPending = payment?.credit_pending_amount != null || payment?.credit_used_amount != null
+  const pending = hasRawPending ? Number(payment?.credit_pending_amount ?? 0) : NaN
+
+  if (hasRawPending && amount > 0 && Math.abs(amount - pending) < 0.0001) return 'Pendiente de Aplicar'
+  if (hasRawPending && amount > pending && pending > 0) return 'Parcialmente Aplicado'
+  if (hasRawPending && pending <= 0) return 'Aplicado'
+
+  const normalized = String(payment?.status || '').toLowerCase()
+  if (normalized === 'completed') return 'Aplicado'
+  if (normalized === 'pending') return 'Pendiente de Aplicar'
+  return 'Aplicado'
+}
+
+function paymentApplicationStatusClass(payment) {
+  const label = paymentApplicationStatusLabel(payment)
+  if (label === 'Pendiente de Aplicar') return 'pending'
+  if (label === 'Parcialmente Aplicado') return 'partial'
+  return 'completed'
+}
+
+function formatAppointmentPaymentAmount(amount) {
+  const value = Number(amount || 0)
+  if (!Number.isFinite(value)) return '0,00 €'
+
+  return new Intl.NumberFormat('es-ES', {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value)
+}
+
+function formatAppointmentPaymentDate(value) {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+
+  const dd = String(date.getDate()).padStart(2, '0')
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const yyyy = date.getFullYear()
+  const hh = String(date.getHours()).padStart(2, '0')
+  const min = String(date.getMinutes()).padStart(2, '0')
+
+  return `${dd}/${mm}/${yyyy} ${hh}:${min}`
 }
 
 // Keep form.bonus_name in sync with selected bonus id
@@ -600,6 +742,7 @@ watch(() => form.payment_type, (v) => {
     selectBonus.value = true
     form.apply_credit = false
     form.apply_credit_amount = ''
+    applyCreditConfirmed.value = false
     form.use_credit_payment_id = ''
     if (selectedBonusSessionPrice.value > 0) {
       form.price = selectedBonusSessionPrice.value
@@ -611,6 +754,7 @@ watch(() => form.payment_type, (v) => {
     form.bonus_name = ''
     form.apply_credit = false
     form.apply_credit_amount = ''
+    applyCreditConfirmed.value = false
   } else {
     selectBonus.value = false
     form.use_bonus_id = ''
@@ -839,6 +983,28 @@ async function appointmentCancel() {
   }
 }
 
+function confirmApplyCredit() {
+  if (!form.apply_credit) {
+    errors.apply_credit_error = ['Marca la opción para aplicar crédito en esta cita']
+    return
+  }
+
+  if (form.apply_credit_mode === 'manual') {
+    const manualAmount = Number(form.apply_credit_amount || 0)
+    if (!manualAmount || manualAmount <= 0) {
+      errors.apply_credit_error = ['Ingresa un importe válido mayor a 0']
+      return
+    }
+    if (manualAmount > availableCredit.value) {
+      errors.apply_credit_error = [`El importe no puede ser mayor a ${availableCredit.value.toFixed(2)}€`]
+      return
+    }
+  }
+
+  errors.apply_credit_error = []
+  applyCreditConfirmed.value = true
+}
+
 function handleSinglePayment() {
   // Navigate to payments/create with preloaded query params
   if (isEdit.value && route.params.id) {
@@ -980,6 +1146,8 @@ async function loadForEdit(id) {
   try {
     const res = await api.get(`/appointments/${id}`)
     const data = res.data
+    appointmentPayments.value = Array.isArray(data?.payments) ? data.payments : []
+    appointmentCreditUsages.value = Array.isArray(data?.credit_usages) ? data.credit_usages : []
     form.patient_id = data.patient_id || ''
     form.status = data.status || 'scheduled'
     // If opened in reprogram mode, default the status to 'rescheduled'
@@ -1024,6 +1192,8 @@ async function loadForEdit(id) {
       }
     }
   } catch (e) {
+    appointmentPayments.value = []
+    appointmentCreditUsages.value = []
     console.error('Error cargando cita para edición', e)
     if (e.response && e.response.status === 404) router.push('/appointments/day')
   } finally {
@@ -1068,11 +1238,30 @@ watch(() => form.patient_id, (id) => {
   form.use_credit_payment_id = ''
   form.apply_credit = false
   form.apply_credit_amount = ''
+  applyCreditConfirmed.value = false
 })
 
 watch(() => form.apply_credit_mode, (modeValue) => {
   if (modeValue !== 'manual') {
     form.apply_credit_amount = ''
+  }
+  applyCreditConfirmed.value = false
+  errors.apply_credit_error = []
+})
+
+watch(() => form.apply_credit, (enabled) => {
+  if (!enabled) {
+    applyCreditConfirmed.value = false
+    errors.apply_credit_error = []
+    return
+  }
+
+  applyCreditConfirmed.value = false
+})
+
+watch(() => form.apply_credit_amount, () => {
+  if (form.apply_credit_mode === 'manual') {
+    applyCreditConfirmed.value = false
   }
 })
 
@@ -1154,7 +1343,13 @@ async function submit(payNow = false) {
     return
   }
 
-  if (form.payment_type === 'single' && form.apply_credit && form.apply_credit_mode === 'manual') {
+  if (form.payment_type === 'single' && applyCreditConfirmed.value && availableCredit.value <= 0) {
+    errors.general = ['El paciente no tiene crédito disponible']
+    submitting.value = false
+    return
+  }
+
+  if (form.payment_type === 'single' && applyCreditConfirmed.value && form.apply_credit_mode === 'manual') {
     const manualAmount = Number(form.apply_credit_amount || 0)
     if (!manualAmount || manualAmount <= 0) {
       errors.general = ['Indica un importe de crédito válido']
@@ -1192,6 +1387,19 @@ async function submit(payNow = false) {
     }
   }
 
+  const estimatedCreditApplied = (() => {
+    if (form.payment_type !== 'single' || !applyCreditConfirmed.value) return 0
+
+    const pending = Number(appointmentPendingPaymentAmount.value || 0)
+    const available = Number(availableCredit.value || 0)
+    const requested = form.apply_credit_mode === 'manual'
+      ? Number(form.apply_credit_amount || 0)
+      : available
+
+    if (!Number.isFinite(requested) || requested <= 0) return 0
+    return Number(Math.max(Math.min(requested, available, pending), 0).toFixed(2))
+  })()
+
     try {
       // comprobar solapamiento antes de enviar (muestra aviso, pero no bloquea)
       await checkOverlap()
@@ -1210,8 +1418,8 @@ async function submit(payNow = false) {
       use_credit_amount: form.payment_type === 'credit' ? (form.price || undefined) : undefined,
       bonus_notes: form.bonus_notes || undefined,
       bonus_name: form.bonus_name || undefined,
-      apply_credit: form.payment_type === 'single' ? form.apply_credit : false,
-      apply_credit_amount: form.payment_type === 'single' && form.apply_credit && form.apply_credit_mode === 'manual'
+      apply_credit: form.payment_type === 'single' ? applyCreditConfirmed.value : false,
+      apply_credit_amount: form.payment_type === 'single' && applyCreditConfirmed.value && form.apply_credit_mode === 'manual'
         ? form.apply_credit_amount
         : undefined,
     }
@@ -1224,6 +1432,9 @@ async function submit(payNow = false) {
     if (isEdit.value && route.params.id) {
       await api.patch(`/appointments/${route.params.id}`, payload)
       toast.success('Cita actualizada')
+      if (estimatedCreditApplied > 0) {
+        toast.info(`Se aplicaron ${estimatedCreditApplied.toFixed(2)}€ de crédito.`)
+      }
       router.push('/appointments/day')
     } else {
       // If user selected 'bonus' as payment type but there are no bonuses, block and show error
@@ -1242,6 +1453,9 @@ async function submit(payNow = false) {
       const res = await api.post('/appointments', payload)
       const createdId = res && res.data ? res.data.id : undefined
       toast.success('Cita creada')
+      if (estimatedCreditApplied > 0) {
+        toast.info(`Se aplicaron ${estimatedCreditApplied.toFixed(2)}€ de crédito.`)
+      }
       router.push('/appointments/day')
     }
   } catch (e) {
@@ -1324,6 +1538,16 @@ async function submit(payNow = false) {
 .actions .muted { color:#6b7280; text-decoration:none }
 .primary { padding: 8px 16px; font-size: 14px; border-radius: 9999px; border: 2px solid #3b82f6; color: #3b82f6; background: #ffffff; font-weight: 600 }
 .primary:hover { background: #eff6ff }
+.appointment-payments-list { display:flex; flex-direction:column; gap:8px }
+.appointment-payment-item { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px 12px; border:1px solid #e5e7eb; border-radius:10px; background:#f8fafc }
+.appointment-payment-main { display:flex; flex-wrap:wrap; gap:10px; align-items:center; color:#0f172a; font-size:13px }
+.appointment-payment-status { display:inline-flex; align-items:center; padding:4px 10px; border-radius:9999px; font-size:12px; font-weight:600 }
+.appointment-payment-status.completed { background:#dcfce7; color:#166534 }
+.appointment-payment-status.pending { background:#fef3c7; color:#92400e }
+.appointment-payment-status.partial { background:#dbeafe; color:#1e40af }
+.appointment-payment-status.refunded { background:#fee2e2; color:#b91c1c }
+.appointment-payment-status.credit { background:#dbeafe; color:#1e40af }
+.appointment-payment-counter { font-size:12px; color:#6b7280; font-weight:500 }
 
 .action-row { display:flex; justify-content:space-between; align-items:center }
 .left-actions { display:flex; gap:12px; align-items:center }

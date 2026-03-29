@@ -11,6 +11,9 @@ class Document extends Model
 {
     use BelongsToClinic;
 
+    public const TYPE_INVOICE = 'invoice';
+    public const TYPE_ABONO = 'abono';
+
     public const UPDATED_AT = null;
 
     protected $fillable = [
@@ -56,8 +59,16 @@ class Document extends Model
                 return;
             }
 
-            $document->counter = app(CounterService::class)->nextFormatted((int) $document->clinic_id, 'documents');
+            $document->counter = app(CounterService::class)->nextFormatted(
+                (int) $document->clinic_id,
+                $document->counterTableType()
+            );
         });
+    }
+
+    public function counterTableType(): string
+    {
+        return $this->type === self::TYPE_ABONO ? 'payout' : 'documents';
     }
 
     public function clinic(): BelongsTo

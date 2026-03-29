@@ -69,7 +69,7 @@
                   <path d="M15 3v4h4"></path>
                   <path d="M10 12h6M10 16h6"></path>
                 </svg>
-                <span>{{ typeInvoiceLabel(doc.typeinvoice) }}</span>
+                <span>{{ typeInvoiceLabel(doc) }}</span>
               </span>
             </div>
             <div>{{ patientLabel(doc) }}</div>
@@ -101,7 +101,8 @@
               </button>
             </div>
           </div>
-          <EmptyIndexState v-if="documents.length === 0" />
+          <EmptyIndexState v-if="documents.length === 0 && !hasActiveFilters" />
+          <div v-else-if="documents.length === 0" class="empty">No hay resultados para los filtros aplicados.</div>
         </div>
 
         <div v-if="meta" class="pagination">
@@ -117,7 +118,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
@@ -142,6 +143,13 @@ const filters = ref({
   to_date: '',
 })
 
+const hasActiveFilters = computed(() => {
+  return Boolean(String(filters.value.q || '').trim())
+    || Boolean(filters.value.status)
+    || Boolean(filters.value.from_date)
+    || Boolean(filters.value.to_date)
+})
+
 function formatCurrency(value) {
   const number = Number(value || 0)
   return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(number)
@@ -154,7 +162,14 @@ function statusLabel(status) {
   return status || '—'
 }
 
-function typeInvoiceLabel(typeinvoice) {
+function typeInvoiceLabel(doc) {
+  const type = String(doc?.type || '')
+  const typeinvoice = String(doc?.typeinvoice || '')
+
+  if (type === 'abono' && typeinvoice === 'appointment') return 'Abono de Cita'
+  if (type === 'abono' && typeinvoice === 'package') return 'Abono de Bono'
+  if (type === 'abono' && typeinvoice === 'credit') return 'Abono de Adelanto'
+  if (type === 'abono' && typeinvoice === 'manual') return 'Abono Manual'
   if (typeinvoice === 'appointment') return 'Factura de Cita'
   if (typeinvoice === 'package') return 'Factura de Bono'
   if (typeinvoice === 'credit') return 'Factura de Adelanto'
@@ -179,7 +194,9 @@ function goToShow(id) {
 
 function invoiceDownloadName(doc) {
   const suffix = String(doc?.counter || doc?.id || 'factura').replace(/[^a-zA-Z0-9_-]/g, '_')
-  return `factura-${suffix}.pdf`
+  return doc?.type === 'abono'
+    ? `factura-rectificativa-${suffix}.pdf`
+    : `factura-${suffix}.pdf`
 }
 
 async function previewPdf(doc) {

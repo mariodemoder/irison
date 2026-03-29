@@ -77,6 +77,7 @@ Route::middleware(['auth:sanctum', 'clinic', 'clinic.active'])->group(function (
 
     // Facturación (solo lectura): listado y detalle de facturas/documentos
     Route::get('documents/{document}/pdf', [\App\Http\Controllers\Api\DocumentController::class, 'pdf']);
+    Route::post('documents/{document}/abono', [\App\Http\Controllers\Api\DocumentController::class, 'issueAbono']);
     Route::apiResource('documents', \App\Http\Controllers\Api\DocumentController::class)
         ->only(['index', 'show']);
 
@@ -110,5 +111,8 @@ Route::middleware(['auth:sanctum', 'clinic', 'clinic.active'])->group(function (
 // aunque el trial haya expirado, por eso no incluimos `clinic.active`.
 Route::middleware(['auth:sanctum', 'clinic'])->get('/me', \App\Http\Controllers\Api\MeController::class);
 Route::middleware(['auth:sanctum', 'clinic'])->put('/me', [\App\Http\Controllers\Api\MeController::class, 'update']);
+Route::middleware(['auth:sanctum', 'clinic'])->post('/me/invoice-background', [\App\Http\Controllers\Api\MeController::class, 'uploadInvoiceBackground']);
+Route::middleware(['auth:sanctum', 'clinic'])->delete('/me/invoice-background', [\App\Http\Controllers\Api\MeController::class, 'deleteInvoiceBackground']);
+Route::middleware(['auth:sanctum', 'clinic'])->post('/me/invoice-background/preview-pdf', [\App\Http\Controllers\Api\MeController::class, 'previewInvoiceBackgroundPdf']);
 
 

@@ -85,6 +85,19 @@
           </button>
 
           <button
+            v-if="!isBonusPaidLocal(b)"
+            type="button"
+            class="action-btn"
+            title="Registrar pago del bono"
+            @click="goToBonusPayment(b)"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="btn-icon">
+              <path d="M12 1v22"></path>
+              <path d="M17 5.5a4 4 0 0 0-4-2.5H10a4 4 0 0 0 0 8h4a4 4 0 0 1 0 8h-3a4 4 0 0 1-4-2.5"></path>
+            </svg>
+          </button>
+
+          <button
             type="button"
             class="action-btn"
             :title="b.invoice_id ? 'Ver factura' : 'Facturar bono'"
@@ -314,6 +327,21 @@ async function goInvoiceFromBonus(bonus) {
   } finally {
     invoicingBonusId.value = null
   }
+}
+
+function goToBonusPayment(bonus) {
+  if (!bonus?.id || !props.patientId || isBonusPaidLocal(bonus)) return
+
+  const amount = Number(bonus.price || 0)
+  router.push({
+    path: '/payments/create',
+    query: {
+      patient_id: String(props.patientId),
+      concept: 'package',
+      package_id: String(bonus.id),
+      amount: Number.isFinite(amount) ? amount.toFixed(2) : '0.00',
+    },
+  })
 }
 
 onMounted(load)

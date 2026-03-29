@@ -2,57 +2,174 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Factura {{ $document->counter ?? ('#' . $document->id) }}</title>
+  <title>{{ ($document->type ?? '') === 'abono' ? 'Factura rectificativa' : 'Factura' }} {{ $document->counter ?? ('#' . $document->id) }}</title>
   <style>
-    body { font-family: DejaVu Sans, sans-serif; color: #0f172a; font-size: 12px; }
-    .header { margin-bottom: 16px; }
-    .title { font-size: 20px; font-weight: 700; color: #1d4ed8; }
+    body { margin: 0; font-family: DejaVu Sans, sans-serif; color: #0f172a; font-size: 12px; }
+    .page { position: relative; min-height: 1040px; padding: 18px 50px; background: #fff; overflow: hidden; }
+    .bg-layer { position: absolute; inset: 0; background-position: center; background-size: cover; background-repeat: no-repeat; opacity: 0.5; z-index: 1; }
+    .content-layer { position: relative; z-index: 2; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-top: 30px; margin-bottom: 20px; gap: 16px; }
+    .header-left { flex: 0 0 auto; }
+    .header-right { flex: 0 0 50%; text-align: right; }
+    .header-right .company-name { font-size: 13px; font-weight: 700; color: #1e40af; margin-bottom: 4px; }
+    .header-right .company-info { font-size: 11px; color: #121213; line-height: 1.5; }
+    .title { font-size: 15px; font-weight: 700; color: #000000; }
+    .date-label { font-size: 15px; color: #050505; margin-bottom: 8px; }
     .muted { color: #64748b; }
     .section { margin-top: 14px; }
     .section h3 { font-size: 13px; margin: 0 0 6px; color: #1e40af; }
     table { width: 100%; border-collapse: collapse; }
     td { border: 1px solid #e2e8f0; padding: 7px 8px; vertical-align: top; }
-    .label { width: 35%; font-weight: 700; background: #f8fafc; }
+    .label { font-weight: 700; }
+    .label-w { width: 22%; }
+    .label-sm { width: 14%; }
     .amount { font-size: 18px; font-weight: 700; color: #0f172a; }
   </style>
 </head>
 <body>
-  <div class="header">
-    <div class="title">Factura {{ $document->counter ?? ('#' . $document->id) }}</div>
-    <div class="muted">Fecha: {{ optional($document->date)->format('d/m/Y') ?? optional($document->created_at)->format('d/m/Y') }}</div>
-  </div>
+  <div class="page" style="margin-top: 10px">
+    @if (!empty($invoiceBackgroundDataUri))
+      <div class="bg-layer" style="background-image: url('{{ $invoiceBackgroundDataUri }}');"></div>
+    @endif
+    <div class="content-layer">
+      <div class="header">
+        <div class="header-left">
+          <div class="title">{{ ($document->type ?? '') === 'abono' ? 'Factura Rectificativa Nº:' : 'Factura Nº:' }} {{ $document->counter ?? ('#' . $document->id) }}</div>
+          <br>
+          <div class="date-label">Fecha: {{ optional($document->date)->format('d/m/Y') ?? optional($document->created_at)->format('d/m/Y') }}</div>
+          @if (($document->type ?? '') === 'abono' && !empty($originDocument?->counter))
+            <div class="date-label">Factura Origen Nº: {{ $originDocument->counter }}</div>
+          @endif
+        </div>
+        <div class="header-right">
+          <div class="company-name">{{ $document->clinic_name ?? '—' }}</div>
+          <div class="company-info">
+            NIF: {{ $document->clinic_nif ?? '—' }}<br>
+            {{ $document->clinic_address ?? '—' }}<br>
+            {{ trim(($document->clinic_zip ?? '') . ' ' . ($document->clinic_province ?? '') . ' ' . ($document->clinic_country ?? '')) ?: '—' }}<br>
+            Profesional: {{ $document->user_full_name ?? '—' }}
+          </div>
+        </div>
+      </div>
 
-  <div class="section">
-    <h3>Clínica</h3>
-    <table>
-      <tr><td class="label">Nombre</td><td>{{ $document->clinic_name ?? '—' }}</td></tr>
-      <tr><td class="label">NIF</td><td>{{ $document->clinic_nif ?? '—' }}</td></tr>
-      <tr><td class="label">Dirección</td><td>{{ $document->clinic_address ?? '—' }}</td></tr>
-      <tr><td class="label">ZIP / Provincia / País</td><td>{{ trim(($document->clinic_zip ?? '') . ' ' . ($document->clinic_province ?? '') . ' ' . ($document->clinic_country ?? '')) ?: '—' }}</td></tr>
-      <tr><td class="label">Usuario</td><td>{{ $document->user_full_name ?? '—' }}</td></tr>
-    </table>
-  </div>
 
-  <div class="section">
-    <h3>Paciente</h3>
-    <table>
-      <tr><td class="label">Nombre</td><td>{{ $document->patient_full_name ?? $document->patient?->name ?? '—' }}</td></tr>
-      <tr><td class="label">NIF</td><td>{{ $document->patient_nif ?? $document->patient?->nif ?? '—' }}</td></tr>
-      <tr><td class="label">Email</td><td>{{ $document->patient_email ?? $document->patient?->email ?? '—' }}</td></tr>
-      <tr><td class="label">Teléfono</td><td>{{ $document->patient_phone ?? $document->patient?->phone ?? '—' }}</td></tr>
-      <tr><td class="label">Dirección</td><td>{{ $document->patient_address ?? $document->patient?->address ?? '—' }}</td></tr>
-      <tr><td class="label">ZIP</td><td>{{ $document->patient_zip ?? $document->patient?->zip ?? '—' }}</td></tr>
-    </table>
-  </div>
+      <div class="section" style="margin-top: 60px;">
+          
+        <h3>Paciente</h3>
+        <table>
+          <tr>
+            <td class="label label-sm">Nombre</td><td>{{ $document->patient_full_name ?? $document->patient?->name ?? '—' }}</td>
+            <td class="label label-sm">Dirección</td><td>{{ $document->patient_address ?? $document->patient?->address ?? '—' }}</td>
+          </tr>
+          <tr>
+            <td class="label label-sm">NIF</td><td>{{ $document->patient_nif ?? $document->patient?->nif ?? '—' }}</td>
+            <td class="label label-sm">ZIP</td><td>{{ $document->patient_zip ?? $document->patient?->zip ?? '—' }}</td>
+          </tr>
+          <tr>
+            <td class="label label-sm">Email</td><td>{{ $document->patient_email ?? $document->patient?->email ?? '—' }}</td>
+            <td class="label label-sm">Teléfono</td><td>{{ $document->patient_phone ?? $document->patient?->phone ?? '—' }}</td>
+          </tr>
+        </table>
+      </div>
 
-  <div class="section">
-    <h3>Detalle</h3>
-    <table>
-      <tr><td class="label">Tipo</td><td>{{ $document->typeinvoice ?? '—' }}</td></tr>
-      <tr><td class="label">Estado</td><td>{{ $document->status ?? '—' }}</td></tr>
-      <tr><td class="label">Notas</td><td>{{ $document->notes ?? '—' }}</td></tr>
-      <tr><td class="label">Importe</td><td class="amount">€ {{ number_format((float) $document->amount, 2, ',', '.') }}</td></tr>
-    </table>
+      @php
+        $typeLabel = match($document->typeinvoice ?? '') {
+          'appointment' => 'Sesión',
+          'package', 'bonus', 'bono', 'pack' => 'Bono con sesiones',
+          default => $document->typeinvoice ?? '—',
+        };
+        $statusLabel = match($document->status ?? '') {
+          'issued'    => 'Emitida',
+          'paid'      => 'Pagada',
+          'pending'   => 'Pendiente',
+          'cancelled' => 'Cancelada',
+          'draft'     => 'Borrador',
+          default     => $document->status ?? '—',
+        };
+        $isAppointment = ($document->typeinvoice ?? '') === 'appointment';
+        $isBonus = in_array($document->typeinvoice ?? '', ['package', 'bonus', 'bono', 'pack']);
+        $appointmentDate = optional($document->date)->format('d/m/Y') ?? optional($document->created_at)->format('d/m/Y');
+        $bonusObj = $bonus ?? null;
+        $amountFormatted = '€ ' . number_format((float) $document->amount, 2, ',', '.');
+      @endphp
+      <div class="section" style="margin-top: 20px;">
+        <h3>Detalle</h3>
+        @if ($isAppointment)
+        <table>
+          <thead>
+            <tr>
+              <td class="label" style="width:18%">Tipo</td>
+              <td class="label" style="width:10%; text-align:center">Cantidad</td>
+              <td class="label">Detalle</td>
+              <td class="label" style="width:18%; text-align:right">Importe</td>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>{{ $typeLabel }}</td>
+              <td style="text-align:center">1</td>
+              <td>{{ $appointmentDate }} - {{ $document->notes ?? '—' }}</td>
+              <td style="text-align:right; font-weight:700">{{ $amountFormatted }}</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="3" style="text-align:right; font-weight:700; border-top:2px solid #cbd5e1;"><u>TOTAL</u></td>
+              <td class="amount" style="text-align:right; border-top:2px solid #cbd5e1;">{{ $amountFormatted }}</td>
+            </tr>
+          </tfoot>
+        </table>
+        @elseif ($isBonus)
+        <table>
+          <thead>
+            <tr>
+              <td class="label" style="width:18%">Tipo</td>
+              <td class="label" style="width:10%; text-align:center">Cantidad</td>
+              <td class="label">Detalle</td>
+              <td class="label" style="width:18%; text-align:right">Importe</td>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>{{ $typeLabel }}</td>
+              <td style="text-align:center">1</td>
+              <td>
+                @if (!empty($bonusObj->name ?? $document->notes ?? null))
+                  <strong>{{ $bonusObj->name ?? $document->notes }}</strong>
+                @endif
+                @if (!empty($bonusObj->total_sessions ?? null))
+                  &nbsp;&nbsp;·&nbsp;&nbsp;{{ $bonusObj->total_sessions }} sesiones
+                @endif
+                @if (!empty($bonusObj->expires_at ?? null))
+                  &nbsp;&nbsp;·&nbsp;&nbsp;Expira: {{ optional($bonusObj->expires_at)->format('d/m/Y') }}
+                @endif
+              </td>
+              <td style="text-align:right; font-weight:700">{{ $amountFormatted }}</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="3" style="text-align:right; font-weight:700; border-top:2px solid #cbd5e1;"><u>Total</u></td>
+              <td class="amount" style="text-align:right; border-top:2px solid #cbd5e1;">{{ $amountFormatted }}</td>
+            </tr>
+          </tfoot>
+        </table>
+        @else
+        <table>
+          <tr><td class="label label-w">Tipo</td><td>{{ $typeLabel }}</td></tr>
+          <tr><td class="label label-w">Detalle</td><td>{{ $document->notes ?? '—' }}</td></tr>
+        </table>
+        <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+          <table style="width: auto; min-width: 260px;">
+            <tr>
+              <td style="font-weight: 700; padding: 8px 12px; border: 0px solid #e2e8f0; text-align: right; white-space: nowrap;"><u>Total:</u></td>
+              <td class="amount" style="padding: 8px 12px; border: 0px solid #e2e8f0; text-align: right; white-space: nowrap;">{{ $amountFormatted }}</td>
+            </tr>
+          </table>
+        </div>
+        @endif
+      </div>
+    </div>
   </div>
 </body>
 </html>

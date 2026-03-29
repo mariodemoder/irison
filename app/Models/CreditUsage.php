@@ -17,6 +17,7 @@ class CreditUsage extends Model
         'appointment_id',
         'payment_id',
         'amount',
+        'counter',
         'reason',
         'reversed_at',
         'reversed_reason',

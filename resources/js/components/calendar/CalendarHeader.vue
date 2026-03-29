@@ -121,7 +121,7 @@ const emit = defineEmits(['prev', 'next', 'today'])
 .view-toggle {
   display: inline-flex;
   align-items: stretch;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #3b82f6;
   border-radius: 8px;
   overflow: hidden;
 }
@@ -135,15 +135,20 @@ const emit = defineEmits(['prev', 'next', 'today'])
   padding: 5px 14px;
   font-size: 13px;
   font-weight: 600;
-  color: #374151;
+  color: #3b82f6;
   text-decoration: none;
   background: #fff;
+  border: 0;
   transition: background .12s, color .12s;
 }
 
-.vt-btn:not(:last-child) { border-right: 1px solid #e5e7eb }
-.vt-btn:hover { background: #f1f5f9 }
-.vt-active { background: #4f46e5 !important; color: #fff !important }
+.vt-btn:not(:last-child) { border-right: 1px solid #3b82f6 }
+.vt-btn:hover { background: #eff6ff }
+.vt-active {
+  background: #dbeafe !important;
+  color: #1d4ed8 !important;
+  font-weight: 700;
+}
 
 @media (max-width: 900px) {
   .week-nav,

@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Clinic extends Model
 {
     protected $fillable = [
-        'name', 'legal_name', 'email', 'phone', 'address', 'nif', 'locality', 'province', 'country', 'zip', 'timezone', 'trial_ends_at', 'subscribed_at'
+        'name', 'legal_name', 'email', 'phone', 'address', 'nif', 'locality', 'province', 'country', 'zip', 'timezone', 'trial_ends_at', 'subscribed_at', 'invoice_background_path'
     ];
 
     protected $casts = [

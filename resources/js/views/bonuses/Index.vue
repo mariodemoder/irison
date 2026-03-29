@@ -83,7 +83,8 @@
               </button>
             </div>
           </div>
-          <EmptyIndexState v-if="bonuses.length === 0" />
+          <EmptyIndexState v-if="bonuses.length === 0 && !hasActiveFilters" />
+          <div v-else-if="bonuses.length === 0" class="empty">No hay resultados para los filtros aplicados.</div>
         </div>
 
         <div v-if="meta" class="pagination">
@@ -99,7 +100,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
@@ -123,6 +124,12 @@ const filters = ref({
   q: '',
   status: '',
   payment_state: '',
+})
+
+const hasActiveFilters = computed(() => {
+  return Boolean(String(filters.value.q || '').trim())
+    || Boolean(filters.value.status)
+    || Boolean(filters.value.payment_state)
 })
 
 function applyQueryFilters() {

@@ -27,7 +27,7 @@ import desertImage from '../assets/desert2.png'
   height: auto;
   object-fit: contain;
   opacity: 0.95;
-  animation: empty-float-up 4.8s ease-in-out infinite alternate;
+  animation: empty-rise-in 520ms ease-out 1 both;
 }
 
 .empty-title {
@@ -38,12 +38,14 @@ import desertImage from '../assets/desert2.png'
   text-align: center;
 }
 
-@keyframes empty-float-up {
+@keyframes empty-rise-in {
   from {
-    transform: translateY(8px);
+    transform: translateY(14px);
+    opacity: 0;
   }
   to {
-    transform: translateY(-8px);
+    transform: translateY(0);
+    opacity: 0.95;
   }
 }
 

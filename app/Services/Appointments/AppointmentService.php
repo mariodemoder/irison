@@ -454,6 +454,7 @@ private function resolveClinic(array $data)
             'appointment_id' => $appointment->id,
             'payment_id' => $payment->id,
             'amount' => $requestedAmount,
+            'counter' => $payment->counter,
             'reason' => 'usage_pending_credit_payment',
         ]);
 
@@ -612,7 +613,7 @@ private function resolveClinic(array $data)
             ->where('clinic_id', $appointment->clinic_id)
             ->where('patient_id', $appointment->patient_id)
             ->where('concept', 'credit')
-            ->where('status', 'completed')
+            ->where('status', '!=', 'refunded')
             ->orderByRaw('COALESCE(paid_at, created_at) ASC')
             ->orderBy('id')
             ->lockForUpdate()
@@ -639,14 +640,16 @@ private function resolveClinic(array $data)
                 'appointment_id' => $appointment->id,
                 'payment_id' => $payment->id,
                 'amount' => $chunkAmount,
+                'counter' => $payment->counter,
                 'reason' => $reason,
             ]);
 
             $remainingToApply -= $chunkAmount;
         }
 
-        if ($remainingToApply > 0.0001) {
-            throw new DomainException('No se pudo aplicar todo el crédito solicitado. Intenta de nuevo.');
+        $appliedAmount = $amountToApply - $remainingToApply;
+        if ($appliedAmount <= 0.0001) {
+            throw new DomainException('No se pudo aplicar crédito disponible a la cita. Intenta de nuevo.');
         }
 
         $this->appointmentPendingPaymentService->syncPaymentStatus($appointment);

@@ -365,7 +365,7 @@ onMounted(async () => {
         </div>
 
         <div v-if="!todaySummaryLoading" class="today-finance">
-                    <div class="today-finance-grid">
+          <div class="today-finance-grid">
             <div class="today-card today-finance-card">
               <div class="today-label">
                 <span class="finance-icon" aria-hidden="true">
@@ -427,7 +427,7 @@ onMounted(async () => {
       </section>
 
       <div class="alerts-inline card-list">
-        <div class="inline-title">Alertas importantes</div>
+        <div class="inline-title">Alertas</div>
         <AppLoading v-if="alertsLoading" compact message="Cargando alertas..." />
         <ul v-else-if="importantAlerts.length" class="alerts-list">
           <li v-for="alert in importantAlerts" :key="alert.key" class="alerts-item">
@@ -439,7 +439,7 @@ onMounted(async () => {
       </div>
 
       <div class="alerts-inline card-list risks-inline">
-        <div class="inline-title">Pendientes importantes · Riesgos</div>
+        <div class="inline-title">Pendientes</div>
         <div class="alerts-subtitle">Estos son puntos donde se pierde dinero.</div>
         <AppLoading v-if="alertsLoading" compact message="Cargando riesgos..." />
         <ul v-else class="alerts-list">

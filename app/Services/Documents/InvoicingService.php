@@ -8,6 +8,7 @@ use App\Models\Appointment;
 use App\Models\Bonus;
 use App\Models\Document;
 use App\Models\User;
+use DomainException;
 use Illuminate\Support\Facades\DB;
 
 class InvoicingService
@@ -148,6 +149,69 @@ class InvoicingService
 
             $bonus->invoice_id = (int) $document->id;
             $bonus->save();
+
+            return $document;
+        });
+
+        return [
+            'document' => $document,
+            'created' => $created,
+        ];
+    }
+
+    /**
+     * @return array{document: Document, created: bool}
+     */
+    public function issueAbonoForInvoice(Document $invoice): array
+    {
+        if ($invoice->type !== Document::TYPE_INVOICE) {
+            throw new DomainException('Solo se puede generar un abono desde una factura.');
+        }
+
+        $created = false;
+
+        $document = DB::transaction(function () use ($invoice, &$created) {
+            $existing = Document::query()
+                ->where('clinic_id', (int) $invoice->clinic_id)
+                ->where('type', Document::TYPE_ABONO)
+                ->where('type_from', Document::TYPE_INVOICE)
+                ->where('from_id', (int) $invoice->id)
+                ->latest('id')
+                ->first();
+
+            if ($existing) {
+                return $existing;
+            }
+
+            $created = true;
+
+            $document = Document::create([
+                'clinic_id' => (int) $invoice->clinic_id,
+                'patient_id' => (int) $invoice->patient_id,
+                'type' => Document::TYPE_ABONO,
+                'type_from' => Document::TYPE_INVOICE,
+                'from_id' => (int) $invoice->id,
+                'typeinvoice' => $invoice->typeinvoice,
+                'clinic_name' => $invoice->clinic_name,
+                'clinic_nif' => $invoice->clinic_nif,
+                'clinic_address' => $invoice->clinic_address,
+                'clinic_zip' => $invoice->clinic_zip,
+                'clinic_province' => $invoice->clinic_province,
+                'clinic_country' => $invoice->clinic_country,
+                'user_full_name' => $invoice->user_full_name,
+                'patient_nif' => $invoice->patient_nif,
+                'patient_full_name' => $invoice->patient_full_name,
+                'patient_email' => $invoice->patient_email,
+                'patient_phone' => $invoice->patient_phone,
+                'patient_address' => $invoice->patient_address,
+                'patient_zip' => $invoice->patient_zip,
+                'date' => $invoice->date,
+                'amount' => (float) $invoice->amount,
+                'notes' => $invoice->notes,
+                'status' => $invoice->status,
+                'is_payed' => $invoice->is_payed,
+                'is_sended' => $invoice->is_sended,
+            ]);
 
             return $document;
         });

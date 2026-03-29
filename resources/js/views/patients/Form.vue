@@ -99,6 +99,12 @@ const duplicateId = ref(null)
 const duplicateMessage = ref('')
 const loading = ref(false)
 
+function isValidEmailFormat(value) {
+  const email = String(value || '').trim()
+  if (!email) return true
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+}
+
 function goToDuplicate() {
   if (duplicateId.value) router.push(`/patients/${duplicateId.value}`)
 }
@@ -181,6 +187,14 @@ watch(() => route.params.id, (id) => {
 async function submit() {
   submitting.value = true
   Object.keys(errors).forEach(k => delete errors[k])
+  form.email = String(form.email || '').trim()
+
+  if (!isValidEmailFormat(form.email)) {
+    errors.email = ['Formato de email inválido']
+    submitting.value = false
+    return
+  }
+
   try {
       const toast = useToast()
       if (isEdit.value && route.params.id) {

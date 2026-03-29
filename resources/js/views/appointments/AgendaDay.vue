@@ -61,7 +61,8 @@
         </div>
 
         <div class="list">
-          <template v-for="item in listWithGaps" :key="item._type === 'gap' ? `gap-${item.from}` : item.id">
+          <AppLoading v-if="loading" message="Cargando citas..." />
+          <template v-else v-for="item in listWithGaps" :key="item._type === 'gap' ? `gap-${item.from}` : item.id">
 
             <!-- Hueco libre -->
             <div v-if="item._type === 'gap'" class="gap-row" role="button" tabindex="0" @click="goToNewWithGap(item)" @keydown.enter="goToNewWithGap(item)">
@@ -90,7 +91,10 @@
             </div>
 
           </template>
-          <EmptyIndexState v-if="filteredAppointments.length === 0" />
+          <template v-if="!loading">
+            <EmptyIndexState v-if="filteredAppointments.length === 0 && !hasActiveFilters" />
+            <div v-else-if="filteredAppointments.length === 0" class="empty">No hay resultados para los filtros aplicados.</div>
+          </template>
         </div>
 
         <div v-if="isAllMode && filteredAppointments.length > 0" class="pagination">
@@ -111,6 +115,7 @@ import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
 import CalendarHeader from '../../components/calendar/CalendarHeader.vue'
 import EmptyIndexState from '../../components/EmptyIndexState.vue'
+import AppLoading from '../../components/AppLoading.vue'
 import { statusLabel, timeClass, formatTimeCalendar } from '../../shared/appointmentHelpers'
 
 const router = useRouter()
@@ -347,6 +352,12 @@ const filteredAppointments = computed(() => {
     const nif = a.patient?.nif ?? ''
     return [name, nif].some((f) => f && String(f).toLowerCase().includes(q))
   })
+})
+
+const hasActiveFilters = computed(() => {
+  return Boolean(String(query.value || '').trim())
+    || Boolean(statusFilter.value)
+    || Boolean(paymentFilter.value)
 })
 
 const totalPages = computed(() => {

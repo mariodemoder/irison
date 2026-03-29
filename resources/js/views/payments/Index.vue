@@ -17,9 +17,8 @@
         </div>
         <select v-model="filters.status" @change="load(1)">
           <option value="">Estado: todos</option>
-          <option value="completed">Completado</option>
-          <option value="pending">Pendiente</option>
-          <option value="refunded">Reembolsado</option>
+          <option value="completed">Aplicado</option>
+          <option value="pending">Pendiente de Aplicar</option>
         </select>
         <select v-model="filters.method" @change="load(1)">
           <option value="">Método: todos</option>
@@ -51,6 +50,7 @@
           <div>Concepto</div>
           <div>Método</div>
           <div>Estado</div>
+          <div>A favor</div>
           <div></div>
         </div>
 
@@ -64,12 +64,19 @@
             <div>{{ formatCurrency(pay.amount) }}</div>
             <div>{{ conceptLabel(pay.concept) }}</div>
             <div>{{ methodLabel(pay.method) }}</div>
-            <div><span class="status" :class="pay.status">{{ statusLabel(pay.status) }}</span></div>
+            <div><span class="status" :class="paymentStatusClass(pay)">{{ paymentStatusLabel(pay) }}</span></div>
+            <div>
+              <span v-if="pay.concept === 'credit' && Number(pay.credit_pending_amount) > 0" class="credit-favor">
+                {{ formatCurrency(pay.credit_pending_amount) }}
+              </span>
+              <span v-else>—</span>
+            </div>
             <div class="row-action">
               <router-link :to="`/payments/${pay.id}/edit`" class="action-btn datos">✎ Editar</router-link>
             </div>
           </div>
-          <EmptyIndexState v-if="payments.length === 0" />
+          <EmptyIndexState v-if="payments.length === 0 && !hasActiveFilters" />
+          <div v-else-if="payments.length === 0" class="empty">No hay resultados para los filtros aplicados.</div>
         </div>
 
         <div v-if="meta" class="pagination">
@@ -85,7 +92,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
@@ -110,8 +117,15 @@ const filters = ref({
   concept: '',
 })
 
+const hasActiveFilters = computed(() => {
+  return Boolean(String(filters.value.q || '').trim())
+    || Boolean(filters.value.status)
+    || Boolean(filters.value.method)
+    || Boolean(filters.value.concept)
+})
+
 function applyQueryFilters() {
-  const allowedStatus = ['completed', 'pending', 'refunded']
+  const allowedStatus = ['completed', 'pending']
   const allowedMethod = ['cash', 'card', 'transfer']
   const allowedConcept = ['appointment', 'package', 'credit']
 
@@ -131,11 +145,30 @@ function formatCurrency(value) {
   return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(number)
 }
 
-function statusLabel(status) {
-  if (status === 'completed') return 'Completado'
-  if (status === 'pending') return 'Pendiente'
-  if (status === 'refunded') return 'Reembolsado'
-  return status || '—'
+function paymentStatusLabel(pay) {
+  const concept = String(pay?.concept || '')
+  const amount = Number(pay?.amount || 0)
+  const pending = Number(pay?.credit_pending_amount ?? 0)
+
+  if (concept !== 'credit') return 'Aplicado'
+  if (amount > 0 && Math.abs(amount - pending) < 0.0001) return 'Sin Aplicar'
+  if (amount > pending && pending > 0) return 'Por Aplicar'
+  if (pending <= 0) return 'Aplicado'
+
+  return 'Pendiente de Aplicar'
+}
+
+function paymentStatusClass(pay) {
+  const concept = String(pay?.concept || '')
+  const amount = Number(pay?.amount || 0)
+  const pending = Number(pay?.credit_pending_amount ?? 0)
+
+  if (concept !== 'credit') return 'applied'
+  if (amount > 0 && Math.abs(amount - pending) < 0.0001) return 'pending-apply'
+  if (amount > pending && pending > 0) return 'partially-applied'
+  if (pending <= 0) return 'applied'
+
+  return 'pending-apply'
 }
 
 function methodLabel(method) {
@@ -205,12 +238,13 @@ onMounted(async () => {
 .summary { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; color:#374151; font-size:14px }
 
 .list { display:flex; flex-direction:column; gap:8px }
-.list-header { display:grid; grid-template-columns: 1.3fr 1.1fr 2fr 1fr 1.2fr 1fr 1fr 120px; gap:10px; color:#6b7280; font-size:13px; font-weight:600; padding:6px 10px }
-.payment-row { display:grid; grid-template-columns: 1.3fr 1.1fr 2fr 1fr 1.2fr 1fr 1fr 120px; gap:10px; background:#fff; border:1px solid #eef2ff22; border-radius:10px; padding:10px; align-items:center; font-size:13px }
+.list-header { display:grid; grid-template-columns: 1.3fr 1.1fr 2fr 1fr 1.2fr 1fr 1fr 1fr 120px; gap:10px; color:#6b7280; font-size:13px; font-weight:600; padding:6px 10px }
+.payment-row { display:grid; grid-template-columns: 1.3fr 1.1fr 2fr 1fr 1.2fr 1fr 1fr 1fr 120px; gap:10px; background:#fff; border:1px solid #eef2ff22; border-radius:10px; padding:10px; align-items:center; font-size:13px }
 
 .status { padding:5px 8px; border-radius:9999px; font-weight:700; text-transform:capitalize; font-size:11px }
-.status.completed { background:#dcfce7; color:#166534 }
-.status.pending { background:#fef3c7; color:#92400e }
+.status.applied { background:#dcfce7; color:#166534 }
+.status.pending-apply { background:#fef3c7; color:#92400e }
+.status.partially-applied { background:#dbeafe; color:#1e40af }
 .status.refunded { background:#f3f4f6; color:#374151 }
 
 .row-action { display:flex; align-items:center; justify-content:flex-start }
@@ -226,6 +260,7 @@ onMounted(async () => {
 .icon-btn:disabled { opacity:0.45 }
 .patient-link { color: var(--secondary); text-decoration: none; font-weight: 600 }
 .patient-link:hover { text-decoration: underline }
+.credit-favor { display:inline-flex; align-items:center; padding:3px 8px; border-radius:9999px; background:#dcfce7; color:#166534; font-size:12px; font-weight:600 }
 @media (max-width: 900px) {
   .filters, .list-header, .payment-row { grid-template-columns:1fr }
 }

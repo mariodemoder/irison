@@ -70,7 +70,7 @@ class Patient extends Model
     {
         $creditTotal = (float) $this->payments()
             ->where('concept', 'credit')
-            ->where('status', 'completed')
+            ->where('status', '!=', 'refunded')
             ->sum('amount');
 
         return max($creditTotal - $this->creditUsed(), 0.0);

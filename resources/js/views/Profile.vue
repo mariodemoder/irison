@@ -27,6 +27,7 @@
           <div class="tabs">
             <button :class="['tab', { active: activeTab==='datos' }]" @click="activeTab='datos'">Datos</button>
             <button :class="['tab', { active: activeTab==='contadores' }]" @click="activeTab='contadores'">Contadores</button>
+            <button :class="['tab', { active: activeTab==='factura_pdf' }]" @click="activeTab='factura_pdf'">Fondo factura PDF</button>
             <button :class="['tab', { active: activeTab==='seguridad' }]" @click="activeTab='seguridad'">Seguridad</button>
             <button :class="['tab', { active: activeTab==='subscripcion' }]" @click="activeTab='subscripcion'">Subscripción</button>
           </div>
@@ -187,11 +188,58 @@
                   </div>
                 </div>
               </div>
+
+              <div class="tab-panel tab-card" v-show="activeTab==='factura_pdf'">
+                <h2>Fondo de factura</h2>
+                <div class="invoice-bg-help">
+                  Sube una imagen para usarla como fondo en tus facturas PDF. Formatos: JPG, PNG o WEBP. Tamaño máximo: 5MB.<br>
+                  La imagen se ajustará al tamaño A4 (210x297mm) manteniendo su proporción. Si la imagen no es A4, se centrará y se le aplicarán márgenes para llenar el espacio restante. Para mejores resultados, se recomienda usar una imagen con proporción cercana a A4 (aprox. 1:1.41) y al menos 1240x1754 píxeles de resolución.
+                </div>
+
+                <div style="margin-top:12px">
+                  <label class="label">Seleccionar imagen</label>
+                  <input class="input" type="file" accept=".jpg,.jpeg,.png,.webp,image/*" @change="onInvoiceBackgroundPicked" />
+                </div>
+
+                <div class="invoice-pdf-preview-wrap" style="margin-top:12px">
+                  <div v-if="previewingInvoiceBackgroundPdf" class="invoice-bg-empty">Generando preview PDF...</div>
+                  <iframe
+                    v-else-if="profilePreviewPdfUrl"
+                    class="invoice-pdf-preview-frame"
+                    :src="profilePreviewPdfUrl"
+                    title="Preview PDF factura"
+                  ></iframe>
+                  <div v-else class="invoice-bg-empty">No se pudo cargar la vista previa del PDF.</div>
+                </div>
+
+                <div class="invoice-preview-actions">
+                  <button
+                    type="button"
+                    class="pdf-btn"
+                    title="Vista previa factura demo"
+                    :disabled="previewingInvoiceBackgroundPdf"
+                    @click.prevent="previewAndOpen()"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="pdf-icon">
+                      <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"></path>
+                      <circle cx="12" cy="12" r="2.5"></circle>
+                    </svg>
+                  </button>
+                  <span class="invoice-preview-label">Preview PDF real (demo con datos fake)</span>
+                </div>
+              </div>
             </div>
 
             <div class="action-plane">
               <div v-if="activeTab==='datos' || activeTab==='contadores'" class="action-row">
                 <button class="btn btn-sm" type="button" :disabled="saving" @click.prevent="save">Guardar</button>
+              </div>
+
+              <div v-else-if="activeTab==='factura_pdf'" class="action-row">
+                <button class="btn btn-sm" type="button" :disabled="previewingInvoiceBackgroundPdf" @click.prevent="refreshPreview()">Actualizar preview</button>
+                <button class="btn btn-sm" type="button" :disabled="previewingInvoiceBackgroundPdf" @click.prevent="openPdfInNewTab()">Abrir PDF</button>
+                <button class="btn btn-sm" type="button" :disabled="uploadingInvoiceBackground || !invoiceBackgroundFile" @click.prevent="uploadInvoiceBackground">Subir fondo</button>
+                <button class="btn btn-sm" type="button" :disabled="removingInvoiceBackground || !invoiceBackgroundUrl" @click.prevent="removeInvoiceBackground">Eliminar fondo</button>
               </div>
 
               <div v-else-if="activeTab==='seguridad'" class="action-row">
@@ -209,7 +257,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, onBeforeUnmount, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import MainLayout from '../layouts/MainLayout.vue'
 import AppLoading from '../components/AppLoading.vue'
@@ -227,6 +275,12 @@ const trial_ends_at = ref(null)
 const loading = ref(true)
 const saving = ref(false)
 const subscriptionPayments = ref([])
+const invoiceBackgroundUrl = ref(null)
+const invoiceBackgroundFile = ref(null)
+const uploadingInvoiceBackground = ref(false)
+const removingInvoiceBackground = ref(false)
+const previewingInvoiceBackgroundPdf = ref(false)
+const profilePreviewPdfUrl = ref(null)
 
 const form = ref({
   name: '',
@@ -289,6 +343,12 @@ onMounted(async () => {
   await load()
 })
 
+watch(activeTab, async (tab) => {
+  if (tab === 'factura_pdf' && !profilePreviewPdfUrl.value) {
+    await refreshPreview()
+  }
+})
+
 async function load() {
   loading.value = true
   try {
@@ -298,6 +358,7 @@ async function load() {
     status.value = res.data.status || status.value
     trial_ends_at.value = res.data.trial_ends_at || null
     subscriptionPayments.value = Array.isArray(res.data.subscription_payments) ? res.data.subscription_payments : []
+    invoiceBackgroundUrl.value = res.data.clinic_invoice_background_url || null
 
     form.value.name = user.value?.name ?? ''
     form.value.email = user.value?.email ?? ''
@@ -321,6 +382,10 @@ async function load() {
       })
     } else {
       counters.value = defaultCounters()
+    }
+
+    if (activeTab.value === 'factura_pdf') {
+      await refreshPreview()
     }
   } catch (e) {
     console.error('Error cargando /me', e)
@@ -381,6 +446,117 @@ async function save() {
 }
 
 function reload() { load() }
+
+function onInvoiceBackgroundPicked(event) {
+  const files = event?.target?.files
+  invoiceBackgroundFile.value = files && files.length > 0 ? files[0] : null
+
+  refreshPreview()
+}
+
+async function uploadInvoiceBackground() {
+  if (!invoiceBackgroundFile.value) {
+    toast.error('Seleccioná una imagen antes de subir')
+    return
+  }
+
+  uploadingInvoiceBackground.value = true
+  try {
+    const formData = new FormData()
+    formData.append('image', invoiceBackgroundFile.value)
+
+    const res = await api.post('/me/invoice-background', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+
+    invoiceBackgroundUrl.value = res.data?.invoice_background_url || null
+    invoiceBackgroundFile.value = null
+    await refreshPreview()
+    toast.success('Fondo de factura actualizado')
+  } catch (e) {
+    console.error('Error subiendo fondo de factura', e)
+    const msg = e.response?.data?.message || 'No se pudo subir el fondo'
+    toast.error(msg)
+  } finally {
+    uploadingInvoiceBackground.value = false
+  }
+}
+
+async function removeInvoiceBackground() {
+  removingInvoiceBackground.value = true
+  try {
+    await api.delete('/me/invoice-background')
+    invoiceBackgroundUrl.value = null
+    invoiceBackgroundFile.value = null
+    await refreshPreview()
+    toast.success('Fondo de factura eliminado')
+  } catch (e) {
+    console.error('Error eliminando fondo de factura', e)
+    const msg = e.response?.data?.message || 'No se pudo eliminar el fondo'
+    toast.error(msg)
+  } finally {
+    removingInvoiceBackground.value = false
+  }
+}
+
+async function refreshPreview() {
+  previewingInvoiceBackgroundPdf.value = true
+  try {
+    const formData = new FormData()
+    if (invoiceBackgroundFile.value) {
+      formData.append('image', invoiceBackgroundFile.value)
+    }
+
+    const res = await api.post('/me/invoice-background/preview-pdf?format=html', formData, {
+      responseType: 'text',
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+
+    const blob = new Blob([res.data], { type: 'text/html' })
+    const fileUrl = URL.createObjectURL(blob)
+
+    if (profilePreviewPdfUrl.value) {
+      URL.revokeObjectURL(profilePreviewPdfUrl.value)
+    }
+    profilePreviewPdfUrl.value = fileUrl
+  } catch (e) {
+    console.error('Error generando preview demo', e)
+    const msg = e.response?.data?.message || 'No se pudo generar la vista previa de factura'
+    toast.error(msg)
+  } finally {
+    previewingInvoiceBackgroundPdf.value = false
+  }
+}
+
+async function openPdfInNewTab() {
+  previewingInvoiceBackgroundPdf.value = true
+  try {
+    const formData = new FormData()
+    if (invoiceBackgroundFile.value) {
+      formData.append('image', invoiceBackgroundFile.value)
+    }
+
+    const res = await api.post('/me/invoice-background/preview-pdf', formData, {
+      responseType: 'blob',
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+
+    const file = new Blob([res.data], { type: 'application/pdf' })
+    const fileUrl = URL.createObjectURL(file)
+    window.open(fileUrl, '_blank', 'noopener,noreferrer')
+  } catch (e) {
+    console.error('Error generando PDF demo', e)
+    const msg = e.response?.data?.message || 'No se pudo generar la vista previa de factura'
+    toast.error(msg)
+  } finally {
+    previewingInvoiceBackgroundPdf.value = false
+  }
+}
+
+async function previewAndOpen() {
+  await refreshPreview()
+  await openPdfInNewTab()
+}
 
 function pwReset() {
   pw.value.current_password = ''
@@ -444,6 +620,12 @@ function previewCounter(row) {
   const value = Number.isFinite(Number(row?.last_number)) ? Math.max(Number(row.last_number) + 1, 1) : 1
   return `${prefix || '---'}-${String(value).padStart(6, '0')}`
 }
+
+onBeforeUnmount(() => {
+  if (profilePreviewPdfUrl.value) {
+    URL.revokeObjectURL(profilePreviewPdfUrl.value)
+  }
+})
 </script>
 
 <style scoped>
@@ -512,6 +694,35 @@ function previewCounter(row) {
   gap:10px;
   align-items:end;
 }
+.invoice-bg-help {
+  margin-top: 8px;
+  color: #4b5563;
+  font-size: 13px;
+}
+.invoice-pdf-preview-wrap {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f8fafc;
+  aspect-ratio: 210 / 297;
+  overflow: hidden;
+}
+.invoice-pdf-preview-frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #ffffff;
+}
+.invoice-bg-empty {
+  margin: 0;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  border: 1px dashed #d1d5db;
+  border-radius: 8px;
+  padding: 12px;
+  color: #6b7280;
+  font-size: 13px;
+}
 
 @media (max-width: 768px) {
   .tab-card { min-height:auto; }
@@ -526,6 +737,10 @@ function previewCounter(row) {
   .subscription-history-head,
   .subscription-history-row {
     grid-template-columns:1fr;
+  }
+  .invoice-pdf-preview-wrap {
+    min-height: 440px;
+    aspect-ratio: auto;
   }
 }
 </style>

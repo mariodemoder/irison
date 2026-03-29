@@ -35,7 +35,7 @@
           <div class="field full" v-if="form.concept === 'appointment'">
             <label class="label">Cita (obligatoria)</label>
             <div v-if="comingFromAppointment && form.appointment_id" style="padding:12px; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:8px; color:#065f46; font-size:13px; margin-bottom:8px">
-              <strong>Cita seleccionada:</strong> #{{ form.appointment_id }}
+              <strong>Cita seleccionada:</strong> {{ selectedAppointmentLabel }}
             </div>
             <div v-if="!comingFromAppointment" class="combo-inline">
               <input
@@ -100,21 +100,6 @@
             <div class="money-total">{{ formatMoney(packagePendingAmount) }}</div>
           </div>
 
-          <div class="field" v-if="form.concept === 'package'">
-            <label class="label">Importe (€) A pagar</label>
-            <input
-              :value="amountInputValue"
-              type="text"
-              inputmode="decimal"
-              class="input"
-              :disabled="form.concept === 'package'"
-              required
-              @focus="onAmountFocus"
-              @input="onAmountInput"
-              @blur="onAmountBlur"
-            />
-          </div>
-
           <div class="field" v-if="form.concept !== 'package'">
             <label class="label">Importe (€)</label>
             <input
@@ -140,10 +125,9 @@
 
           <div class="field">
             <label class="label">Estado</label>
-            <select v-model="form.status" class="input" :disabled="form.concept === 'package'" required>
-              <option value="completed">Completado</option>
-              <option value="pending">Pendiente</option>
-              <option value="refunded">Reembolsado</option>
+            <select v-model="form.status" class="input" :disabled="form.concept !== 'credit'" required>
+              <option value="completed">Aplicado</option>
+              <option v-if="form.concept === 'credit'" value="pending">Pendiente de Aplicar</option>
             </select>
           </div>
 
@@ -169,7 +153,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import Swal from 'sweetalert2'
@@ -186,6 +170,7 @@ const router = useRouter()
 const toast = useToast()
 
 const isEdit = ref(false)
+const loadingEditData = ref(false)
 const submitting = ref(false)
 const patients = ref([])
 const errors = reactive({})
@@ -200,6 +185,12 @@ const appointmentInputEl = ref(null)
 
 const hasAppointmentSelection = computed(() => !!form.appointment_id)
 const hasPackageSelection = computed(() => !!form.package_id)
+const selectedAppointmentLabel = computed(() => {
+  if (!form.appointment_id) return ''
+  const selected = appointmentOptions.value.find(option => String(option.id) === String(form.appointment_id))
+  if (!selected) return `#${form.appointment_id}`
+  return appointmentOptionValue(selected)
+})
 const selectedPackageOption = computed(() => {
   if (!form.package_id) return null
   if (String(form.package_id) === '__create_bonus') return null
@@ -346,6 +337,7 @@ async function onPatientChange() {
 }
 
 async function loadForEdit(id) {
+  loadingEditData.value = true
   try {
     const res = await api.get(`/payments/${id}`)
     const data = res.data || {}
@@ -353,7 +345,9 @@ async function loadForEdit(id) {
     form.concept = data.concept || (data.appointment_id ? 'appointment' : (data.package_id ? 'package' : 'credit'))
     form.amount = Number(data.amount || 0)
     form.method = data.method || 'cash'
-    form.status = data.status || 'completed'
+    form.status = form.concept === 'credit'
+      ? ((data.status || 'pending') === 'completed' ? 'completed' : 'pending')
+      : 'completed'
     form.paid_at = toDateTimeLocal(data.paid_at)
     form.appointment_id = data.appointment_id ? String(data.appointment_id) : ''
     form.package_id = data.package_id ? String(data.package_id) : ''
@@ -371,6 +365,8 @@ async function loadForEdit(id) {
   } catch (e) {
     toast.error('Error cargando pago')
     router.push('/payments')
+  } finally {
+    loadingEditData.value = false
   }
 }
 
@@ -484,17 +480,37 @@ function formatShortDate(value) {
 
 function appointmentLabel(appointment) {
   const start = appointment.start_time ? new Date(appointment.start_time).toLocaleString('es-ES') : 'Sin fecha inicio'
-  const end = appointment.end_time ? new Date(appointment.end_time).toLocaleString('es-ES') : 'Sin fecha fin'
   const rawNotes = (appointment.notes || '').trim()
   const notes = rawNotes
-    ? (rawNotes.length > 30 ? `${rawNotes.slice(0, 30)}...` : rawNotes)
+    ? (rawNotes.length > 50 ? `${rawNotes.slice(0, 50)}...` : rawNotes)
     : 'Sin notas'
 
-  return `(${start} - ${end}) - ${notes}`
+  return `${start} · ${notes}`
 }
 
 function appointmentOptionValue(appointment) {
   return `#${appointment.id} · ${appointmentLabel(appointment)}`
+}
+
+function resolveAppointmentPendingAmount(appointment) {
+  const pending = Number(appointment?.pending_amount)
+  if (Number.isFinite(pending) && pending >= 0) return pending
+
+  const debt = Number(appointment?.debt_amount)
+  if (Number.isFinite(debt) && debt >= 0) return debt
+
+  return 0
+}
+
+function syncAmountFromSelectedAppointment() {
+  if (isEdit.value) return
+  if (form.concept !== 'appointment') return
+  if (!form.appointment_id) return
+
+  const selected = appointmentOptions.value.find(a => String(a.id) === String(form.appointment_id))
+  if (!selected) return
+
+  form.amount = Number(resolveAppointmentPendingAmount(selected).toFixed(2))
 }
 
 function syncAppointmentDisplayFromId() {
@@ -510,6 +526,9 @@ function onAppointmentDisplayInput() {
   appointmentQuery.value = appointmentDisplay.value
   const selected = appointmentOptions.value.find(a => appointmentOptionValue(a) === appointmentDisplay.value)
   form.appointment_id = selected ? String(selected.id) : ''
+  if (selected) {
+    syncAmountFromSelectedAppointment()
+  }
 }
 
 function handleAppointmentSideButton() {
@@ -662,6 +681,7 @@ async function loadAppointmentOptions(patientId, currentAppointmentId = null) {
 
     appointmentOptions.value = Array.isArray(res.data?.data) ? res.data.data : []
     syncAppointmentDisplayFromId()
+    syncAmountFromSelectedAppointment()
   } catch (e) {
     appointmentOptions.value = []
     errors.general = ['No se pudieron cargar las citas del paciente']
@@ -717,7 +737,9 @@ async function submit() {
     concept: form.concept,
     amount: Number(form.amount),
     method: form.method,
-    status: form.status,
+    status: form.concept === 'credit'
+      ? (form.status === 'completed' ? 'completed' : 'pending')
+      : 'completed',
     notes: form.notes || null,
     paid_at: form.paid_at || null,
     appointment_id: form.concept === 'appointment' && form.appointment_id ? Number(form.appointment_id) : null,
@@ -785,10 +807,27 @@ onMounted(async () => {
     }
 
     if (form.concept === 'appointment') {
-      await loadAppointmentOptions(Number(form.patient_id))
+      const routeAppointmentId = route.query.appointment_id ? Number(route.query.appointment_id) : null
+      await loadAppointmentOptions(Number(form.patient_id), routeAppointmentId)
+      if (routeAppointmentId) {
+        form.appointment_id = String(routeAppointmentId)
+        syncAppointmentDisplayFromId()
+      }
     }
     if (form.concept === 'package') {
-      await loadPackageOptions(Number(form.patient_id))
+      const routePackageId = route.query.package_id ? Number(route.query.package_id) : null
+      const routeAmount = parseRouteAmount(route.query.amount)
+      await loadPackageOptions(Number(form.patient_id), routePackageId)
+      if (routePackageId) {
+        const existsInOptions = packageOptions.value.some(option => Number(option.id) === routePackageId)
+        if (existsInOptions) {
+          form.package_id = String(routePackageId)
+        }
+      }
+      if (routeAmount !== null) {
+        await nextTick()
+        form.amount = routeAmount
+      }
     }
   } else {
     if (!route.params.id) {
@@ -838,6 +877,10 @@ watch(
 watch(
   () => form.concept,
   async (value) => {
+    if (!loadingEditData.value) {
+      form.status = value === 'credit' ? 'pending' : 'completed'
+    }
+
     if (value !== 'appointment') {
       form.appointment_id = ''
       appointmentOptions.value = []
