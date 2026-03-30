@@ -31,7 +31,7 @@
         <div class="list">
           <div v-for="p in filteredPatients" :key="p.id" class="patient-row" role="button" tabindex="0" @click="goToPatient(p.id)" @keydown.enter="goToPatient(p.id)">
             <div class="row-left">
-              <div class="row-name">{{ p.name }}</div>
+              <div class="row-name">{{ p.counter ? `${p.counter} · ` : '' }}{{ p.name }}</div>
               <div class="row-sub">{{ p.nif ?? '—' }}</div>
             </div>
             <div class="row-col">{{ p.phone ?? '—' }}</div>
@@ -134,7 +134,7 @@ onMounted(() => {
 async function deletePatient(p) {
   const res = await Swal.fire({
     title: `Eliminar paciente`,
-    text: `¿Eliminar al paciente "${p.name}"? Esta acción es reversible (soft delete).`,
+    text: `¿Eliminar al paciente "${p.counter ? `${p.counter} · ` : ''}${p.name}"? Esta acción es reversible (soft delete).`,
     icon: 'warning',
     iconColor: '#f97316',
     width: '420px',

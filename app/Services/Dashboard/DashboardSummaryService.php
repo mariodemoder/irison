@@ -292,7 +292,7 @@ class DashboardSummaryService
         $creditByPatientSub = Payment::query()
             ->selectRaw('patient_id, SUM(amount) as credit_total')
             ->where('concept', 'credit')
-            ->where('status', 'completed')
+            ->where('status', '!=', 'refunded')
             ->groupBy('patient_id');
 
         $creditUsageByPatientSub = CreditUsage::query()

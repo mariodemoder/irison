@@ -70,7 +70,7 @@ class InvoicingService
                 'patient_zip' => $patient?->zip,
                 'date' => now()->toDateString(),
                 'amount' => (float) ($appointment->price ?? 0),
-                'notes' => $appointment->notes,
+                'notes' => $appointment->billing_detail ?? $appointment->notes,
                 'status' => 'issued',
             ]);
 

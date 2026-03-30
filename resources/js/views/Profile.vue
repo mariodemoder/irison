@@ -299,6 +299,7 @@ const counterTypeLabels = {
   payout: 'Abonos',
   bonuses: 'Bonos',
   payments: 'Pagos',
+  patients: 'Pacientes',
 }
 
 function defaultCounters() {
@@ -307,6 +308,7 @@ function defaultCounters() {
     { table_type: 'payout', prefix: 'AB', last_number: 0 },
     { table_type: 'bonuses', prefix: 'B0', last_number: 0 },
     { table_type: 'payments', prefix: 'PA', last_number: 0 },
+    { table_type: 'patients', prefix: 'PC', last_number: 0 },
   ]
 }
 

@@ -59,7 +59,7 @@
             <div>{{ formatDateOnlyDay(pay.created_at) }}</div>
             <div>{{ pay.counter || '—' }}</div>
                 <router-link v-if="pay.patient?.id" :to="`/patients/${pay.patient.id}`" class="patient-link">
-                {{ pay.patient?.name ?? `Paciente #${pay.patient_id}` }}
+                {{ pay.patient?.counter ? `${pay.patient.counter} · ` : '' }}{{ pay.patient?.name ?? `Paciente #${pay.patient_id}` }}
               </router-link>
             <div>{{ formatCurrency(pay.amount) }}</div>
             <div>{{ conceptLabel(pay.concept) }}</div>

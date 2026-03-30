@@ -16,7 +16,7 @@
               <div style="display:flex; gap:12px; align-items:flex-start; width:100%">
               <select v-model="form.patient_id" @change="onPatientChange" class="input" :disabled="isCanceled && mode !== 'reprogram'" style="flex:1">
                 <option value="" disabled>Selecciona un paciente</option>
-                <option v-for="p in patients" :key="p.id" :value="p.id">{{ p.name }}{{ p.nif ? (' — ' + p.nif) : '' }}</option>
+                <option v-for="p in patients" :key="p.id" :value="p.id">{{ p.counter ? (`${p.counter} · `) : '' }}{{ p.name }}{{ p.nif ? (' — ' + p.nif) : '' }}</option>
                 <option value="__create">+ Crear paciente...</option>
               </select>
               <button v-if="form.patient_id && form.patient_id !== '__create'" type="button" class="muted" @click.prevent="goToPatient(form.patient_id)" title="Ir a la ficha del paciente" style="height:40px;padding:8px 10px;border-radius:8px;align-self:center">
@@ -65,7 +65,7 @@
                     <div style="flex:1">
                       <div class="overlap-alert-subtle">La franja horaria se solapa con esta cita.</div>
                       {{ formatDate(a.start_time) }} - {{ formatDate(a.end_time) }}
-                      <div style="color:#374151">{{ a.patient?.name || a.patient_name || 'Paciente desconocido' }}</div>
+                      <div style="color:#374151">{{ a.patient?.counter ? (`${a.patient.counter} · `) : '' }}{{ a.patient?.name || a.patient_name || 'Paciente desconocido' }}</div>
                     </div>
                     <div>
                       <button type="button" class="muted" @click.prevent="goToAppointment(a.id)">Ir a cita</button>
@@ -95,7 +95,7 @@
             <label class="label">Datos de Facturación</label>
             <div class="billing-preview-box">
               <div class="billing-preview-grid">
-                <div><strong>Nombre:</strong> {{ selectedPatient?.name || '—' }}</div>
+                <div><strong>Nombre:</strong> {{ selectedPatient?.counter ? (`${selectedPatient.counter} · `) : '' }}{{ selectedPatient?.name || '—' }}</div>
                 <div><strong>NIF:</strong> {{ selectedPatient?.nif || '—' }}</div>
                 <div><strong>Domicilio:</strong> {{ selectedPatient?.address || '—' }}</div>
                 <div><strong>Teléfono:</strong> {{ selectedPatient?.phone || '—' }}</div>
@@ -103,6 +103,17 @@
 
               <div class="billing-preview-detail"><strong>Detalle:</strong> {{ billingDetailLabel }}</div>
               <div class="billing-preview-amount"><strong>Importe:</strong> {{ billingAmountLabel }}</div>
+            </div>
+
+            <div v-if="!isCoveredByBonus" style="margin-top:12px">
+              <label class="label">Detalle de facturación</label>
+              <textarea
+                v-model="form.billing_detail"
+                class="textarea"
+                rows="2"
+                placeholder="Detalle que aparecerá en la factura (deja vacío para usar las notas de la cita)"
+                :disabled="isCanceled && mode !== 'reprogram'"
+              ></textarea>
             </div>
 
             <div v-if="isEdit && !isCoveredByBonus" style="margin-top:10px; display:flex; gap:8px; align-items:center;">
@@ -392,7 +403,7 @@ const router = useRouter()
 const route = useRoute()
 const isEdit = ref(false)
 const mode = ref(route.query.mode || null)
-const form = reactive({ patient_id: '', status: 'scheduled', start_time: '', end_time: '', notes: '', price: '', use_bonus_id: '', use_credit_payment_id: '', bonus_notes: '', bonus_name: '', payment_type: 'single', apply_credit: false, apply_credit_mode: 'auto', apply_credit_amount: '' })
+const form = reactive({ patient_id: '', status: 'scheduled', start_time: '', end_time: '', notes: '', billing_detail: '', price: '', use_bonus_id: '', use_credit_payment_id: '', bonus_notes: '', bonus_name: '', payment_type: 'single', apply_credit: false, apply_credit_mode: 'auto', apply_credit_amount: '' })
 const applyCreditConfirmed = ref(false)
 
 const statusOptions = [
@@ -570,7 +581,7 @@ const bonusInvoiceId = computed(() => {
 
 const billingDetailLabel = computed(() => {
   if (!isCoveredByBonus.value) {
-    return form.notes || '—'
+    return form.billing_detail || form.notes || '—'
   }
 
   const selectedBonusName = selectedBonus.value?.name || form.bonus_name || ''
@@ -954,6 +965,7 @@ async function applyAppointmentData(data) {
   originalStartLocal.value = form.start_time || ''
   originalEndLocal.value = form.end_time || ''
   form.notes = data.notes || ''
+  form.billing_detail = data.billing_detail || ''
   form.price = data.price != null ? Number(data.price) : ''
   appointmentInvoiceId.value = data.invoice_id ? Number(data.invoice_id) : null
   appointmentPaymentStatus.value = String(data.payment_status || '')
@@ -1379,6 +1391,7 @@ watch(() => route.params.id, (id) => {
     form.start_time = ''
     form.end_time = ''
     form.notes = ''
+    form.billing_detail = ''
     form.price = ''
     form.use_bonus_id = ''
     form.use_credit_payment_id = ''
@@ -1387,7 +1400,6 @@ watch(() => route.params.id, (id) => {
     form.apply_credit_mode = 'auto'
     form.apply_credit_amount = ''
     appointmentInvoiceId.value = null
-    appointmentPaymentStatus.value = ''
     appointmentCoveredAmount.value = 0
     Object.keys(errors).forEach(k => delete errors[k])
   }
@@ -1496,6 +1508,7 @@ async function submit(payNow = false) {
       start_time: form.start_time,
       end_time: form.end_time,
       notes: form.notes,
+      billing_detail: form.billing_detail || undefined,
       price: effectiveSessionPrice.value > 0 ? Number(effectiveSessionPrice.value) : undefined,
       payment_type: form.payment_type === 'credit' ? 'single' : form.payment_type,
       use_bonus_id: form.use_bonus_id || undefined,

@@ -17,7 +17,7 @@
             <select v-model="form.patient_id" @change="onPatientChange" class="input" :disabled="comingFromAppointment" required>
               <option value="">Selecciona paciente</option>
               <option v-for="p in patients" :key="p.id" :value="String(p.id)">
-                {{ p.name }} {{ p.nif ? `— ${p.nif}` : '' }}
+                {{ p.counter ? `${p.counter} · ` : '' }}{{ p.name }} {{ p.nif ? `— ${p.nif}` : '' }}
               </option>
               <option value="__create">+ Crear paciente...</option>
             </select>

@@ -25,7 +25,7 @@
         <br>
         <div class="grid-display">
           <div class="card">
-            <div class="card-row"><strong>Nombre: </strong>{{ patient?.name ?? '—' }}</div>
+            <div class="card-row"><strong>Nombre: </strong>{{ patient?.counter ? `${patient.counter} · ` : '' }}{{ patient?.name ?? '—' }}</div>
             <div v-if="activeBonusCount > 0" class="mini-badge">{{ activeBonusCount }} bono(s) activo(s)</div>
           
           </div>

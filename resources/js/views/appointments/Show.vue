@@ -60,7 +60,7 @@
         <div v-else>
           <div class="field full">
             <label class="label">Paciente</label>
-            <div class="value"><router-link :to="`/patients/${appointment.patient_id}`">{{ appointment.patient?.name || appointment.patient_name || appointment.patient?.full_name || ('Paciente #' + appointment.patient_id) }}</router-link></div>
+            <div class="value"><router-link :to="`/patients/${appointment.patient_id}`">{{ appointment.patient?.counter ? (`${appointment.patient.counter} · `) : '' }}{{ appointment.patient?.name || appointment.patient_name || appointment.patient?.full_name || ('Paciente #' + appointment.patient_id) }}</router-link></div>
           </div>
 
           <div class="field">

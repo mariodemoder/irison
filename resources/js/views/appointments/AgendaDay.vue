@@ -4,6 +4,7 @@
       <CalendarHeader
         view="day"
         :label="dayLabel"
+        :active-today="isTodayMode"
         @prev="prevDay"
         @next="nextDay"
         @today="goToToday"
@@ -20,35 +21,81 @@
           </div>
 
           <div class="scope-bar" role="group" aria-label="Ámbito de fechas">
-            <button :class="['scope-btn', isAllMode && 'scope-active']" @click="setMode(true)">Ver todo</button>
+            <button :class="['scope-btn', isTodayMode && 'scope-active']" @click="setMode(false)">Hoy</button>
+            <button :class="['scope-btn', isAllMode && 'scope-active']" @click="setMode(true)">Todos los días</button>
           </div>
+
+          <div class="scope-bar" role="group" aria-label="Ámbito de citas">
+            <button :class="['scope-btn', showScheduledOnly && 'scope-active']" @click="setAppointmentScope('scheduled')">Citas programadas</button>
+            <button :class="['scope-btn', !showScheduledOnly && 'scope-active']" @click="setAppointmentScope('all')">Todas las citas</button>
+          </div>
+          <button
+            type="button"
+            :class="['filter-trigger', detailedFiltersCount > 0 && 'filter-trigger-active']"
+            @click="openDetailedFilters"
+            aria-label="Abrir filtros detallados"
+            title="Filtros Detallados"
+            >
+            <svg class="filter-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 5h18"></path>
+              <path d="M6 12h12"></path>
+              <path d="M10 19h4"></path>
+            </svg>
+            <span v-if="detailedFiltersCount > 0" class="filter-badge">{{ detailedFiltersCount }}</span>
+          </button>
         </div>
 
-        <router-link to="/appointments/create" class="btn btn-sm small compact header-create-btn">
-          Nueva cita
-        </router-link>
+        <div class="header-actions-right">
+          
+
+          <router-link to="/appointments/create" class="btn btn-sm small compact header-create-btn">
+            Nueva cita
+          </router-link>
+        </div>
       </div>
 
         <div class="filters-row">
           <div class="search-wrapper">
             <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-            <input v-model="query" placeholder="Buscar por nombre o NIF" class="search-input" />
+            <input v-model="query" placeholder="Buscar por Paciente o Notas" class="search-input" />
           </div>
+        </div>
 
-          <select v-model="statusFilter" @change="applyRouteFilters">
-            <option value="">Todos</option>
-            <option value="scheduled">Programadas</option>
-            <option value="rescheduled">Reprogramadas</option>
-            <option value="completed">Completadas</option>
-            <option value="canceled">Canceladas</option>
-          </select>
+        <div v-if="detailedFiltersOpen" class="filters-modal-backdrop" @click.self="closeDetailedFilters">
+          <div class="filters-modal" role="dialog" aria-modal="true" aria-label="Filtros detallados">
+            <div class="filters-modal-head">
+              <h3>Filtros detallados</h3>
+              <button type="button" class="filters-modal-close" @click="closeDetailedFilters" aria-label="Cerrar filtros">✕</button>
+            </div>
 
-          <select v-model="paymentFilter" @change="applyRouteFilters">
-            <option value="">Todos</option>
-            <option value="pending">Pendiente</option>
-            <option value="partially_paid">Parcial</option>
-            <option value="paid">Pagado</option>
-          </select>
+            <div class="filters-modal-body">
+              <label class="filters-field">
+                <span>Estado</span>
+                <select v-model="draftStatusFilter">
+                  <option value="">Todos los estados</option>
+                  <option value="scheduled">Programadas</option>
+                  <option value="rescheduled">Reprogramadas</option>
+                  <option value="completed">Completadas</option>
+                  <option value="canceled">Canceladas</option>
+                </select>
+              </label>
+
+              <label class="filters-field">
+                <span>Pago</span>
+                <select v-model="draftPaymentFilter">
+                  <option value="">Todos los pagos</option>
+                  <option value="pending">Pendiente</option>
+                  <option value="partially_paid">Parcial</option>
+                  <option value="paid">Pagado</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="filters-modal-actions">
+              <button type="button" class="filters-secondary" @click="clearDetailedFilters">Limpiar</button>
+              <button type="button" class="filters-primary" @click="applyDetailedFilters">Aplicar</button>
+            </div>
+          </div>
         </div>
 
         <div class="list-header">
@@ -78,7 +125,7 @@
                 <span v-if="isAllMode" class="row-date">{{ formatDateShort(item.start_time) }} · </span>{{ formatTimeCalendar(item.start_time) }} - {{ formatTimeCalendar(item.end_time) }}
               </div>
               <div class="row-left">
-                <div class="row-name">{{ item.patient?.nif ?? '—' }} - {{ item.patient?.name ?? ('Paciente #' + item.patient_id) }}</div>
+                <div class="row-name">{{ item.patient?.counter ? (`${item.patient.counter} · `) : '' }}{{ item.patient?.nif ?? '—' }} - {{ item.patient?.name ?? ('Paciente #' + item.patient_id) }}</div>
               </div>
               <div class="row-col note time">{{ item.notes ?? '' }}</div>
               <div class="row-col"><span class="status" :class="item.status">{{ statusLabel(item.status) }}</span></div>
@@ -109,7 +156,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
@@ -124,11 +171,25 @@ const appointments = ref([])
 const loading = ref(false)
 const date = ref(localIsoDate())
 const isAllMode = computed(() => String(route.query.all || '') === '1')
+const isTodayMode = computed(() => !isAllMode.value && date.value === localIsoDate())
+const appointmentScope = ref('scheduled')
 const query = ref('')
 const paymentFilter = ref('')
 const statusFilter = ref('')
+const detailedFiltersOpen = ref(false)
+const draftStatusFilter = ref('')
+const draftPaymentFilter = ref('')
 const pageSize = 10
 const currentPage = ref(1)
+const nowTimestamp = ref(Date.now())
+let nowTimerId = null
+const showScheduledOnly = computed(() => appointmentScope.value === 'scheduled')
+const detailedFiltersCount = computed(() => {
+  let count = 0
+  if (statusFilter.value) count += 1
+  if (paymentFilter.value) count += 1
+  return count
+})
 const displayDay = computed(() => {
   const d = new Date(date.value)
   return d.getDate()
@@ -157,6 +218,10 @@ function setMode(all) {
   router.replace({ query: { ...route.query, all: all ? '1' : undefined, date: all ? route.query.date : today } })
 }
 
+function setAppointmentScope(scope) {
+  appointmentScope.value = scope === 'all' ? 'all' : 'scheduled'
+}
+
 function formatDateShort(dt) {
   if (!dt) return ''
   const d = new Date(String(dt).replace(' ', 'T'))
@@ -165,6 +230,26 @@ function formatDateShort(dt) {
   const mm = String(d.getMonth() + 1).padStart(2, '0')
   const yyyy = d.getFullYear()
   return `${dd}/${mm}/${yyyy}`
+}
+
+function parseDateTime(value) {
+  const normalized = String(value || '').trim().replace(' ', 'T')
+  if (!normalized) return null
+  const parsed = new Date(normalized)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+
+function isScheduledAppointment(appointment) {
+  if (appointment?.status === 'canceled') {
+    return false
+  }
+
+  const endAt = parseDateTime(appointment?.end_time) || parseDateTime(appointment?.start_time)
+  if (!endAt) {
+    return true
+  }
+
+  return endAt.getTime() > nowTimestamp.value
 }
 
 async function load() {
@@ -234,6 +319,28 @@ function applyRouteFilters() {
   router.replace({ query: nextQuery })
 }
 
+function openDetailedFilters() {
+  draftStatusFilter.value = statusFilter.value
+  draftPaymentFilter.value = paymentFilter.value
+  detailedFiltersOpen.value = true
+}
+
+function closeDetailedFilters() {
+  detailedFiltersOpen.value = false
+}
+
+function applyDetailedFilters() {
+  statusFilter.value = draftStatusFilter.value
+  paymentFilter.value = draftPaymentFilter.value
+  applyRouteFilters()
+  closeDetailedFilters()
+}
+
+function clearDetailedFilters() {
+  draftStatusFilter.value = ''
+  draftPaymentFilter.value = ''
+}
+
 function prevPage() {
   if (currentPage.value > 1) {
     currentPage.value -= 1
@@ -273,6 +380,13 @@ onMounted(() => load())
 onMounted(() => {
   syncDateFromRoute()
   syncFiltersFromRoute()
+  nowTimerId = setInterval(() => {
+    nowTimestamp.value = Date.now()
+  }, 60_000)
+})
+
+onUnmounted(() => {
+  if (nowTimerId) clearInterval(nowTimerId)
 })
 
 watch(date, () => {
@@ -318,6 +432,10 @@ const filteredAppointments = computed(() => {
   const routePaymentFilter = paymentFilter.value
 
   return appointments.value.filter((a) => {
+    if (showScheduledOnly.value && !isScheduledAppointment(a)) {
+      return false
+    }
+
     if (routeStatusFilter === 'completed' && a?.status !== 'completed') {
       return false
     }
@@ -358,12 +476,14 @@ const filteredAppointments = computed(() => {
 
     const name = a.patient?.name ?? ''
     const nif = a.patient?.nif ?? ''
-    return [name, nif].some((f) => f && String(f).toLowerCase().includes(q))
+    const notes = a.notes ?? ''
+    return [name, nif, notes].some((f) => f && String(f).toLowerCase().includes(q))
   })
 })
 
 const hasActiveFilters = computed(() => {
   return Boolean(String(query.value || '').trim())
+    || showScheduledOnly.value
     || Boolean(statusFilter.value)
     || Boolean(paymentFilter.value)
 })
@@ -427,7 +547,7 @@ const listWithGaps = computed(() => {
   return result
 })
 
-watch([query, paymentFilter, statusFilter, isAllMode], () => {
+watch([query, paymentFilter, statusFilter, isAllMode, appointmentScope], () => {
   currentPage.value = 1
 })
 
@@ -444,6 +564,7 @@ watch(totalPages, (pages) => {
 
 .header-secondary { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; flex-wrap:wrap }
 .header-secondary-left { display:flex; align-items:center; gap:12px; flex-wrap:wrap }
+.header-actions-right { display:flex; align-items:center; gap:18px; margin-left:auto }
 
 .form-sub { color:#6b7280; font-size:13px; margin-top:4px }
 .calendar-card { display:flex; align-items:center; gap:12px; background:#fff; padding:10px; border-radius:10px; border:1px solid #eef2ff22 }
@@ -467,18 +588,155 @@ watch(totalPages, (pages) => {
 
 .filters-row {
   display: grid;
-  grid-template-columns: 1.6fr 1fr 1fr;
+  grid-template-columns: minmax(260px, 1fr);
   gap: 8px;
   margin-bottom: 12px;
   align-items: center;
 }
 
-.filters-row select {
-  padding: 8px;
+.filter-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+  position: relative;
+}
+
+.filter-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.filter-trigger:hover { background: #f8fafc }
+.filter-trigger-active {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+.filter-trigger-active:hover { background: #dbeafe }
+
+.filter-badge {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 9999px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-weight: 700;
+  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  border: 1px solid #bfdbfe;
+}
+
+.filters-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 16px;
+}
+
+.filters-modal {
+  width: min(460px, 100%);
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 20px 45px rgba(2, 6, 23, 0.18);
+  overflow: hidden;
+}
+
+.filters-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.filters-modal-head h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.filters-modal-close {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.filters-modal-body {
+  padding: 14px 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.filters-field {
+  display: grid;
+  gap: 6px;
+}
+
+.filters-field span {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.filters-field select {
+  width: 100%;
+  padding: 8px 10px;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   font-size: 13px;
   background: #fff;
+}
+
+.filters-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px 16px;
+}
+
+.filters-secondary,
+.filters-primary {
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.filters-secondary {
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #374151;
+}
+
+.filters-primary {
+  border: 1px solid #2563eb;
+  background: #2563eb;
+  color: #fff;
 }
 
 /* Ensure mini calendar sits above the search area to avoid being covered */
@@ -537,14 +795,14 @@ watch(totalPages, (pages) => {
 .btn.btn-sm.small,
 .btn.btn-sm.small.compact { padding:6px 10px; font-size:13px }
 .btn.btn-sm:hover { background:#eff6ff; border-color:#2563eb; color:#2563eb }
-.header-create-btn { margin-left:auto }
+.header-create-btn { margin-left:0 }
 
 /* Toggle Hoy / Semana — en cabecera, no debajo */
 .scope-bar { display:flex; gap:0; border:1px solid #e5e7eb; border-radius:9px; overflow:hidden; width:fit-content }
 .scope-btn { padding:6px 16px; font-size:13px; font-weight:600; color:#6b7280; background:#fff; border:none; cursor:pointer; transition:background .12s, color .12s }
 .scope-btn:not(:last-child) { border-right:1px solid #e5e7eb }
 .scope-btn:hover:not(.scope-active) { background:#f1f5f9 }
-.scope-active { background:#4f46e5; color:#fff }
+.scope-active { background:#2563eb; color:#fff }
 
 /* Mini-cal deshabilitado en modo Ver Todo */
 .cal-dimmed { opacity:.4 }
@@ -561,6 +819,7 @@ watch(totalPages, (pages) => {
 
 @media (max-width: 900px) {
   .header-secondary { justify-content:flex-start }
+  .header-actions-right { width:100%; justify-content:flex-end }
 
   .filters-row {
     grid-template-columns: 1fr;

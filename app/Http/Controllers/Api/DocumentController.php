@@ -79,6 +79,7 @@ class DocumentController extends Controller
                 'patient_full_name' => $document->patient_full_name,
                 'patient' => $document->patient ? [
                     'id' => $document->patient->id,
+                    'counter' => $document->patient->counter,
                     'name' => $document->patient->name,
                     'nif' => $document->patient->nif,
                 ] : null,
@@ -138,6 +139,7 @@ class DocumentController extends Controller
             'patient_zip' => $document->patient_zip,
             'patient' => $document->patient ? [
                 'id' => $document->patient->id,
+                'counter' => $document->patient->counter,
                 'name' => $document->patient->name,
                 'nif' => $document->patient->nif,
                 'email' => $document->patient->email,

@@ -371,7 +371,7 @@ onUnmounted(() => {
   letter-spacing: .07em;
   color: #6b7280;
 }
-.dh-today .dh-name { color: #4f46e5 }
+.dh-today .dh-name { color: #2563eb }
 
 .dh-num {
   font-size: 14px;
@@ -384,21 +384,21 @@ onUnmounted(() => {
   justify-content: center;
   border-radius: 50%;
 }
-.dh-bubble { background: #4f46e5; color: #fff }
+.dh-bubble { background: #2563eb; color: #fff }
 
 .dh-badge {
   position: absolute;
   top: 6px;
   right: 6px;
-  background: #e0e7ff;
-  color: #4f46e5;
+  background: #dbeafe;
+  color: #1d4ed8;
   font-size: 10px;
   font-weight: 700;
   padding: 1px 5px;
   border-radius: 9999px;
   line-height: 1.4;
 }
-.dh-today .dh-badge { background: #c7d2fe }
+.dh-today .dh-badge { background: #bfdbfe }
 
 /* ── Cuerpo desplazable ───────────────────────────────── */
 .cal-body {
@@ -449,7 +449,7 @@ onUnmounted(() => {
 .dc-weekend { background: #fafafa }
 
 /* Día actual con fondo azul muy tenue */
-.dc-today { background: #fafbff }
+.dc-today { background: #eff6ff }
 
 /* Filas de hora (guías horizontales) */
 .hr-row {
@@ -459,7 +459,7 @@ onUnmounted(() => {
   cursor: pointer;
 }
 .hr-row:hover {
-  background: rgba(79, 70, 229, 0.05);
+  background: rgba(59, 130, 246, 0.08);
 }
 
 /* Línea de media hora */
@@ -513,7 +513,7 @@ onUnmounted(() => {
   z-index: 6;
 }
 .appt:focus-visible {
-  outline: 2px solid #4f46e5;
+  outline: 2px solid #2563eb;
   outline-offset: 1px;
   z-index: 6;
 }

@@ -8,13 +8,14 @@ use InvalidArgumentException;
 
 class CounterService
 {
-    public const TABLE_TYPES = ['documents', 'payout', 'bonuses', 'payments'];
+    public const TABLE_TYPES = ['documents', 'payout', 'bonuses', 'payments', 'patients'];
 
     private const DEFAULT_PREFIXES = [
         'documents' => 'FR',
         'payout' => 'AB',
         'bonuses' => 'B0',
         'payments' => 'PA',
+        'patients' => 'PAC',
     ];
 
     public function nextFormatted(int $clinicId, string $tableType): string

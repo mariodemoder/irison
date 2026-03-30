@@ -13,7 +13,7 @@
         {{ label }}
       </span>
 
-      <button type="button" @click="emit('today')" class="today-btn">
+      <button type="button" @click="emit('today')" :class="['today-btn', { 'today-btn-active': activeToday }]">
         Hoy
       </button>
     </div>
@@ -49,6 +49,10 @@ defineProps({
   view: {
     type: String,
     default: 'day',
+  },
+  activeToday: {
+    type: Boolean,
+    default: false,
   },
 })
 
@@ -110,6 +114,14 @@ const emit = defineEmits(['prev', 'next', 'today'])
 }
 
 .today-btn:hover { background: #f1f5f9 }
+
+.today-btn-active {
+  background: #dbeafe;
+  border-color: #3b82f6;
+  color: #1d4ed8;
+}
+
+.today-btn-active:hover { background: #bfdbfe }
 
 .header-actions {
   display: flex;

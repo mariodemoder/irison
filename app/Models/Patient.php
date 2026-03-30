@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\Concerns\BelongsToClinic;
 use App\Models\Bonus;
 use App\Models\CreditUsage;
+use App\Services\Counters\CounterService;
 
 class Patient extends Model
 {
@@ -16,8 +17,17 @@ class Patient extends Model
       
     protected $fillable = [
         'clinic_id', 'first_name', 'last_name', 'phone', 'email',
-        'birth_date', 'notes', 'nif', 'address', 'zip', 'province', 'country'
+        'birth_date', 'notes', 'nif', 'address', 'zip', 'province', 'country', 'counter'
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Patient $patient) {
+            if (empty($patient->counter) && !empty($patient->clinic_id)) {
+                $patient->counter = app(CounterService::class)->nextFormatted((int) $patient->clinic_id, 'patients');
+            }
+        });
+    }
 
     /**
      * Añadir accessors calculados a la serialización.

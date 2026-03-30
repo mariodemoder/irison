@@ -361,6 +361,7 @@ class BonusService
                 'updated_at' => $bonus->updated_at,
                 'patient' => $bonus->patient ? [
                     'id' => $bonus->patient->id,
+                    'counter' => $bonus->patient->counter,
                     'name' => $bonus->patient->name,
                     'nif' => $bonus->patient->nif,
                 ] : null,

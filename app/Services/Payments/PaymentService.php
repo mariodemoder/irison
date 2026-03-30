@@ -437,6 +437,7 @@ class PaymentService
             'updated_at' => $payment->updated_at,
             'patient' => $payment->patient ? [
                 'id' => $payment->patient->id,
+                'counter' => $payment->patient->counter,
                 'name' => $payment->patient->name,
                 'nif' => $payment->patient->nif,
             ] : null,

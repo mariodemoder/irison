@@ -5,7 +5,7 @@
         <div class="form-header" style="display:flex;justify-content:space-between;align-items:start">
           <div>
             <h1>Historia Clínica</h1>
-            <div class="form-sub">Paciente: {{ patient?.name || '—' }}</div>
+            <div class="form-sub">Paciente: {{ patient?.counter ? `${patient.counter} · ` : '' }}{{ patient?.name || '—' }}</div>
           </div>
           <div class="header-actions" style="display:flex;gap:8px">
             <button

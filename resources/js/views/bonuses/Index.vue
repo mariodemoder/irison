@@ -44,6 +44,7 @@
           <div>Bono</div>
           <div>Sesiones</div>
           <div>Precio</div>
+          <div>Vencimiento</div>
           <div>Estado</div>
           <div>Pago</div>
           <div>Factura</div>
@@ -55,13 +56,14 @@
             <div>{{ bonus.counter || '—' }}</div>
             <div>
               <router-link v-if="bonus.patient?.id" :to="`/patients/${bonus.patient.id}`" class="patient-link">
-                {{ bonus.patient?.name ?? `Paciente #${bonus.patient_id}` }}
+                {{ bonus.patient?.counter ? `${bonus.patient.counter} · ` : '' }}{{ bonus.patient?.name ?? `Paciente #${bonus.patient_id}` }}
               </router-link>
-              <span v-else>{{ bonus.patient?.name ?? `Paciente #${bonus.patient_id}` }}</span>
+              <span v-else>{{ bonus.patient?.counter ? `${bonus.patient.counter} · ` : '' }}{{ bonus.patient?.name ?? `Paciente #${bonus.patient_id}` }}</span>
             </div>
             <div>{{ bonus.name || `Bono #${bonus.id}` }}</div>
             <div>{{ bonus.remaining_sessions }}/{{ bonus.total_sessions }}</div>
             <div>{{ formatCurrency(bonus.price) }}</div>
+            <div>{{ bonus.expires_at ? formatDateOnlyDay(bonus.expires_at) : '—' }}</div>
             <div><span class="status" :class="bonus.status">{{ statusLabel(bonus.status) }}</span></div>
             <div><span class="status" :class="bonus.is_paid ? 'completed' : 'pending'">{{ bonus.is_paid ? 'Pagado' : 'Impago' }}</span></div>
             <div>
@@ -234,8 +236,8 @@ onMounted(async () => {
 .summary { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; color:#374151; font-size:14px }
 
 .list { display:flex; flex-direction:column; gap:8px }
-.list-header { display:grid; grid-template-columns: 1.2fr 1.1fr 1.8fr 1.4fr 1fr 1fr 1.1fr 1fr 1.2fr; gap:10px; color:#6b7280; font-size:13px; font-weight:600; padding:6px 10px }
-.payment-row { display:grid; grid-template-columns: 1.2fr 1.1fr 1.8fr 1.4fr 1fr 1fr 1.1fr 1fr 1.2fr; gap:10px; background:#fff; border:1px solid #eef2ff22; border-radius:10px; padding:10px; align-items:center; font-size:13px }
+.list-header { display:grid; grid-template-columns: 1.2fr 1.1fr 1.8fr 1.4fr 1fr 1fr 1fr 1.1fr 1fr 1.2fr; gap:10px; color:#6b7280; font-size:13px; font-weight:600; padding:6px 10px }
+.payment-row { display:grid; grid-template-columns: 1.2fr 1.1fr 1.8fr 1.4fr 1fr 1fr 1fr 1.1fr 1fr 1.2fr; gap:10px; background:#fff; border:1px solid #eef2ff22; border-radius:10px; padding:10px; align-items:center; font-size:13px }
 
 .status { padding:5px 8px; border-radius:9999px; font-weight:700; text-transform:capitalize; font-size:11px; white-space:nowrap; display:inline-block }
 .status.completed { background:#dcfce7; color:#166534 }

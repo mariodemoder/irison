@@ -148,6 +148,7 @@ class PatientsServices
         return [
             'id' => $patient->id,
             'clinic_id' => $patient->clinic_id,
+            'counter' => $patient->counter,
             'nif' => $patient->nif,
             'name' => $patient->name,
             'phone' => $patient->phone,
@@ -248,6 +249,7 @@ class PatientsServices
         return [
             'id' => $patient->id,
             'clinic_id' => $patient->clinic_id,
+            'counter' => $patient->counter,
             'nif' => $patient->nif,
             'name' => $patient->name,
             'phone' => $patient->phone,
