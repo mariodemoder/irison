@@ -100,7 +100,6 @@ class DashboardSummaryService
     private function buildTodayFinancial(Carbon $startOfDay, Carbon $endOfDay): array
     {
         $collectedAmount = (float) Payment::query()
-            ->where('status', 'completed')
             ->whereIn('method', self::REAL_PAYMENT_METHODS)
             ->whereBetween('paid_at', [$startOfDay, $endOfDay])
             ->sum('amount');

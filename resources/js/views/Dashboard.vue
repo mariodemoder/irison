@@ -7,9 +7,6 @@ import BarChartCard from '../components/dashboard/BarChartCard.vue'
 import AppLoading from '../components/AppLoading.vue'
 
 const loading = ref(true)
-
-const alertsLoading = ref(true)
-const todaySummaryLoading = ref(true)
 const todaySummary = ref({
   total: 0,
   completed: 0,
@@ -126,7 +123,7 @@ const riskAlerts = computed(() => {
     {
       key: 'risk-partials',
       value: partialAppointmentsCount.value,
-      text: 'Citas parciales',
+      text: 'Citas pagos parciales',
       to: {
         path: '/appointments/day',
         query: {
@@ -233,22 +230,14 @@ function normalizeChartSeries(series, fallbackLabels, fallbackValues) {
   }
 }
 
-async function fetchDashboardCards() {
-  todaySummaryLoading.value = true
+async function fetchDashboard() {
+  loading.value = true
 
   try {
-    const res = await api.get('/dashboard/summary', {
-      params: {
-        block: 'cards',
-      },
-    })
+    const res = await api.get('/dashboard/summary')
     const data = res.data?.data ?? {}
 
-    if (typeof data?.date === 'string' && data.date.length >= 10) {
-      dashboardDate.value = data.date.slice(0, 10)
-    } else {
-      dashboardDate.value = todayIsoDate()
-    }
+    dashboardDate.value = todayIsoDate()
 
     const summary = data.today_summary ?? {}
     todaySummary.value = {
@@ -283,29 +272,6 @@ async function fetchDashboardCards() {
     )
     weeklyAppointmentsLabels.value = weekly.labels
     weeklyAppointments.value = weekly.values
-  } catch (e) {
-    console.error('Error cargando tarjetas del dashboard', e)
-    dashboardDate.value = todayIsoDate()
-    resetTodaySummary()
-    resetTodayFinancial()
-    resetCharts()
-  } finally {
-    todaySummaryLoading.value = false
-    loading.value = false
-  }
-}
-
-async function fetchDashboardAlerts() {
-  alertsLoading.value = true
-
-  try {
-    const res = await api.get('/dashboard/summary', {
-      params: {
-        block: 'alerts',
-      },
-    })
-
-    const data = res.data?.data ?? {}
 
     const important = data.important_alerts ?? {}
     unpaidBonusesCount.value = Number(important.unpaidBonusesCount || 0)
@@ -319,16 +285,19 @@ async function fetchDashboardAlerts() {
     exhaustedBonusPatientsCount.value = Number(risks.exhaustedBonusPatientsCount || 0)
     patientsWithCreditCount.value = Number(risks.patientsWithCreditCount || 0)
   } catch (e) {
-    console.error('Error cargando alertas y riesgos del dashboard', e)
+    console.error('Error cargando dashboard', e)
+    dashboardDate.value = todayIsoDate()
+    resetTodaySummary()
+    resetTodayFinancial()
+    resetCharts()
     resetAlertsAndRisks()
   } finally {
-    alertsLoading.value = false
+    loading.value = false
   }
 }
 
 onMounted(async () => {
-  await fetchDashboardCards()
-  fetchDashboardAlerts()
+  await fetchDashboard()
 })
 </script>
 
@@ -340,7 +309,7 @@ onMounted(async () => {
       <section class="today-summary">
         <div class="summary-title">Resumen del día - Hoy · {{ todayLabel }}</div>
         
-        <AppLoading v-if="todaySummaryLoading" compact message="Cargando resumen de hoy..." />
+        <AppLoading v-if="loading" compact message="Cargando resumen de hoy..." />
 
         <div v-else class="today-grid">
           <router-link class="today-card" :to="{ path: '/appointments/day', query: { date: todayDateQuery } }">
@@ -364,7 +333,7 @@ onMounted(async () => {
           </router-link>
         </div>
 
-        <div v-if="!todaySummaryLoading" class="today-finance">
+        <div v-if="!loading" class="today-finance">
           <div class="today-finance-grid">
             <div class="today-card today-finance-card">
               <div class="today-label">
@@ -389,7 +358,7 @@ onMounted(async () => {
                     <path d="M12 6v12"></path>
                   </svg>
                 </span>
-                Sesiones por bono
+                Sesiones con bono
               </div>
               <div class="today-value">{{ todayFinancial.bonusSessionsUsed }}</div>
               <div class="today-finance-note">valor {{ currencyFormatter.format(todayFinancial.bonusSessionsValue) }}</div>
@@ -426,28 +395,30 @@ onMounted(async () => {
         </div>
       </section>
 
-      <div class="alerts-inline card-list">
-        <div class="inline-title">Alertas</div>
-        <AppLoading v-if="alertsLoading" compact message="Cargando alertas..." />
-        <ul v-else-if="importantAlerts.length" class="alerts-list">
-          <li v-for="alert in importantAlerts" :key="alert.key" class="alerts-item">
-            <span class="alert-dot" aria-hidden="true"></span>
-            <router-link :to="alert.to" class="alert-link">{{ alert.text }}</router-link>
-          </li>
-        </ul>
-        <div v-else class="alerts-empty">Sin alertas pendientes.</div>
-      </div>
+      <div class="alerts-row">
+        <div class="alerts-inline card-list">
+          <div class="inline-title">Alertas</div>
+          <AppLoading v-if="loading" compact message="Cargando alertas..." />
+          <ul v-else-if="importantAlerts.length" class="alerts-list">
+            <li v-for="alert in importantAlerts" :key="alert.key" class="alerts-item">
+              <span class="alert-dot" aria-hidden="true"></span>
+              <router-link :to="alert.to" class="alert-link">{{ alert.text }}</router-link>
+            </li>
+          </ul>
+          <div v-else class="alerts-empty">Sin alertas pendientes.</div>
+        </div>
 
-      <div class="alerts-inline card-list risks-inline">
-        <div class="inline-title">Pendientes</div>
-        <div class="alerts-subtitle">Estos son puntos donde se pierde dinero.</div>
-        <AppLoading v-if="alertsLoading" compact message="Cargando riesgos..." />
-        <ul v-else class="alerts-list">
-          <li v-for="risk in riskAlerts" :key="risk.key" class="alerts-item">
-            <span class="alert-dot" aria-hidden="true"></span>
-            <router-link :to="risk.to" class="alert-link">{{ risk.text }}: {{ risk.value }}</router-link>
-          </li>
-        </ul>
+        <div class="alerts-inline card-list risks-inline">
+          <div class="inline-title">Pendientes</div>
+          <div class="alerts-subtitle">Estos son puntos donde se pierde dinero.</div>
+          <AppLoading v-if="loading" compact message="Cargando riesgos..." />
+          <ul v-else class="alerts-list">
+            <li v-for="risk in riskAlerts" :key="risk.key" class="alerts-item">
+              <span class="alert-dot" aria-hidden="true"></span>
+              <router-link :to="risk.to" class="alert-link">{{ risk.text }}: {{ risk.value }}</router-link>
+            </li>
+          </ul>
+        </div>
       </div>
 
       <div class="dashboard-grid">
@@ -628,8 +599,15 @@ onMounted(async () => {
   margin-bottom: 8px;
 }
 
-.alerts-inline {
+.alerts-row {
   margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.alerts-inline {
+  margin-top: 0;
   background: var(--bg-card);
   border: 1px solid #93c5fd;
   border-radius: 20px;
@@ -637,7 +615,7 @@ onMounted(async () => {
 }
 
 .risks-inline {
-  margin-top: 12px;
+  margin-top: 0;
 }
 
 .alerts-subtitle {
@@ -698,6 +676,10 @@ onMounted(async () => {
   }
 
   .today-finance-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .alerts-row {
     grid-template-columns: 1fr;
   }
 }

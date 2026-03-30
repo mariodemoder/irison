@@ -3,6 +3,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
+use App\Models\Bonus;
+use App\Models\CreditUsage;
+use App\Models\Patient;
+use App\Models\Payment;
 use Illuminate\Http\Request;
 use App\Services\Appointments\AppointmentService;
 use App\Services\Documents\InvoicingService;
@@ -47,6 +51,111 @@ class AppointmentController extends Controller
         Gate::authorize('view', $appointment);
 
         return $this->appointmentService->show($appointment, $request->all());
+    }
+
+    public function formBootstrap(Request $request): JsonResponse
+    {
+        Gate::authorize('viewAny', Appointment::class);
+
+        $clinicId = (int) (currentClinicId() ?? 0);
+        $appointmentId = (int) $request->query('appointment_id', 0);
+        $patientId = (int) $request->query('patient_id', 0);
+        $patientsPerPage = (int) $request->query('patients_per_page', 200);
+
+        $patients = Patient::query()
+            ->where('clinic_id', $clinicId)
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->limit($patientsPerPage > 0 ? $patientsPerPage : 200)
+            ->get(['id', 'first_name', 'last_name', 'nif', 'phone', 'email', 'address', 'zip', 'province', 'country', 'birth_date', 'notes', 'clinic_id', 'created_at', 'updated_at']);
+
+        $patientsPayload = $patients->map(function (Patient $patient) {
+            return [
+                'id' => $patient->id,
+                'clinic_id' => $patient->clinic_id,
+                'nif' => $patient->nif,
+                'name' => $patient->name,
+                'phone' => $patient->phone,
+                'email' => $patient->email,
+                'address' => $patient->address,
+                'zip' => $patient->zip,
+                'province' => $patient->province,
+                'country' => $patient->country,
+                'birth_date' => $patient->birth_date,
+                'notes' => $patient->notes,
+                'available_credit' => $patient->availableCredit(),
+                'created_at' => $patient->created_at,
+                'updated_at' => $patient->updated_at,
+            ];
+        })->values();
+
+        $appointmentPayload = null;
+        if ($appointmentId > 0) {
+            $appointment = Appointment::query()
+                ->where('clinic_id', $clinicId)
+                ->findOrFail($appointmentId);
+
+            Gate::authorize('view', $appointment);
+            $appointmentPayload = $this->appointmentService->show($appointment, []);
+            $patientId = (int) ($appointmentPayload->patient_id ?? $appointment->patient_id ?? $patientId);
+        }
+
+        $bonuses = collect();
+        $pendingCreditPayments = collect();
+
+        if ($patientId > 0) {
+            $bonuses = Bonus::query()
+                ->where('clinic_id', $clinicId)
+                ->where('patient_id', $patientId)
+                ->orderByDesc('id')
+                ->get(['id', 'patient_id', 'name', 'total_sessions', 'remaining_sessions', 'price', 'invoice_id', 'expires_at']);
+
+            $pendingCreditPayments = Payment::query()
+                ->where('clinic_id', $clinicId)
+                ->where('patient_id', $patientId)
+                ->where('concept', 'credit')
+                ->where('status', 'pending')
+                ->orderByDesc('created_at')
+                ->limit(100)
+                ->get()
+                ->map(function (Payment $payment) {
+                    $creditUsedAmount = (float) CreditUsage::query()
+                        ->whereNull('reversed_at')
+                        ->where('payment_id', $payment->id)
+                        ->where('patient_id', $payment->patient_id)
+                        ->sum('amount');
+
+                    $creditPendingAmount = max(((float) $payment->amount) - $creditUsedAmount, 0);
+
+                    return [
+                        'id' => $payment->id,
+                        'counter' => $payment->counter,
+                        'patient_id' => $payment->patient_id,
+                        'concept' => $payment->concept,
+                        'appointment_id' => $payment->appointment_id,
+                        'package_id' => $payment->package_id,
+                        'amount' => (float) $payment->amount,
+                        'credit_used_amount' => $creditUsedAmount,
+                        'credit_pending_amount' => $creditPendingAmount,
+                        'method' => $payment->method,
+                        'status' => $payment->status,
+                        'notes' => $payment->notes,
+                        'paid_at' => $payment->paid_at,
+                        'created_at' => $payment->created_at,
+                        'updated_at' => $payment->updated_at,
+                    ];
+                })
+                ->values();
+        }
+
+        return response()->json([
+            'data' => [
+                'patients' => $patientsPayload,
+                'appointment' => $appointmentPayload,
+                'bonuses' => $bonuses->values(),
+                'pending_credit_payments' => $pendingCreditPayments,
+            ],
+        ]);
     }
 
     public function update(Request $request, Appointment $appointment)

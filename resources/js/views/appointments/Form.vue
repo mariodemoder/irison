@@ -310,7 +310,8 @@
                   <span v-if="entry.counter" class="appointment-payment-counter">{{ entry.counter }}</span>
                   <span>{{ formatAppointmentPaymentDate(entry.paid_at || entry.created_at) }}</span>
                   <span>{{ formatAppointmentPaymentAmount(entry.amount) }}</span>
-                  <span v-if="entry._type === 'payment'">{{ appointmentPaymentMethodLabel(entry.method) }}</span>
+                  <span v-if="entry._type === 'payment' || entry._type === 'bonus_payment'">{{ appointmentPaymentConceptLabel(entry.concept) }}</span>
+                  <span v-if="entry._type === 'payment' || entry._type === 'bonus_payment'">{{ appointmentPaymentMethodLabel(entry.method) }}</span>
                   
                 </div>
                 <span
@@ -379,7 +380,6 @@ import { formatDate, toDatetimeLocalValue } from '../../shared/appointmentHelper
 import { formatDMY } from '../../shared/dateHelpers'
 import {
   openCreatePatientPopup as sharedOpenCreatePatientPopup,
-  loadPatients as loadPatientsShared,
   checkOverlapShared,
   goBack as sharedGoBack,
   startReprogramShared,
@@ -422,7 +422,10 @@ const bonuses = ref([])
 const bonusesLoading = ref(false)
 const pendingCreditPayments = ref([])
 const pendingCreditPaymentsLoading = ref(false)
+const loadingPatientCollections = ref(false)
+const loadedCollectionsPatientId = ref(null)
 const appointmentPayments = ref([])
+const appointmentBonusPayments = ref([])
 const appointmentCreditUsages = ref([])
 const appointmentCoveredAmount = ref(0)
 const issuingInvoice = ref(false)
@@ -517,6 +520,12 @@ const sortedAppointmentPayments = computed(() => {
     _key: `pay-${p.id}`,
     _date: new Date(p.paid_at || p.created_at || 0).getTime(),
   }))
+  const bonusPaymentItems = appointmentBonusPayments.value.map(p => ({
+    ...p,
+    _type: 'bonus_payment',
+    _key: `bpay-${p.id}`,
+    _date: new Date(p.paid_at || p.created_at || 0).getTime(),
+  }))
   const creditItems = appointmentCreditUsages.value
     .filter(c => !c.reversed_at)
     .map(c => ({
@@ -525,7 +534,7 @@ const sortedAppointmentPayments = computed(() => {
       _key: `cu-${c.id}`,
       _date: new Date(c.created_at || 0).getTime(),
     }))
-  return [...paymentItems, ...creditItems].sort((a, b) => b._date - a._date)
+  return [...paymentItems, ...bonusPaymentItems, ...creditItems].sort((a, b) => b._date - a._date)
 })
 
 const hasSelectedPatient = computed(() => {
@@ -675,6 +684,15 @@ function appointmentPaymentMethodLabel(method) {
   return creditMethodLabel(method)
 }
 
+function appointmentPaymentConceptLabel(concept) {
+  const map = {
+    appointment: 'Cita',
+    package: 'Bono',
+    credit: 'Adelanto',
+  }
+  return map[String(concept || '')] || '—'
+}
+
 function paymentApplicationStatusLabel(payment) {
   const concept = String(payment?.concept || '')
   if (concept !== 'credit') return 'Aplicado'
@@ -794,16 +812,42 @@ async function onPatientChange() {
       form.patient_id = ''
     }
   }
-  // Load all bonuses for the selected patient so user can choose
-  if (form.patient_id && form.patient_id !== '__create') {
-    await loadBonusesForPatient(form.patient_id)
-    await loadPendingCreditPaymentsForPatient(form.patient_id)
-  } else {
+  if (!form.patient_id || form.patient_id === '__create') {
     bonuses.value = []
     pendingCreditPayments.value = []
+    loadedCollectionsPatientId.value = null
     selectBonus.value = false
     form.use_bonus_id = ''
     form.use_credit_payment_id = ''
+  }
+}
+
+async function loadPatientCollections(patientId, force = false) {
+  const normalizedId = patientId ? String(patientId) : ''
+  if (!normalizedId || normalizedId === '__create') {
+    bonuses.value = []
+    pendingCreditPayments.value = []
+    loadedCollectionsPatientId.value = null
+    return
+  }
+
+  if (!force && loadedCollectionsPatientId.value === normalizedId) {
+    return
+  }
+
+  if (loadingPatientCollections.value) {
+    return
+  }
+
+  loadingPatientCollections.value = true
+  try {
+    await Promise.all([
+      loadBonusesForPatient(normalizedId),
+      loadPendingCreditPaymentsForPatient(normalizedId),
+    ])
+    loadedCollectionsPatientId.value = normalizedId
+  } finally {
+    loadingPatientCollections.value = false
   }
 }
 
@@ -856,8 +900,81 @@ async function loadPendingCreditPaymentsForPatient(patientId) {
 // openCreatePatientPopup moved to shared/formHelpers
 
 
-async function loadPatients() {
-  patients.value = await loadPatientsShared(api)
+async function loadFormBootstrap({ appointmentId = null, patientId = null } = {}) {
+  const params = {}
+
+  if (appointmentId) {
+    params.appointment_id = Number(appointmentId)
+  }
+
+  if (patientId) {
+    params.patient_id = Number(patientId)
+  }
+
+  const res = await api.get('/appointments/form-bootstrap', { params })
+  const data = res.data?.data ?? {}
+
+  patients.value = Array.isArray(data.patients) ? data.patients : []
+  bonuses.value = Array.isArray(data.bonuses) ? data.bonuses : []
+  pendingCreditPayments.value = Array.isArray(data.pending_credit_payments) ? data.pending_credit_payments : []
+
+  const effectivePatientId = Number(
+    data?.appointment?.patient_id
+    || patientId
+    || 0
+  )
+  loadedCollectionsPatientId.value = effectivePatientId > 0 ? String(effectivePatientId) : null
+
+  return data
+}
+
+async function applyAppointmentData(data) {
+  appointmentPayments.value = Array.isArray(data?.payments) ? data.payments : []
+  appointmentBonusPayments.value = Array.isArray(data?.bonus_payments) ? data.bonus_payments : []
+  appointmentCreditUsages.value = Array.isArray(data?.credit_usages) ? data.credit_usages : []
+  form.patient_id = data.patient_id || ''
+  form.status = data.status || 'scheduled'
+
+  if (mode.value === 'reprogram') {
+    form.status = 'rescheduled'
+  }
+
+  isCanceled.value = (data.status === 'canceled' || data.status === 'cancelled')
+  originalStart.value = data.start_time || null
+
+  if (originalStart.value) {
+    const startMs = new Date(originalStart.value).getTime()
+    canReprogramInForm.value = Date.now() < (startMs - (1 * 60 * 60 * 1000))
+  } else {
+    canReprogramInForm.value = false
+  }
+
+  form.start_time = toDatetimeLocalValue(data.start_time)
+  form.end_time = toDatetimeLocalValue(data.end_time)
+  originalStartLocal.value = form.start_time || ''
+  originalEndLocal.value = form.end_time || ''
+  form.notes = data.notes || ''
+  form.price = data.price != null ? Number(data.price) : ''
+  appointmentInvoiceId.value = data.invoice_id ? Number(data.invoice_id) : null
+  appointmentPaymentStatus.value = String(data.payment_status || '')
+
+  const currentPrice = Number(data.price || 0)
+  const pendingFromApi = Number(data.pending_payment_amount || 0)
+  if (Number.isFinite(currentPrice) && currentPrice > 0 && Number.isFinite(pendingFromApi) && pendingFromApi >= 0) {
+    appointmentCoveredAmount.value = Number(Math.max(currentPrice - pendingFromApi, 0).toFixed(2))
+  } else {
+    appointmentCoveredAmount.value = 0
+  }
+
+  const bid = data.use_bonus_id || data.bonus_id
+  if (bid) {
+    form.use_bonus_id = bid
+    selectBonus.value = true
+  }
+
+  if (data.payment_type) {
+    form.payment_type = data.payment_type
+  }
 }
 
 async function suggestCreateBonus() {
@@ -1146,53 +1263,13 @@ async function loadForEdit(id) {
   try {
     const res = await api.get(`/appointments/${id}`)
     const data = res.data
-    appointmentPayments.value = Array.isArray(data?.payments) ? data.payments : []
-    appointmentCreditUsages.value = Array.isArray(data?.credit_usages) ? data.credit_usages : []
-    form.patient_id = data.patient_id || ''
-    form.status = data.status || 'scheduled'
-    // If opened in reprogram mode, default the status to 'rescheduled'
-    if (mode.value === 'reprogram') {
-      form.status = 'rescheduled'
-    }
-    isCanceled.value = (data.status === 'canceled' || data.status === 'cancelled')
-    originalStart.value = data.start_time || null
-    // allow reprogram only if now < start_time - 2 hours
-    if (originalStart.value) {
-      const startMs = new Date(originalStart.value).getTime()
-      canReprogramInForm.value = Date.now() < (startMs - (1 * 60 * 60 * 1000))
-    } else {
-      canReprogramInForm.value = false
-    }
-    form.start_time = toDatetimeLocalValue(data.start_time)
-    form.end_time = toDatetimeLocalValue(data.end_time)
-    originalStartLocal.value = form.start_time || ''
-    originalEndLocal.value = form.end_time || ''
-    form.notes = data.notes || ''
-    form.price = data.price != null ? Number(data.price) : ''
-    appointmentInvoiceId.value = data.invoice_id ? Number(data.invoice_id) : null
-    appointmentPaymentStatus.value = String(data.payment_status || '')
-    const currentPrice = Number(data.price || 0)
-    const pendingFromApi = Number(data.pending_payment_amount || 0)
-    if (Number.isFinite(currentPrice) && currentPrice > 0 && Number.isFinite(pendingFromApi) && pendingFromApi >= 0) {
-      appointmentCoveredAmount.value = Number(Math.max(currentPrice - pendingFromApi, 0).toFixed(2))
-    } else {
-      appointmentCoveredAmount.value = 0
-    }
-    // Load bonuses for this patient so we can show the associated bonus if any
+    await applyAppointmentData(data)
     if (form.patient_id) {
-      await loadBonusesForPatient(form.patient_id)
-      // backend may return either use_bonus_id or bonus_id
-      const bid = data.use_bonus_id || data.bonus_id
-      if (bid) {
-        form.use_bonus_id = bid
-        selectBonus.value = true
-      }
-      if (data.payment_type) {
-        form.payment_type = data.payment_type
-      }
+      await loadPatientCollections(form.patient_id, true)
     }
   } catch (e) {
     appointmentPayments.value = []
+    appointmentBonusPayments.value = []
     appointmentCreditUsages.value = []
     console.error('Error cargando cita para edición', e)
     if (e.response && e.response.status === 404) router.push('/appointments/day')
@@ -1202,21 +1279,34 @@ async function loadForEdit(id) {
 }
 
 onMounted(async () => {
+  loading.value = true
   const id = route.params.id
-  if (id) {
-    isEdit.value = true
-    await loadForEdit(id)
-  }
-  // Load patients list first so we can preselect patient from query
-  await loadPatients()
-
-  // If opened with ?patient_id=..., preselect that patient for creation
   const preselect = route.query.patient_id
-  if (!isEdit.value && preselect) {
-    form.patient_id = String(preselect)
-    // Load bonuses for the preselected patient
-    await loadBonusesForPatient(form.patient_id)
-    await loadPendingCreditPaymentsForPatient(form.patient_id)
+
+  try {
+    const bootstrap = await loadFormBootstrap({
+      appointmentId: id ? Number(id) : null,
+      patientId: !id && preselect ? Number(preselect) : null,
+    })
+
+    if (id) {
+      isEdit.value = true
+      if (bootstrap?.appointment) {
+        await applyAppointmentData(bootstrap.appointment)
+      } else {
+        await loadForEdit(id)
+      }
+    } else if (preselect) {
+      form.patient_id = String(preselect)
+    }
+  } catch (e) {
+    // Fallback: mantener comportamiento anterior si falla bootstrap
+    if (id) {
+      isEdit.value = true
+      await loadForEdit(id)
+    }
+  } finally {
+    loading.value = false
   }
 
   // Pre-fill start/end from query params (e.g. coming from a free gap or week cell)
@@ -1229,11 +1319,12 @@ onMounted(async () => {
 // When selecting patient, load bonuses for that patient
 watch(() => form.patient_id, (id) => {
   if (id && id !== '__create') {
-    loadBonusesForPatient(id)
-    loadPendingCreditPaymentsForPatient(id)
+    loadPatientCollections(id)
     return
   }
 
+  loadedCollectionsPatientId.value = null
+  bonuses.value = []
   pendingCreditPayments.value = []
   form.use_credit_payment_id = ''
   form.apply_credit = false
@@ -1269,11 +1360,6 @@ watch(() => showPaymentTab.value, (visible) => {
   if (!visible && activeTab.value === 'payment') {
     activeTab.value = 'session'
   }
-})
-
-// When toggling 'selectBonus', ensure bonuses are loaded
-watch(() => selectBonus.value, (v) => {
-  if (v && form.patient_id) loadBonusesForPatient(form.patient_id)
 })
 
 // keep mode in sync with route query

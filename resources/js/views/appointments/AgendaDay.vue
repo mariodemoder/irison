@@ -122,7 +122,7 @@ const router = useRouter()
 const route = useRoute()
 const appointments = ref([])
 const loading = ref(false)
-const date = ref(new Date().toISOString().slice(0,10))
+const date = ref(localIsoDate())
 const isAllMode = computed(() => String(route.query.all || '') === '1')
 const query = ref('')
 const paymentFilter = ref('')
@@ -141,6 +141,14 @@ const dayLabel = computed(() => {
   const d = new Date(`${date.value}T00:00:00`)
   return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
 })
+
+function localIsoDate() {
+  const now = new Date()
+  const yyyy = now.getFullYear()
+  const mm = String(now.getMonth() + 1).padStart(2, '0')
+  const dd = String(now.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
 
 
 function setMode(all) {

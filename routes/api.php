@@ -64,6 +64,7 @@ Route::middleware(['auth:sanctum', 'clinic', 'clinic.active'])->group(function (
     Route::post('bonuses/{bonus}/invoice', [\App\Http\Controllers\Api\BonusController::class, 'issueInvoice']);
 
     // Citas: CRUD multitenant
+    Route::get('appointments/form-bootstrap', [AppointmentController::class, 'formBootstrap']);
     Route::apiResource('appointments', AppointmentController::class);
 
     // Dashboard: resumen agregado para minimizar llamadas del frontend

@@ -110,6 +110,20 @@ class AppointmentService
         }
 
         $appointment->load(['bonus', 'patient', 'creditUsages', 'payments']);
+
+        $bonusPayments = collect();
+        if ((string) $appointment->payment_status === 'covered_by_pack' && !empty($appointment->bonus_id)) {
+            $bonusPayments = Payment::query()
+                ->where('clinic_id', (int) $appointment->clinic_id)
+                ->where('patient_id', (int) $appointment->patient_id)
+                ->where('concept', 'package')
+                ->where('package_id', (int) $appointment->bonus_id)
+                ->orderByDesc('paid_at')
+                ->orderByDesc('id')
+                ->get();
+        }
+
+        $appointment->setAttribute('bonus_payments', $bonusPayments->values());
         return $this->attachPendingPaymentAmount($appointment);
     }
 
