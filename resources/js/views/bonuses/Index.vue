@@ -38,8 +38,8 @@
 
       <template v-else>
         <div class="list-header">
-          <div>Fecha</div>
           <div>Número</div>
+          <div>Fecha</div>
           <div>Paciente</div>
           <div>Bono</div>
           <div>Sesiones</div>
@@ -52,8 +52,8 @@
 
         <div class="list">
           <div v-for="bonus in bonuses" :key="bonus.id" class="payment-row">
-            <div>{{ formatDateOnlyDay(bonus.created_at) }}</div>
             <div>{{ bonus.counter || '—' }}</div>
+            <div>{{ formatDateOnlyDay(bonus.created_at) }}</div>
             <div>
               <router-link v-if="bonus.patient?.id" :to="`/patients/${bonus.patient.id}`" class="patient-link">
                 {{ bonus.patient?.counter ? `${bonus.patient.counter} · ` : '' }}{{ bonus.patient?.name ?? `Paciente #${bonus.patient_id}` }}
@@ -67,13 +67,31 @@
             <div><span class="status" :class="bonus.status">{{ statusLabel(bonus.status) }}</span></div>
             <div><span class="status" :class="bonus.is_paid ? 'completed' : 'pending'">{{ bonus.is_paid ? 'Pagado' : 'Impago' }}</span></div>
             <div>
-              <router-link
-                v-if="bonus.invoice_id"
-                :to="`/invoices/${bonus.invoice_id}`"
-                class="invoice-link"
-              >
-                Ver factura
-              </router-link>
+              <div v-if="bonus.invoice_id" class="pdf-actions">
+                <button
+                  type="button"
+                  class="pdf-btn"
+                  title="Vista previa PDF"
+                  @click.stop="previewPdf(bonus)"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="pdf-icon">
+                    <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"></path>
+                    <circle cx="12" cy="12" r="2.5"></circle>
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  class="pdf-btn"
+                  title="Descargar PDF"
+                  @click.stop="downloadPdf(bonus)"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="pdf-icon">
+                    <path d="M12 4v11"></path>
+                    <path d="M8.5 11.5L12 15l3.5-3.5"></path>
+                    <path d="M5 19h14"></path>
+                  </svg>
+                </button>
+              </div>
               <button
                 v-else
                 type="button"
@@ -160,6 +178,46 @@ function statusLabel(status) {
   return status || '—'
 }
 
+function invoiceDownloadName(bonus) {
+  const suffix = String(bonus?.invoice_id || bonus?.id || 'factura').replace(/[^a-zA-Z0-9_-]/g, '_')
+  return `factura-${suffix}.pdf`
+}
+
+async function previewPdf(bonus) {
+  const invoiceId = Number(bonus?.invoice_id || 0)
+  if (!invoiceId) return
+
+  try {
+    const res = await api.get(`/documents/${invoiceId}/pdf`, { responseType: 'blob' })
+    const file = new Blob([res.data], { type: 'application/pdf' })
+    const fileUrl = URL.createObjectURL(file)
+    window.open(fileUrl, '_blank', 'noopener,noreferrer')
+    setTimeout(() => URL.revokeObjectURL(fileUrl), 60000)
+  } catch (e) {
+    toast.error('No se pudo abrir el PDF de la factura')
+  }
+}
+
+async function downloadPdf(bonus) {
+  const invoiceId = Number(bonus?.invoice_id || 0)
+  if (!invoiceId) return
+
+  try {
+    const res = await api.get(`/documents/${invoiceId}/pdf`, { responseType: 'blob' })
+    const file = new Blob([res.data], { type: 'application/pdf' })
+    const fileUrl = URL.createObjectURL(file)
+    const link = document.createElement('a')
+    link.href = fileUrl
+    link.download = invoiceDownloadName(bonus)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    setTimeout(() => URL.revokeObjectURL(fileUrl), 60000)
+  } catch (e) {
+    toast.error('No se pudo descargar el PDF de la factura')
+  }
+}
+
 async function load(page = 1) {
   loading.value = true
   try {
@@ -236,8 +294,8 @@ onMounted(async () => {
 .summary { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; color:#374151; font-size:14px }
 
 .list { display:flex; flex-direction:column; gap:8px }
-.list-header { display:grid; grid-template-columns: 1.2fr 1.1fr 1.8fr 1.4fr 1fr 1fr 1fr 1.1fr 1fr 1.2fr; gap:10px; color:#6b7280; font-size:13px; font-weight:600; padding:6px 10px }
-.payment-row { display:grid; grid-template-columns: 1.2fr 1.1fr 1.8fr 1.4fr 1fr 1fr 1fr 1.1fr 1fr 1.2fr; gap:10px; background:#fff; border:1px solid #eef2ff22; border-radius:10px; padding:10px; align-items:center; font-size:13px }
+.list-header { display:grid; grid-template-columns: 1.1fr 1.2fr 1.8fr 1.4fr 1fr 1fr 1fr 1.1fr 1fr 1.2fr; gap:10px; color:#6b7280; font-size:13px; font-weight:600; padding:6px 10px }
+.payment-row { display:grid; grid-template-columns: 1.1fr 1.2fr 1.8fr 1.4fr 1fr 1fr 1fr 1.1fr 1fr 1.2fr; gap:10px; background:#fff; border:1px solid #eef2ff22; border-radius:10px; padding:10px; align-items:center; font-size:13px }
 
 .status { padding:5px 8px; border-radius:9999px; font-weight:700; text-transform:capitalize; font-size:11px; white-space:nowrap; display:inline-block }
 .status.completed { background:#dcfce7; color:#166534 }
@@ -252,6 +310,11 @@ onMounted(async () => {
 
 .invoice-link { color: var(--secondary); text-decoration: none; font-weight: 600 }
 .invoice-link:hover { text-decoration: underline }
+
+.pdf-btn { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:8px; border:1px solid #bfdbfe; background:#eff6ff; color:#1d4ed8 }
+.pdf-btn:hover { background:#dbeafe; border-color:#93c5fd }
+.pdf-icon { width:14px; height:14px; display:block }
+.pdf-actions { display:flex; gap:6px; align-items:center }
 
 .secondary { padding:6px 10px; border-radius:8px; border:1px solid #e5e7eb; background:#fff; font-size:12px; font-weight:600; cursor:pointer }
 .secondary:disabled { opacity:0.55; cursor:not-allowed }

@@ -10,7 +10,7 @@
         <div class="search-center">
           <div class="search-wrapper">
             <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-            <input v-model="query" placeholder="Buscar pacientes por nombre, NIF, teléfono o email" class="search-input" />
+            <input v-model="query" placeholder="Buscar pacientes por numero, nombre, NIF, teléfono o email" class="search-input" />
           </div>
         </div>
 
@@ -22,6 +22,8 @@
       <div v-else>
         
         <div class="list-header">
+          <div>Número</div>
+          <div>Fecha</div>
           <div>Paciente</div>
           <div>Teléfono</div>
           <div>Email</div>
@@ -30,8 +32,10 @@
 
         <div class="list">
           <div v-for="p in filteredPatients" :key="p.id" class="patient-row" role="button" tabindex="0" @click="goToPatient(p.id)" @keydown.enter="goToPatient(p.id)">
+            <div class="row-col row-number">{{ p.counter ?? '—' }}</div>
+            <div class="row-col">{{ formatDateOnlyDay(p.created_at) }}</div>
             <div class="row-left">
-              <div class="row-name">{{ p.counter ? `${p.counter} · ` : '' }}{{ p.name }}</div>
+              <div class="row-name">{{ p.name }}</div>
               <div class="row-sub">{{ p.nif ?? '—' }}</div>
             </div>
             <div class="row-col">{{ p.phone ?? '—' }}</div>
@@ -70,6 +74,7 @@ import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
 import AppLoading from '../../components/AppLoading.vue'
 import EmptyIndexState from '../../components/EmptyIndexState.vue'
+import { formatDateOnlyDay } from '../../shared/dateHelpers'
 
 const patients = ref([])
 const meta = ref(null)
@@ -96,7 +101,7 @@ const filteredPatients = computed(() => {
       return true
     }
 
-    return [p.name, p.nif, p.phone, p.email].some((f) => f && String(f).toLowerCase().includes(q))
+    return [p.counter, p.name, p.nif, p.phone, p.email].some((f) => f && String(f).toLowerCase().includes(q))
   })
 })
 
@@ -181,13 +186,14 @@ function goToPatient(id) {
 
 
 .list { display:flex; flex-direction:column; gap:8px }
-.list-header { display:grid; grid-template-columns: 2fr 1fr 1fr auto; gap:12px; align-items:center; padding:8px 14px; color:#6b7280; font-weight:600; font-size:13px }
-.patient-row { display:grid; grid-template-columns: 2fr 1fr 1fr auto; gap:12px; align-items:center; background:#fff; padding:12px 14px; border-radius:10px; text-decoration:none; color:inherit; border:1px solid #eef2ff22 }
+.list-header { display:grid; grid-template-columns: 120px 1.1fr 2fr 1fr 1fr auto; gap:12px; align-items:center; padding:8px 14px; color:#6b7280; font-weight:600; font-size:13px }
+.patient-row { display:grid; grid-template-columns: 120px 1.1fr 2fr 1fr 1fr auto; gap:12px; align-items:center; background:#fff; padding:12px 14px; border-radius:10px; text-decoration:none; color:inherit; border:1px solid #eef2ff22 }
 .patient-row:hover { box-shadow: 0 10px 24px rgba(2,6,23,0.06); transform: translateY(-2px) }
 .row-left { display:flex; flex-direction:column }
 .row-name { font-weight:600; font-size:15px }
 .row-sub { color:#6b7280; font-size:13px }
 .row-col { color:#374151; font-size:13px }
+.row-number { font-weight:600 }
 .row-action { display:flex; align-items:center; justify-content:center; color:#6b7280 }
 .empty { color:#6b7280; padding:12px; text-align:center }
 

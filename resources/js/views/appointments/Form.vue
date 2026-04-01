@@ -7,7 +7,7 @@
             <h1>{{ isEdit ? 'Editar cita' : 'Nueva cita' }}</h1>
             <p class="form-sub">{{ isEdit ? 'Modifica la fecha, hora y notas de la cita.' : 'Crea una nueva cita.' }}</p>
           </div>
-          <button type="button" class="muted" @click.prevent="cancel">Volver</button>
+          <button type="button" class="muted back-btn" @click.prevent="cancel">Volver</button>
         </div>
 
         <form class="grid-form" @submit.prevent="submit">
@@ -105,12 +105,13 @@
               <div class="billing-preview-amount"><strong>Importe:</strong> {{ billingAmountLabel }}</div>
             </div>
 
-            <div v-if="!isCoveredByBonus" style="margin-top:12px">
+            <div v-if="!isCoveredByBonus" style="margin-top:12px; display:flex; flex-direction:column; gap:6px; width:100%">
               <label class="label">Detalle de facturación</label>
               <textarea
-                v-model="form.billing_detail"
+                v-model="invoiceNotesDraft"
                 class="textarea"
                 rows="2"
+                style="width:100%; box-sizing:border-box"
                 placeholder="Detalle que aparecerá en la factura (deja vacío para usar las notas de la cita)"
                 :disabled="isCanceled && mode !== 'reprogram'"
               ></textarea>
@@ -403,7 +404,8 @@ const router = useRouter()
 const route = useRoute()
 const isEdit = ref(false)
 const mode = ref(route.query.mode || null)
-const form = reactive({ patient_id: '', status: 'scheduled', start_time: '', end_time: '', notes: '', billing_detail: '', price: '', use_bonus_id: '', use_credit_payment_id: '', bonus_notes: '', bonus_name: '', payment_type: 'single', apply_credit: false, apply_credit_mode: 'auto', apply_credit_amount: '' })
+const form = reactive({ patient_id: '', status: 'scheduled', start_time: '', end_time: '', notes: '', price: '', use_bonus_id: '', use_credit_payment_id: '', bonus_notes: '', bonus_name: '', payment_type: 'single', apply_credit: false, apply_credit_mode: 'auto', apply_credit_amount: '' })
+const invoiceNotesDraft = ref('')
 const applyCreditConfirmed = ref(false)
 
 const statusOptions = [
@@ -581,7 +583,7 @@ const bonusInvoiceId = computed(() => {
 
 const billingDetailLabel = computed(() => {
   if (!isCoveredByBonus.value) {
-    return form.billing_detail || form.notes || '—'
+    return invoiceNotesDraft.value || form.notes || '—'
   }
 
   const selectedBonusName = selectedBonus.value?.name || form.bonus_name || ''
@@ -965,7 +967,7 @@ async function applyAppointmentData(data) {
   originalStartLocal.value = form.start_time || ''
   originalEndLocal.value = form.end_time || ''
   form.notes = data.notes || ''
-  form.billing_detail = data.billing_detail || ''
+  invoiceNotesDraft.value = form.notes || ''
   form.price = data.price != null ? Number(data.price) : ''
   appointmentInvoiceId.value = data.invoice_id ? Number(data.invoice_id) : null
   appointmentPaymentStatus.value = String(data.payment_status || '')
@@ -1195,7 +1197,10 @@ async function emitInvoice() {
   const toast = useToast()
 
   try {
-    const res = await api.post(`/appointments/${route.params.id}/invoice`)
+    const invoiceNotes = String(invoiceNotesDraft.value || '').trim() || String(form.notes || '').trim() || undefined
+    const res = await api.post(`/appointments/${route.params.id}/invoice`, {
+      notes: invoiceNotes,
+    })
     const documentId = res.data?.data?.id
 
     toast.success(res.data?.message || 'Factura emitida correctamente')
@@ -1391,7 +1396,7 @@ watch(() => route.params.id, (id) => {
     form.start_time = ''
     form.end_time = ''
     form.notes = ''
-    form.billing_detail = ''
+    invoiceNotesDraft.value = ''
     form.price = ''
     form.use_bonus_id = ''
     form.use_credit_payment_id = ''
@@ -1508,7 +1513,6 @@ async function submit(payNow = false) {
       start_time: form.start_time,
       end_time: form.end_time,
       notes: form.notes,
-      billing_detail: form.billing_detail || undefined,
       price: effectiveSessionPrice.value > 0 ? Number(effectiveSessionPrice.value) : undefined,
       payment_type: form.payment_type === 'credit' ? 'single' : form.payment_type,
       use_bonus_id: form.use_bonus_id || undefined,
@@ -1534,7 +1538,7 @@ async function submit(payNow = false) {
       if (estimatedCreditApplied > 0) {
         toast.info(`Se aplicaron ${estimatedCreditApplied.toFixed(2)}€ de crédito.`)
       }
-      router.push('/appointments/day')
+      router.push(`/appointments/${route.params.id}`)
     } else {
       // If user selected 'bonus' as payment type but there are no bonuses, block and show error
       if (form.payment_type === 'bonus' && selectableBonuses.value.length === 0 && !payload.bonus_id) {
@@ -1550,12 +1554,16 @@ async function submit(payNow = false) {
       }
 
       const res = await api.post('/appointments', payload)
-      const createdId = res && res.data ? res.data.id : undefined
+      const createdId = Number(res?.data?.id || res?.data?.data?.id || 0)
       toast.success('Cita creada')
       if (estimatedCreditApplied > 0) {
         toast.info(`Se aplicaron ${estimatedCreditApplied.toFixed(2)}€ de crédito.`)
       }
-      router.push('/appointments/day')
+      if (createdId > 0) {
+        router.push(`/appointments/${createdId}`)
+      } else {
+        router.push('/appointments/day')
+      }
     }
   } catch (e) {
     if (e.response) {

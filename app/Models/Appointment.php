@@ -26,7 +26,6 @@ class Appointment extends Model
         'price',
         'invoice_id',
         'notes',
-        'billing_detail',
         'payment_type',
         'bonus_id',
     ];

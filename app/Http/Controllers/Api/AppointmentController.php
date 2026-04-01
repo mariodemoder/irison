@@ -207,9 +207,14 @@ class AppointmentController extends Controller
     {
         Gate::authorize('issueInvoice', $appointment);
 
-        $user = $request->user();
+        $validated = $request->validate([
+            'notes' => 'nullable|string',
+        ]);
 
-        $result = $this->invoicingService->issueForAppointment($appointment, $user);
+        $user = $request->user();
+        $notes = isset($validated['notes']) ? (string) $validated['notes'] : null;
+
+        $result = $this->invoicingService->issueForAppointment($appointment, $user, $notes);
         $document = $result['document'];
         $created = (bool) $result['created'];
 

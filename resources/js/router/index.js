@@ -15,6 +15,7 @@ import AppointmentsForm from '../views/appointments/Form.vue'
 import AppointmentsShow from '../views/appointments/Show.vue'
 import PaymentsIndex from '../views/payments/Index.vue'
 import PaymentsForm from '../views/payments/Form.vue'
+import PaymentsShow from '../views/payments/Show.vue'
 import InvoicesIndex from '../views/invoices/Index.vue'
 import InvoicesShow from '../views/invoices/Show.vue'
 import BonusesIndex from '../views/bonuses/Index.vue'
@@ -26,6 +27,7 @@ const routes = [
   { path: '/profile', component: Profile, meta: { auth: true } },
   { path: '/payments', component: PaymentsIndex, meta: { auth: true } },
   { path: '/payments/create', component: PaymentsForm, meta: { auth: true } },
+  { path: '/payments/:id', component: PaymentsShow, meta: { auth: true } },
   { path: '/payments/:id/edit', component: PaymentsForm, meta: { auth: true } },
   { path: '/invoices', component: InvoicesIndex, meta: { auth: true } },
   { path: '/invoices/:id', component: InvoicesShow, meta: { auth: true } },

@@ -8,48 +8,53 @@
             <span class="status" :class="effectiveStatus">{{ statusLabel(effectiveStatus) }}</span>
           </h1>
           <div class="header-right">
-            <div class="header-top-right">
-              <button class="muted" @click="back">Volver</button>
-              <div v-if="hasQuickActions" class="quick-actions" ref="quickActionsRef">
-                <button
-                  type="button"
-                  class="muted quick-trigger"
-                  @click="toggleQuickActions"
-                  :disabled="cancelling || submitting"
-                  aria-label="Acciones"
-                  title="Acciones"
-                >
-                  <svg class="quick-trigger-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <circle cx="12" cy="5" r="1.8" fill="currentColor" />
-                    <circle cx="12" cy="12" r="1.8" fill="currentColor" />
-                    <circle cx="12" cy="19" r="1.8" fill="currentColor" />
-                  </svg>
-                </button>
-                <div v-if="quickActionsOpen" class="quick-menu">
-                  <span
-                    v-if="canShowReprogramAction"
-                    class="quick-item-wrap"
-                    :title="!canReprogram ? reprogramTooltipMessage : ''"
-                  >
-                    <button
-                      type="button"
-                      class="quick-item"
-                      @click.prevent="runReprogram"
-                      :disabled="!canReprogram || submitting"
-                      :aria-label="!canReprogram ? `${reprogramTooltipMessage}. Reprogramar` : 'Reprogramar'"
-                    >
-                      Reprogramar
-                    </button>
-                  </span>
+            <div class="header-actions">
+              <template v-if="appointment.status !== 'canceled'">
+                <router-link :to="`/appointments/${appointment.id}/edit`" class="primary" style="padding:6px 12px;font-size:13px">Editar</router-link>
+              </template>
+              <div class="back-menu-group">
+                <button class="muted back-btn" @click="back">Volver</button>
+                <div v-if="hasQuickActions" class="quick-actions" ref="quickActionsRef">
                   <button
-                    v-if="canShowCancelAction"
                     type="button"
-                    class="quick-item danger"
-                    @click.prevent="runCancel"
-                    :disabled="cancelling"
+                    class="muted quick-trigger menu-right-btn"
+                    @click="toggleQuickActions"
+                    :disabled="cancelling || submitting"
+                    aria-label="Acciones"
+                    title="Acciones"
                   >
-                    Cancelar Cita
+                    <svg class="quick-trigger-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                      <circle cx="12" cy="5" r="1.8" fill="currentColor" />
+                      <circle cx="12" cy="12" r="1.8" fill="currentColor" />
+                      <circle cx="12" cy="19" r="1.8" fill="currentColor" />
+                    </svg>
                   </button>
+                  <div v-if="quickActionsOpen" class="quick-menu">
+                    <span
+                      v-if="canShowReprogramAction"
+                      class="quick-item-wrap"
+                      :title="!canReprogram ? reprogramTooltipMessage : ''"
+                    >
+                      <button
+                        type="button"
+                        class="quick-item"
+                        @click.prevent="runReprogram"
+                        :disabled="!canReprogram || submitting"
+                        :aria-label="!canReprogram ? `${reprogramTooltipMessage}. Reprogramar` : 'Reprogramar'"
+                      >
+                        Reprogramar
+                      </button>
+                    </span>
+                    <button
+                      v-if="canShowCancelAction"
+                      type="button"
+                      class="quick-item danger"
+                      @click.prevent="runCancel"
+                      :disabled="cancelling"
+                    >
+                      Cancelar Cita
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -107,13 +112,7 @@
             </div></div>
             <div v-else class="value">—</div>
           </div>
-          <div class="actions action-row">
-            <div class="left-actions">
-              <template v-if="appointment.status !== 'canceled'">
-                <router-link :to="`/appointments/${appointment.id}/edit`" class="primary">Editar</router-link>
-              </template>
-            </div>
-          </div>
+
         </div>
       </div>
     </div>
@@ -346,7 +345,8 @@ onBeforeUnmount(() => {
 /* Header layout: title left, status+actions right on one line */
 .show-header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px }
 .header-right { display:flex; align-items:flex-start; }
-.header-top-right { display:flex; flex-direction:column; align-items:flex-end; gap:6px }
+.header-actions { display:flex; gap:8px; align-items:center }
+.header-top-right { display:flex; align-items:center; gap:0 }
 .field { margin-top:12px }
 .label { font-weight:600; margin-bottom:6px }
 .value { padding:10px; background:#f8fafc; border-radius:8px }
@@ -354,7 +354,7 @@ onBeforeUnmount(() => {
 .action-row { display:flex; justify-content:space-between; align-items:center }
 .left-actions { display:flex; gap:12px; align-items:center }
 .primary { padding: 8px 16px; font-size: 14px; border-radius: 9999px; border: 2px solid #3b82f6; color: #3b82f6; background: #ffffff; font-weight: 600 }
-.quick-trigger { width:40px; height:40px; padding:0; display:inline-flex; align-items:center; justify-content:center }
+.quick-trigger { padding:11px 12px; display:inline-flex; align-items:center; justify-content:center }
 .quick-trigger-icon { width:18px; height:18px; color:#4b5563 }
 .quick-actions { position:relative }
 .quick-menu { position:absolute; right:0; top:calc(100% + 6px); min-width:180px; background:#fff; border:1px solid #e5e7eb; border-radius:10px; box-shadow:0 10px 24px rgba(2,6,23,0.10); padding:6px; display:flex; flex-direction:column; gap:4px; z-index:20 }

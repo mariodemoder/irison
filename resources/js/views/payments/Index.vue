@@ -43,8 +43,8 @@
 
       <template v-else>
         <div class="list-header">
-          <div>Fecha</div>
           <div>Número</div>
+          <div>Fecha</div>
           <div>Paciente</div>
           <div>Importe</div>
           <div>Concepto</div>
@@ -56,9 +56,9 @@
 
         <div class="list">
           <div v-for="pay in payments" :key="pay.id" class="payment-row">
-            <div>{{ formatDateOnlyDay(pay.created_at) }}</div>
             <div>{{ pay.counter || '—' }}</div>
-                <router-link v-if="pay.patient?.id" :to="`/patients/${pay.patient.id}`" class="patient-link">
+            <div>{{ formatDateOnlyDay(pay.created_at) }}</div>
+            <router-link v-if="pay.patient?.id" :to="`/patients/${pay.patient.id}`" class="patient-link">
                 {{ pay.patient?.counter ? `${pay.patient.counter} · ` : '' }}{{ pay.patient?.name ?? `Paciente #${pay.patient_id}` }}
               </router-link>
             <div>{{ formatCurrency(pay.amount) }}</div>
@@ -238,8 +238,8 @@ onMounted(async () => {
 .summary { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; color:#374151; font-size:14px }
 
 .list { display:flex; flex-direction:column; gap:8px }
-.list-header { display:grid; grid-template-columns: 1.3fr 1.1fr 2fr 1fr 1.2fr 1fr 1fr 1fr 120px; gap:10px; color:#6b7280; font-size:13px; font-weight:600; padding:6px 10px }
-.payment-row { display:grid; grid-template-columns: 1.3fr 1.1fr 2fr 1fr 1.2fr 1fr 1fr 1fr 120px; gap:10px; background:#fff; border:1px solid #eef2ff22; border-radius:10px; padding:10px; align-items:center; font-size:13px }
+.list-header { display:grid; grid-template-columns: 1.1fr 1.3fr 2fr 1fr 1.2fr 1fr 1fr 1fr 120px; gap:10px; color:#6b7280; font-size:13px; font-weight:600; padding:6px 10px }
+.payment-row { display:grid; grid-template-columns: 1.1fr 1.3fr 2fr 1fr 1.2fr 1fr 1fr 1fr 120px; gap:10px; background:#fff; border:1px solid #eef2ff22; border-radius:10px; padding:10px; align-items:center; font-size:13px }
 
 .status { padding:5px 8px; border-radius:9999px; font-weight:700; text-transform:capitalize; font-size:11px }
 .status.applied { background:#dcfce7; color:#166534 }

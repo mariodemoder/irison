@@ -75,3 +75,8 @@ vendor\bin\phpunit
 
 - Si haces cambios de esquema, ejecuta `php artisan migrate`.
 - Si cambias frontend, reinicia `npm run dev` si Vite no refleja cambios.
+
+## ☁️ Despliegue Linux/Cloud
+
+- Guía principal de servidor: `docs/deployment/linux-cloud.md`
+- Toda modificación de comandos Linux, configuración de servicios, permisos, SSL, colas, cron, storage o despliegue debe registrarse en la sección **Bitácora de cambios** de ese documento.

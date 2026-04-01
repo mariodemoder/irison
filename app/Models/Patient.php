@@ -69,6 +69,11 @@ class Patient extends Model
         return $this->hasMany(CreditUsage::class);
     }
 
+    public function patientImages(): HasMany
+    {
+        return $this->hasMany(PatientImage::class);
+    }
+
     public function creditUsed(): float
     {
         return (float) $this->creditUsages()

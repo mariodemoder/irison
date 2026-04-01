@@ -16,11 +16,15 @@ class InvoicingService
     /**
      * @return array{document: Document, created: bool}
      */
-    public function issueForAppointment(Appointment $appointment, User $user): array
+    public function issueForAppointment(Appointment $appointment, User $user, ?string $notes = null): array
     {
         $created = false;
+        $normalizedNotes = is_string($notes) ? trim($notes) : null;
+        if ($normalizedNotes === '') {
+            $normalizedNotes = null;
+        }
 
-        $document = DB::transaction(function () use ($appointment, $user, &$created) {
+        $document = DB::transaction(function () use ($appointment, $user, $normalizedNotes, &$created) {
             if (!empty($appointment->invoice_id)) {
                 $existingByLink = Document::query()->find((int) $appointment->invoice_id);
                 if ($existingByLink) {
@@ -70,7 +74,7 @@ class InvoicingService
                 'patient_zip' => $patient?->zip,
                 'date' => now()->toDateString(),
                 'amount' => (float) ($appointment->price ?? 0),
-                'notes' => $appointment->billing_detail ?? $appointment->notes,
+                'notes' => $normalizedNotes ?? $appointment->notes,
                 'status' => 'issued',
             ]);
 

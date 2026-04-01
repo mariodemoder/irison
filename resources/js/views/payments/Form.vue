@@ -747,17 +747,20 @@ async function submit() {
   }
 
   try {
+    let savedPaymentId = 0
+
     if (isEdit.value) {
-      await api.put(`/payments/${route.params.id}`, payload)
+      const res = await api.put(`/payments/${route.params.id}`, payload)
+      savedPaymentId = Number(res?.data?.id || route.params.id || 0)
       toast.success('Pago actualizado')
     } else {
-      await api.post('/payments', payload)
+      const res = await api.post('/payments', payload)
+      savedPaymentId = Number(res?.data?.id || res?.data?.data?.id || 0)
       toast.success('Pago creado')
     }
 
-    // If coming from appointment form, navigate back to appointment
-    if (comingFromAppointment.value && form.appointment_id) {
-      router.push(`/appointments/${form.appointment_id}`)
+    if (savedPaymentId > 0) {
+      router.push(`/payments/${savedPaymentId}`)
     } else {
       router.push('/payments')
     }

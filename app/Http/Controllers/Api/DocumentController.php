@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Appointment;
 use App\Models\Bonus;
 use App\Models\Document;
+use App\Models\Payment;
 use App\Services\Documents\InvoicingService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
@@ -33,7 +35,7 @@ class DocumentController extends Controller
         ]);
 
         $perPage = (int) ($validated['per_page'] ?? 15);
-        $query = Document::query()->with(['patient:id,first_name,last_name,nif']);
+        $query = Document::query()->with(['patient:id,counter,first_name,last_name,nif']);
 
         if (!empty($validated['q'])) {
             $term = trim((string) $validated['q']);
@@ -66,7 +68,60 @@ class DocumentController extends Controller
             ->paginate($perPage)
             ->appends($request->query());
 
-        $rows = collect($paginator->items())->map(function (Document $document) {
+        $documentsCollection = collect($paginator->items());
+        $appointmentIds = $documentsCollection
+            ->filter(fn (Document $document) => $document->type === Document::TYPE_INVOICE && $document->type_from === 'appointment' && !empty($document->from_id))
+            ->map(fn (Document $document) => (int) $document->from_id)
+            ->unique()
+            ->values();
+
+        $packageIds = $documentsCollection
+            ->filter(fn (Document $document) => $document->type === Document::TYPE_INVOICE && $document->type_from === 'package' && !empty($document->from_id))
+            ->map(fn (Document $document) => (int) $document->from_id)
+            ->unique()
+            ->values();
+
+        $appointmentPaymentStatuses = $appointmentIds->isEmpty()
+            ? collect()
+            : Appointment::query()
+                ->whereIn('id', $appointmentIds)
+                ->pluck('payment_status', 'id');
+
+        $bonuses = $packageIds->isEmpty()
+            ? collect()
+            : Bonus::query()
+                ->whereIn('id', $packageIds)
+                ->get(['id', 'price'])
+                ->keyBy('id');
+
+        $packagePaymentRows = $packageIds->isEmpty()
+            ? collect()
+            : Payment::query()
+                ->whereIn('package_id', $packageIds)
+                ->where('concept', 'package')
+                ->whereIn('status', ['completed', 'pending'])
+                ->selectRaw("package_id, SUM(CASE WHEN status = 'completed' THEN amount ELSE 0 END) as completed_amount, SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) as pending_amount")
+                ->groupBy('package_id')
+                ->get()
+                ->keyBy('package_id');
+
+        $packagePaymentStatuses = $packageIds->mapWithKeys(function (int $packageId) use ($bonuses, $packagePaymentRows) {
+            $bonus = $bonuses->get($packageId);
+            $price = (float) ($bonus?->price ?? 0);
+            $row = $packagePaymentRows->get($packageId);
+            $completedAmount = (float) ($row?->completed_amount ?? 0);
+            $pendingAmount = (float) ($row?->pending_amount ?? 0);
+
+            return [$packageId => $this->resolveBonusPaymentStatus($price, $completedAmount, $pendingAmount)];
+        });
+
+        $rows = $documentsCollection->map(function (Document $document) use ($appointmentPaymentStatuses, $packagePaymentStatuses) {
+            $paymentStatus = $this->resolveDocumentPaymentStatus(
+                $document,
+                $appointmentPaymentStatuses,
+                $packagePaymentStatuses
+            );
+
             return [
                 'id' => $document->id,
                 'counter' => $document->counter,
@@ -74,6 +129,7 @@ class DocumentController extends Controller
                 'date' => $document->date,
                 'amount' => (float) $document->amount,
                 'status' => $document->status,
+                'payment_status' => $paymentStatus,
                 'typeinvoice' => $document->typeinvoice,
                 'patient_nif' => $document->patient_nif,
                 'patient_full_name' => $document->patient_full_name,
@@ -108,9 +164,10 @@ class DocumentController extends Controller
     {
         Gate::authorize('view', $document);
 
-        $document->load(['patient:id,first_name,last_name,nif,email,phone,address,zip']);
+        $document->load(['patient:id,counter,first_name,last_name,nif,email,phone,address,zip']);
         $originDocument = $this->resolveOriginDocument($document);
         $rectificationDocument = $this->resolveRectificationDocument($document);
+        $paymentStatus = $this->resolveDocumentPaymentStatus($document);
 
         return response()->json([
             'id' => $document->id,
@@ -129,6 +186,7 @@ class DocumentController extends Controller
             'date' => $document->date,
             'amount' => (float) $document->amount,
             'status' => $document->status,
+            'payment_status' => $paymentStatus,
             'notes' => $document->notes,
             'patient_id' => $document->patient_id,
             'patient_nif' => $document->patient_nif,
@@ -187,7 +245,7 @@ class DocumentController extends Controller
     {
         Gate::authorize('view', $document);
 
-        $document->load(['patient:id,first_name,last_name,nif,email,phone,address,zip']);
+        $document->load(['patient:id,counter,first_name,last_name,nif,email,phone,address,zip']);
         $clinic = $request->user()?->clinic;
         $originDocument = $this->resolveOriginDocument($document);
 
@@ -230,6 +288,66 @@ class DocumentController extends Controller
         return Document::query()
             ->select(['id', 'counter', 'type', 'type_from', 'from_id', 'typeinvoice'])
             ->find((int) $document->from_id);
+    }
+
+    private function resolveDocumentPaymentStatus(
+        Document $document,
+        $appointmentPaymentStatuses = null,
+        $packagePaymentStatuses = null
+    ): ?string {
+        if ($document->type !== Document::TYPE_INVOICE) {
+            return $document->status;
+        }
+
+        if ($document->type_from === 'appointment' && !empty($document->from_id)) {
+            $appointmentId = (int) $document->from_id;
+            $resolved = $appointmentPaymentStatuses instanceof \Illuminate\Support\Collection
+                ? $appointmentPaymentStatuses->get($appointmentId)
+                : Appointment::query()->where('id', $appointmentId)->value('payment_status');
+
+            return $resolved ? (string) $resolved : $document->status;
+        }
+
+        if ($document->type_from === 'package' && !empty($document->from_id)) {
+            $packageId = (int) $document->from_id;
+
+            if ($packagePaymentStatuses instanceof \Illuminate\Support\Collection && $packagePaymentStatuses->has($packageId)) {
+                return (string) $packagePaymentStatuses->get($packageId);
+            }
+
+            $bonus = Bonus::query()->find($packageId, ['id', 'price']);
+            if (!$bonus) {
+                return $document->status;
+            }
+
+            $paymentTotals = Payment::query()
+                ->where('package_id', $packageId)
+                ->where('concept', 'package')
+                ->whereIn('status', ['completed', 'pending'])
+                ->selectRaw("SUM(CASE WHEN status = 'completed' THEN amount ELSE 0 END) as completed_amount, SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) as pending_amount")
+                ->first();
+
+            return $this->resolveBonusPaymentStatus(
+                (float) ($bonus->price ?? 0),
+                (float) ($paymentTotals?->completed_amount ?? 0),
+                (float) ($paymentTotals?->pending_amount ?? 0)
+            );
+        }
+
+        return $document->status;
+    }
+
+    private function resolveBonusPaymentStatus(float $price, float $completedAmount, float $pendingAmount): string
+    {
+        if ($completedAmount <= 0 && $pendingAmount <= 0) {
+            return 'pending';
+        }
+
+        if ($price > 0 && $completedAmount >= $price && $pendingAmount <= 0) {
+            return 'paid';
+        }
+
+        return 'partially_paid';
     }
 
     private function resolveRectificationDocument(Document $document): ?Document

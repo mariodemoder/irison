@@ -123,6 +123,23 @@ button[disabled],
 .muted { padding:8px 14px; border-radius:9999px; border:1px solid #e5e7eb; background:#fff; cursor:pointer }
 .muted:hover { background:#f9fafb }
 
+/* Back buttons: rounded on the left, squared on the right */
+.muted.back-btn {
+	border-radius: 9999px 0 0 9999px !important;
+}
+
+/* Right-side menu buttons: squared on the left, rounded on the right */
+.muted.menu-right-btn {
+	border-radius: 0 9999px 9999px 0 !important;
+	margin-left: 7px;
+}
+
+.back-menu-group {
+	display: inline-flex;
+	align-items: center;
+	gap: 0;
+}
+
 /* Warning variant — subtle orange used for destructive/attention actions */
 .warning {
 	padding: 8px 16px;

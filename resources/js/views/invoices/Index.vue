@@ -36,8 +36,8 @@
         <div class="list-header">
           <div>Número</div>
           <div>Fecha</div>
-          <div>Tipo</div>
           <div>Paciente</div>
+          <div>Tipo</div>
           <div>Importe</div>
           <div>Estado de pago</div>
           <div>PDF</div>
@@ -55,6 +55,15 @@
           >
             <div>{{ doc.counter }}</div>
             <div>{{ formatDateOnlyDay(doc.date || doc.created_at) }}</div>
+            <router-link
+              v-if="doc.patient?.id"
+              :to="`/patients/${doc.patient.id}`"
+              class="patient-link"
+              @click.stop
+            >
+              {{ patientLabel(doc) }}
+            </router-link>
+            <div v-else>{{ patientLabel(doc) }}</div>
             <div>
               <span class="type-chip">
                 <svg v-if="doc.typeinvoice === 'package'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="type-icon">
@@ -72,9 +81,8 @@
                 <span>{{ typeInvoiceLabel(doc) }}</span>
               </span>
             </div>
-            <div>{{ patientLabel(doc) }}</div>
             <div>{{ formatCurrency(doc.amount) }}</div>
-            <div><span class="status" :class="doc.status">{{ statusLabel(doc.status) }}</span></div>
+            <div><span class="status" :class="paymentStatusClass(doc)">{{ statusLabel(paymentStatusValue(doc)) }}</span></div>
             <div class="pdf-actions">
               <button
                 type="button"
@@ -156,10 +164,23 @@ function formatCurrency(value) {
 }
 
 function statusLabel(status) {
+  if (status === 'covered_by_pack') return 'Cubierta por bono'
+  if (status === 'partially_paid') return 'Parcialmente pagada'
+  if (status === 'paid') return 'Pagada'
+  if (status === 'pending') return 'Pendiente'
   if (status === 'issued') return 'Pagado'
   if (status === 'draft') return 'Pendiente'
   if (status === 'cancelled') return 'Cancelado'
   return status || '—'
+}
+
+function paymentStatusValue(doc) {
+  return String(doc?.payment_status || doc?.status || '')
+}
+
+function paymentStatusClass(doc) {
+  const status = paymentStatusValue(doc)
+  return status === 'paid' ? 'issued' : status
 }
 
 function typeInvoiceLabel(doc) {
@@ -178,12 +199,13 @@ function typeInvoiceLabel(doc) {
 }
 
 function patientLabel(doc) {
-  const nif = String(doc?.patient_nif || doc?.patient?.nif || '').trim()
+  const counter = String(doc?.patient?.counter || '').trim()
   const name = String(doc?.patient_full_name || doc?.patient?.name || '').trim()
+  const prefix = counter ? `${counter} · ` : ''
 
-  if (nif && name) return `${nif} - ${name}`
-  if (name) return name
-  if (nif) return nif
+  if (name) return `${prefix}${name}`
+  if (doc?.patient_id) return `${prefix}Paciente #${doc.patient_id}`
+  if (prefix) return prefix.slice(0, -3)
   return 'Paciente sin datos'
 }
 
@@ -293,9 +315,16 @@ onMounted(async () => {
 .pdf-icon { width:14px; height:14px; display:block }
 .pdf-actions { display:flex; gap:6px; align-items:center }
 
+.patient-link { color: var(--secondary); text-decoration: none; font-weight: 600 }
+.patient-link:hover { text-decoration: underline }
+
 .status { padding:5px 8px; border-radius:9999px; font-weight:700; text-transform:capitalize; font-size:11px }
 .status.issued { background:#dcfce7; color:#166534 }
+.status.paid { background:#dcfce7; color:#166534 }
 .status.draft { background:#fef3c7; color:#92400e }
+.status.pending { background:#fef3c7; color:#92400e }
+.status.partially_paid { background:#dbeafe; color:#1e40af }
+.status.covered_by_pack { background:#dbeafe; color:#1e40af }
 .status.cancelled { background:#f3f4f6; color:#374151 }
 
 .empty { color:#6b7280; padding:12px }

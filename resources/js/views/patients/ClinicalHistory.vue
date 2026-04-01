@@ -31,7 +31,7 @@
                 <path d="M5 19h14"></path>
               </svg>
             </button>
-            <button class="muted" @click.prevent="goBack">Volver</button>
+            <button class="muted back-btn" @click.prevent="goBack">Volver</button>
           </div>
         </div>
 

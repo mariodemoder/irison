@@ -6,20 +6,49 @@
           <div>
             <h1>Paciente e Historial</h1>
           </div>
-          <p></p>
-          <div style="display:flex;gap:8px">
+          <div class="header-actions">
             <button class="primary" @click.prevent="goEdit" style="padding:6px 12px;font-size:13px">Editar</button>
-            <button class="primary" @click.prevent="viewHistory" style="padding:6px 12px;font-size:13px">Ver Historia Clínica</button>
-            <button class="action-btn" @click.prevent="confirmDelete" style="padding:6px 12px;font-size:13px;display:flex;gap:6px;align-items:center">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:14px;height:14px">
-                <path d="M3 6h18"></path>
-                <path d="M8 6V4h8v2"></path>
-                <path d="M19 6l-1 14H6L5 6"></path>
-                <path d="M10 11v6M14 11v6"></path>
-              </svg>
-              <span>Eliminar</span>
-            </button>
-            <button class="muted" @click.prevent="goBack">Volver</button>
+            <div class="back-menu-group">
+              <button class="muted back-btn" @click.prevent="goBack">Volver</button>
+              <div class="quick-actions" ref="quickActionsRef">
+                <button
+                  type="button"
+                  class="muted quick-trigger menu-right-btn"
+                  @click="toggleQuickActions"
+                  aria-label="Acciones"
+                  title="Acciones"
+                >
+                  <svg class="quick-trigger-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <circle cx="12" cy="5" r="1.8" fill="currentColor" />
+                    <circle cx="12" cy="12" r="1.8" fill="currentColor" />
+                    <circle cx="12" cy="19" r="1.8" fill="currentColor" />
+                  </svg>
+                </button>
+                <div v-if="quickActionsOpen" class="quick-menu">
+                  <button
+                    type="button"
+                    class="quick-item"
+                    @click.prevent="runViewHistory"
+                  >
+                    Historia Clinica
+                  </button>
+                  <button
+                    type="button"
+                    class="quick-item"
+                    @click.prevent="runAttachImages"
+                  >
+                    Imagenes
+                  </button>
+                  <button
+                    type="button"
+                    class="quick-item danger"
+                    @click.prevent="runDelete"
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         <br>
@@ -40,6 +69,10 @@
 
           <div class="card">
             <div class="card-row"><strong>Email: </strong>{{ patient?.email ?? '—' }}</div>
+          </div>
+
+          <div class="card">
+            <div class="card-row"><strong>Edad: </strong>{{ patientAgeLabel }}</div>
           </div>
 
           <div class="card full">
@@ -116,13 +149,188 @@
           </div>
         </div>
       </div>
+
+      <div v-if="attachImagesModalOpen" class="modal-backdrop" @click.self="closeAttachImagesModal">
+        <div class="attach-modal" role="dialog" aria-modal="true" aria-label="Adjuntar archivos">
+          <div class="attach-modal-head">
+            <h3>Adjuntar archivos</h3>
+            <button type="button" class="attach-modal-close" @click="closeAttachImagesModal" :disabled="uploadingImages">✕</button>
+          </div>
+
+          <p class="attach-modal-sub">Puedes cargar imágenes o PDF de hasta 200 KB por archivo, con un máximo total de 6 archivos por paciente.</p>
+
+          <div v-if="attachImagesError" class="attach-modal-error">{{ attachImagesError }}</div>
+
+          <div class="attach-section-title">Archivos cargados</div>
+          <AppLoading v-if="loadingExistingImages" compact message="Cargando archivos..." />
+          <div v-else-if="existingImages.length === 0" class="attach-empty">No hay archivos cargados.</div>
+          <div v-else class="existing-images-grid">
+            <div v-for="img in existingImages" :key="img.id" class="existing-image-tile">
+              <div class="existing-image-preview-wrap">
+                <img
+                  v-if="isImageFile(img) && img.url"
+                  :src="img.url"
+                  alt="Archivo clínico"
+                  class="existing-image-preview"
+                  role="button"
+                  tabindex="0"
+                  title="Ver archivo"
+                  @click="openImagePreview(img)"
+                  @keydown.enter.prevent="openImagePreview(img)"
+                />
+                <button
+                  v-else
+                  type="button"
+                  class="existing-file-fallback"
+                  title="Ver archivo"
+                  @click="openImagePreview(img)"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="existing-file-icon">
+                    <path d="M7 3h8l4 4v14H7z"></path>
+                    <path d="M15 3v4h4"></path>
+                    <path d="M10 12h4"></path>
+                    <path d="M10 16h6"></path>
+                  </svg>
+                  <span class="existing-file-kind">PDF</span>
+                </button>
+                <div class="existing-image-overlay">
+                  <div class="existing-image-caption">{{ img.description || 'Sin descripción' }}</div>
+                  <div class="existing-image-actions">
+                    <button
+                      type="button"
+                      class="icon-action-btn overlay-btn"
+                      :disabled="!img.url"
+                      title="Ver archivo"
+                      @click="openImagePreview(img)"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="icon-action-svg">
+                        <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"></path>
+                        <circle cx="12" cy="12" r="2.5"></circle>
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      class="icon-action-btn danger overlay-btn"
+                      :disabled="uploadingImages || deletingExistingImageId === img.id"
+                      :title="deletingExistingImageId === img.id ? 'Eliminando...' : 'Eliminar archivo'"
+                      @click="deleteExistingImage(img)"
+                    >
+                      <span v-if="deletingExistingImageId === img.id">…</span>
+                      <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="icon-action-svg">
+                        <path d="M3 6h18"></path>
+                        <path d="M8 6V4h8v2"></path>
+                        <path d="M19 6l-1 14H6L5 6"></path>
+                        <path d="M10 11v6M14 11v6"></path>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="attach-section-title" style="margin-top:12px">Cargar nuevos</div>
+          <div class="attach-limit-note">{{ existingImages.length }} de {{ MAX_ATTACHMENTS_TOTAL }} archivos usados</div>
+
+          <div class="attach-items">
+            <div v-for="(row, index) in attachImageRows" :key="row.id" class="attach-row">
+              <div class="attach-field">
+                <label>Descripción</label>
+                <input
+                  v-model="row.description"
+                  type="text"
+                  class="attach-input"
+                  placeholder="Ej.: Radiografía inicial"
+                  :disabled="uploadingImages"
+                />
+              </div>
+
+              <div class="attach-field">
+                <label>Archivo</label>
+                <input
+                  :id="`patient-image-file-${row.id}`"
+                  type="file"
+                  class="attach-file-input"
+                  accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,image/*,application/pdf"
+                  :disabled="uploadingImages"
+                  @change="onAttachFileChange($event, index)"
+                />
+                <label
+                  :for="`patient-image-file-${row.id}`"
+                  class="attach-file-trigger"
+                  :class="{ disabled: uploadingImages }"
+                >
+                  Seleccionar archivo
+                </label>
+                <div class="attach-file-name">{{ row.fileName || 'Sin archivo seleccionado' }}</div>
+              </div>
+
+              <button
+                type="button"
+                class="attach-remove"
+                :disabled="uploadingImages || attachImageRows.length === 1"
+                @click="removeAttachRow(index)"
+                title="Eliminar fila"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+
+          <div class="attach-actions">
+            <button
+              type="button"
+              class="muted"
+              :disabled="uploadingImages || remainingAttachSlots <= attachImageRows.length"
+              @click="addAttachRow"
+            >
+              + Agregar archivo
+            </button>
+            <button type="button" class="primary" :disabled="uploadingImages" @click="submitAttachImages">
+              {{ uploadingImages ? 'Subiendo...' : 'Subir archivos' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="imagePreviewOpen && selectedImage" class="image-preview-backdrop" @click.self="closeImagePreview">
+        <div class="image-preview-modal" role="dialog" aria-modal="true" aria-label="Vista previa de archivo">
+          <div class="image-preview-head">
+            <div class="image-preview-title">{{ selectedImage.description || 'Archivo clínico' }}</div>
+            <button type="button" class="attach-modal-close" @click="closeImagePreview">✕</button>
+          </div>
+
+          <div class="image-preview-body">
+            <img v-if="isImageFile(selectedImage)" :src="selectedImage.url" :alt="selectedImage.description || 'Archivo clínico'" class="image-preview-full" />
+            <iframe v-else :src="selectedImage.url" title="Vista previa PDF" class="pdf-preview-frame"></iframe>
+          </div>
+
+          <div class="image-preview-actions">
+            <button type="button" class="preview-action-btn" title="Descargar archivo" @click="downloadSelectedImage">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="preview-action-icon">
+                <path d="M12 4v11"></path>
+                <path d="M8.5 11.5L12 15l3.5-3.5"></path>
+                <path d="M5 19h14"></path>
+              </svg>
+            </button>
+            <button type="button" class="preview-action-btn" title="Imprimir archivo" @click="printSelectedImage">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="preview-action-icon">
+                <path d="M7 9V4h10v5"></path>
+                <rect x="4" y="9" width="16" height="8" rx="2"></rect>
+                <path d="M7 14h10v6H7z"></path>
+                <path d="M16 12h.01"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </MainLayout>
 </template>
 
 <script setup>
 import MainLayout from '../../layouts/MainLayout.vue'
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue'
 import PatientBonuses from '../../components/PatientBonuses.vue'
 import { formatTime, formatDateShort, statusLabel } from '../../shared/appointmentHelpers'
 import { useRoute, useRouter } from 'vue-router'
@@ -141,6 +349,24 @@ const payments = ref([])
 const loading = ref(false)
 const showCanceledAppointments = ref(false)
 const showCompletedPayments = ref(false)
+const quickActionsOpen = ref(false)
+const quickActionsRef = ref(null)
+const attachImagesModalOpen = ref(false)
+const attachImagesError = ref('')
+const uploadingImages = ref(false)
+const loadingExistingImages = ref(false)
+const deletingExistingImageId = ref(null)
+const existingImages = ref([])
+const attachImageRows = ref([{ id: 1, description: '', file: null, fileName: '' }])
+const imagePreviewOpen = ref(false)
+const selectedImage = ref(null)
+const MAX_ATTACHMENTS_TOTAL = 6
+const MAX_FILE_SIZE_BYTES = 200 * 1024
+const ALLOWED_UPLOAD_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf']
+
+const existingAttachmentsCount = computed(() => existingImages.value.length)
+
+const remainingAttachSlots = computed(() => Math.max(0, MAX_ATTACHMENTS_TOTAL - existingAttachmentsCount.value))
 
 const filteredAppointments = computed(() => {
   if (showCanceledAppointments.value) return appointments.value
@@ -169,6 +395,23 @@ const totalPaymentsAmount = computed(() => {
   return sortedPayments.value.reduce((sum, pay) => sum + Number(pay?.amount || 0), 0)
 })
 
+const patientAgeLabel = computed(() => {
+  const birthDate = patient.value?.birth_date
+  if (!birthDate) return '—'
+
+  const parsedBirthDate = new Date(`${birthDate}T00:00:00`)
+  if (Number.isNaN(parsedBirthDate.getTime())) return '—'
+
+  const today = new Date()
+  let age = today.getFullYear() - parsedBirthDate.getFullYear()
+  const hasHadBirthdayThisYear =
+    today.getMonth() > parsedBirthDate.getMonth() ||
+    (today.getMonth() === parsedBirthDate.getMonth() && today.getDate() >= parsedBirthDate.getDate())
+
+  if (!hasHadBirthdayThisYear) age -= 1
+  return age >= 0 ? `${age} años` : '—'
+})
+
 async function loadPatient() {
   loading.value = true
   try {
@@ -187,7 +430,14 @@ async function loadPatient() {
   }
 }
 
-onMounted(() => loadPatient())
+onMounted(() => {
+  loadPatient()
+  document.addEventListener('click', handleClickOutsideQuickActions)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleClickOutsideQuickActions)
+})
 
 watch(() => route.params.id, (id) => {
   if (id) loadPatient()
@@ -203,6 +453,272 @@ function viewHistory() {
   if (patient.value && patient.value.id) {
     router.push({ path: `/patients/${patient.value.id}/history` })
   }
+}
+
+function attachImages() {
+  if (!patient.value || !patient.value.id) return
+  attachImagesError.value = ''
+  attachImageRows.value = [createAttachRow()]
+  attachImagesModalOpen.value = true
+  loadPatientImages()
+}
+
+function createAttachRow() {
+  return { id: Date.now() + Math.floor(Math.random() * 1000), description: '', file: null, fileName: '' }
+}
+
+function isPdfFile(fileLike) {
+  return String(fileLike?.mime_type || fileLike?.file?.type || '').toLowerCase() === 'application/pdf'
+}
+
+function isImageFile(fileLike) {
+  return String(fileLike?.mime_type || fileLike?.file?.type || '').toLowerCase().startsWith('image/')
+}
+
+function closeAttachImagesModal() {
+  if (uploadingImages.value) return
+  attachImagesModalOpen.value = false
+  closeImagePreview()
+}
+
+function openImagePreview(image) {
+  if (!image?.url) return
+  selectedImage.value = image
+  imagePreviewOpen.value = true
+}
+
+function closeImagePreview() {
+  imagePreviewOpen.value = false
+  selectedImage.value = null
+}
+
+function selectedImageDownloadName() {
+  const description = String(selectedImage.value?.description || '').trim()
+  const extension = isPdfFile(selectedImage.value) ? 'pdf' : 'jpg'
+  if (description) {
+    return `${description.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '') || 'archivo_clinico'}.${extension}`
+  }
+
+  const id = selectedImage.value?.id
+  return id ? `archivo_clinico_${id}.${extension}` : `archivo_clinico.${extension}`
+}
+
+function downloadSelectedImage() {
+  if (!selectedImage.value?.url) return
+  const link = document.createElement('a')
+  link.href = selectedImage.value.url
+  link.download = selectedImageDownloadName()
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
+function printSelectedImage() {
+  if (!selectedImage.value?.url) return
+
+  if (isPdfFile(selectedImage.value)) {
+    const pdfWindow = window.open(selectedImage.value.url, '_blank')
+    if (!pdfWindow) return
+    pdfWindow.onload = () => {
+      pdfWindow.focus()
+      pdfWindow.print()
+    }
+    return
+  }
+
+  const printWindow = window.open('', '_blank', 'width=980,height=700')
+  if (!printWindow) return
+
+  const safeTitle = String(selectedImage.value?.description || 'Archivo clínico').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const safeUrl = String(selectedImage.value.url).replace(/"/g, '&quot;')
+
+  printWindow.document.write(`<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>${safeTitle}</title>
+    <style>
+      body { margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #fff; }
+      img { max-width: 100vw; max-height: 100vh; object-fit: contain; }
+      @media print {
+        body { margin: 0; }
+      }
+    </style>
+  </head>
+  <body>
+    <img src="${safeUrl}" alt="${safeTitle}" />
+  </body>
+</html>`)
+  printWindow.document.close()
+  printWindow.focus()
+
+  printWindow.onload = () => {
+    printWindow.print()
+  }
+}
+
+function addAttachRow() {
+  if (remainingAttachSlots.value <= attachImageRows.value.length) return
+  attachImageRows.value.push(createAttachRow())
+}
+
+function removeAttachRow(index) {
+  if (attachImageRows.value.length === 1) return
+  attachImageRows.value.splice(index, 1)
+}
+
+function onAttachFileChange(event, index) {
+  const file = event?.target?.files?.[0] || null
+  if (!file) {
+    attachImageRows.value[index].file = null
+    attachImageRows.value[index].fileName = ''
+    return
+  }
+
+  attachImageRows.value[index].file = file
+  attachImageRows.value[index].fileName = file.name
+}
+
+async function loadPatientImages() {
+  if (!patient.value?.id) return
+
+  loadingExistingImages.value = true
+  try {
+    const res = await api.get(`/patients/${patient.value.id}/images`)
+    existingImages.value = Array.isArray(res?.data?.data) ? res.data.data : []
+
+    if (remainingAttachSlots.value <= 0) {
+      attachImageRows.value = [createAttachRow()]
+    } else if (attachImageRows.value.length > remainingAttachSlots.value) {
+      attachImageRows.value = attachImageRows.value.slice(0, remainingAttachSlots.value)
+    }
+  } catch (e) {
+    existingImages.value = []
+    attachImagesError.value = 'No se pudieron cargar los archivos existentes.'
+  } finally {
+    loadingExistingImages.value = false
+  }
+}
+
+async function deleteExistingImage(image) {
+  if (!patient.value?.id || !image?.id) return
+
+  attachImagesError.value = ''
+  deletingExistingImageId.value = image.id
+
+  try {
+    const confirm = await Swal.fire({
+      title: 'Eliminar archivo',
+      text: '¿Seguro que deseas eliminar este archivo?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+    })
+
+    if (!confirm.isConfirmed) return
+
+    await api.delete(`/patients/${patient.value.id}/images/${image.id}`)
+
+    const toast = useToast()
+    toast.success('Archivo eliminado correctamente')
+
+    await loadPatientImages()
+  } catch (e) {
+    attachImagesError.value = e?.response?.data?.message || 'No se pudo eliminar el archivo.'
+  } finally {
+    deletingExistingImageId.value = null
+  }
+}
+
+function validateAttachRows() {
+  if (attachImageRows.value.length === 0) {
+    return 'Debes agregar al menos un archivo.'
+  }
+
+  if (existingAttachmentsCount.value + attachImageRows.value.length > MAX_ATTACHMENTS_TOTAL) {
+    return 'Solo se permiten hasta 6 archivos por paciente.'
+  }
+
+  for (const row of attachImageRows.value) {
+    const description = String(row.description || '').trim()
+    if (!description) return 'Todos los archivos requieren descripción.'
+
+    if (!row.file) return 'Todas las filas requieren un archivo.'
+
+    if (!ALLOWED_UPLOAD_MIME_TYPES.includes(String(row.file.type || '').toLowerCase())) {
+      return 'Solo se permiten imágenes o archivos PDF.'
+    }
+
+    if (Number(row.file.size || 0) > MAX_FILE_SIZE_BYTES) {
+      return 'Cada archivo debe pesar como máximo 200 KB.'
+    }
+  }
+
+  return ''
+}
+
+async function submitAttachImages() {
+  if (!patient.value?.id) return
+
+  const validationMessage = validateAttachRows()
+  if (validationMessage) {
+    attachImagesError.value = validationMessage
+    return
+  }
+
+  attachImagesError.value = ''
+  uploadingImages.value = true
+
+  try {
+    const formData = new FormData()
+
+    attachImageRows.value.forEach((row, index) => {
+      formData.append(`items[${index}][description]`, String(row.description || '').trim())
+      formData.append(`items[${index}][file]`, row.file)
+    })
+
+    const res = await api.post(`/patients/${patient.value.id}/images`, formData)
+    const toast = useToast()
+    toast.success(res?.data?.message || 'Archivos adjuntados correctamente')
+    attachImageRows.value = [createAttachRow()]
+    await loadPatientImages()
+  } catch (e) {
+    attachImagesError.value = e?.response?.data?.message || 'No se pudieron adjuntar los archivos.'
+  } finally {
+    uploadingImages.value = false
+  }
+}
+
+function toggleQuickActions() {
+  quickActionsOpen.value = !quickActionsOpen.value
+}
+
+function closeQuickActions() {
+  quickActionsOpen.value = false
+}
+
+function handleClickOutsideQuickActions(event) {
+  if (!quickActionsOpen.value) return
+  if (!quickActionsRef.value) return
+  if (!quickActionsRef.value.contains(event.target)) {
+    closeQuickActions()
+  }
+}
+
+function runViewHistory() {
+  closeQuickActions()
+  viewHistory()
+}
+
+function runAttachImages() {
+  closeQuickActions()
+  attachImages()
+}
+
+function runDelete() {
+  closeQuickActions()
+  confirmDelete()
 }
 
 function goBack() {
@@ -301,6 +817,14 @@ async function confirmDelete() {
 .form-card { width:100%; max-width:960px; background: #fff; border-radius:12px; box-shadow: 0 10px 30px rgba(2,6,23,0.06); padding:24px }
 .form-header h1 { margin:0; font-size:22px }
 .form-sub { color:#6b7280; font-size:13px; margin-top:6px }
+.header-actions { display:flex; gap:8px; align-items:center }
+.quick-trigger { padding:11px 12px; display:inline-flex; align-items:center; justify-content:center }
+.quick-trigger-icon { width:18px; height:18px; color:#4b5563 }
+.quick-actions { position:relative }
+.quick-menu { position:absolute; right:0; top:calc(100% + 6px); min-width:200px; background:#fff; border:1px solid #e5e7eb; border-radius:10px; box-shadow:0 10px 24px rgba(2,6,23,0.10); padding:6px; display:flex; flex-direction:column; gap:4px; z-index:30 }
+.quick-item { text-align:left; padding:8px 10px; border:1px solid transparent; background:#fff; border-radius:8px; font-size:14px; color:#111827 }
+.quick-item:hover { background:#f9fafb }
+.quick-item.danger { color:#b91c1c }
 
 .grid-display { display:grid; grid-template-columns: repeat(2,1fr); gap:12px }
 .card { background:#fafafa; padding:5px; border-radius:10px; border:1px solid #eef2ff22 }
@@ -353,4 +877,221 @@ async function confirmDelete() {
 }
 
 .mini-badge { display:inline-block; margin-top:6px; padding:6px 10px; background:#ecfdf5; color:#065f46; border-radius:9999px; font-size:13px; font-weight:700 }
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 90;
+  padding: 16px;
+}
+
+.attach-modal {
+  width: 100%;
+  max-width: 780px;
+  max-height: 85vh;
+  overflow: auto;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 24px 48px rgba(2, 6, 23, 0.2);
+}
+
+.attach-modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.attach-modal-head h3 { margin: 0; font-size: 18px }
+.attach-modal-close { border: none; background: transparent; font-size: 18px; cursor: pointer; color: #64748b }
+.attach-modal-sub { margin: 0 0 10px; color: #64748b; font-size: 13px }
+.attach-modal-error { margin-bottom: 10px; background:#fef2f2; border:1px solid #fecaca; color:#b91c1c; padding:8px 10px; border-radius:8px; font-size:13px }
+.attach-limit-note { margin: 0 0 10px; font-size: 12px; color: #64748b }
+
+.attach-items { display: flex; flex-direction: column; gap: 10px }
+.attach-row { border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px; display: grid; grid-template-columns: 1.2fr 1.2fr auto; gap: 10px; align-items: end }
+.attach-field { display: flex; flex-direction: column; gap: 6px }
+.attach-field label { font-size: 13px; font-weight: 600; color: #334155 }
+.attach-input { width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; box-sizing: border-box }
+.attach-file-input { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0 }
+.attach-file-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 20px;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  border: 1px solid #3b82f6;
+  color: #3b82f6;
+  background: #fff;
+  font-weight: 300;
+  font-size: 10px;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.attach-file-trigger:hover { background: #eff6ff }
+.attach-file-trigger.disabled { opacity: 0.55; cursor: not-allowed; pointer-events: none }
+.attach-file-name { font-size: 12px; color: #64748b }
+.attach-remove { border: 1px solid #fecaca; background: #fff1f2; color: #be123c; border-radius: 8px; padding: 10px; font-size: 13px; cursor: pointer }
+
+.attach-section-title { font-size: 13px; font-weight: 700; color: #334155; margin-bottom: 8px }
+.attach-empty { font-size: 13px; color: #64748b; padding: 8px 0 }
+.existing-images-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:10px; margin-bottom:10px }
+.existing-image-tile { border:1px solid #e5e7eb; border-radius:10px; overflow:hidden; background:#f8fafc }
+.existing-image-preview-wrap { position:relative; width:100%; aspect-ratio:1 / 1; overflow:hidden; background:#f8fafc }
+.existing-image-preview { width: 100%; height: 100%; object-fit: cover; display: block }
+.existing-image-preview:hover { opacity: 0.9 }
+.existing-file-fallback {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+  color: #1d4ed8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.existing-file-icon { width: 36px; height: 36px; display: block }
+.existing-file-kind { font-size: 12px; font-weight: 700; letter-spacing: 0.08em }
+.existing-image-overlay {
+  position:absolute;
+  inset:auto 0 0 0;
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:8px;
+  padding:10px;
+  background:linear-gradient(180deg, rgba(15,23,42,0) 0%, rgba(15,23,42,0.78) 72%, rgba(15,23,42,0.9) 100%);
+}
+.existing-image-caption {
+  flex:1;
+  font-size:12px;
+  color:#f8fafc;
+  line-height:1.3;
+  overflow:hidden;
+  line-clamp:2;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+}
+.existing-image-actions { display:flex; align-items:center; justify-content:flex-end; gap:8px; flex-shrink:0 }
+.icon-action-btn { width:32px; height:32px; border-radius:8px; border:1px solid #e5e7eb; background:#fff; color:#334155; display:inline-flex; align-items:center; justify-content:center; cursor:pointer }
+.icon-action-btn:hover:not(:disabled) { background:#f8fafc }
+.icon-action-btn:disabled { opacity:0.45; cursor:not-allowed }
+.icon-action-btn.danger { color:#be123c; border-color:#fecaca; background:#fff1f2 }
+.icon-action-btn.danger:hover:not(:disabled) { background:#ffe4e6 }
+.icon-action-svg { width:14px; height:14px; display:block }
+.overlay-btn { border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.14); color:#fff; backdrop-filter: blur(6px) }
+.overlay-btn:hover:not(:disabled) { background: rgba(255,255,255,0.24) }
+.overlay-btn.danger { border-color: rgba(254,202,202,0.4); background: rgba(190,24,93,0.2); color:#fff }
+.overlay-btn.danger:hover:not(:disabled) { background: rgba(190,24,93,0.32) }
+
+.attach-actions { margin-top: 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px }
+
+.image-preview-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 120;
+  padding: 16px;
+}
+
+.image-preview-modal {
+  width: min(980px, 100%);
+  max-height: calc(100vh - 32px);
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 24px 56px rgba(2, 6, 23, 0.45);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.image-preview-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.image-preview-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.image-preview-body {
+  padding: 10px;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-preview-full {
+  max-width: 100%;
+  max-height: calc(100vh - 220px);
+  object-fit: contain;
+  border-radius: 8px;
+}
+.pdf-preview-frame {
+  width: min(900px, 100%);
+  height: calc(100vh - 220px);
+  border: none;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.image-preview-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.preview-action-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #2563eb;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.preview-action-btn:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
+.preview-action-icon {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .attach-row { grid-template-columns: 1fr; }
+  .existing-image-preview-wrap { aspect-ratio: 4 / 3; }
+  .image-preview-full { max-height: calc(100vh - 240px); }
+  .pdf-preview-frame { height: calc(100vh - 240px); }
+}
 </style>

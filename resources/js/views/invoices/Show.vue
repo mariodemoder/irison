@@ -8,21 +8,54 @@
             <p class="form-sub">{{ documentSubheading }}</p>
           </div>
           <div class="header-actions">
-            <button type="button" class="pdf-btn" title="Vista previa PDF" @click.prevent="previewPdf" :disabled="!documentData?.id || loading">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="pdf-icon">
-                <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"></path>
-                <circle cx="12" cy="12" r="2.5"></circle>
-              </svg>
-            </button>
-            <button type="button" class="pdf-btn" title="Descargar PDF" @click.prevent="downloadPdf" :disabled="!documentData?.id || loading">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="pdf-icon">
-                <path d="M12 4v11"></path>
-                <path d="M8.5 11.5L12 15l3.5-3.5"></path>
-                <path d="M5 19h14"></path>
-              </svg>
-            </button>
-            <button v-if="showDocumentAction" type="button" class="muted" @click="handleDocumentAction" :disabled="documentActionDisabled">{{ documentActionLabel }}</button>
-            <button type="button" class="muted" @click="goBack">Volver</button>
+            <div class="back-menu-group">
+              <button type="button" class="muted back-btn" @click="goBack">Volver</button>
+              <div class="quick-actions" ref="quickActionsRef">
+                <button
+                  type="button"
+                  class="muted quick-trigger menu-right-btn"
+                  @click="toggleQuickActions"
+                  :disabled="!documentData?.id || loading"
+                  aria-label="Acciones"
+                  title="Acciones"
+                >
+                  <svg class="quick-trigger-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <circle cx="12" cy="5" r="1.8" fill="currentColor" />
+                    <circle cx="12" cy="12" r="1.8" fill="currentColor" />
+                    <circle cx="12" cy="19" r="1.8" fill="currentColor" />
+                  </svg>
+                </button>
+                <div v-if="quickActionsOpen" class="quick-menu">
+                  
+                  <button
+                    type="button"
+                    class="quick-item"
+                    @click.prevent="runPreviewPdf"
+                    :disabled="!documentData?.id || loading"
+                  >
+                    Ver PDF
+                  </button>
+                  <button
+                    type="button"
+                    class="quick-item"
+                    @click.prevent="runDownloadPdf"
+                    :disabled="!documentData?.id || loading"
+                  >
+                    Descargar PDF
+                  </button>
+
+                  <button
+                    v-if="showDocumentAction"
+                    type="button"
+                    class="quick-item"
+                    @click.prevent="runHandleAbono"
+                    :disabled="documentActionDisabled"
+                  >
+                    {{ documentActionLabel }}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -43,7 +76,7 @@
           <div class="field full"><label class="label">Detalle</label><div class="value">{{ documentData.notes || '—' }}</div></div>
 
           <div class="field"><label class="label">Importe</label><div class="value">{{ formatCurrency(documentData.amount) }}</div></div>
-          <div v-if="showPaymentStatus" class="field"><label class="label">Estado de pago</label><div class="value"><span class="status" :class="documentData.status">{{ statusLabel(documentData.status) }}</span></div></div>
+          <div v-if="showPaymentStatus" class="field"><label class="label">Estado de pago</label><div class="value"><span class="status" :class="paymentStatusClass">{{ statusLabel(paymentStatusValue) }}</span></div></div>
         </div>
 
         <div v-else class="alert-subtle">No se encontró la factura.</div>
@@ -53,7 +86,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
@@ -69,6 +102,8 @@ const router = useRouter()
 const loading = ref(false)
 const documentData = ref(null)
 const issuingAbono = ref(false)
+const quickActionsOpen = ref(false)
+const quickActionsRef = ref(null)
 
 const hasRectification = computed(() => Number(documentData.value?.rectification_document?.id || 0) > 0)
 
@@ -118,6 +153,23 @@ const showPaymentStatus = computed(() => {
   return documentData.value?.type !== 'abono'
 })
 
+const paymentActionLabel = computed(() => {
+  if (documentData.value?.type === 'abono') return ''
+  return isPaidDocument.value ? 'Ver Pago' : 'Pagar'
+})
+
+const paymentStatusValue = computed(() => {
+  return String(documentData.value?.payment_status || documentData.value?.status || '')
+})
+
+const paymentStatusClass = computed(() => {
+  return paymentStatusValue.value === 'paid' ? 'issued' : paymentStatusValue.value
+})
+
+const isPaidDocument = computed(() => {
+  return ['paid', 'issued', 'covered_by_pack'].includes(paymentStatusValue.value)
+})
+
 const clinicLocation = computed(() => {
   const zip = String(documentData.value?.clinic_zip || '').trim()
   const province = String(documentData.value?.clinic_province || '').trim()
@@ -132,6 +184,10 @@ function formatCurrency(value) {
 }
 
 function statusLabel(status) {
+  if (status === 'covered_by_pack') return 'Cubierta por bono'
+  if (status === 'partially_paid') return 'Parcialmente pagada'
+  if (status === 'paid') return 'Pagada'
+  if (status === 'pending') return 'Pendiente'
   if (status === 'issued') return 'Pagado'
   if (status === 'draft') return 'Pendiente'
   if (status === 'cancelled') return 'Cancelado'
@@ -181,6 +237,47 @@ async function handleDocumentAction() {
   } finally {
     issuingAbono.value = false
   }
+}
+
+function toggleQuickActions() {
+  quickActionsOpen.value = !quickActionsOpen.value
+}
+
+function closeQuickActions() {
+  quickActionsOpen.value = false
+}
+
+function handleClickOutsideQuickActions(event) {
+  if (!quickActionsOpen.value) return
+  if (!quickActionsRef.value) return
+  if (!quickActionsRef.value.contains(event.target)) {
+    closeQuickActions()
+  }
+}
+
+function runHandleAbono() {
+  closeQuickActions()
+  handleDocumentAction()
+}
+
+function runPreviewPdf() {
+  closeQuickActions()
+  previewPdf()
+}
+
+function runDownloadPdf() {
+  closeQuickActions()
+  downloadPdf()
+}
+
+function runPay() {
+  closeQuickActions()
+  if (!documentData.value?.id) return
+
+  const isPaid = isPaidDocument.value
+  const path = isPaid ? '/payments' : '/payments/create'
+  const query = { invoice_id: documentData.value.id }
+  router.push({ path, query })
 }
 
 async function load() {
@@ -241,6 +338,11 @@ async function downloadPdf() {
 
 onMounted(async () => {
   await load()
+  document.addEventListener('click', handleClickOutsideQuickActions)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleClickOutsideQuickActions)
 })
 
 watch(() => route.params.id, async (newId, oldId) => {
@@ -253,15 +355,24 @@ watch(() => route.params.id, async (newId, oldId) => {
 
 <style scoped>
 .show-wrap { display:flex; justify-content:center; padding:6px 0 }
-.show-card { width:100%; max-width:860px; background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:16px; box-shadow:0 10px 30px rgba(2,6,23,0.06) }
+.show-card { width:100%; background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:16px; box-shadow:0 10px 30px rgba(2,6,23,0.06) }
 .show-header { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px }
 .show-header h1 { margin:0; font-size:22px }
 .form-sub { color:#6b7280; font-size:13px; margin-top:4px }
-.header-actions { display:flex; align-items:center; gap:8px }
+.header-actions { display:flex; align-items:center; gap:0 }
+.back-menu-group { display:inline-flex; align-items:center; gap:0 }
 .pdf-btn { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:8px; border:1px solid #bfdbfe; background:#eff6ff; color:#1d4ed8 }
 .pdf-btn:hover { background:#dbeafe; border-color:#93c5fd }
 .pdf-btn:disabled { opacity:0.45; cursor:not-allowed }
 .pdf-icon { width:14px; height:14px; display:block }
+
+.quick-trigger { padding:11px 12px; display:inline-flex; align-items:center; justify-content:center }
+.quick-trigger-icon { width:18px; height:18px; color:#4b5563 }
+.quick-actions { position:relative }
+.quick-menu { position:absolute; right:0; top:calc(100% + 6px); min-width:200px; background:#fff; border:1px solid #e5e7eb; border-radius:10px; box-shadow:0 10px 24px rgba(2,6,23,0.10); padding:6px; display:flex; flex-direction:column; gap:4px; z-index:30 }
+.quick-item { text-align:left; padding:8px 10px; border:1px solid transparent; background:#fff; border-radius:8px; font-size:14px; color:#111827 }
+.quick-item:hover { background:#f9fafb }
+.quick-item:disabled { opacity:0.45; cursor:not-allowed }
 
 .details-grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:12px }
 .field { display:flex; flex-direction:column }
@@ -271,7 +382,11 @@ watch(() => route.params.id, async (newId, oldId) => {
 
 .status { padding:5px 8px; border-radius:9999px; font-weight:700; text-transform:capitalize; font-size:11px }
 .status.issued { background:#dcfce7; color:#166534 }
+.status.paid { background:#dcfce7; color:#166534 }
 .status.draft { background:#fef3c7; color:#92400e }
+.status.pending { background:#fef3c7; color:#92400e }
+.status.partially_paid { background:#dbeafe; color:#1e40af }
+.status.covered_by_pack { background:#dbeafe; color:#1e40af }
 .status.cancelled { background:#f3f4f6; color:#374151 }
 
 .alert-subtle { background:#f8fafc; border:1px solid #e6edf3; padding:10px; border-radius:8px; color:#334155; font-size:14px }

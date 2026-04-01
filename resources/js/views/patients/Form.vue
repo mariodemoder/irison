@@ -8,10 +8,14 @@
             <h1>{{ isEdit ? 'Editar paciente' : 'Nuevo paciente' }}</h1>
             <p class="form-sub">{{ isEdit ? 'Edita los datos del paciente.' : 'Crea un nuevo paciente para gestionar sus citas y pagos.' }}</p>
           </div>
-          <button type="button" class="muted" @click.prevent="cancel">Volver</button>
+          <button type="button" class="muted back-btn" @click.prevent="cancel">Volver</button>
         </div>
 
         <form class="grid-form" @submit.prevent="submit">
+          <div v-if="errors.general" class="field full">
+            <div class="field-error">{{ errors.general[0] }}</div>
+          </div>
+
           <div v-if="duplicateMessage" class="field full" style="background:#fff7ed;border:1px solid #ffd8a8;padding:12px;border-radius:8px">
             <div style="font-weight:300;color:#92400e">{{ duplicateMessage }}</div>
             <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
@@ -19,6 +23,12 @@
               <button type="button" class="muted" @click.prevent="(duplicateMessage='',duplicateId=null)">Ignorar</button>
             </div>
           </div>
+
+          <div v-if="isEdit" class="field">
+            <label class="label">Numero</label>
+            <input :value="form.counter || '—'" type="text" class="input" readonly />
+          </div>
+
           <div class="field">
             <label class="label">Nombre</label>
             <input v-model="form.name" type="text" class="input" />
@@ -41,6 +51,12 @@
             <label class="label">Email</label>
             <input v-model="form.email" type="email" class="input" />
             <div v-if="errors.email" class="field-error">{{ errors.email[0] }}</div>
+          </div>
+
+          <div class="field">
+            <label class="label">Fecha de nacimiento</label>
+            <input v-model="form.birth_date" type="date" class="input" />
+            <div v-if="errors.birth_date" class="field-error">{{ errors.birth_date[0] }}</div>
           </div>
 
           <div class="field full">
@@ -92,7 +108,7 @@ import { useToast } from 'vue-toastification'
 const router = useRouter()
 const route = useRoute()
 const isEdit = ref(false)
-const form = reactive({ name: '', nif: '', phone: '', email: '', address: '', zip: '', province: '', country: '', notes: '' })
+const form = reactive({ counter: '', name: '', nif: '', phone: '', email: '', birth_date: '', address: '', zip: '', province: '', country: '', notes: '' })
 const errors = reactive({})
 const submitting = ref(false)
 const duplicateId = ref(null)
@@ -103,6 +119,50 @@ function isValidEmailFormat(value) {
   const email = String(value || '').trim()
   if (!email) return true
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+}
+
+function isValidBirthDate(value) {
+  const birthDate = String(value || '').trim()
+  if (!birthDate) return true
+
+  const match = birthDate.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!match) return false
+
+  const year = Number(match[1])
+  const month = Number(match[2])
+  const day = Number(match[3])
+  const now = new Date()
+
+  if (year < 1900 || year > now.getFullYear()) return false
+  if (month < 1 || month > 12) return false
+  if (day < 1 || day > 31) return false
+
+  const parsed = new Date(`${birthDate}T00:00:00`)
+  if (Number.isNaN(parsed.getTime())) return false
+
+  return parsed <= now
+}
+
+function extractBirthDateErrorMessage(error) {
+  const data = error?.response?.data || {}
+  const backendMessage = String(data.message || data.error || '')
+
+  const validationBirthDate = Array.isArray(data.errors?.birth_date)
+    ? data.errors.birth_date[0]
+    : ''
+
+  if (validationBirthDate) {
+    return validationBirthDate
+  }
+
+  const looksLikeBirthDateSqlError = backendMessage.includes('Incorrect date value')
+    && backendMessage.includes('birth_date')
+
+  if (looksLikeBirthDateSqlError) {
+    return 'Fecha de nacimiento inválida. Usa un formato válido (YYYY-MM-DD).'
+  }
+
+  return ''
 }
 
 function goToDuplicate() {
@@ -135,10 +195,12 @@ async function loadForEdit(id) {
     const res = await api.get(`/patients/${id}`)
     const data = res.data
     // Map backend shape to form fields
+    form.counter = data.counter ?? ''
     form.name = data.name ?? ''
     form.nif = data.nif ?? ''
     form.phone = data.phone ?? ''
     form.email = data.email ?? ''
+    form.birth_date = data.birth_date ?? ''
     form.address = data.address ?? ''
     form.zip = data.zip ?? ''
     form.province = data.province ?? ''
@@ -171,10 +233,12 @@ watch(() => route.params.id, (id) => {
   } else {
     isEdit.value = false
     // limpiar formulario cuando volvemos a modo creación
+    form.counter = ''
     form.name = ''
     form.nif = ''
     form.phone = ''
     form.email = ''
+    form.birth_date = ''
     form.address = ''
     form.zip = ''
     form.province = ''
@@ -188,9 +252,16 @@ async function submit() {
   submitting.value = true
   Object.keys(errors).forEach(k => delete errors[k])
   form.email = String(form.email || '').trim()
+  form.birth_date = String(form.birth_date || '').trim()
 
   if (!isValidEmailFormat(form.email)) {
     errors.email = ['Formato de email inválido']
+    submitting.value = false
+    return
+  }
+
+  if (!isValidBirthDate(form.birth_date)) {
+    errors.birth_date = ['Fecha de nacimiento inválida. Usa un formato válido (YYYY-MM-DD).']
     submitting.value = false
     return
   }
@@ -200,11 +271,16 @@ async function submit() {
       if (isEdit.value && route.params.id) {
         await api.put(`/patients/${route.params.id}`, { ...form })
         toast.success('Paciente actualizado')
-        router.push('/patients')
+        router.push(`/patients/${route.params.id}`)
       } else {
-        await api.post('/patients', { ...form })
+        const res = await api.post('/patients', { ...form })
+        const createdId = Number(res?.data?.id || res?.data?.data?.id || 0)
         toast.success('Paciente creado')
-        router.push('/patients')
+        if (createdId > 0) {
+          router.push(`/patients/${createdId}`)
+        } else {
+          router.push('/patients')
+        }
       }
   } catch (e) {
     // Normalizar y manejar errores de validación y conflicto
@@ -217,9 +293,22 @@ async function submit() {
         // data.errors expected
         const eobj = data.errors || {}
         Object.assign(errors, eobj)
+
+        const birthDateMessage = extractBirthDateErrorMessage(e)
+        if (birthDateMessage) {
+          errors.birth_date = [birthDateMessage]
+        }
+
         // si existe un error de tipo unique en nif, también mostrar mensaje general
         if (!eobj.nif && data.message && data.message.toLowerCase().includes('nif')) {
           errors.nif = [data.message]
+        }
+      } else if (status === 500) {
+        const birthDateMessage = extractBirthDateErrorMessage(e)
+        if (birthDateMessage) {
+          errors.birth_date = [birthDateMessage]
+        } else {
+          errors.general = [data.message || 'Error interno del servidor']
         }
       } else if (status === 409) {
         // NIF duplicado: mostrar aviso y enlace al paciente existente
