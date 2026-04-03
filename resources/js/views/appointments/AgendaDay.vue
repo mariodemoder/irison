@@ -10,6 +10,8 @@
         @today="goToToday"
       />
 
+      <div class="agenda-content-card">
+
       <div class="header-secondary">
         <div class="header-secondary-left">
           <div class="mini-cal-wrapper">
@@ -26,8 +28,8 @@
           </div>
 
           <div class="scope-bar" role="group" aria-label="Ámbito de citas">
-            <button :class="['scope-btn', showScheduledOnly && 'scope-active']" @click="setAppointmentScope('scheduled')">Citas programadas</button>
-            <button :class="['scope-btn', !showScheduledOnly && 'scope-active']" @click="setAppointmentScope('all')">Todas las citas</button>
+            <button :class="['scope-btn', showScheduledOnly && 'scope-active']" @click="setAppointmentScope('scheduled')">Programadas</button>
+            <button :class="['scope-btn', !showScheduledOnly && 'scope-active']" @click="setAppointmentScope('all')">Todas</button>
           </div>
           <button
             type="button"
@@ -151,6 +153,7 @@
             <button class="icon-btn" :disabled="currentPage >= totalPages" @click="nextPage">›</button>
           </div>
         </div>
+      </div>
       </div>
   </MainLayout>
 </template>
@@ -561,6 +564,14 @@ watch(totalPages, (pages) => {
 .style-reset { }
 <style scoped>
 *, ::before, ::after { box-sizing: border-box; border-width: 0; border-style: solid; border-color: #e5e7eb }
+
+.agenda-content-card {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 10px 28px rgba(2, 6, 23, 0.06);
+  padding: 14px;
+}
 
 .header-secondary { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; flex-wrap:wrap }
 .header-secondary-left { display:flex; align-items:center; gap:12px; flex-wrap:wrap }
