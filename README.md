@@ -7,7 +7,7 @@ Aplicación web para gestión de clínicas con arquitectura multi-tenant por `cl
 - Backend: Laravel 11
 - Frontend: Vue 3 + Vite
 - Autenticación: Laravel Sanctum
-- Base de datos: MySQL (desarrollo) / SQLite in-memory (tests)
+- Base de datos: PostgreSQL (desarrollo) / SQLite in-memory (tests)
 
 ## ✅ Estado actual (resumen)
 
@@ -33,6 +33,17 @@ php artisan key:generate
 ```
 
 3. Configurar credenciales de base de datos en `.env`.
+
+Ejemplo para PostgreSQL local:
+
+```bash
+DB_CONNECTION=pgsql
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_DATABASE=dueleahi
+DB_USERNAME=postgres
+DB_PASSWORD=tu_password
+```
 
 4. Ejecutar migraciones:
 

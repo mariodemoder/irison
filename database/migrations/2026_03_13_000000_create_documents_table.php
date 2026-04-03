@@ -14,11 +14,11 @@ return new class extends Migration
                 $table->foreignId('clinic_id')->constrained()->cascadeOnDelete();
                 $table->foreignId('patient_id')->constrained()->cascadeOnDelete();
 
-                $table->enum('type', ['invoice', 'abono', 'receipt', 'credit_note']);
-                $table->enum('type_from', ['appointment', 'package', 'credit', 'manual', 'invoice', 'abono', 'receipt', 'credit_note'])->nullable();
+                $table->string('type', 50);
+                $table->string('type_from', 50)->nullable();
                 $table->string('number', 100);
                 $table->unsignedBigInteger('from_id')->nullable();
-                $table->enum('typeinvoice', ['appointment', 'package', 'credit', 'manual']);
+                $table->string('typeinvoice', 50);
 
                 $table->string('patient_nif', 50)->nullable();
                 $table->string('patient_full_name', 255)->nullable();
@@ -31,7 +31,7 @@ return new class extends Migration
                 $table->decimal('amount', 10, 2);
                 $table->text('notes')->nullable();
 
-                $table->enum('status', ['issued', 'draft', 'cancelled'])->default('issued');
+                $table->string('status', 50)->default('issued');
 
                 $table->timestamp('created_at')->useCurrent();
 

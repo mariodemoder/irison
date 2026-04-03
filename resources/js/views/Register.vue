@@ -20,8 +20,9 @@ async function submit() {
   try {
     // Sanear contraseña similar al login: evitar comillas envolventes accidentales
     const sendPassword = (password.value || '').toString().trim().replace(/^"|"$/g, '')
-    await axios.post('/api/register', { name: name.value, clinic_name: clinic_name.value, email: email.value, password: sendPassword })
-    router.push('/login')
+    const res = await axios.post('/api/register', { name: name.value, clinic_name: clinic_name.value, email: email.value, password: sendPassword })
+    localStorage.setItem('token', res.data.access_token)
+    router.push('/appointments')
   } catch (err) {
     error.value = err.response?.data?.message || 'Error al crear cuenta'
   } finally { loading.value = false }

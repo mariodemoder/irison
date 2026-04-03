@@ -84,7 +84,7 @@ return new class extends Migration
                 $table->unsignedInteger('total_sessions');
                 $table->unsignedInteger('remaining_sessions');
                 $table->decimal('price', 10, 2);
-                $table->enum('status', ['active', 'exhausted', 'expired'])->default('active');
+                $table->string('status', 50)->default('active');
                 $table->timestamps();
 
                 $table->index(['clinic_id', 'patient_id']);

@@ -17,7 +17,7 @@ return new class extends Migration
         }
 
         // Ampliar el enum de counters_clinics para incluir credit_usages
-        if (Schema::hasTable('counters_clinics')) {
+        if (Schema::hasTable('counters_clinics') && DB::getDriverName() === 'mysql') {
             DB::statement("ALTER TABLE counters_clinics MODIFY COLUMN table_type ENUM('documents', 'payout', 'bonuses', 'payments', 'credit_usages')");
         }
     }
@@ -29,7 +29,7 @@ return new class extends Migration
             DB::table('counters_clinics')->where('table_type', 'credit_usages')->delete();
         }
 
-        if (Schema::hasTable('counters_clinics')) {
+        if (Schema::hasTable('counters_clinics') && DB::getDriverName() === 'mysql') {
             DB::statement("ALTER TABLE counters_clinics MODIFY COLUMN table_type ENUM('documents', 'payout', 'bonuses', 'payments')");
         }
 

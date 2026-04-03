@@ -33,6 +33,8 @@ return new class extends Migration
 
             if (DB::getDriverName() === 'mysql') {
                 DB::statement("ALTER TABLE payments MODIFY concept VARCHAR(50) NOT NULL DEFAULT 'appointment'");
+            } else {
+                DB::statement("UPDATE payments SET concept = 'appointment' WHERE concept IS NULL");
             }
         }
     }

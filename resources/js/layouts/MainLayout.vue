@@ -57,7 +57,7 @@
         <div class="flex items-center gap-4">
           <div class="header-card">
             <div class="header-card-meta">
-              <div class="header-card-label">{{ clinic?.name ?? '—' }} — <router-link to="/profile" class="user-link">{{ user?.name ?? '—' }}</router-link></div>
+              <div class="header-card-label">{{ clinic?.name ?? '—' }} — <router-link to="/profile" class="user-link">CONFIGURACIÓN</router-link></div>
               <div class="header-card-sub">
                 <span :class="['status-dot', subscriptionState.color]" aria-hidden="true"></span>
                 <span class="sub-label">{{ subscriptionState.label }}</span>

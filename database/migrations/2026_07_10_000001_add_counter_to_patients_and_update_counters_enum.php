@@ -19,7 +19,7 @@ return new class extends Migration
         }
 
         // Extend the enum in counters_clinics to include 'patients'
-        if (Schema::hasTable('counters_clinics')) {
+        if (Schema::hasTable('counters_clinics') && DB::getDriverName() === 'mysql') {
             DB::statement("ALTER TABLE counters_clinics MODIFY COLUMN table_type ENUM('documents','payout','bonuses','payments','patients') NOT NULL");
         }
     }
@@ -33,7 +33,7 @@ return new class extends Migration
             });
         }
 
-        if (Schema::hasTable('counters_clinics')) {
+        if (Schema::hasTable('counters_clinics') && DB::getDriverName() === 'mysql') {
             DB::statement("ALTER TABLE counters_clinics MODIFY COLUMN table_type ENUM('documents','payout','bonuses','payments') NOT NULL");
         }
     }

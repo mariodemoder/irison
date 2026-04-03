@@ -4,8 +4,10 @@ namespace Tests\Feature;
 
 use Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Models\BillingPayment;
 use App\Models\User;
 use App\Models\Clinic;
+use App\Models\MySaasCounter;
 use App\Models\Subscription;
 use Carbon\Carbon;
 
@@ -35,6 +37,12 @@ class FakeSubscribeTest extends TestCase
             'stripe_subscription_id' => null,
         ]);
 
+        MySaasCounter::create([
+            'table_type' => 'payout',
+            'prefix' => 'SAS',
+            'last_number' => 41,
+        ]);
+
         $response = $this->actingAs($user, 'sanctum')
             ->postJson('/api/subscribe/fake');
 
@@ -42,6 +50,7 @@ class FakeSubscribeTest extends TestCase
 
         $subscription->refresh();
         $clinic->refresh();
+        $payment = BillingPayment::query()->where('clinic_id', $clinic->id)->latest('id')->first();
 
         $this->assertEquals('active', $subscription->status);
         $this->assertNull($subscription->trial_ends_at);
@@ -49,5 +58,9 @@ class FakeSubscribeTest extends TestCase
         $this->assertEquals('fake', $clinic->subscription_provider);
         $this->assertEquals($subscription->stripe_subscription_id, $clinic->subscription_reference);
         $this->assertNotNull($clinic->subscribed_at);
+        $this->assertNotNull($payment);
+        $this->assertSame('paid', $payment->status);
+        $this->assertSame('fake', $payment->provider);
+        $this->assertSame('SAS-000042', $payment->counter);
     }
 }

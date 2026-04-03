@@ -22,7 +22,7 @@ Incluye:
 - PHP 8.2+ con extensiones necesarias para Laravel.
 - Composer 2.x.
 - Node.js 20+ y npm.
-- MySQL 8+ o MariaDB equivalente.
+- PostgreSQL 15+ (recomendado) o MySQL/MariaDB si se mantiene compatibilidad legacy.
 - Nginx (recomendado) o Apache.
 - Supervisor (para workers de cola).
 

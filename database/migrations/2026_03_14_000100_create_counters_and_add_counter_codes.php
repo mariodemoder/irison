@@ -14,7 +14,7 @@ return new class extends Migration
                 $table->foreignId('clinic_id')->constrained()->cascadeOnDelete();
                 $table->string('prefix', 4);
                 $table->unsignedBigInteger('last_number')->default(0);
-                $table->enum('table_type', ['documents', 'payout', 'bonuses', 'payments']);
+                $table->string('table_type', 50);
                 $table->timestamps();
 
                 $table->unique(['clinic_id', 'table_type']);

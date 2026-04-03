@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\BillingPayment;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -17,8 +18,18 @@ class FakeSubscribeController extends Controller
         }
 
         $clinic = $user->clinic;
+        $amount = (int) $request->input('amount', 2900);
 
-        $result = DB::transaction(function () use ($clinic) {
+        $result = DB::transaction(function () use ($clinic, $amount) {
+            $payment = BillingPayment::create([
+                'clinic_id' => $clinic->id,
+                'amount' => $amount,
+                'currency' => 'EUR',
+                'status' => 'paid',
+                'provider' => 'fake',
+                'provider_ref' => 'fake_' . uniqid(),
+            ]);
+
             // Cerrar cualquier suscripción activa previa para esta clínica
             $activeSubs = \App\Models\Subscription::where('clinic_id', $clinic->id)
                 ->where('status', 'active')
@@ -70,18 +81,21 @@ class FakeSubscribeController extends Controller
             };
 
             return [
+                'payment' => $payment,
                 'subscription' => $subscription,
                 'clinic' => $clinic,
                 'status' => $status,
             ];
         });
 
+        $payment = $result['payment'];
         $subscription = $result['subscription'];
         $clinic = $result['clinic'];
         $status = $result['status'];
 
         return response()->json([
             'status' => 'ok',
+            'payment' => $payment,
             'clinic' => $clinic,
             'status_clinic' => $status,
             'subscribed_at' => $clinic->subscribed_at,
