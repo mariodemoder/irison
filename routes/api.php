@@ -80,6 +80,10 @@ Route::middleware(['auth:sanctum', 'clinic', 'clinic.active'])->group(function (
     Route::apiResource('payments', \App\Http\Controllers\Api\PaymentController::class)
         ->only(['index', 'store', 'show', 'update']);
 
+    Route::get('reminders', [\App\Http\Controllers\Api\ReminderController::class, 'index']);
+    Route::get('reminders/{reminder}', [\App\Http\Controllers\Api\ReminderController::class, 'show']);
+    Route::post('reminders/{reminder}/resend', [\App\Http\Controllers\Api\ReminderController::class, 'resend']);
+
     // Facturación (solo lectura): listado y detalle de facturas/documentos
     Route::get('documents/{document}/pdf', [\App\Http\Controllers\Api\DocumentController::class, 'pdf']);
     Route::post('documents/{document}/abono', [\App\Http\Controllers\Api\DocumentController::class, 'issueAbono']);

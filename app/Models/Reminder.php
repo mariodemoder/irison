@@ -11,8 +11,18 @@ class Reminder extends Model
     use BelongsToClinic;
     
     protected $fillable = [
-        'clinic_id', 'appointment_id', 'channel',
-        'sent_at', 'status'
+        'clinic_id',
+        'appointment_id',
+        'channel',
+        'reminder_type',
+        'recipient_email',
+        'error_message',
+        'sent_at',
+        'status',
+    ];
+
+    protected $casts = [
+        'sent_at' => 'datetime:Y-m-d H:i:s',
     ];
 
     public function clinic(): BelongsTo

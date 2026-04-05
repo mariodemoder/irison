@@ -37,6 +37,10 @@
               <path d="M15 3v4h4"></path>
               <path d="M10 12h6M10 16h6"></path>
             </svg>
+            <svg v-else-if="item.path === '/notifications'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5"></path>
+              <path d="M10 17a2 2 0 0 0 4 0"></path>
+            </svg>
             <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <path d="M4 9l8-5 8 5v10l-8 4-8-4z"></path>
               <path d="M9 12h6"></path>
@@ -98,6 +102,7 @@ const navItems = [
   { path: '/patients', label: 'Pacientes' },
   { path: '/appointments', label: 'Agenda' },
   { path: '/payments', label: 'Pagos' },
+  { path: '/notifications', label: 'Notificaciones' },
   { path: '/invoices', label: 'Facturación' },
   { path: '/bonuses', label: 'Bonos' },
 ]

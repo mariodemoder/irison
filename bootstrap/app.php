@@ -3,6 +3,9 @@
 use App\Http\Middleware\EnsureClinic;
 use App\Http\Middleware\EnsureClinicIsActive;
 use App\Http\Middleware\SetActiveClinic;
+use App\Jobs\SendAppointmentReminder24h;
+use App\Jobs\SendAppointmentReminder2h;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -25,6 +28,19 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
+    })
+    ->withSchedule(function (Schedule $schedule): void {
+        $schedule
+            ->call(fn () => app(SendAppointmentReminder24h::class)->handle())
+            ->name('appointments:reminders-24h')
+            ->hourly()
+            ->withoutOverlapping();
+
+        $schedule
+            ->call(fn () => app(SendAppointmentReminder2h::class)->handle())
+            ->name('appointments:reminders-2h')
+            ->everyThirtyMinutes()
+            ->withoutOverlapping();
     })
     ->withProviders([
         App\Providers\AuthServiceProvider::class,

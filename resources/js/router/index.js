@@ -19,6 +19,8 @@ import PaymentsShow from '../views/payments/Show.vue'
 import InvoicesIndex from '../views/invoices/Index.vue'
 import InvoicesShow from '../views/invoices/Show.vue'
 import BonusesIndex from '../views/bonuses/Index.vue'
+import NotificationsIndex from '../views/notifications/Index.vue'
+import NotificationsShow from '../views/notifications/Show.vue'
 
 const routes = [
   { path: '/login', component: Login },
@@ -32,6 +34,8 @@ const routes = [
   { path: '/invoices', component: InvoicesIndex, meta: { auth: true } },
   { path: '/invoices/:id', component: InvoicesShow, meta: { auth: true } },
   { path: '/bonuses', component: BonusesIndex, meta: { auth: true } },
+  { path: '/notifications', component: NotificationsIndex, meta: { auth: true } },
+  { path: '/notifications/:id', component: NotificationsShow, meta: { auth: true } },
   { path: '/patients', component: PatientsIndex, meta: { auth: true } },
   { path: '/patients/create', component: PatientsForm, meta: { auth: true } },
   { path: '/patients/:id', component: PatientsShow, meta: { auth: true } },
