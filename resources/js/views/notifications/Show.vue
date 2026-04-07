@@ -73,13 +73,13 @@ const patientLabel = computed(() => {
   const patient = notificationData.value?.patient
   if (!patient) return '—'
   const prefix = patient.counter ? `${patient.counter} · ` : ''
-  return `${prefix}${patient.name || `Paciente #${patient.id}`}`
+  return `${prefix}${patient.name}`
 })
 
 const appointmentLabel = computed(() => {
   const appointment = notificationData.value?.appointment
   if (!appointment?.id) return '—'
-  return `Cita #${appointment.id} · ${formatDate(appointment.start_time)}`
+  return `Cita ${formatDate(appointment.start_time)}`
 })
 
 function typeLabel(type) {

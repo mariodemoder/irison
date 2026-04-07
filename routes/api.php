@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AppointmentController;
 use App\Http\Controllers\Api\PatientController;
+use App\Http\Controllers\API\ActivateAccountController;
 use App\Http\Controllers\API\RegisterController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DashboardSummaryController;
@@ -33,6 +34,9 @@ use App\Http\Controllers\Api\DashboardSummaryController;
 
 // Registro de usuario (mobile/SPA) — crea usuario y tenant inicial
 Route::post('/register', RegisterController::class);
+Route::get('/register/activate/{user}', ActivateAccountController::class)
+    ->middleware(['signed', 'throttle:6,1'])
+    ->name('api.register.activate');
 
 // Login para clientes SPA — valida credenciales y devuelve token
 Route::post('/login', [AuthController::class, 'login']);

@@ -13,16 +13,18 @@ const email = ref('')
 const password = ref('')
 const loading = ref(false)
 const error = ref('')
+const success = ref('')
 
 async function submit() {
   loading.value = true
   error.value = ''
+  success.value = ''
   try {
     // Sanear contraseña similar al login: evitar comillas envolventes accidentales
     const sendPassword = (password.value || '').toString().trim().replace(/^"|"$/g, '')
-    const res = await axios.post('/api/register', { name: name.value, clinic_name: clinic_name.value, email: email.value, password: sendPassword })
-    localStorage.setItem('token', res.data.access_token)
-    router.push('/appointments')
+    await axios.post('/api/register', { name: name.value, clinic_name: clinic_name.value, email: email.value, password: sendPassword })
+    success.value = 'Cuenta creada. Revisa tu correo y haz clic en el enlace de activación para iniciar tu trial.'
+    router.push('/login?activation=pending')
   } catch (err) {
     error.value = err.response?.data?.message || 'Error al crear cuenta'
   } finally { loading.value = false }
@@ -48,5 +50,6 @@ async function submit() {
     </p>
 
     <p v-if="error" class="mt-3 text-sm text-red-600">{{ error }}</p>
+    <p v-if="success" class="mt-3 text-sm" style="color:#166534">{{ success }}</p>
   </AuthLayout>
 </template>

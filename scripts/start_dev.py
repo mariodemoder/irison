@@ -39,6 +39,7 @@ def check_available(cmd):
     return shutil.which(exe) is not None
 
 cmds = [
+    'mailpit',
     'npm run dev',
     'php artisan serve --host=127.0.0.1 --port=8000'
 ]

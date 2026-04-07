@@ -2,14 +2,13 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Mail\AccountActivationMail;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Clinic;
-use App\Models\Subscription;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\URL;
 
 class RegisterController extends Controller
 {
@@ -20,18 +19,13 @@ class RegisterController extends Controller
             'clinic_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'min:8'],
-            'trial_ends_at' => ['nullable', 'datetime'],
-            
         ]);
-
-        // Define trial end date once and store it on the subscription.
-        $trialEnds = Carbon::now()->addDays(30);
 
         $clinic = Clinic::create([
             'name' => $data['clinic_name'],
             'legal_name' => $data['clinic_name'],
             'email' => $data['email'],
-            'trial_ends_at' => $trialEnds,
+            'trial_ends_at' => null,
         ]);
 
         $user = User::create([
@@ -42,19 +36,16 @@ class RegisterController extends Controller
             'password' => $data['password'],
         ]);
 
-        // Create initial trial subscription for the clinic
-        Subscription::create([
-            'clinic_id' => $clinic->id,
-            'status' => 'trial',
-            'trial_ends_at' => $trialEnds,
-            'current_period_end' => null,
-        ]);
+        $activationUrl = URL::temporarySignedRoute(
+            'api.register.activate',
+            now()->addHours(24),
+            ['user' => $user->id]
+        );
 
-        $token = $user->createToken('spa')->plainTextToken;
+        Mail::to($user->email)->send(new AccountActivationMail($user, $activationUrl));
 
         return response()->json([
-            'access_token' => $token,
-            'token_type' => 'Bearer',
+            'message' => 'Cuenta creada. Revisa tu correo para activar el periodo de prueba.',
         ], 201);
     }
 }
