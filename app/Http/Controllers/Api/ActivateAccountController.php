@@ -30,7 +30,7 @@ class ActivateAccountController extends Controller
 
         $clinic = $user->clinic;
         if ($clinic) {
-            $current = $clinic->subscriptions()->orderByDesc('id')->first();
+            $current = $clinic->saasSubscriptions()->orderByDesc('id')->first();
 
             $mustStartTrial = true;
             if ($current && $current->trial_ends_at instanceof Carbon && $current->trial_ends_at->isFuture()) {

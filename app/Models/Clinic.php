@@ -5,12 +5,15 @@ namespace App\Models;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Laravel\Cashier\Billable;
 
 
 class Clinic extends Model
 {
+    use Billable;
+
     protected $fillable = [
-        'name', 'legal_name', 'email', 'phone', 'address', 'nif', 'locality', 'province', 'country', 'zip', 'timezone', 'trial_ends_at', 'subscribed_at', 'invoice_background_path'
+        'name', 'legal_name', 'email', 'phone', 'address', 'nif', 'locality', 'province', 'country', 'zip', 'timezone', 'trial_ends_at', 'subscribed_at', 'invoice_background_path', 'stripe_id', 'pm_type', 'pm_last_four'
     ];
 
     protected $casts = [
@@ -28,7 +31,7 @@ class Clinic extends Model
         return $this->hasMany(Patient::class);
     }
 
-    public function subscriptions(): HasMany
+    public function saasSubscriptions(): HasMany
     {
         return $this->hasMany(Subscription::class);
     }
@@ -61,12 +64,12 @@ class Clinic extends Model
     public function currentSubscription()
     {
         // Preferir suscripción activa; si no existe, devolver la más reciente
-        $active = $this->subscriptions()->where('status', 'active')->orderByDesc('id')->first();
+        $active = $this->saasSubscriptions()->where('status', 'active')->orderByDesc('id')->first();
         if ($active) {
             return $active;
         }
 
-        return $this->subscriptions()->orderByDesc('id')->first();
+        return $this->saasSubscriptions()->orderByDesc('id')->first();
     }
 
     public function isTrialActive(): bool

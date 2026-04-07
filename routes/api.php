@@ -112,13 +112,9 @@ Route::middleware(['auth:sanctum', 'clinic', 'clinic.active'])->group(function (
     // Cancelar cita (acción sobre recurso protegido)
     Route::post('appointments/{appointment}/cancel', [\App\Http\Controllers\Api\AppointmentController::class, 'cancel']);
     Route::post('appointments/{appointment}/invoice', [\App\Http\Controllers\Api\AppointmentController::class, 'issueInvoice']);
-
+    // payment subscribe
+    Route::post('/subscribe', \App\Http\Controllers\Api\SubscribeController::class);
 });
-
-
-// -----------------------------
-// RUTAS CON CASOS ESPECIALES
-// -----------------------------
 
 // Información del usuario autenticado (`/me`): debe estar disponible
 // aunque el trial haya expirado, por eso no incluimos `clinic.active`.

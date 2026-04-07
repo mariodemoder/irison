@@ -42,7 +42,7 @@ class MeController
         }
 
         if ($clinic) {
-            $clinic->load('subscriptions');
+            $clinic->load('saasSubscriptions');
         }
 
         $subscriptionPayments = [];

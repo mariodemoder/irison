@@ -72,7 +72,7 @@ class FakeSubscribeController extends Controller
             $clinic->subscription_reference = $subscription->stripe_subscription_id;
             $clinic->save();
 
-            $clinic->load('subscriptions');
+            $clinic->load('saasSubscriptions');
 
             $status = match (true) {
                 $clinic->isSubscribed() => 'active',

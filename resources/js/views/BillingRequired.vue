@@ -52,18 +52,13 @@ import api from '../services/api'
 const router = useRouter()
 const method = ref('card')
 const error = ref(null)
+const STRIPE_TEST_PAYMENT_LINK = 'https://buy.stripe.com/test_aFa3cv8Ype4B8MVfup9bO00'
 
 async function startCheckout() {
   error.value = null
   try {
-    const res = await api.post('/billing/checkout', { amount: 2900, method: method.value })
-    const data = res.data
-    if (data.checkout && data.checkout.checkout_url) {
-      // abrir pasarela en nueva ventana
-      window.open(data.checkout.checkout_url, '_blank')
-      return
-    }
-    error.value = 'No se pudo crear el checkout'
+    // Abrir enlace de pago Stripe de pruebas provisto por negocio
+    window.open(STRIPE_TEST_PAYMENT_LINK, '_blank')
   } catch (e) {
     error.value = e.response?.data?.message || e.message
   }
@@ -72,8 +67,8 @@ async function startCheckout() {
 async function usarFake() {
   try {
     await api.post('/subscribe/fake')
-    // reintentar checkout ahora que la clínica está marcada como suscrita (dev)
-    startCheckout()
+    // Flujo fake: activar suscripcion de prueba sin redirigir a Stripe
+    router.push('/dashboard')
   } catch (e) {
     error.value = 'No se pudo activar proveedor fake'
   }

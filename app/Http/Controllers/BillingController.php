@@ -40,11 +40,11 @@ class BillingController extends Controller
                 $payment->status = 'paid';
                 $payment->save();
 
-                $current = $clinic->subscriptions()->orderByDesc('id')->first();
+                $current = $clinic->saasSubscriptions()->orderByDesc('id')->first();
                 $fakeSubId = 'fake-' . uniqid();
 
                 if (! $current || $current->status !== 'active') {
-                    $clinic->subscriptions()->create([
+                    $clinic->saasSubscriptions()->create([
                         'status' => 'active',
                         'trial_ends_at' => null,
                         'current_period_end' => now()->addMonth(),
@@ -99,9 +99,9 @@ class BillingController extends Controller
             }
 
             // crear o actualizar suscripción activa
-            $current = $clinic->subscriptions()->orderByDesc('id')->first();
+            $current = $clinic->saasSubscriptions()->orderByDesc('id')->first();
             if (! $current || $current->status !== 'active') {
-                $clinic->subscriptions()->create([
+                $clinic->saasSubscriptions()->create([
                     'status' => 'active',
                     'trial_ends_at' => null,
                     'current_period_end' => now()->addMonth(),
