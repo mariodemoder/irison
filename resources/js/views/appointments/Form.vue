@@ -5,7 +5,7 @@
         <div class="form-header">
           <div>
             <h1>{{ isEdit ? 'Editar cita' : 'Nueva cita' }}</h1>
-            <p class="form-sub">{{ isEdit ? 'Modifica la fecha, hora y notas de la cita.' : 'Crea una nueva cita.' }}</p>
+            
           </div>
           <button type="button" class="muted back-btn" @click.prevent="cancel">Volver</button>
         </div>
@@ -27,9 +27,15 @@
           </div>
           <div class="field">
             <label class="label">Estado</label>
-            <OptionSelect v-model="form.status" :options="statusOptions" :disabled="isCanceled && mode !== 'reprogram'" />
+            <div class="status-select-wrap">
+              <select v-model="form.status" class="input" :disabled="isCanceled && mode !== 'reprogram'">
+                <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">{{ statusOptionDot(opt.value) }} {{ opt.label }}</option>
+              </select>
+            </div>
             <div v-if="errors.status" class="field-error">{{ errors.status[0] }}</div>
           </div>
+
+    
 
           <div class="full tab-bar">
             <button type="button" class="tab-btn" :class="{ active: activeTab === 'session' }" @click="activeTab = 'session'">
@@ -46,16 +52,46 @@
           <template v-if="activeTab === 'session'">
           <div class="full tab-content-card">
             <div class="tab-content-grid">
+          <div class="field" v-if="activeTab === 'session'">
+            <label class="label">Tipo</label>
+            <select v-model="form.app_type_id" class="input" :disabled="isCanceled && mode !== 'reprogram'">
+              <option value="">Selecciona un tipo</option>
+              <option value="__custom">Otro (escribir)</option>
+              <option v-for="type in appointmentTypes" :key="type.id" :value="String(type.id)">
+                {{ type.description || `Tipo #${type.id}` }}
+              </option>
+            </select>
+            <div v-if="errors.app_type_id" class="field-error">{{ errors.app_type_id[0] }}</div>
+          </div>
+          <div class="field" v-if="isCustomAppointmentType">
+            <label class="label">Tipo personalizado</label>
+            <input v-model="form.custom_type" type="text" class="input" placeholder="Ej: Seguimiento post-operatorio" :disabled="isCanceled && mode !== 'reprogram'" />
+            <div v-if="errors.custom_type" class="field-error">{{ errors.custom_type[0] }}</div>
+          </div>
           <div class="field">
             <label class="label">Inicio</label>
-            <input v-model="form.start_time" @change="normalizeDateTimeField('start_time')" type="datetime-local" step="300" class="input" :disabled="isCanceled && mode !== 'reprogram'" />
+            <div class="datetime-pair">
+              <input v-model="startDateModel" type="date" class="input" :disabled="isCanceled && mode !== 'reprogram'" />
+              <select v-model="startTimeModel" class="input" :disabled="isCanceled && mode !== 'reprogram'">
+                <option value="" disabled>Hora</option>
+                <option v-for="opt in timeOptions" :key="'s'+opt" :value="opt">{{ opt }}</option>
+              </select>
+            </div>
             <div v-if="errors.start_time" class="field-error">{{ errors.start_time[0] }}</div>
           </div>
-          
-
+          <div class="field" v-if="hasSelectedAppointmentType">
+            <label class="label">Duración</label>
+            <input :value="appointmentTypeDurationLabel" type="text" class="input" disabled />
+          </div>
           <div class="field">
             <label class="label">Fin</label>
-            <input v-model="form.end_time" @change="normalizeDateTimeField('end_time')" type="datetime-local" step="300" class="input" :disabled="isCanceled && mode !== 'reprogram'" />
+            <div class="datetime-pair">
+              <input v-model="endDateModel" type="date" class="input" :disabled="isCanceled && mode !== 'reprogram'" />
+              <select v-model="endTimeModel" class="input" :disabled="isCanceled && mode !== 'reprogram'">
+                <option value="" disabled>Hora</option>
+                <option v-for="opt in timeOptions" :key="'e'+opt" :value="opt">{{ opt }}</option>
+              </select>
+            </div>
             <div v-if="errors.end_time" class="field-error">{{ errors.end_time[0] }}</div>
             <div v-if="calendarErrorMessage" class="calendar-inline-alert">{{ calendarErrorMessage }}</div>
             <div v-if="overlapping.length">
@@ -76,8 +112,9 @@
             </div>
           </div>
         <div class="field" v-if="hasSelectedPatient">
-                    <label class="label">Precio Sesión</label>
+                    <label class="label">Precio</label>
                     <input v-model.number="form.price" type="number" min="0.01" step="0.01" class="input" style="max-width:220px" required />
+                    <div v-if="isCustomAppointmentType" class="field-help">Precio manual para tipo no tipificado.</div>
                   </div>
           <div class="field full">
             <label class="label">Notas</label>
@@ -401,13 +438,12 @@
 
 
 <script setup>
-import { reactive, ref, onMounted, watch, computed } from 'vue'
+import { reactive, ref, onMounted, watch, computed, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
 import AppLoading from '../../components/AppLoading.vue'
 import IconCancel from '../../components/icons/IconCancel.vue'
-import OptionSelect from '../../components/OptionSelect.vue'
 import { useToast } from 'vue-toastification'
 import Swal from 'sweetalert2'
 import { formatDate, toDatetimeLocalValue } from '../../shared/appointmentHelpers'
@@ -426,7 +462,7 @@ const router = useRouter()
 const route = useRoute()
 const isEdit = ref(false)
 const mode = ref(route.query.mode || null)
-const form = reactive({ patient_id: '', status: 'scheduled', start_time: '', end_time: '', notes: '', price: '', use_bonus_id: '', use_credit_payment_id: '', bonus_notes: '', bonus_name: '', payment_type: 'single', apply_credit: false, apply_credit_mode: 'auto', apply_credit_amount: '' })
+const form = reactive({ patient_id: '', status: 'scheduled', start_time: '', end_time: '', notes: '', price: '', app_type_id: '', custom_type: '', use_bonus_id: '', use_credit_payment_id: '', bonus_notes: '', bonus_name: '', payment_type: 'single', apply_credit: false, apply_credit_mode: 'auto', apply_credit_amount: '' })
 const invoiceNotesDraft = ref('')
 const applyCreditConfirmed = ref(false)
 const sendWhatsapp = ref(false)
@@ -438,6 +474,16 @@ const statusOptions = [
   { value: 'completed', label: 'Completada', color: '#a1f7bf' },
   { value: 'canceled', label: 'Cancelada', color: '#ffcccc' }
 ]
+
+function statusOptionDot(status) {
+  const map = {
+    scheduled: '🔵',
+    rescheduled: '🟠',
+    completed: '🟢',
+    canceled: '🔴',
+  }
+  return map[String(status || '')] || '⚪'
+}
 const isCanceled = ref(false)
 const originalStart = ref(null)
 const originalStartLocal = ref('')
@@ -449,6 +495,7 @@ const cancelling = ref(false)
 const loading = ref(false)
 const calendarInfoMessage = ref('')
 const patients = ref([])
+const appointmentTypes = ref([])
 const overlapping = ref([])
 const hasScheduledOverlap = computed(() => overlapping.value.some(a => a.status === 'scheduled'))
 let overlapTimer = null
@@ -468,6 +515,7 @@ const appointmentCoveredAmount = ref(0)
 const issuingInvoice = ref(false)
 const appointmentInvoiceId = ref(null)
 const appointmentPaymentStatus = ref('')
+const suppressTypeChangePrompt = ref(false)
 
 const selectedBonus = computed(() => {
   if (!form.use_bonus_id || !bonuses.value) return null
@@ -576,6 +624,28 @@ const sortedAppointmentPayments = computed(() => {
 
 const hasSelectedPatient = computed(() => {
   return !!form.patient_id && form.patient_id !== '__create'
+})
+
+const selectedAppointmentType = computed(() => {
+  if (!form.app_type_id) return null
+  return appointmentTypes.value.find((item) => String(item.id) === String(form.app_type_id)) || null
+})
+
+const isCustomAppointmentType = computed(() => form.app_type_id === '__custom')
+
+const hasSelectedAppointmentType = computed(() => !!selectedAppointmentType.value)
+
+const appointmentTypeDurationLabel = computed(() => {
+  if (!selectedAppointmentType.value) return '—'
+  const hours = Number(selectedAppointmentType.value.estimated_hours || 0)
+  const minutes = Number(selectedAppointmentType.value.estimated_minutes || 0)
+  const safeHours = Number.isFinite(hours) ? Math.max(hours, 0) : 0
+  const safeMinutes = Number.isFinite(minutes) ? Math.max(minutes, 0) : 0
+  return `${safeHours}h ${safeMinutes}min`
+})
+
+const isEndTimeLocked = computed(() => {
+  return !isEdit.value && hasSelectedAppointmentType.value
 })
 
 const selectedPatient = computed(() => {
@@ -952,6 +1022,7 @@ async function loadFormBootstrap({ appointmentId = null, patientId = null } = {}
   const data = res.data?.data ?? {}
 
   patients.value = Array.isArray(data.patients) ? data.patients : []
+  appointmentTypes.value = Array.isArray(data.appointment_types) ? data.appointment_types : []
   bonuses.value = Array.isArray(data.bonuses) ? data.bonuses : []
   pendingCreditPayments.value = Array.isArray(data.pending_credit_payments) ? data.pending_credit_payments : []
 
@@ -993,6 +1064,11 @@ async function applyAppointmentData(data) {
   form.notes = data.notes || ''
   invoiceNotesDraft.value = form.notes || ''
   form.price = data.price != null ? Number(data.price) : ''
+  suppressTypeChangePrompt.value = true
+  form.app_type_id = data.app_type_id != null ? String(data.app_type_id) : (data.custom_type ? '__custom' : '')
+  await nextTick()
+  suppressTypeChangePrompt.value = false
+  form.custom_type = data.custom_type || ''
   appointmentInvoiceId.value = data.invoice_id ? Number(data.invoice_id) : null
   appointmentPaymentStatus.value = String(data.payment_status || '')
 
@@ -1314,6 +1390,57 @@ function toDatetimeLocalString(date) {
   return `${yyyy}-${mm}-${dd}T${hh}:${min}`
 }
 
+const timeOptions = computed(() => {
+  const opts = []
+  for (let h = 0; h < 24; h++) {
+    for (let m = 0; m < 60; m += 5) {
+      opts.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`)
+    }
+  }
+  return opts
+})
+
+const startDateModel = computed({
+  get() {
+    return form.start_time ? form.start_time.slice(0, 10) : ''
+  },
+  set(date) {
+    const time = form.start_time ? form.start_time.slice(11, 16) : '00:00'
+    form.start_time = date ? `${date}T${time}` : ''
+  }
+})
+
+const startTimeModel = computed({
+  get() {
+    return form.start_time ? form.start_time.slice(11, 16) : ''
+  },
+  set(time) {
+    const date = form.start_time ? form.start_time.slice(0, 10) : new Date().toISOString().slice(0, 10)
+    form.start_time = time ? `${date}T${time}` : ''
+    normalizeDateTimeField('start_time')
+  }
+})
+
+const endDateModel = computed({
+  get() {
+    return form.end_time ? form.end_time.slice(0, 10) : ''
+  },
+  set(date) {
+    const time = form.end_time ? form.end_time.slice(11, 16) : '00:00'
+    form.end_time = date ? `${date}T${time}` : ''
+  }
+})
+
+const endTimeModel = computed({
+  get() {
+    return form.end_time ? form.end_time.slice(11, 16) : ''
+  },
+  set(time) {
+    const date = form.end_time ? form.end_time.slice(0, 10) : new Date().toISOString().slice(0, 10)
+    form.end_time = time ? `${date}T${time}` : ''
+  }
+})
+
 function roundDatetimeLocalToNearestMinutes(value, stepMinutes = 5) {
   if (!value) return value
   const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/)
@@ -1334,6 +1461,81 @@ function normalizeDateTimeField(fieldName) {
   if (roundedValue !== currentValue) {
     form[fieldName] = roundedValue
   }
+}
+
+function toIsoFromLocal(localValue) {
+  if (!localValue) return null
+  const date = new Date(localValue)
+  if (Number.isNaN(date.getTime())) return null
+  return date.toISOString()
+}
+
+function toLocalFromIso(isoValue) {
+  if (!isoValue) return ''
+  return toDatetimeLocalValue(isoValue)
+}
+
+function applyAppointmentTypeDefaults() {
+  if (isEdit.value || !selectedAppointmentType.value) return
+
+  const minutes = Number(selectedAppointmentType.value.estimated_minutes || 0)
+  const hours = Number(selectedAppointmentType.value.estimated_hours || 0)
+  const totalMinutes = (Number.isFinite(hours) ? Math.max(hours, 0) * 60 : 0) + (Number.isFinite(minutes) ? Math.max(minutes, 0) : 0)
+
+  const typePrice = Number(selectedAppointmentType.value.price || 0)
+  if (Number.isFinite(typePrice) && typePrice >= 0) {
+    form.price = Number(typePrice.toFixed(2))
+  }
+
+  if (selectedAppointmentType.value.payment_type === 'abono' && hasAvailableBonuses.value) {
+    form.payment_type = 'bonus'
+  } else {
+    form.payment_type = 'single'
+  }
+
+  if (!form.start_time || totalMinutes <= 0) return
+
+  const startIso = toIsoFromLocal(form.start_time)
+  if (!startIso) return
+  const startDate = new Date(startIso)
+  startDate.setMinutes(startDate.getMinutes() + totalMinutes)
+  form.end_time = toLocalFromIso(startDate.toISOString())
+}
+
+async function confirmAndApplyTypeDefaultsOnEdit() {
+  if (!selectedAppointmentType.value) return
+
+  const result = await Swal.fire({
+    title: 'Recalcular automáticamente',
+    text: '¿Deseas recalcular precio, tipo de pago y hora de fin según el tipo seleccionado?',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, recalcular',
+    cancelButtonText: 'No, mantener actual',
+  })
+
+  if (!result.isConfirmed) return
+
+  const minutes = Number(selectedAppointmentType.value.estimated_minutes || 0)
+  const hours = Number(selectedAppointmentType.value.estimated_hours || 0)
+  const totalMinutes = (Number.isFinite(hours) ? Math.max(hours, 0) * 60 : 0) + (Number.isFinite(minutes) ? Math.max(minutes, 0) : 0)
+
+  const typePrice = Number(selectedAppointmentType.value.price || 0)
+  if (Number.isFinite(typePrice) && typePrice >= 0) {
+    form.price = Number(typePrice.toFixed(2))
+  }
+
+  form.payment_type = (selectedAppointmentType.value.payment_type === 'abono' && hasAvailableBonuses.value)
+    ? 'bonus'
+    : 'single'
+
+  if (!form.start_time || totalMinutes <= 0) return
+
+  const startIso = toIsoFromLocal(form.start_time)
+  if (!startIso) return
+  const startDate = new Date(startIso)
+  startDate.setMinutes(startDate.getMinutes() + totalMinutes)
+  form.end_time = toLocalFromIso(startDate.toISOString())
 }
 
 const isFutureAppointment = computed(() => {
@@ -1474,6 +1676,8 @@ watch(() => route.params.id, (id) => {
     form.notes = ''
     invoiceNotesDraft.value = ''
     form.price = ''
+    form.app_type_id = ''
+    form.custom_type = ''
     form.use_bonus_id = ''
     form.use_credit_payment_id = ''
     form.payment_type = 'single'
@@ -1488,6 +1692,53 @@ watch(() => route.params.id, (id) => {
 
 watch(() => [form.start_time, form.end_time], () => {
   checkOverlap()
+})
+
+watch(() => form.start_time, (newVal, oldVal) => {
+  if (suppressTypeChangePrompt.value) return
+  if (!newVal || !oldVal) return
+  if (!selectedAppointmentType.value) return
+
+  const minutes = Number(selectedAppointmentType.value.estimated_minutes || 0)
+  const hours = Number(selectedAppointmentType.value.estimated_hours || 0)
+  const totalMinutes = Math.max(hours, 0) * 60 + Math.max(minutes, 0)
+  if (totalMinutes <= 0) return
+
+  const startIso = toIsoFromLocal(newVal)
+  if (!startIso) return
+  const endDate = new Date(startIso)
+  endDate.setMinutes(endDate.getMinutes() + totalMinutes)
+  form.end_time = toLocalFromIso(endDate.toISOString())
+})
+
+watch(() => form.app_type_id, () => {
+  if (suppressTypeChangePrompt.value) return
+
+  if (selectedAppointmentType.value) {
+    confirmAndApplyTypeDefaultsOnEdit()
+  }
+
+  if (isCustomAppointmentType.value) {
+    if (!isEdit.value) {
+      form.price = ''
+    }
+    form.payment_type = 'single'
+    form.use_bonus_id = ''
+    form.bonus_notes = ''
+    form.bonus_name = ''
+    return
+  }
+
+  if (!isCustomAppointmentType.value) {
+    form.custom_type = ''
+  }
+  applyAppointmentTypeDefaults()
+})
+
+watch(() => form.start_time, () => {
+  if (!isEdit.value && hasSelectedAppointmentType.value) {
+    applyAppointmentTypeDefaults()
+  }
 })
 
 watch(() => form.end_time, () => {
@@ -1588,6 +1839,8 @@ async function submit(payNow = false) {
       status: form.status,
       start_time: form.start_time,
       end_time: form.end_time,
+      app_type_id: (!isCustomAppointmentType.value && form.app_type_id) ? form.app_type_id : undefined,
+      custom_type: isCustomAppointmentType.value ? (form.custom_type || undefined) : undefined,
       notes: form.notes,
       price: effectiveSessionPrice.value > 0 ? Number(effectiveSessionPrice.value) : undefined,
       payment_type: form.payment_type === 'credit' ? 'single' : form.payment_type,
@@ -1701,8 +1954,21 @@ async function submit(payNow = false) {
 </script>
 
 <style scoped>
-.form-wrapper { display:flex; justify-content:center; padding:24px }
-.form-card { width:100%; max-width:760px; background: #fff; border-radius:12px; box-shadow: 0 10px 30px rgba(2,6,23,0.06); padding:24px }
+.form-wrapper {
+  display:flex;
+  justify-content:center;
+  width:100%;
+  padding:16px;
+  box-sizing:border-box;
+}
+.form-card {
+  width:min(100%, 980px);
+  background:#fff;
+  border-radius:12px;
+  box-shadow:0 10px 30px rgba(2,6,23,0.06);
+  padding:clamp(14px, 2vw, 24px);
+  box-sizing:border-box;
+}
 .form-header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px }
 .form-header h1 { margin:0; font-size:22px }
 .form-sub { color:#6b7280; font-size:13px; margin-top:6px }
@@ -1714,13 +1980,26 @@ async function submit(payNow = false) {
 .tab-content-grid .full { grid-column: 1 / -1 }
 .field { display:flex; flex-direction:column }
 .label { font-weight:600; margin-bottom:6px }
-.tab-bar { display:flex; gap:8px; margin-top:2px }
+.tab-bar { display:flex; gap:8px; margin-top:2px; flex-wrap:wrap }
 .tab-btn { padding:8px 14px; border-radius:9999px; border:1px solid #e5e7eb; background:#fff; font-weight:600; color:#6b7280 }
 .tab-btn.active { border-color:#3b82f6; color:#3b82f6; background:#eff6ff }
 .tab-btn-success { border-color:#86efac; color:#166534; background:#dcfce7 }
-.input, .textarea { padding:12px; border:1px solid #e5e7eb; border-radius:8px; font-size:14px }
+.input, .textarea { width:100%; box-sizing:border-box; padding:12px; border:1px solid #e5e7eb; border-radius:8px; font-size:14px }
+.datetime-pair { display:grid; grid-template-columns: 1fr 120px; gap:6px; align-items:center }
+:deep(.option-select .select-btn) {
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  background: #fff;
+}
+.status-select-wrap {
+  position: relative;
+  width: 100%;
+}
 .textarea { resize:vertical }
 .field-error { color:#b91c1c; font-size:13px; margin-top:6px }
+.field-help { color:#6b7280; font-size:12px; margin-top:6px }
 .calendar-inline-alert { margin-top:6px; background:#fffbeb; border:1px solid #fde68a; padding:6px 8px; border-radius:8px; color:#92400e; font-size:12px }
 
 .actions { display:flex; gap:12px; align-items:center }
@@ -1743,6 +2022,7 @@ async function submit(payNow = false) {
 .right-actions { display:flex; gap:8px; align-items:center }
 
 @media (max-width: 768px) {
+  .form-wrapper { padding:10px }
   .grid-form { grid-template-columns: 1fr }
   .tab-content-grid { grid-template-columns: 1fr }
 }

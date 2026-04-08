@@ -72,6 +72,7 @@ class MeController
             'clinic' => $clinic,
             'clinic_invoice_background_url' => $invoiceBackgroundUrl,
             'counters' => $clinic ? $this->counterService->getProfileCounters((int) $clinic->id) : [],
+            'cesiones' => $clinic ? $clinic->appointmentTypes()->orderBy('id')->get(['id', 'description', 'estimated_hours', 'estimated_minutes', 'price', 'payment_type'])->toArray() : [],
             'subscription_payments' => $subscriptionPayments,
             'status' => $status,
             'trial_ends_at' => $trialEnds,
@@ -112,6 +113,13 @@ class MeController
             'counters.*.table_type' => ['required', Rule::in(CounterService::TABLE_TYPES)],
             'counters.*.prefix' => ['required', 'string', 'min:1', 'max:4', 'regex:/^[A-Za-z0-9]+$/'],
             'counters.*.last_number' => ['nullable', 'integer', 'min:0'],
+            'cesiones' => ['nullable', 'array'],
+            'cesiones.*.id' => ['nullable', 'string'],
+            'cesiones.*.description' => ['nullable', 'string', 'max:255'],
+            'cesiones.*.estimated_hours' => ['required', 'integer', 'min:0'],
+            'cesiones.*.estimated_minutes' => ['required', 'integer', 'min:0', 'max:59'],
+            'cesiones.*.price' => ['required', 'numeric', 'min:0'],
+            'cesiones.*.payment_type' => ['required', Rule::in(['simple', 'abono'])],
         ]);
 
         DB::transaction(function () use ($data, $user, $clinic) {
@@ -134,6 +142,24 @@ class MeController
             if (!empty($data['counters']) && is_array($data['counters'])) {
                 $this->counterService->upsertClinicCounters((int) $clinic->id, $data['counters']);
             }
+
+            // Guardar cesiones (appointment_types)
+            if (!empty($data['cesiones']) && is_array($data['cesiones'])) {
+                $sanitized = array_map(function ($item) use ($clinic) {
+                    return [
+                        'clinic_id' => $clinic->id,
+                        'description' => $item['description'] ?? '',
+                        'estimated_hours' => max((int)($item['estimated_hours'] ?? 0), 0),
+                        'estimated_minutes' => max((int)($item['estimated_minutes'] ?? 60), 0),
+                        'price' => max((float)($item['price'] ?? 0), 0),
+                        'payment_type' => $item['payment_type'] === 'abono' ? 'abono' : 'simple',
+                    ];
+                }, $data['cesiones']);
+
+                // Eliminar antiguas y crear nuevas
+                $clinic->appointmentTypes()->delete();
+                $clinic->appointmentTypes()->createMany($sanitized);
+            }
         }, 3);
 
         return response()->json([
@@ -143,6 +169,7 @@ class MeController
                 ? Storage::url($clinic->invoice_background_path)
                 : null,
             'counters' => $this->counterService->getProfileCounters((int) $clinic->id),
+            'cesiones' => $clinic->fresh()->appointmentTypes()->orderBy('id')->get(['id', 'description', 'estimated_hours', 'estimated_minutes', 'price', 'payment_type'])->toArray(),
             'message' => 'Datos actualizados',
         ]);
     }

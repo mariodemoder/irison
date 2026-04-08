@@ -61,6 +61,11 @@ class Clinic extends Model
         return $this->hasMany(Counter::class, 'clinic_id');
     }
 
+    public function appointmentTypes(): HasMany
+    {
+        return $this->hasMany(AppointmentType::class, 'clinic_id');
+    }
+
     public function currentSubscription()
     {
         // Preferir suscripción activa; si no existe, devolver la más reciente

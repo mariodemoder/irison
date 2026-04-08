@@ -149,12 +149,20 @@ class AppointmentController extends Controller
                 ->values();
         }
 
+        // Cargar tipos de citas
+        $appointmentTypes = \App\Models\AppointmentType::query()
+            ->where('clinic_id', $clinicId)
+            ->orderBy('description')
+            ->get(['id', 'description', 'estimated_hours', 'estimated_minutes', 'price', 'payment_type'])
+            ->toArray();
+
         return response()->json([
             'data' => [
                 'patients' => $patientsPayload,
                 'appointment' => $appointmentPayload,
                 'bonuses' => $bonuses->values(),
                 'pending_credit_payments' => $pendingCreditPayments,
+                'appointment_types' => $appointmentTypes,
             ],
         ]);
     }

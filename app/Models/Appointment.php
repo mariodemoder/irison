@@ -31,6 +31,8 @@ class Appointment extends Model
         'notes',
         'payment_type',
         'bonus_id',
+        'app_type_id',
+        'custom_type',
     ];
 
     protected $casts = [
@@ -93,6 +95,10 @@ class Appointment extends Model
         return $this->belongsTo(Document::class, 'invoice_id');
     }
 
+    public function appointmentType(): BelongsTo
+    {
+        return $this->belongsTo(AppointmentType::class, 'app_type_id');
+    }
     /**
      * Convenience: apply a bonus to this appointment by id using BonusService.
      * Throws exceptions from BonusService on failure.

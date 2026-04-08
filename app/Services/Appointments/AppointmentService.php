@@ -31,7 +31,7 @@ class AppointmentService
             ->where('end_time', '<', Carbon::now())
             ->update(['status' => 'completed']);
 
-        $query = Appointment::with(['patient', 'payments', 'creditUsages']);
+        $query = Appointment::with(['patient', 'payments', 'creditUsages', 'appointmentType']);
 
         if (!empty($filters['date'])) {
             $date = Carbon::parse($filters['date']);
@@ -65,6 +65,34 @@ class AppointmentService
             $this->validatePaymentRules($data, $clinicId);
 
             $data['clinic_id'] = $clinicId;
+
+            if (isset($data['custom_type'])) {
+                $customType = trim((string) $data['custom_type']);
+                $data['custom_type'] = $customType !== '' ? $customType : null;
+            }
+            
+            // Si se proporciona app_type_id, sugerir precio y tipo de pago del tipo
+            if (!empty($data['app_type_id']) && is_numeric($data['app_type_id'])) {
+                $appType = \App\Models\AppointmentType::query()
+                    ->where('clinic_id', $clinicId)
+                    ->find($data['app_type_id']);
+                
+                if ($appType) {
+                    if (!isset($data['price']) || $data['price'] === '' || $data['price'] === null) {
+                        $data['price'] = $appType->price;
+                    }
+
+                    if (!isset($data['payment_type']) || $data['payment_type'] === '' || $data['payment_type'] === null) {
+                        $data['payment_type'] = $appType->payment_type === 'abono' ? 'bonus' : 'single';
+                    }
+
+                    // Si el tipo viene tipificado, limpiar cualquier texto libre
+                    $data['custom_type'] = null;
+                }
+            } else {
+                $data['app_type_id'] = null;
+            }
+            
             if (isset($data['use_bonus_id'])) {
                 $data['use_bonus_id'] = $this->normalizeBonusId($data['use_bonus_id']);
                 $data['bonus_id'] = $data['use_bonus_id'];
@@ -85,7 +113,7 @@ class AppointmentService
             $this->syncPendingCreditPaymentUsage($appointment, $data);
             $this->appointmentPendingPaymentService->syncPaymentStatus($appointment);
 
-            return $appointment->load(['patient', 'bonus']);
+            return $appointment->load(['patient', 'bonus', 'appointmentType']);
         });
     }
 
@@ -109,7 +137,7 @@ class AppointmentService
             }
         }
 
-        $appointment->load(['bonus', 'patient', 'creditUsages', 'payments']);
+        $appointment->load(['bonus', 'patient', 'creditUsages', 'payments', 'appointmentType']);
 
         $bonusPayments = collect();
         if ((string) $appointment->payment_status === 'covered_by_pack' && !empty($appointment->bonus_id)) {

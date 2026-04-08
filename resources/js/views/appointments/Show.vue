@@ -79,6 +79,11 @@
           </div>
 
           <div class="field full">
+            <label class="label">Tipo de cita</label>
+            <div class="value">{{ appointment.appointment_type?.description || appointment.appointmentType?.description || appointment.custom_type || '—' }}</div>
+          </div>
+
+          <div class="field full">
             <label class="label">Notas</label>
             <div class="value">{{ appointment.notes ?? '—' }}</div>
           </div>

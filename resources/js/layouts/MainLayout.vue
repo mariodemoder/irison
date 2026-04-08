@@ -63,8 +63,7 @@
             <div class="header-card-meta">
               <div class="header-card-label">{{ clinic?.name ?? '—' }} — <router-link to="/profile" class="user-link">CONFIGURACIÓN</router-link></div>
               <div class="header-card-sub">
-                <span :class="['status-dot', subscriptionState.color]" aria-hidden="true"></span>
-                <span class="sub-label">{{ subscriptionState.label }}</span>
+                <span class="sub-label">{{ subscriptionStatusDot }} {{ subscriptionState.label }}</span>
               </div>
             </div>
             <button class="logout-btn" @click.prevent="logoutAction">Cerrar sesión</button>
@@ -129,6 +128,13 @@ const subscriptionState = computed(() => {
     return { color: 'red', label: 'Tu prueba ha finalizado' }
   }
   return { color: 'red', label: 'Suscripción vencida' }
+})
+
+const subscriptionStatusDot = computed(() => {
+  if (status.value === 'trial') return '🟠'
+  if (status.value === 'active' || status.value === 'activa') return '🟢'
+  if (status.value === 'canceled' || status.value === 'cancelled' || status.value === 'blocked') return '🔴'
+  return '🔴'
 })
 
 const columnClasses = computed(() => {

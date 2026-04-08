@@ -45,6 +45,16 @@ const todayLabel = computed(() => {
 
 const todayDateQuery = computed(() => dashboardDate.value)
 
+function dashboardStatusDot(kind) {
+  const dots = {
+    today: '🔵',
+    pending: '🟠',
+    completed: '🟢',
+    canceled: '🔴',
+  }
+  return dots[String(kind || '')] || '⚪'
+}
+
 const importantAlerts = computed(() => {
   const items = []
 
@@ -313,22 +323,22 @@ onMounted(async () => {
 
         <div v-else class="today-grid">
           <router-link class="today-card" :to="{ path: '/appointments/day', query: { date: todayDateQuery } }">
-            <div class="today-label"><span class="today-icon today" aria-hidden="true"></span> Citas hoy</div>
+            <div class="today-label">{{ dashboardStatusDot('today') }} Citas hoy</div>
             <div class="today-value">{{ todaySummary.total }}</div>
           </router-link>
 
           <router-link class="today-card" :to="{ path: '/appointments/day', query: { date: todayDateQuery, status: 'completed' } }">
-            <div class="today-label"><span class="today-icon completed" aria-hidden="true"></span> Citas completadas</div>
+            <div class="today-label">{{ dashboardStatusDot('completed') }} Citas completadas</div>
             <div class="today-value">{{ todaySummary.completed }}</div>
           </router-link>
 
           <router-link class="today-card" :to="{ path: '/appointments/day', query: { date: todayDateQuery, status: 'canceled' } }">
-            <div class="today-label"><span class="today-icon canceled" aria-hidden="true"></span> Canceladas</div>
+            <div class="today-label">{{ dashboardStatusDot('canceled') }} Canceladas</div>
             <div class="today-value">{{ todaySummary.canceled }}</div>
           </router-link>
 
           <router-link class="today-card" :to="{ path: '/appointments/day', query: { date: todayDateQuery, status: 'pending' } }">
-            <div class="today-label"><span class="today-icon pending" aria-hidden="true"></span> Pendientes</div>
+            <div class="today-label">{{ dashboardStatusDot('pending') }} Pendientes</div>
             <div class="today-value">{{ todaySummary.pending }}</div>
           </router-link>
         </div>

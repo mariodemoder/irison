@@ -10,8 +10,7 @@
           </div>
 
           <div style="display:flex;align-items:center;gap:8px">
-            <span :class="['status-dot', subscriptionState.color]"></span>
-            <div style="font-size:13px">{{ subscriptionState.label }}</div>
+            <div style="font-size:13px">{{ subscriptionStatusDot }} {{ subscriptionState.label }}</div>
           </div>
 
           <div style="margin-left:12px">
@@ -23,11 +22,12 @@
       <AppLoading v-if="loading" message="Cargando perfil..." />
 
       <div v-else>
-        <div style="max-width:760px">
+        <div class="profile-container">
           <div class="tabs">
             <button :class="['tab', { active: activeTab==='datos' }]" @click="activeTab='datos'">Datos</button>
             <button :class="['tab', { active: activeTab==='contadores' }]" @click="activeTab='contadores'">Contadores</button>
-            <button :class="['tab', { active: activeTab==='factura_pdf' }]" @click="activeTab='factura_pdf'">Fondo factura PDF</button>
+            <button :class="['tab', { active: activeTab==='factura_pdf' }]" @click="activeTab='factura_pdf'">Factura PDF</button>
+              <button :class="['tab', { active: activeTab==='cesiones' }]" @click="activeTab='cesiones'">Cesiones</button>
             <button :class="['tab', { active: activeTab==='seguridad' }]" @click="activeTab='seguridad'">Seguridad</button>
             <button :class="['tab', { active: activeTab==='subscripcion' }]" @click="activeTab='subscripcion'">Subscripción</button>
           </div>
@@ -113,8 +113,7 @@
               <div class="tab-panel tab-card" v-show="activeTab==='subscripcion'">
                 <h2>Subscripción</h2>
                 <div style="display:flex;align-items:center;gap:12px;margin-top:8px">
-                  <span :class="['status-dot', subscriptionState.color]"></span>
-                  <div>{{ subscriptionState.label }}</div>
+                  <div>{{ subscriptionStatusDot }} {{ subscriptionState.label }}</div>
                 </div>
                 <div style="margin-top:12px">
                   <div v-if="status==='trial'">
@@ -163,28 +162,98 @@
                   Formato final: <strong>PREFIJO-000001</strong> (prefijo de 1 a 4 caracteres)
                 </div>
 
-                <div style="margin-top:12px;display:grid;gap:10px">
-                  <div
-                    v-for="row in counters"
-                    :key="row.table_type"
-                    class="counter-grid"
-                  >
-                    <div>
-                      <label class="label">Tipo</label>
-                      <input class="input" :value="counterTypeLabels[row.table_type] || row.table_type" disabled />
-                    </div>
-                    <div>
-                      <label class="label">Prefijo</label>
-                      <input class="input" maxlength="4" v-model="row.prefix" />
-                    </div>
-                    <div>
-                      <label class="label">Último número</label>
-                      <input class="input" type="number" min="0" v-model.number="row.last_number" />
-                    </div>
-                    <div>
-                      <label class="label">Siguiente</label>
-                      <input class="input" :value="previewCounter(row)" disabled />
-                    </div>
+                <div class="counter-table-wrap" style="margin-top:12px">
+                  <table class="counter-table">
+                    <thead>
+                      <tr>
+                        <th>Tipo</th>
+                        <th>Prefijo</th>
+                        <th>Último número</th>
+                        <th>Siguiente</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="row in counters" :key="row.table_type">
+                        <td data-label="Tipo">{{ counterTypeLabels[row.table_type] || row.table_type }}</td>
+                        <td data-label="Prefijo">
+                          <input class="input counter-input" maxlength="4" v-model="row.prefix" />
+                        </td>
+                        <td data-label="Último número">
+                          <input class="input counter-input" type="number" min="0" v-model.number="row.last_number" />
+                        </td>
+                        <td data-label="Siguiente">
+                          <input class="input counter-input" :value="previewCounter(row)" disabled />
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="tab-panel tab-card" v-show="activeTab==='cesiones'">
+                <div class="section-head">
+                  <h2>Tipos de cesiones</h2>
+                  <button class="btn btn-sm plus-btn" type="button" @click.prevent="addCesionType" title="Agregar tipo">+</button>
+                </div>
+                <div style="margin-top:8px;color:#6b7280;font-size:13px">
+                  Crea todos los tipos que necesites para tu clinica.
+                </div>
+
+                <div class="counter-table-wrap" style="margin-top:14px">
+                  <table class="counter-table cesiones-table">
+                    <colgroup>
+                      <col class="cesion-col-description">
+                      <col class="cesion-col-time">
+                      <col class="cesion-col-price">
+                      <col class="cesion-col-payment">
+                      <col class="cesion-col-actions">
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th>Descripcion</th>
+                        <th>Tiempo estimado</th>
+                        <th>Precio</th>
+                        <th>Tipo de pago</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(item, index) in cesionTypes" :key="item.id">
+                        <td data-label="Descripcion">
+                          <input class="input counter-input" v-model="item.description" placeholder="Ej: Sesion individual" />
+                        </td>
+                        <td data-label="Tiempo estimado">
+                          <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px">
+                            <div>
+                              <label style="display:block; font-size:11px; color:#6b7280; margin-bottom:2px">Horas</label>
+                              <input class="input counter-input" type="number" min="0" step="1" v-model.number="item.estimated_hours" style="font-size:13px; padding:6px" />
+                            </div>
+                            <div>
+                              <label style="display:block; font-size:11px; color:#6b7280; margin-bottom:2px">Min</label>
+                              <input class="input counter-input" type="number" min="0" max="59" step="1" v-model.number="item.estimated_minutes" style="font-size:13px; padding:6px" />
+                            </div>
+                          </div>
+                        </td>
+                        <td data-label="Precio">
+                          <input class="input counter-input" type="number" min="0" step="0.01" v-model.number="item.price" />
+                        </td>
+                        <td data-label="Tipo de pago">
+                          <select class="input counter-input" v-model="item.payment_type">
+                            <option value="simple">Simple</option>
+                            <option value="abono">Abono</option>
+                          </select>
+                        </td>
+                        <td data-label="Acciones">
+                          <button class="btn btn-sm" type="button" @click.prevent="removeCesionType(item.id)">Eliminar</button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="cesiones-list" style="margin-top:12px">
+                  <div v-if="cesionTypes.length === 0" class="subscription-history-empty">
+                    Aun no hay tipos de cesiones. Pulsa + para agregar.
                   </div>
                 </div>
               </div>
@@ -231,7 +300,7 @@
             </div>
 
             <div class="action-plane">
-              <div v-if="activeTab==='datos' || activeTab==='contadores'" class="action-row">
+              <div v-if="activeTab==='datos' || activeTab==='contadores' || activeTab==='cesiones'" class="action-row">
                 <button class="btn btn-sm" type="button" :disabled="saving" @click.prevent="save">Guardar</button>
               </div>
 
@@ -313,6 +382,7 @@ function defaultCounters() {
 }
 
 const counters = ref(defaultCounters())
+const cesionTypes = ref([])
 
 // pestañas: 'datos' | 'seguridad' | 'subscripcion' | 'contadores'
 const activeTab = ref('datos')
@@ -334,6 +404,13 @@ const subscriptionState = computed(() => {
   if (status.value === 'active') return { color: 'green', label: 'Suscripción activa' }
   if (status.value === 'trial') return { color: 'yellow', label: `Prueba — quedan ${daysLeft.value ?? '—'} días` }
   return { color: 'red', label: 'Sin suscripción' }
+})
+
+const subscriptionStatusDot = computed(() => {
+  if (status.value === 'trial') return '🟠'
+  if (status.value === 'active' || status.value === 'activa') return '🟢'
+  if (status.value === 'canceled' || status.value === 'cancelled' || status.value === 'blocked') return '🔴'
+  return '🔴'
 })
 
 // indica si el trial está vencido
@@ -386,6 +463,10 @@ async function load() {
       counters.value = defaultCounters()
     }
 
+    // Cargar cesiones desde el servidor
+    const incomingCesiones = Array.isArray(res.data.cesiones) ? res.data.cesiones : []
+    cesionTypes.value = incomingCesiones.map((item) => sanitizeCesionType(item))
+
     if (activeTab.value === 'factura_pdf') {
       await refreshPreview()
     }
@@ -404,6 +485,8 @@ function logoutAction() {
 async function save() {
   saving.value = true
   try {
+    cesionTypes.value = cesionTypes.value.map((item) => sanitizeCesionType(item))
+
     const payload = {
       name: form.value.name,
       email: form.value.email,
@@ -420,6 +503,13 @@ async function save() {
         table_type: item.table_type,
         prefix: (item.prefix ?? '').toString().trim().toUpperCase(),
         last_number: Number.isFinite(Number(item.last_number)) ? Math.max(Number(item.last_number), 0) : 0,
+      })),
+      cesiones: cesionTypes.value.map((item) => ({
+        description: item.description,
+        estimated_hours: item.estimated_hours,
+        estimated_minutes: item.estimated_minutes,
+        price: item.price,
+        payment_type: item.payment_type,
       }))
     }
     // Intentamos PUT a /me (backend debe aceptar actualización parcial)
@@ -438,6 +528,9 @@ async function save() {
         }
       })
     }
+    // Cargar cesiones actualizadas desde el servidor
+    const incomingCesiones = Array.isArray(res.data.cesiones) ? res.data.cesiones : []
+    cesionTypes.value = incomingCesiones.map((item) => sanitizeCesionType(item))
   } catch (e) {
     console.error('Error guardando perfil', e)
     const msg = e.response?.data?.message || 'Error guardando datos'
@@ -448,6 +541,41 @@ async function save() {
 }
 
 function reload() { load() }
+
+function makeCesionType() {
+  return {
+    description: '',
+    estimated_hours: 0,
+    estimated_minutes: 60,
+    price: 0,
+    payment_type: 'simple',
+  }
+}
+
+function sanitizeCesionType(item) {
+  return {
+    id: item?.id,
+    description: (item?.description ?? '').toString(),
+    estimated_hours: Number.isFinite(Number(item?.estimated_hours))
+      ? Math.max(Number(item.estimated_hours), 0)
+      : 0,
+    estimated_minutes: Number.isFinite(Number(item?.estimated_minutes))
+      ? Math.min(Math.max(Number(item.estimated_minutes), 0), 59)
+      : 60,
+    price: Number.isFinite(Number(item?.price))
+      ? Math.max(Number(item.price), 0)
+      : 0,
+    payment_type: item?.payment_type === 'abono' ? 'abono' : 'simple',
+  }
+}
+
+function addCesionType() {
+  cesionTypes.value.push(makeCesionType())
+}
+
+function removeCesionType(id) {
+  cesionTypes.value = cesionTypes.value.filter((item) => item.id !== id)
+}
 
 function onInvoiceBackgroundPicked(event) {
   const files = event?.target?.files
@@ -641,14 +769,32 @@ onBeforeUnmount(() => {
 .status-dot.yellow { background: #f59e0b }
 .status-dot.red { background: #ef4444 }
 
+.profile-container {
+  width: 100%;
+  max-width: 1180px;
+}
 .profile-shell { display:grid; gap:14px }
 .card-stage { min-height:560px }
-.tabs { display:flex; gap:8px; margin-bottom:12px }
-.tab { padding:8px 12px; border-radius:8px; background:transparent; border:1px solid transparent; cursor:pointer }
+.tabs {
+  display:grid;
+  grid-template-columns:repeat(6, minmax(0, 1fr));
+  gap:8px;
+  margin-bottom:12px;
+}
+.tab {
+  width: 100%;
+  text-align: center;
+  padding:8px 12px;
+  border-radius:8px;
+  background:transparent;
+  border:1px solid transparent;
+  cursor:pointer;
+}
 .tab.active { background:#eef2ff; border-color:#c7d2fe; font-weight:600 }
 .tab-panel { background:transparent }
 .tab-card {
   min-height:560px;
+  width: 100%;
   padding:20px;
   border:1px solid #e5e7eb;
   border-radius:16px;
@@ -690,11 +836,73 @@ onBeforeUnmount(() => {
 }
 .subscription-history-head { background:#f9fafb; color:#6b7280; font-weight:600 }
 .subscription-history-row { border-top:1px solid #f3f4f6 }
-.counter-grid {
-  display:grid;
-  grid-template-columns:180px 140px 160px 1fr;
-  gap:10px;
-  align-items:end;
+.counter-table-wrap {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.counter-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.counter-table th,
+.counter-table td {
+  padding: 10px;
+  border-bottom: 1px solid #f3f4f6;
+  text-align: left;
+  font-size: 13px;
+}
+.counter-table th {
+  background: #f9fafb;
+  color: #6b7280;
+  font-weight: 600;
+}
+.counter-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.counter-input {
+  min-width: 120px;
+}
+.cesiones-table .cesion-col-description { width: 42%; }
+.cesiones-table .cesion-col-time { width: 16%; }
+.cesiones-table .cesion-col-price { width: 14%; }
+.cesiones-table .cesion-col-payment { width: 18%; }
+.cesiones-table .cesion-col-actions { width: 10%; }
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.plus-btn {
+  min-width: 34px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  font-size: 20px;
+  line-height: 1;
+}
+.cesiones-list {
+  display: grid;
+  gap: 12px;
+}
+.cesion-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 12px;
+  background: #f9fafb;
+}
+.cesion-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.cesion-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr 1fr;
+  gap: 10px;
+  align-items: end;
 }
 .invoice-bg-help {
   margin-top: 8px;
@@ -726,15 +934,46 @@ onBeforeUnmount(() => {
   font-size: 13px;
 }
 
+@media (max-width: 980px) {
+  .tabs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 768px) {
+  .tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .tab-card { min-height:auto; }
   .card-stage { min-height:auto; }
   .action-plane {
     position:static;
     bottom:auto;
   }
-  .counter-grid {
-    grid-template-columns:1fr;
+  .counter-table thead {
+    display: none;
+  }
+  .counter-table,
+  .counter-table tbody,
+  .counter-table tr,
+  .counter-table td {
+    display: block;
+    width: 100%;
+  }
+  .counter-table tr {
+    border-bottom: 1px solid #e5e7eb;
+    padding: 8px 0;
+  }
+  .counter-table td {
+    border-bottom: 0;
+    padding: 6px 10px;
+  }
+  .counter-table td::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 4px;
   }
   .subscription-history-head,
   .subscription-history-row {
