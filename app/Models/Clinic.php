@@ -13,10 +13,12 @@ class Clinic extends Model
     use Billable;
 
     protected $fillable = [
-        'name', 'legal_name', 'email', 'phone', 'address', 'nif', 'locality', 'province', 'country', 'zip', 'timezone', 'trial_ends_at', 'subscribed_at', 'invoice_background_path', 'stripe_id', 'pm_type', 'pm_last_four'
+        'name', 'legal_name', 'email', 'phone', 'address', 'nif', 'locality', 'province', 'country', 'zip', 'timezone', 'business_hours', 'closed_days', 'trial_ends_at', 'subscribed_at', 'invoice_background_path', 'stripe_id', 'pm_type', 'pm_last_four'
     ];
 
     protected $casts = [
+        'business_hours' => 'array',
+        'closed_days' => 'array',
         'trial_ends_at' => 'datetime',
         'subscribed_at' => 'datetime',
     ];

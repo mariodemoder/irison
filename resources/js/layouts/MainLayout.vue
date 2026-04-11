@@ -41,6 +41,10 @@
               <path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5"></path>
               <path d="M10 17a2 2 0 0 0 4 0"></path>
             </svg>
+            <svg v-else-if="item.path === '/settings'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 1-3 0 1.7 1.7 0 0 0-1-.6 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 1 0-3 1.7 1.7 0 0 0 .6-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 1 3 0 1.7 1.7 0 0 0 1 .6 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.24.37.37.8.37 1.24 0 .44-.13.87-.37 1.24a1.7 1.7 0 0 0 0 3.52z"></path>
+            </svg>
             <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <path d="M4 9l8-5 8 5v10l-8 4-8-4z"></path>
               <path d="M9 12h6"></path>
@@ -61,7 +65,7 @@
         <div class="flex items-center gap-4">
           <div class="header-card">
             <div class="header-card-meta">
-              <div class="header-card-label">{{ clinic?.name ?? '—' }} — <router-link to="/profile" class="user-link">CONFIGURACIÓN</router-link></div>
+              <div class="header-card-label">{{ clinic?.name ?? '—' }} — <router-link to="/profile" class="user-link">MI CUENTA</router-link></div>
               <div class="header-card-sub">
                 <span class="sub-label">{{ subscriptionStatusDot }} {{ subscriptionState.label }}</span>
               </div>
@@ -104,6 +108,7 @@ const navItems = [
   { path: '/notifications', label: 'Notificaciones' },
   { path: '/invoices', label: 'Facturación' },
   { path: '/bonuses', label: 'Bonos' },
+  { path: '/settings', label: 'Configuración' },
 ]
 
 const user = meUser

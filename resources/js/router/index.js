@@ -9,6 +9,7 @@ import PatientsForm from '../views/patients/Form.vue'
 import PatientsShow from '../views/patients/Show.vue'
 import ClinicalHistory from '../views/patients/ClinicalHistory.vue'
 import Profile from '../views/Profile.vue'
+import Configuration from '../views/Configuration.vue'
 import AgendaDay from '../views/appointments/AgendaDay.vue'
 import AgendaWeek from '../views/appointments/AgendaWeek.vue'
 import AppointmentsForm from '../views/appointments/Form.vue'
@@ -27,6 +28,7 @@ const routes = [
   { path: '/register', component: Register },
   { path: '/dashboard', component: Dashboard, meta: { auth: true } },
   { path: '/profile', component: Profile, meta: { auth: true } },
+  { path: '/settings', component: Configuration, meta: { auth: true } },
   { path: '/payments', component: PaymentsIndex, meta: { auth: true } },
   { path: '/payments/create', component: PaymentsForm, meta: { auth: true } },
   { path: '/payments/:id', component: PaymentsShow, meta: { auth: true } },

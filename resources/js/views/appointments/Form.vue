@@ -1932,7 +1932,9 @@ async function submit(payNow = false) {
 
           const rangeMessage = rangeCandidates.find((message) => {
             const text = String(message || '').toLowerCase()
-            return text.includes('hora de inicio') && text.includes('hora de fin')
+            return (text.includes('hora de inicio') && text.includes('hora de fin'))
+              || text.includes('clínica está cerrada')
+              || text.includes('horario de atención')
           })
 
           if (rangeMessage) {

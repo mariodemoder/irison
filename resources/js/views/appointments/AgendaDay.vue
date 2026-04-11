@@ -10,12 +10,15 @@
         @today="goToToday"
       />
 
-      <div class="header-secondary">
+
+
+      <div class="agenda-card">
+        <div class="header-secondary">
         <div class="header-secondary-left">
           <div class="mini-cal-wrapper">
             <div class="mini-cal">
-              <div class="cal-day" :class="{ 'cal-dimmed': isAllMode }">{{ displayDay }}</div>
-              <div class="cal-month" :class="{ 'cal-dimmed': isAllMode }">{{ displayMonthYear }}</div>
+              <div class="cal-day" :class="{ 'cal-dimmed': isAllMode, 'cal-closed': isSelectedDateClosed }">{{ displayDay }}</div>
+              <div class="cal-month" :class="{ 'cal-dimmed': isAllMode, 'cal-closed': isSelectedDateClosed }">{{ displayMonthYear }}</div>
               <input id="agenda-date" name="date" type="date" v-model="date" class="mini-date" :disabled="isAllMode" aria-label="Seleccionar fecha" />
             </div>
           </div>
@@ -46,13 +49,20 @@
         </div>
 
         <div class="header-actions-right">
-          
-
-          <router-link to="/appointments/create" class="btn btn-sm small compact header-create-btn">
+          <button
+            type="button"
+            class="btn btn-sm small compact header-create-btn"
+            :disabled="isSelectedDateClosed && !isAllMode"
+            @click.prevent="createAppointmentFromHeader"
+          >
             Nueva cita
-          </router-link>
+          </button>
         </div>
       </div>
+
+        <div v-if="isSelectedDateClosed" class="closed-day-alert">
+          Día marcado como cerrado. No se mostrarán huecos disponibles ni se permitirán nuevas citas desde esta vista.
+        </div>
 
         <div class="filters-row">
           <div class="search-wrapper">
@@ -152,6 +162,7 @@
           </div>
         </div>
       </div>
+    </div>
   </MainLayout>
 </template>
 
@@ -164,12 +175,16 @@ import CalendarHeader from '../../components/calendar/CalendarHeader.vue'
 import EmptyIndexState from '../../components/EmptyIndexState.vue'
 import AppLoading from '../../components/AppLoading.vue'
 import { statusLabel, timeClass, formatTimeCalendar } from '../../shared/appointmentHelpers'
+import { isDateClosed, normalizeClosedDays } from '../../shared/clinicCalendar'
+import { useToast } from 'vue-toastification'
 
 const router = useRouter()
 const route = useRoute()
+const toast = useToast()
 const appointments = ref([])
 const loading = ref(false)
 const date = ref(localIsoDate())
+const closedDays = ref([])
 const isAllMode = computed(() => String(route.query.all || '') === '1')
 const isTodayMode = computed(() => !isAllMode.value && date.value === localIsoDate())
 const appointmentScope = ref('scheduled')
@@ -202,6 +217,7 @@ const dayLabel = computed(() => {
   const d = new Date(`${date.value}T00:00:00`)
   return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
 })
+const isSelectedDateClosed = computed(() => !isAllMode.value && isDateClosed(date.value, closedDays.value))
 
 function localIsoDate() {
   const now = new Date()
@@ -264,6 +280,15 @@ async function load() {
     appointments.value = []
   } finally {
     loading.value = false
+  }
+}
+
+async function loadClinicCalendarConfig() {
+  try {
+    const res = await api.get('/me')
+    closedDays.value = normalizeClosedDays(res?.data?.clinic?.closed_days)
+  } catch (e) {
+    closedDays.value = []
   }
 }
 
@@ -376,6 +401,10 @@ function goToToday() {
 }
 
 onMounted(() => load())
+
+onMounted(() => {
+  loadClinicCalendarConfig()
+})
 
 onMounted(() => {
   syncDateFromRoute()
@@ -512,14 +541,38 @@ function hhmm(totalMin) {
 }
 
 function goToNewWithGap(item) {
+  if (isSelectedDateClosed.value) {
+    toast.info('La clínica está cerrada en esta fecha')
+    return
+  }
   const pad = n => String(n).padStart(2, '0')
   const toISO = min => `${date.value}T${pad(Math.floor(min / 60))}:${pad(min % 60)}`
   router.push({ path: '/appointments/create', query: { start: toISO(item.from), end: toISO(item.to) } })
 }
 
+function createAppointmentFromHeader() {
+  if (isSelectedDateClosed.value && !isAllMode.value) {
+    toast.info('La clínica está cerrada en esta fecha')
+    return
+  }
+
+  if (isAllMode.value) {
+    router.push('/appointments/create')
+    return
+  }
+
+  router.push({ path: '/appointments/create', query: { start: `${date.value}T09:00`, end: `${date.value}T10:00` } })
+}
+
 const listWithGaps = computed(() => {
   if (isAllMode.value) {
     return paginatedAppointments.value.map(a => ({ _type: 'appt', ...a }))
+  }
+
+  if (isSelectedDateClosed.value) {
+    return [...filteredAppointments.value]
+      .sort((a, b) => parseMin(a.start_time) - parseMin(b.start_time))
+      .map(a => ({ _type: 'appt', ...a }))
   }
 
   const sorted = [...filteredAppointments.value].sort((a, b) => parseMin(a.start_time) - parseMin(b.start_time))
@@ -565,6 +618,14 @@ watch(totalPages, (pages) => {
 .header-secondary { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; flex-wrap:wrap }
 .header-secondary-left { display:flex; align-items:center; gap:12px; flex-wrap:wrap }
 .header-actions-right { display:flex; align-items:center; gap:18px; margin-left:auto }
+
+.agenda-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(2, 6, 23, 0.05);
+}
 
 .form-sub { color:#6b7280; font-size:13px; margin-top:4px }
 .calendar-card { display:flex; align-items:center; gap:12px; background:#fff; padding:10px; border-radius:10px; border:1px solid #eef2ff22 }
@@ -806,7 +867,17 @@ watch(totalPages, (pages) => {
 
 /* Mini-cal deshabilitado en modo Ver Todo */
 .cal-dimmed { opacity:.4 }
+.cal-closed { text-decoration: line-through; color:#b91c1c }
 .mini-date:disabled { opacity:.4; cursor:default }
+.closed-day-alert {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #fecaca;
+  background: #fff1f2;
+  color: #9f1239;
+  font-size: 13px;
+}
 
 /* Fecha corta en modo Ver Todo */
 .row-date { display:inline; font-size:13px; font-weight:600; color:#6b7280 }

@@ -103,12 +103,21 @@ class MeController
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'clinic' => ['nullable', 'array'],
             'clinic.name' => ['nullable', 'string', 'max:255'],
+            'clinic.email' => ['nullable', 'email', 'max:255'],
+            'clinic.phone' => ['nullable', 'string', 'max:50'],
             'clinic.nif' => ['nullable', 'string', 'max:50'],
             'clinic.address' => ['nullable', 'string', 'max:255'],
             'clinic.locality' => ['nullable', 'string', 'max:120'],
             'clinic.province' => ['nullable', 'string', 'max:120'],
             'clinic.country' => ['nullable', 'string', 'max:120'],
             'clinic.zip' => ['nullable', 'string', 'max:20'],
+            'clinic.business_hours' => ['nullable', 'array'],
+            'clinic.business_hours.*.day' => ['required', Rule::in(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'])],
+            'clinic.business_hours.*.enabled' => ['required', 'boolean'],
+            'clinic.business_hours.*.start' => ['nullable', 'date_format:H:i'],
+            'clinic.business_hours.*.end' => ['nullable', 'date_format:H:i'],
+            'clinic.closed_days' => ['nullable', 'array'],
+            'clinic.closed_days.*' => ['required', 'string', 'regex:/^\d{4}-\d{2}-\d{2}(\.\.\d{4}-\d{2}-\d{2})?$/'],
             'counters' => ['nullable', 'array'],
             'counters.*.table_type' => ['required', Rule::in(CounterService::TABLE_TYPES)],
             'counters.*.prefix' => ['required', 'string', 'min:1', 'max:4', 'regex:/^[A-Za-z0-9]+$/'],
@@ -129,14 +138,32 @@ class MeController
             ]);
 
             $clinicPayload = $data['clinic'] ?? [];
+            $businessHours = array_values(array_map(static function ($item) {
+                return [
+                    'day' => (string) ($item['day'] ?? ''),
+                    'enabled' => (bool) ($item['enabled'] ?? false),
+                    'start' => !empty($item['start']) ? (string) $item['start'] : null,
+                    'end' => !empty($item['end']) ? (string) $item['end'] : null,
+                ];
+            }, $clinicPayload['business_hours'] ?? []));
+
+            $closedDays = array_values(array_unique(array_filter(array_map(static function ($item) {
+                $value = trim((string) $item);
+                return preg_match('/^\d{4}-\d{2}-\d{2}(\.\.\d{4}-\d{2}-\d{2})?$/', $value) ? $value : null;
+            }, $clinicPayload['closed_days'] ?? []))));
+
             $clinic->update([
                 'name' => array_key_exists('name', $clinicPayload) ? $clinicPayload['name'] : $clinic->name,
+                'email' => $clinicPayload['email'] ?? null,
+                'phone' => $clinicPayload['phone'] ?? null,
                 'nif' => $clinicPayload['nif'] ?? null,
                 'address' => $clinicPayload['address'] ?? null,
                 'locality' => $clinicPayload['locality'] ?? null,
                 'province' => $clinicPayload['province'] ?? null,
                 'country' => $clinicPayload['country'] ?? null,
                 'zip' => $clinicPayload['zip'] ?? null,
+                'business_hours' => $businessHours,
+                'closed_days' => $closedDays,
             ]);
 
             if (!empty($data['counters']) && is_array($data['counters'])) {
