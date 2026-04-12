@@ -93,6 +93,7 @@ const importantAlerts = computed(() => {
         query: {
           unpaid: '1',
           all: '1',
+          appointment_scope: 'all',
         },
       },
     })
@@ -107,6 +108,7 @@ const importantAlerts = computed(() => {
         query: {
           date: dashboardDate.value,
           unpaid: '1',
+          appointment_scope: 'all',
         },
       },
     })
@@ -127,6 +129,7 @@ const riskAlerts = computed(() => {
           status: 'completed',
           unpaid: '1',
           all: '1',
+          appointment_scope: 'all',
         },
       },
     },
@@ -139,6 +142,7 @@ const riskAlerts = computed(() => {
         query: {
           payment: 'partially_paid',
           all: '1',
+          appointment_scope: 'all',
         },
       },
     },

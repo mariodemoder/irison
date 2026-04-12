@@ -171,8 +171,8 @@
                 class="textarea"
                 rows="2"
                 style="width:100%; box-sizing:border-box"
-                placeholder="Detalle que aparecerá en la factura (deja vacío para usar las notas de la cita)"
-                :disabled="isCanceled && mode !== 'reprogram'"
+                :placeholder="billingDetailLabel"
+                :disabled="isCanceled"
               ></textarea>
             </div>
 
@@ -633,6 +633,16 @@ const selectedAppointmentType = computed(() => {
 
 const isCustomAppointmentType = computed(() => form.app_type_id === '__custom')
 
+const appointmentTypeBillingLabel = computed(() => {
+  if (isCustomAppointmentType.value) {
+    const customType = String(form.custom_type || '').trim()
+    return customType || ''
+  }
+
+  const selectedTypeName = String(selectedAppointmentType.value?.description || '').trim()
+  return selectedTypeName || ''
+})
+
 const hasSelectedAppointmentType = computed(() => !!selectedAppointmentType.value)
 
 const appointmentTypeDurationLabel = computed(() => {
@@ -677,7 +687,9 @@ const bonusInvoiceId = computed(() => {
 
 const billingDetailLabel = computed(() => {
   if (!isCoveredByBonus.value) {
-    return invoiceNotesDraft.value || form.notes || '—'
+    const manualInvoiceDetail = String(invoiceNotesDraft.value || '').trim()
+    const appointmentNotes = String(form.notes || '').trim()
+    return manualInvoiceDetail || appointmentTypeBillingLabel.value || appointmentNotes || '—'
   }
 
   const selectedBonusName = selectedBonus.value?.name || form.bonus_name || ''
@@ -688,6 +700,11 @@ const billingDetailLabel = computed(() => {
   }
 
   return base
+})
+
+const billingDetailSuggestedText = computed(() => {
+  const text = String(appointmentTypeBillingLabel.value || form.notes || '').trim()
+  return text
 })
 
 const billingAmountLabel = computed(() => {
@@ -1310,6 +1327,10 @@ function handleBillingTabClick() {
   }
 
   activeTab.value = 'billing'
+
+  if (!isCoveredByBonus.value && !String(invoiceNotesDraft.value || '').trim()) {
+    invoiceNotesDraft.value = billingDetailSuggestedText.value
+  }
 }
 
 function goToBonusInvoice() {
@@ -1349,7 +1370,10 @@ async function emitInvoice() {
   const toast = useToast()
 
   try {
-    const invoiceNotes = String(invoiceNotesDraft.value || '').trim() || String(form.notes || '').trim() || undefined
+    const invoiceNotes = String(invoiceNotesDraft.value || '').trim()
+      || appointmentTypeBillingLabel.value
+      || String(form.notes || '').trim()
+      || undefined
     const res = await api.post(`/appointments/${route.params.id}/invoice`, {
       notes: invoiceNotes,
     })
@@ -1690,6 +1714,14 @@ watch(() => route.params.id, (id) => {
   }
 })
 
+watch([activeTab, billingDetailSuggestedText, isCoveredByBonus], ([tab, suggestedText, coveredByBonus]) => {
+  if (coveredByBonus || tab !== 'billing') return
+
+  if (!String(invoiceNotesDraft.value || '').trim()) {
+    invoiceNotesDraft.value = suggestedText
+  }
+})
+
 watch(() => [form.start_time, form.end_time], () => {
   checkOverlap()
 })
@@ -1973,7 +2005,6 @@ async function submit(payNow = false) {
 }
 .form-header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px }
 .form-header h1 { margin:0; font-size:22px }
-.form-sub { color:#6b7280; font-size:13px; margin-top:6px }
 
 .grid-form { display:grid; grid-template-columns: repeat(2, 1fr); gap:12px }
 .grid-form .full { grid-column: 1 / -1 }

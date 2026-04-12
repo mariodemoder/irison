@@ -17,7 +17,7 @@ class Patient extends Model
       
     protected $fillable = [
         'clinic_id', 'first_name', 'last_name', 'phone', 'email',
-        'birth_date', 'notes', 'nif', 'address', 'zip', 'province', 'country', 'counter'
+        'birth_date', 'notes', 'nif', 'address', 'zip', 'city', 'province', 'country', 'counter'
     ];
 
     protected static function booted(): void

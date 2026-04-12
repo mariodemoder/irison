@@ -179,8 +179,6 @@ function goToPatient(id) {
 /* Button uses global .btn styles from resources/css/app.css */
 
 .page-header { display:grid; grid-template-columns: 1fr 480px auto; align-items:center; gap:12px; margin-bottom:16px }
-.page-header h1 { margin:0; font-size:20px; font-weight:800 }
-.form-sub { color:#6b7280; font-size:13px; margin-top:4px }
 
   /* Search styles moved to global resources/css/app.css */
 

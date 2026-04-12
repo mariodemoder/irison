@@ -1,6 +1,14 @@
 <template>
   <MainLayout>
     <div>
+    <div class="page-header agenda-page-header">
+        <div>
+          <h1>Agenda</h1>
+          <div class="form-sub">Visualiza y gestiona tus citas</div>
+        </div>
+
+      </div>
+
       <CalendarHeader
         view="day"
         :label="dayLabel"
@@ -9,9 +17,6 @@
         @next="nextDay"
         @today="goToToday"
       />
-
-
-
       <div class="agenda-card">
         <div class="header-secondary">
         <div class="header-secondary-left">
@@ -46,6 +51,21 @@
             </svg>
             <span v-if="detailedFiltersCount > 0" class="filter-badge">{{ detailedFiltersCount }}</span>
           </button>
+
+          <div v-if="appliedDetailedFilterTags.length" class="applied-filter-tags" aria-label="Filtros aplicados">
+            <span v-for="tag in appliedDetailedFilterTags" :key="tag.key" class="applied-filter-tag">
+              <span>{{ tag.label }}</span>
+              <button
+                type="button"
+                class="applied-filter-tag-remove"
+                @click.stop="removeAppliedFilterTag(tag.key)"
+                :aria-label="`Quitar filtro ${tag.label}`"
+                title="Quitar filtro"
+              >
+                ×
+              </button>
+            </span>
+          </div>
         </div>
 
         <div class="header-actions-right">
@@ -205,6 +225,38 @@ const detailedFiltersCount = computed(() => {
   if (paymentFilter.value) count += 1
   return count
 })
+const statusFilterLabelMap = {
+  pending: 'Pendientes',
+  scheduled: 'Programadas',
+  rescheduled: 'Reprogramadas',
+  completed: 'Completadas',
+  canceled: 'Canceladas',
+}
+const paymentFilterLabelMap = {
+  unpaid: 'Impago',
+  pending: 'Pendiente',
+  partially_paid: 'Parcial',
+  paid: 'Pagado',
+}
+const appliedDetailedFilterTags = computed(() => {
+  const tags = []
+
+  if (statusFilter.value) {
+    tags.push({
+      key: 'status',
+      label: `Estado: ${statusFilterLabelMap[statusFilter.value] || statusFilter.value}`,
+    })
+  }
+
+  if (paymentFilter.value) {
+    tags.push({
+      key: 'payment',
+      label: `Pago: ${paymentFilterLabelMap[paymentFilter.value] || paymentFilter.value}`,
+    })
+  }
+
+  return tags
+})
 const displayDay = computed(() => {
   const d = new Date(date.value)
   return d.getDate()
@@ -236,6 +288,20 @@ function setMode(all) {
 
 function setAppointmentScope(scope) {
   appointmentScope.value = scope === 'all' ? 'all' : 'scheduled'
+  router.replace({
+    query: {
+      ...route.query,
+      appointment_scope: appointmentScope.value === 'all' ? 'all' : undefined,
+    },
+  })
+}
+
+function normalizeAppointmentScopeInput(value) {
+  return String(value || '').trim() === 'all' ? 'all' : 'scheduled'
+}
+
+function syncAppointmentScopeFromRoute() {
+  appointmentScope.value = normalizeAppointmentScopeInput(route.query.appointment_scope)
 }
 
 function formatDateShort(dt) {
@@ -366,6 +432,20 @@ function clearDetailedFilters() {
   draftPaymentFilter.value = ''
 }
 
+function removeAppliedFilterTag(key) {
+  if (key === 'status') {
+    statusFilter.value = ''
+  }
+
+  if (key === 'payment') {
+    paymentFilter.value = ''
+  }
+
+  draftStatusFilter.value = statusFilter.value
+  draftPaymentFilter.value = paymentFilter.value
+  applyRouteFilters()
+}
+
 function prevPage() {
   if (currentPage.value > 1) {
     currentPage.value -= 1
@@ -409,6 +489,7 @@ onMounted(() => {
 onMounted(() => {
   syncDateFromRoute()
   syncFiltersFromRoute()
+  syncAppointmentScopeFromRoute()
   nowTimerId = setInterval(() => {
     nowTimestamp.value = Date.now()
   }, 60_000)
@@ -424,6 +505,7 @@ watch(date, () => {
 
 watch(() => route.query, () => {
   syncFiltersFromRoute()
+  syncAppointmentScopeFromRoute()
   const changedDate = syncDateFromRoute()
   if (!changedDate) {
     load()
@@ -615,6 +697,10 @@ watch(totalPages, (pages) => {
 <style scoped>
 *, ::before, ::after { box-sizing: border-box; border-width: 0; border-style: solid; border-color: #e5e7eb }
 
+.agenda-page-header {
+  padding: 0 16px;
+}
+
 .header-secondary { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; flex-wrap:wrap }
 .header-secondary-left { display:flex; align-items:center; gap:12px; flex-wrap:wrap }
 .header-actions-right { display:flex; align-items:center; gap:18px; margin-left:auto }
@@ -627,7 +713,6 @@ watch(totalPages, (pages) => {
   box-shadow: 0 4px 12px rgba(2, 6, 23, 0.05);
 }
 
-.form-sub { color:#6b7280; font-size:13px; margin-top:4px }
 .calendar-card { display:flex; align-items:center; gap:12px; background:#fff; padding:10px; border-radius:10px; border:1px solid #eef2ff22 }
 .cal-left, .cal-right { width:36px }
 .cal-center { display:flex; flex-direction:column; align-items:center }
@@ -699,6 +784,42 @@ watch(totalPages, (pages) => {
   top: -5px;
   right: -5px;
   border: 1px solid #bfdbfe;
+}
+
+.applied-filter-tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.applied-filter-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.applied-filter-tag-remove {
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  border: 1px solid #93c5fd;
+  background: #dbeafe;
+  color: #1e3a8a;
+  font-size: 12px;
+  line-height: 1;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
 }
 
 .filters-modal-backdrop {
@@ -805,8 +926,8 @@ watch(totalPages, (pages) => {
 .search-center, .search-wrapper { position: relative; z-index: 0 }
 
 .list { display:flex; flex-direction:column; gap:8px; overflow-x:auto }
-.list-header { display:grid; grid-template-columns: 140px 1.3fr 2fr 130px 160px 120px; gap:12px; align-items:center; padding:8px 14px; color:#6b7280; font-weight:600; font-size:13px }
-.appointment-row { display:grid; grid-template-columns: 140px 1.3fr 2fr 130px 160px 120px; gap:12px; align-items:center; background:#fff; padding:12px 14px; border-radius:10px; text-decoration:none; color:inherit; border:1px solid #eef2ff22; min-width:820px }
+.list-header { display:grid; grid-template-columns: 140px 1.25fr 2.6fr 110px 120px 110px; gap:12px; align-items:center; padding:8px 14px; color:#6b7280; font-weight:600; font-size:13px }
+.appointment-row { display:grid; grid-template-columns: 140px 1.25fr 2.6fr 110px 120px 110px; gap:12px; align-items:center; background:#fff; padding:12px 14px; border-radius:10px; text-decoration:none; color:inherit; border:1px solid #eef2ff22; min-width:820px }
 .appointment-row:hover { box-shadow: 0 10px 24px rgba(2,6,23,0.06); transform: translateY(-2px) }
 .row-left { display:flex; flex-direction:column }
 .row-name { font-weight:600; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
@@ -898,7 +1019,7 @@ watch(totalPages, (pages) => {
 }
 
 @media (max-width: 480px) {
-  .appointment-row { grid-template-columns: 140px 2fr 220px 130px 160px auto; gap:8px }
+  .appointment-row { grid-template-columns: 140px 2fr 260px 110px 120px auto; gap:8px }
   .row-action { justify-content:flex-start }
 }
 .list-header > div,

@@ -226,9 +226,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page-header { margin-bottom: 14px }
-.page-header h1 { margin: 0; font-size: 20px; font-weight: 800 }
-.form-sub { color: #6b7280; font-size: 13px; margin-top: 4px }
 
 .filters { display:grid; grid-template-columns:1.8fr 1fr 1fr 1fr 1fr; gap:8px; margin-bottom:10px }
 .filters select, .search-input { padding:8px; border:1px solid #e5e7eb; border-radius:8px; font-size:13px; width:100% }

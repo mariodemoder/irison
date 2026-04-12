@@ -50,6 +50,7 @@ class PatientsServices
             'email' => 'nullable|email|max:255',
             'address' => 'nullable|string|max:255',
             'zip' => 'nullable|string|max:20',
+            'city' => 'nullable|string|max:120',
             'province' => 'nullable|string|max:120',
             'country' => 'nullable|string|max:120',
             'birth_date' => 'nullable|date',
@@ -77,6 +78,7 @@ class PatientsServices
             'email' => $data['email'] ?? null,
             'address' => $data['address'] ?? null,
             'zip' => $data['zip'] ?? null,
+            'city' => $data['city'] ?? null,
             'province' => $data['province'] ?? null,
             'country' => $data['country'] ?? null,
             'birth_date' => $data['birth_date'] ?? null,
@@ -155,6 +157,7 @@ class PatientsServices
             'email' => $patient->email,
             'address' => $patient->address,
             'zip' => $patient->zip,
+            'city' => $patient->city,
             'province' => $patient->province,
             'country' => $patient->country,
             'birth_date' => $patient->birth_date,
@@ -186,6 +189,7 @@ class PatientsServices
             'email' => 'nullable|email|max:255',
             'address' => 'nullable|string|max:255',
             'zip' => 'nullable|string|max:20',
+            'city' => 'nullable|string|max:120',
             'province' => 'nullable|string|max:120',
             'country' => 'nullable|string|max:120',
             'birth_date' => 'nullable|date',
@@ -214,7 +218,7 @@ class PatientsServices
             $payload['nif'] = $nifResult['nif'];
         }
 
-        foreach (['phone', 'email', 'address', 'zip', 'province', 'country', 'birth_date', 'notes'] as $field) {
+        foreach (['phone', 'email', 'address', 'zip', 'city', 'province', 'country', 'birth_date', 'notes'] as $field) {
             if (array_key_exists($field, $data)) {
                 $payload[$field] = $data[$field];
             }
@@ -256,6 +260,7 @@ class PatientsServices
             'email' => $patient->email,
             'address' => $patient->address,
             'zip' => $patient->zip,
+            'city' => $patient->city,
             'province' => $patient->province,
             'country' => $patient->country,
             'birth_date' => $patient->birth_date,

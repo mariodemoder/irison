@@ -280,10 +280,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page-header { margin-bottom:14px }
-.page-header { display:flex; justify-content:space-between; align-items:center; gap:12px }
-.page-header h1 { margin:0; font-size:20px; font-weight:800 }
-.form-sub { color:#6b7280; font-size:13px; margin-top:4px }
 
 .primary { padding:8px 14px; border-radius:9999px; border:2px solid #3b82f6; color:#3b82f6; background:#fff; font-weight:600 }
 .primary:hover { background:#eff6ff }

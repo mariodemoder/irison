@@ -72,12 +72,18 @@
           </div>
 
           <div class="field">
+            <label class="label">Ciudad</label>
+            <input v-model="form.city" type="text" class="input" />
+            <div v-if="errors.city" class="field-error">{{ errors.city[0] }}</div>
+          </div>
+
+          <div class="field">
             <label class="label">Provincia</label>
             <input v-model="form.province" type="text" class="input" />
             <div v-if="errors.province" class="field-error">{{ errors.province[0] }}</div>
           </div>
 
-          <div class="field full">
+          <div class="field">
             <label class="label">País</label>
             <input v-model="form.country" type="text" class="input" />
             <div v-if="errors.country" class="field-error">{{ errors.country[0] }}</div>
@@ -108,7 +114,7 @@ import { useToast } from 'vue-toastification'
 const router = useRouter()
 const route = useRoute()
 const isEdit = ref(false)
-const form = reactive({ counter: '', name: '', nif: '', phone: '', email: '', birth_date: '', address: '', zip: '', province: '', country: '', notes: '' })
+const form = reactive({ counter: '', name: '', nif: '', phone: '', email: '', birth_date: '', address: '', zip: '', city: '', province: '', country: '', notes: '' })
 const errors = reactive({})
 const submitting = ref(false)
 const duplicateId = ref(null)
@@ -203,6 +209,7 @@ async function loadForEdit(id) {
     form.birth_date = data.birth_date ?? ''
     form.address = data.address ?? ''
     form.zip = data.zip ?? ''
+    form.city = data.city ?? ''
     form.province = data.province ?? ''
     form.country = data.country ?? ''
     form.notes = data.notes ?? ''
@@ -241,6 +248,7 @@ watch(() => route.params.id, (id) => {
     form.birth_date = ''
     form.address = ''
     form.zip = ''
+    form.city = ''
     form.province = ''
     form.country = ''
     form.notes = ''
@@ -334,7 +342,6 @@ async function submit() {
 .form-card { width:100%; max-width:760px; background: #fff; border-radius:12px; box-shadow: 0 10px 30px rgba(2,6,23,0.06); padding:24px }
 .form-header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px }
 .form-header h1 { margin:0; font-size:22px }
-.form-sub { color:#6b7280; font-size:13px; margin-top:6px }
 
 .grid-form { display:grid; grid-template-columns: repeat(2, 1fr); gap:12px }
 .grid-form .full { grid-column: 1 / -1 }

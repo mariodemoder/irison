@@ -928,7 +928,6 @@ watch(
 .form-wrapper { display:flex; justify-content:center; padding:24px }
 .form-card { width:100%; max-width:760px; background: #fff; border-radius:12px; box-shadow: 0 10px 30px rgba(2,6,23,0.06); padding:24px }
 .form-header h1 { margin:0; font-size:22px }
-.form-sub { color:#6b7280; font-size:13px; margin-top:6px }
 
 .grid-form { display:grid; grid-template-columns: repeat(2, 1fr); gap:12px }
 .grid-form .full { grid-column: 1 / -1 }

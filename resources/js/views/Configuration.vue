@@ -1,18 +1,12 @@
 <template>
   <MainLayout>
     <div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
-        <h1>Configuración</h1>
-        <div class="sub-banner">
-          <div class="meta">
-            <div style="font-weight:600">{{ clinic?.name ?? '—' }}</div>
-            <div class="small">Configuración de la clínica</div>
-          </div>
-
-          <div style="display:flex;align-items:center;gap:8px">
-            <div style="font-size:13px">{{ subscriptionStatusDot }} {{ subscriptionState.label }}</div>
-          </div>
+      <div class="page-header">
+        <div>
+          <h1>Configuración</h1>
+          <div class="form-sub">Personaliza tu empresa</div>
         </div>
+
       </div>
 
       <AppLoading v-if="loading" message="Cargando configuración..." />
@@ -135,13 +129,17 @@
 
                   <div class="closed-days-cal-grid">
                     <div class="closed-cal-card">
-                      <label class="label">Calendario individual</label>
-                      <input v-model="newClosedDay" class="input closed-day-input" type="date" />
-                      <button class="btn btn-sm" type="button" @click.prevent="addClosedDay">Agregar día</button>
+                      <label class="label">Individual</label>
+                      <div class="closed-controls-row closed-controls-row-single">
+                        <input v-model="newClosedDay" class="input closed-day-input" type="date" />
+                        <div class="closed-card-actions">
+                          <button class="btn btn-sm" type="button" @click.prevent="addClosedDay">+</button>
+                          <BtnTrash :disabled="individualClosedDays.length === 0" @click="clearIndividualClosedDays" />
+                        </div>
+                      </div>
 
                       <div class="section-head">
                         <h4>Días individuales seleccionados</h4>
-                        <button class="btn btn-sm" type="button" @click.prevent="clearIndividualClosedDays" :disabled="individualClosedDays.length === 0">Limpiar</button>
                       </div>
                       <div v-if="individualClosedDays.length" class="closed-days-list">
                         <button v-for="day in individualClosedDays" :key="day" type="button" class="closed-day-chip" @click.prevent="removeClosedDay(day)">
@@ -154,15 +152,17 @@
 
                     <div class="closed-cal-card">
                       <label class="label">Rango</label>
-                      <div class="closed-range-grid">
+                      <div class="closed-controls-row closed-controls-row-range">
                         <input v-model="closedRangeStart" class="input closed-day-input" type="date" />
                         <input v-model="closedRangeEnd" class="input closed-day-input" type="date" />
+                        <div class="closed-card-actions">
+                          <button class="btn btn-sm" type="button" @click.prevent="addClosedDayRange">+</button>
+                          <BtnTrash :disabled="rangeClosedDays.length === 0" @click="clearRangeClosedDays" />
+                        </div>
                       </div>
-                      <button class="btn btn-sm" type="button" @click.prevent="addClosedDayRange">Agregar rango</button>
 
                       <div class="section-head">
                         <h4>Rangos seleccionados</h4>
-                        <button class="btn btn-sm" type="button" @click.prevent="clearRangeClosedDays" :disabled="rangeClosedDays.length === 0">Limpiar</button>
                       </div>
                       <div v-if="rangeClosedDays.length" class="closed-days-list">
                         <button v-for="day in rangeClosedDays" :key="day" type="button" class="closed-day-chip" @click.prevent="removeClosedDay(day)">
@@ -315,7 +315,7 @@
                           </select>
                         </td>
                         <td data-label="Acciones">
-                          <button class="btn btn-sm" type="button" @click.prevent="removeCesionType(item.id)">Eliminar</button>
+                          <BtnTrash @click.prevent="removeCesionType(item.id)">Eliminar</BtnTrash>
                         </td>
                       </tr>
                     </tbody>
@@ -379,7 +379,7 @@
                 <button class="btn btn-sm" type="button" :disabled="previewingInvoiceBackgroundPdf" @click.prevent="refreshPreview()">Actualizar preview</button>
                 <button class="btn btn-sm" type="button" :disabled="previewingInvoiceBackgroundPdf" @click.prevent="openPdfInNewTab()">Abrir PDF</button>
                 <button class="btn btn-sm" type="button" :disabled="uploadingInvoiceBackground || !invoiceBackgroundFile" @click.prevent="uploadInvoiceBackground">Subir fondo</button>
-                <button class="btn btn-sm" type="button" :disabled="removingInvoiceBackground || !invoiceBackgroundUrl" @click.prevent="removeInvoiceBackground">Eliminar fondo</button>
+                <BtnTrash :disabled="removingInvoiceBackground || !invoiceBackgroundUrl" @click.prevent="removeInvoiceBackground">Eliminar fondo</BtnTrash>
               </div>
 
               <div v-else class="action-row action-row-empty"></div>
@@ -396,6 +396,7 @@ import { ref, onMounted, computed, onBeforeUnmount, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import MainLayout from '../layouts/MainLayout.vue'
 import AppLoading from '../components/AppLoading.vue'
+import BtnTrash from '../components/BtnTrash.vue'
 import api from '../services/api'
 import { useToast } from 'vue-toastification'
 
@@ -821,12 +822,12 @@ async function refreshPreview() {
       formData.append('image', invoiceBackgroundFile.value)
     }
 
-    const res = await api.post('/me/invoice-background/preview-pdf?format=html', formData, {
-      responseType: 'text',
+    const res = await api.post('/me/invoice-background/preview-pdf', formData, {
+      responseType: 'blob',
       headers: { 'Content-Type': 'multipart/form-data' },
     })
 
-    const blob = new Blob([res.data], { type: 'text/html' })
+    const blob = new Blob([res.data], { type: 'application/pdf' })
     const fileUrl = URL.createObjectURL(blob)
 
     if (profilePreviewPdfUrl.value) {
@@ -928,14 +929,14 @@ onBeforeUnmount(() => {
 .card-stage { min-height:560px }
 .tabs {
   display:grid;
-  grid-template-columns:repeat(5, minmax(0, 1fr));
-  gap:8px;
+  grid-template-columns:repeat(6, minmax(0, 1fr));
+  gap:6px;
   margin-bottom:12px;
 }
 .tab {
   width: 100%;
   text-align: center;
-  padding:8px 12px;
+  padding:8px 10px;
   border-radius:8px;
   background:transparent;
   border:1px solid transparent;
@@ -1106,6 +1107,26 @@ onBeforeUnmount(() => {
   grid-template-columns: 1fr 1fr;
   gap:8px;
 }
+.closed-controls-row {
+  display:grid;
+  gap:8px;
+  align-items:end;
+}
+.closed-controls-row-single {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.closed-controls-row-range {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+}
+.closed-card-actions {
+  display:grid;
+  grid-template-columns: repeat(2, minmax(42px, 1fr));
+  gap:8px;
+}
+.closed-card-actions .btn {
+  width:100%;
+  min-width:42px;
+}
 .closed-days-picker-row {
   display:flex;
   gap:10px;
@@ -1113,8 +1134,8 @@ onBeforeUnmount(() => {
   flex-wrap:wrap;
 }
 .closed-day-input {
-  width:auto;
-  min-width: 180px;
+  width:100%;
+  min-width: 0;
 }
 .closed-days-selected-block {
   display:grid;
@@ -1267,6 +1288,13 @@ onBeforeUnmount(() => {
   }
   .closed-range-grid {
     grid-template-columns: 1fr;
+  }
+  .closed-controls-row-single,
+  .closed-controls-row-range {
+    grid-template-columns: 1fr;
+  }
+  .closed-card-actions {
+    grid-template-columns: 1fr 1fr;
   }
 }
 </style>

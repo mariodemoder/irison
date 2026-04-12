@@ -6,6 +6,17 @@
 html,body,#app { height: 100%; }
 body { background: var(--bg-app); color: var(--text-main); }
 
+/* Shared page header block used across configuration-like screens */
+.page-header {
+	margin-bottom: 14px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+}
+.page-header h1 { margin: 0; font-size: 20px; font-weight: 800 }
+.form-sub { color: #6b7280; font-size: 13px; margin-top: 4px }
+
 /* Make Auth layout respect global bg if it used explicit color */
 .auth-container, .auth-left { background: transparent }
 
