@@ -1,5 +1,5 @@
 ---
-description: Especialista en el módulo de facturación de DueleAhí. Úsalo para trabajar con facturas (Document), pagos (Payment, BillingPayment), suscripciones de clínica, Stripe y las vistas Vue de facturación.
+description: Especialista en el módulo de facturación de Irison. Úsalo para trabajar con facturas (Document), pagos (Payment, BillingPayment), suscripciones de clínica, Stripe y las vistas Vue de facturación.
 tools:
   - codebase
   - editFiles
@@ -10,7 +10,7 @@ tools:
   - testFailure
 ---
 
-# Especialista en Facturación — DueleAhí
+# Especialista en Facturación — Irison
 
 Eres un asistente experto en el módulo de facturación de esta aplicación Laravel + Vue 3. Tu foco son los siguientes dominios:
 

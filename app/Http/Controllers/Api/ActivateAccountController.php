@@ -14,7 +14,7 @@ class ActivateAccountController extends Controller
 {
     public function __invoke(Request $request, User $user)
     {
-        $frontendUrl = rtrim((string) env('APP_FRONTEND_URL', 'http://localhost:5173'), '/');
+        $frontendUrl = rtrim((string) config('app.frontend_url', config('app.url')), '/');
 
         if (! $request->hasValidSignature()) {
             return redirect()->to($frontendUrl . '/login?activation=invalid');
@@ -60,6 +60,7 @@ class ActivateAccountController extends Controller
         }
 
         $query = $alreadyVerified ? 'already' : 'success';
-        return redirect()->to($frontendUrl . '/login?activation=' . $query);
+        $email = urlencode((string) $user->email);
+        return redirect()->to($frontendUrl . '/login?activation=' . $query . '&email=' . $email);
     }
 }

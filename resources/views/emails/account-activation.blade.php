@@ -18,12 +18,12 @@
                     <tr>
                         <td style="padding:8px 24px 0 24px;font-size:15px;line-height:1.6;">
                             <p style="margin:0 0 12px 0;">Hola {{ $name }},</p>
-                            <p style="margin:0 0 12px 0;">Tu cuenta en DueleAhi ya fue creada. Para iniciar tu periodo de prueba, confirma tu email haciendo clic en este botón:</p>
+                            <p style="margin:0 0 12px 0;">Tu cuenta en irison ya fue creada. Para iniciar tu periodo de prueba, confirma tu email haciendo clic en este botón:</p>
                         </td>
                     </tr>
                     <tr>
                         <td style="padding:8px 24px 8px 24px;">
-                            <a href="{{ $activationUrl }}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:8px;">Activar cuenta e iniciar trial</a>
+                            <a href="{{ $activationUrl }}" style="display:inline-block;background:#2563EB;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:8px;">Activar cuenta e iniciar trial</a>
                         </td>
                     </tr>
                     <tr>

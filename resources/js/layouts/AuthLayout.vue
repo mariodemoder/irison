@@ -4,8 +4,7 @@
         <div class="brand">
           <img :src="logo" alt="Logo" class="logo-image" />
         <h1 class="mt-6 text-3xl font-semibold leading-tight">
-          Gestiona tu clínica 
-          <span class="accent">sin dolor</span>
+          Gestiona tu tiempo. Diseña tu futuro. Vive simple<br /> 
         </h1>
         <p class="mt-4 text-gray-600">Todo lo que necesitas para gestionar clientes, citas y pagos.</p>
       </div>
@@ -20,7 +19,7 @@
 </template>
 
 <script setup>
-import logo from '../assets/fisiomeca.svg'
+import logo from '../assets/logoIni.svg'
 </script>
 
 <style scoped>

@@ -24,6 +24,7 @@ const unpaidBonusesCount = ref(0)
 const creditInFavorAmount = ref(0)
 const unpaidSessionsCount = ref(0)
 const unpaidSessionsTodayCount = ref(0)
+const todayInactivityMinutes = ref(0)
 const completedUnpaidAppointmentsCount = ref(0)
 const partialAppointmentsCount = ref(0)
 const exhaustedBonusPatientsCount = ref(0)
@@ -44,6 +45,22 @@ const todayLabel = computed(() => {
 })
 
 const todayDateQuery = computed(() => dashboardDate.value)
+
+function formatMinutesAsHours(minutes) {
+  const safeMinutes = Math.max(0, Number(minutes || 0))
+  const hours = Math.floor(safeMinutes / 60)
+  const remainingMinutes = safeMinutes % 60
+
+  if (hours <= 0) {
+    return `${remainingMinutes} min`
+  }
+
+  if (remainingMinutes <= 0) {
+    return `${hours} h`
+  }
+
+  return `${hours} h ${remainingMinutes} min`
+}
 
 function dashboardStatusDot(kind) {
   const dots = {
@@ -114,6 +131,20 @@ const importantAlerts = computed(() => {
     })
   }
 
+  if (todayInactivityMinutes.value > 0) {
+    items.push({
+      key: 'today-inactivity-time',
+      text: `Tiempo de inactividad de hoy: ${formatMinutesAsHours(todayInactivityMinutes.value)}.`,
+      to: {
+        path: '/appointments/day',
+        query: {
+          date: dashboardDate.value,
+          appointment_scope: 'all',
+        },
+      },
+    })
+  }
+
   return items
 })
 
@@ -168,7 +199,7 @@ const riskAlerts = computed(() => {
         },
       },
     },
-  ]
+  ].filter((risk) => risk.value > 0)
 })
 
 const monthlyRevenue = ref([0, 0, 0, 0])
@@ -209,6 +240,7 @@ function resetAlertsAndRisks() {
   creditInFavorAmount.value = 0
   unpaidSessionsCount.value = 0
   unpaidSessionsTodayCount.value = 0
+  todayInactivityMinutes.value = 0
   completedUnpaidAppointmentsCount.value = 0
   partialAppointmentsCount.value = 0
   exhaustedBonusPatientsCount.value = 0
@@ -292,6 +324,7 @@ async function fetchDashboard() {
     creditInFavorAmount.value = Number(important.creditInFavorAmount || 0)
     unpaidSessionsCount.value = Number(important.unpaidSessionsCount || 0)
     unpaidSessionsTodayCount.value = Number(important.unpaidSessionsTodayCount || 0)
+    todayInactivityMinutes.value = Number(important.todayInactivityMinutes || 0)
 
     const risks = data.risk_alerts ?? {}
     completedUnpaidAppointmentsCount.value = Number(risks.completedUnpaidAppointmentsCount || 0)
@@ -368,8 +401,8 @@ onMounted(async () => {
               <div class="today-label">
                 <span class="finance-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4z"></path>
-                    <path d="M12 6v12"></path>
+                    <path d="M4 9l8-5 8 5v10l-8 4-8-4z"></path>
+                    <path d="M9 12h6"></path>
                   </svg>
                 </span>
                 Sesiones con bono
@@ -426,12 +459,13 @@ onMounted(async () => {
           <div class="inline-title">Pendientes</div>
           <div class="alerts-subtitle">Estos son puntos donde se pierde dinero.</div>
           <AppLoading v-if="loading" compact message="Cargando riesgos..." />
-          <ul v-else class="alerts-list">
+          <ul v-else-if="riskAlerts.length" class="alerts-list">
             <li v-for="risk in riskAlerts" :key="risk.key" class="alerts-item">
               <span class="alert-dot" aria-hidden="true"></span>
               <router-link :to="risk.to" class="alert-link">{{ risk.text }}: {{ risk.value }}</router-link>
             </li>
           </ul>
+          <div v-else class="alerts-empty">Sin pendientes de riesgo.</div>
         </div>
       </div>
 

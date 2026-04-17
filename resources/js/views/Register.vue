@@ -50,6 +50,6 @@ async function submit() {
     </p>
 
     <p v-if="error" class="mt-3 text-sm text-red-600">{{ error }}</p>
-    <p v-if="success" class="mt-3 text-sm" style="color:#166534">{{ success }}</p>
+    <p v-if="success" class="mt-3 text-sm success-text">{{ success }}</p>
   </AuthLayout>
 </template>

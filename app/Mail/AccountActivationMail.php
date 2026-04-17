@@ -25,7 +25,7 @@ class AccountActivationMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Activa tu cuenta en DueleAhi',
+            subject: 'Activa tu cuenta en Irison',
         );
     }
 

@@ -1,6 +1,6 @@
 # Linux/Cloud Deployment Guide
 
-Esta guía es la referencia oficial para desplegar Dueleahi en servidores Linux/Cloud.
+Esta guía es la referencia oficial para desplegar irison en servidores Linux/Cloud.
 
 ## Objetivo
 
@@ -117,7 +117,7 @@ server {
 ### Supervisor (queue worker)
 
 ```ini
-[program:dueleahi-worker]
+[program:irison-worker]
 process_name=%(program_name)s_%(process_num)02d
 command=php /var/www/dueleahi/artisan queue:work --sleep=3 --tries=3 --timeout=90
 autostart=true

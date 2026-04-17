@@ -8,7 +8,10 @@
           @click="toggleInactiveVisibility"
           :title="showInactiveBonuses ? 'Ver solo bonos disponibles' : 'Ver todos los bonos'"
         >
-          🔎
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:14px;height:14px">
+                    <circle cx="11" cy="11" r="7"></circle>
+                    <path d="M21 21l-4.3-4.3"></path>
+          </svg>
         </button>
         <button @click="showForm = !showForm" class="primary" style="padding:6px 10px;font-size:13px">Crear</button>
       </div>

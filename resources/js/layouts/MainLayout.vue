@@ -85,7 +85,7 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import logo from '../assets/fisiomeca.svg'
+import logo from '../assets/logoini.svg'
 import logout from '../utils/logout'
 import { meUser, meClinic, meStatus, meTrialEndsAt, ensureMeLoaded } from '../shared/meCache'
 

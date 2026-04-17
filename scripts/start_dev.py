@@ -47,7 +47,7 @@ cmds = [
 titles = {}
 for i, cmd in enumerate(cmds):
     name = cmd.split()[0]
-    title = f'dueleahi-{i}-{name}'
+    title = f'irison-{i}-{name}'
     titles[cmd] = title
     if not check_available(cmd):
         print(f'Advertencia: no se encontró "{cmd.split()[0]}". Puede que falte instalarlo o no esté en PATH.')

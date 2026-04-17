@@ -14,12 +14,17 @@ class RegisterController extends Controller
 {
     public function __invoke(Request $request)
     {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'clinic_name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users'],
-            'password' => ['required', 'min:8'],
-        ]);
+        $data = $request->validate(
+            [
+                'name' => ['required', 'string', 'max:255'],
+                'clinic_name' => ['required', 'string', 'max:255'],
+                'email' => ['required', 'email', 'max:255', 'unique:users'],
+                'password' => ['required', 'min:8'],
+            ],
+            [
+                'email.unique' => 'El email ya está en uso.',
+            ]
+        );
 
         $clinic = Clinic::create([
             'name' => $data['clinic_name'],
@@ -39,7 +44,8 @@ class RegisterController extends Controller
         $activationUrl = URL::temporarySignedRoute(
             'api.register.activate',
             now()->addHours(24),
-            ['user' => $user->id]
+            ['user' => $user->id],
+            ['url' => config('app.url')]
         );
 
         Mail::to($user->email)->send(new AccountActivationMail($user, $activationUrl));

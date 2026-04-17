@@ -1,4 +1,4 @@
-# 🏥 Dueleahi – SaaS Multi-Tenant para Clínicas
+# 🏥 Irison – SaaS Multi-Tenant para Clínicas
 
 Aplicación web para gestión de clínicas con arquitectura multi-tenant por `clinic_id`, backend Laravel API y frontend Vue 3.
 
@@ -40,7 +40,7 @@ Ejemplo para PostgreSQL local:
 DB_CONNECTION=pgsql
 DB_HOST=127.0.0.1
 DB_PORT=5432
-DB_DATABASE=dueleahi
+DB_DATABASE=irison
 DB_USERNAME=postgres
 DB_PASSWORD=tu_password
 ```

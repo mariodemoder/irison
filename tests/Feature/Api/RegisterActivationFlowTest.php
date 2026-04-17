@@ -51,7 +51,7 @@ class RegisterActivationFlowTest extends TestCase
         $this->assertNotNull($activationUrl);
 
         $this->get($activationUrl)
-            ->assertRedirect('http://localhost:5173/login?activation=success');
+            ->assertRedirect('http://localhost/login?activation=success&email=mario.activation%40test.local');
 
         $user->refresh();
         $clinic->refresh();

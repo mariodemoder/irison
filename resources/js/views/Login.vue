@@ -13,6 +13,11 @@ const password = ref('Pasword123')
 const loading = ref(false)
 const error = ref('')
 
+const prefillEmail = String(route.query.email || '').trim()
+if (prefillEmail) {
+  email.value = prefillEmail
+}
+
 const activation = String(route.query.activation || '')
 
 const activationCard = computed(() => {
@@ -22,7 +27,7 @@ const activationCard = computed(() => {
       kind: 'pending',
       badge: 'Revisa tu correo',
       title: 'Tu cuenta casi está lista',
-      message: 'Te enviamos un enlace de activación. Ábrelo para comenzar tu prueba con DueleAhi.',
+      message: 'Te enviamos un enlace de activación. Ábrelo para comenzar tu prueba con irison.',
     }
   }
 

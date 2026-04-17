@@ -6,6 +6,7 @@ namespace App\Services\Dashboard;
 
 use App\Models\Appointment;
 use App\Models\Bonus;
+use App\Models\Clinic;
 use App\Models\CreditUsage;
 use App\Models\Patient;
 use App\Models\Payment;
@@ -159,7 +160,161 @@ class DashboardSummaryService
             'creditInFavorAmount' => $creditMetrics['totalAmount'],
             'unpaidSessionsCount' => (int) $unpaidSessionsCount,
             'unpaidSessionsTodayCount' => (int) $unpaidSessionsTodayCount,
+            'todayInactivityMinutes' => $this->buildTodayInactivityMinutes(),
         ];
+    }
+
+    private function buildTodayInactivityMinutes(): int
+    {
+        $clinicId = currentClinicId();
+        if ($clinicId <= 0) {
+            return 0;
+        }
+
+        $clinic = Clinic::query()->find($clinicId);
+        if (! $clinic) {
+            return 0;
+        }
+
+        $timezone = trim((string) ($clinic->timezone ?? '')) ?: (string) config('app.timezone', 'UTC');
+        $now = now($timezone);
+        $todayIso = $now->toDateString();
+
+        if ($this->isDateClosed($todayIso, (array) ($clinic->closed_days ?? []))) {
+            return 0;
+        }
+
+        $businessHours = (array) ($clinic->business_hours ?? []);
+        if (empty($businessHours)) {
+            return 0;
+        }
+
+        $dayKey = strtolower($now->englishDayOfWeek);
+        $dayConfig = collect($businessHours)->first(function ($item) use ($dayKey) {
+            return strtolower((string) ($item['day'] ?? '')) === $dayKey;
+        });
+
+        if (! $dayConfig || ! filter_var($dayConfig['enabled'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+            return 0;
+        }
+
+        $openStart = trim((string) ($dayConfig['start'] ?? ''));
+        $openEnd = trim((string) ($dayConfig['end'] ?? ''));
+        if (! preg_match('/^\d{2}:\d{2}$/', $openStart) || ! preg_match('/^\d{2}:\d{2}$/', $openEnd)) {
+            return 0;
+        }
+
+        $openAt = Carbon::parse($todayIso . ' ' . $openStart, $timezone);
+        $closeAt = Carbon::parse($todayIso . ' ' . $openEnd, $timezone);
+        if ($closeAt->lessThanOrEqualTo($openAt) || $now->lessThanOrEqualTo($openAt)) {
+            return 0;
+        }
+
+        $windowEnd = $now->lessThan($closeAt) ? $now->copy() : $closeAt->copy();
+        if ($windowEnd->lessThanOrEqualTo($openAt)) {
+            return 0;
+        }
+
+        $appointments = Appointment::query()
+            ->where('start_time', '<', $windowEnd)
+            ->where('end_time', '>', $openAt)
+            ->where(function ($query) {
+                $query->whereNull('status')
+                    ->orWhere('status', '!=', 'canceled');
+            })
+            ->orderBy('start_time')
+            ->get(['start_time', 'end_time']);
+
+        $intervals = [];
+        foreach ($appointments as $appointment) {
+            if (! $appointment->start_time || ! $appointment->end_time) {
+                continue;
+            }
+
+            $start = $appointment->start_time->copy();
+            $end = $appointment->end_time->copy();
+
+            if ($end->lessThanOrEqualTo($openAt) || $start->greaterThanOrEqualTo($windowEnd)) {
+                continue;
+            }
+
+            if ($start->lessThan($openAt)) {
+                $start = $openAt->copy();
+            }
+
+            if ($end->greaterThan($windowEnd)) {
+                $end = $windowEnd->copy();
+            }
+
+            if ($end->greaterThan($start)) {
+                $intervals[] = [$start, $end];
+            }
+        }
+
+        if (empty($intervals)) {
+            return max(0, $openAt->diffInMinutes($windowEnd));
+        }
+
+        usort($intervals, function (array $a, array $b): int {
+            return $a[0]->lessThan($b[0]) ? -1 : ($a[0]->equalTo($b[0]) ? 0 : 1);
+        });
+
+        $merged = [];
+        foreach ($intervals as [$start, $end]) {
+            if (empty($merged)) {
+                $merged[] = [$start, $end];
+                continue;
+            }
+
+            $lastIndex = count($merged) - 1;
+            $lastStart = $merged[$lastIndex][0];
+            $lastEnd = $merged[$lastIndex][1];
+
+            if ($start->lessThanOrEqualTo($lastEnd)) {
+                if ($end->greaterThan($lastEnd)) {
+                    $merged[$lastIndex] = [$lastStart, $end];
+                }
+                continue;
+            }
+
+            $merged[] = [$start, $end];
+        }
+
+        $busyMinutes = 0;
+        foreach ($merged as [$start, $end]) {
+            $busyMinutes += $start->diffInMinutes($end);
+        }
+
+        $elapsedMinutes = $openAt->diffInMinutes($windowEnd);
+
+        return max(0, $elapsedMinutes - $busyMinutes);
+    }
+
+    private function isDateClosed(string $dateIso, array $rules): bool
+    {
+        foreach ($rules as $ruleRaw) {
+            $rule = trim((string) $ruleRaw);
+            if ($rule === '') {
+                continue;
+            }
+
+            if (! str_contains($rule, '..')) {
+                if ($rule === $dateIso) {
+                    return true;
+                }
+                continue;
+            }
+
+            [$from, $to] = array_pad(explode('..', $rule, 2), 2, null);
+            $from = trim((string) $from);
+            $to = trim((string) $to);
+
+            if ($from !== '' && $to !== '' && $from <= $dateIso && $dateIso <= $to) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function buildRiskAlerts(string $todayDate, array $creditMetrics): array
