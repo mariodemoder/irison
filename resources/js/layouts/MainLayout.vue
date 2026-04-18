@@ -1,7 +1,7 @@
 <template>
   <div class="layout-shell min-h-screen bg-gray-50">
-    <aside v-show="open" class="sidebar" :class="{ compact: compactMode }">
-      <button class="logo-wrap" type="button" @click="toggleMenuMode" :title="isMobile ? 'Mostrar/ocultar menú' : 'Expandir/contraer menú'">
+    <aside v-show="isMobile || open" class="sidebar" :class="{ compact: compactMode || isMobile }">
+      <button class="logo-wrap" type="button" @click="toggleMenuMode" :title="isMobile ? 'Menú compacto' : 'Expandir/contraer menú'">
         <img :src="logo" alt="Logo" class="sidebar-logo" />
       </button>
 
@@ -50,12 +50,10 @@
               <path d="M9 12h6"></path>
             </svg>
           </span>
-          <span v-if="!compactMode" class="menu-label">{{ item.label }}</span>
+          <span v-if="!(compactMode || isMobile)" class="menu-label">{{ item.label }}</span>
         </router-link>
       </nav>
     </aside>
-
-    <div v-if="isMobile && open" class="sidebar-backdrop" @click="open = false"></div>
 
     <div class="app-column" :class="columnClasses">
       <header class="h-14 bg-white border-b flex items-center px-4 justify-between">
@@ -143,7 +141,11 @@ const subscriptionStatusDot = computed(() => {
 })
 
 const columnClasses = computed(() => {
-  if (isMobile.value || !open.value) {
+  if (isMobile.value) {
+    return ['with-sidebar-mobile']
+  }
+
+  if (!open.value) {
     return []
   }
 
@@ -153,21 +155,19 @@ const columnClasses = computed(() => {
 function syncViewportMode() {
   isMobile.value = window.innerWidth < MOBILE_BREAKPOINT
 
-  if (!isMobile.value) {
-    open.value = true
+  if (isMobile.value) {
+    open.value = false
+    return
   }
+
+  open.value = true
 }
 
 onMounted(async () => {
-  const persistedOpen = localStorage.getItem(MENU_OPEN_KEY)
   const persistedCompact = localStorage.getItem(MENU_COMPACT_KEY)
 
   compactMode.value = persistedCompact === '1'
   syncViewportMode()
-
-  if (isMobile.value) {
-    open.value = persistedOpen === '1'
-  }
 
   window.addEventListener('resize', syncViewportMode)
 
@@ -192,17 +192,11 @@ watch(compactMode, (value) => {
 })
 
 function keepMenuOpen() {
-  if (!isMobile.value) {
-    open.value = true
-    return
-  }
-
-  open.value = false
+  open.value = true
 }
 
 function toggleMenuMode() {
   if (isMobile.value) {
-    open.value = !open.value
     return
   }
 
@@ -241,6 +235,11 @@ function isActive(base) {
 
 .sidebar.compact {
   width: 86px;
+}
+
+.sidebar.compact .menu-link {
+  justify-content: center;
+  padding: 10px 8px;
 }
 
 .logo-wrap {
@@ -320,6 +319,10 @@ function isActive(base) {
   padding-left: 86px;
 }
 
+.app-column.with-sidebar-mobile {
+  padding-left: 68px;
+}
+
 /* Estilos mínimos: el diseño depende de utilidades de Tailwind si está disponible. */
 .menu-active {
   background: #dbeafe;
@@ -347,9 +350,33 @@ function isActive(base) {
 .logout-btn:hover { background:#f8fafc }
 
 @media (max-width: 767px) {
+  .sidebar {
+    width: 68px;
+    padding: 10px 6px;
+    box-shadow: 0 8px 16px rgba(15, 23, 42, 0.1);
+  }
+
+  .sidebar-logo,
+  .sidebar.compact .sidebar-logo {
+    width: 34px;
+    height: 34px;
+  }
+
+  .logo-wrap {
+    margin-bottom: 12px;
+  }
+
+  .menu-link,
+  .sidebar.compact .menu-link {
+    padding: 10px 6px;
+    justify-content: center;
+    border-radius: 8px;
+  }
+
   .app-column.with-sidebar-full,
-  .app-column.with-sidebar-compact {
-    padding-left: 0;
+  .app-column.with-sidebar-compact,
+  .app-column.with-sidebar-mobile {
+    padding-left: 68px;
   }
 }
 </style>

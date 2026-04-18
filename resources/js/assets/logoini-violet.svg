@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="g" x1="0" y1="128" x2="128" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7B2FF7"/>
+      <stop offset="1" stop-color="#00C6FF"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="url(#g)"/>
+  <path d="M 51.723 24.65 C 89.997 15.502 113.975 51.649 101.427 79.042 C 88.879 106.435 50.501 110.572 31.779 87.007 C 22.106 74.838 20.091 51.184 38.021 44.188" fill="none" stroke="#fff" stroke-linecap="round" style="transform-box: fill-box; transform-origin: 50% 50%; stroke-width: 10px;" transform="matrix(0.976437, 0.215801, -0.215801, 0.976437, 0.252562, 0.122833)"/>
+  <circle cx="43.106" cy="22.924" r="5" fill="#fff" style="stroke-miterlimit: 4.02; stroke-width: 6px; stroke-linejoin: round;" transform="matrix(1.246891, 0, 0, 1.176351, -9.408049, -3.160917)"/>
+  <path d="M 44.521 39.71 L 44.521 80.202" stroke="#fff" stroke-linecap="round" style="stroke-width: 10px;"/>
+  <path d="M 61.085 67.852 L 67.73 74.492 L 81.755 56.738" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" style="stroke-width: 10px;"/>
+</svg>
