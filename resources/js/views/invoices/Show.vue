@@ -75,6 +75,32 @@
 
           <div class="field full"><label class="label">Detalle</label><div class="value">{{ documentData.notes || '—' }}</div></div>
 
+          <!-- Items de la factura (solo para typeinvoice === 'varios') -->
+          <template v-if="documentData.typeinvoice === 'varios' && documentData.items?.length">
+            <div class="field full">
+              <label class="label">Conceptos</label>
+              <div class="items-table">
+                <div class="items-head">
+                  <div>Descripción</div>
+                  <div>Cant.</div>
+                  <div>P. Unit.</div>
+                  <div>IVA %</div>
+                  <div>Total</div>
+                </div>
+                <div v-for="item in documentData.items" :key="item.id" class="items-row">
+                  <div>
+                    {{ item.description }}
+                    <span class="item-tag" v-if="item.type !== 'manual'">{{ itemTypeLabel(item.type) }}</span>
+                  </div>
+                  <div>{{ item.quantity }}</div>
+                  <div>{{ formatCurrency(item.unit_price) }}</div>
+                  <div>{{ item.tax_rate }}%</div>
+                  <div class="item-total">{{ formatCurrency(item.total) }}</div>
+                </div>
+              </div>
+            </div>
+          </template>
+
           <div class="field"><label class="label">Importe</label><div class="value">{{ formatCurrency(documentData.amount) }}</div></div>
           <div v-if="showPaymentStatus" class="field"><label class="label">Estado de pago</label><div class="value"><span class="status" :class="paymentStatusClass">{{ statusLabel(paymentStatusValue) }}</span></div></div>
         </div>
@@ -351,6 +377,13 @@ watch(() => route.params.id, async (newId, oldId) => {
     await load()
   }
 })
+
+function itemTypeLabel(type) {
+  if (type === 'appointment') return 'Cita'
+  if (type === 'bonus') return 'Bono'
+  if (type === 'product') return 'Producto'
+  return ''
+}
 </script>
 
 <style scoped>
@@ -379,6 +412,13 @@ watch(() => route.params.id, async (newId, oldId) => {
 .label { font-weight:600; margin-bottom:6px }
 .value { padding:10px; border:1px solid #e5e7eb; border-radius:8px; background:#fff }
 
+/* Items table en show */
+.items-table { border:1px solid #e5e7eb; border-radius:8px; overflow:hidden }
+.items-head { display:grid; grid-template-columns:2fr 0.6fr 0.8fr 0.6fr 0.8fr; gap:8px; padding:7px 12px; background:#f3f4f6; font-size:12px; font-weight:700; color:#6b7280 }
+.items-row { display:grid; grid-template-columns:2fr 0.6fr 0.8fr 0.6fr 0.8fr; gap:8px; padding:7px 12px; border-top:1px solid #f3f4f6; font-size:13px; align-items:center }
+.item-tag { display:inline-block; font-size:11px; color:#2563eb; background:#dbeafe; border-radius:4px; padding:1px 5px; margin-left:4px }
+.item-total { font-weight:700 }
+
 .status { padding:5px 8px; border-radius:9999px; font-weight:700; text-transform:capitalize; font-size:11px }
 .status.issued { background:#dcfce7; color:#166534 }
 .status.paid { background:#dcfce7; color:#166534 }
@@ -392,5 +432,6 @@ watch(() => route.params.id, async (newId, oldId) => {
 
 @media (max-width: 768px) {
   .details-grid { grid-template-columns:1fr }
+  .items-head, .items-row { grid-template-columns:1fr 0.5fr 0.7fr 0.5fr 0.7fr }
 }
 </style>

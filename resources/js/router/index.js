@@ -17,8 +17,12 @@ import AppointmentsShow from '../views/appointments/Show.vue'
 import PaymentsIndex from '../views/payments/Index.vue'
 import PaymentsForm from '../views/payments/Form.vue'
 import PaymentsShow from '../views/payments/Show.vue'
+import ProductsIndex from '../views/products/Index.vue'
+import ProductsForm from '../views/products/Form.vue'
+import ProductsShow from '../views/products/Show.vue'
 import InvoicesIndex from '../views/invoices/Index.vue'
 import InvoicesShow from '../views/invoices/Show.vue'
+import InvoicesForm from '../views/invoices/Form.vue'
 import BonusesIndex from '../views/bonuses/Index.vue'
 import NotificationsIndex from '../views/notifications/Index.vue'
 import NotificationsShow from '../views/notifications/Show.vue'
@@ -33,7 +37,12 @@ const routes = [
   { path: '/payments/create', component: PaymentsForm, meta: { auth: true } },
   { path: '/payments/:id', component: PaymentsShow, meta: { auth: true } },
   { path: '/payments/:id/edit', component: PaymentsForm, meta: { auth: true } },
+  { path: '/products', component: ProductsIndex, meta: { auth: true } },
+  { path: '/products/create', component: ProductsForm, meta: { auth: true } },
+  { path: '/products/:id', component: ProductsShow, meta: { auth: true } },
+  { path: '/products/:id/edit', component: ProductsForm, meta: { auth: true } },
   { path: '/invoices', component: InvoicesIndex, meta: { auth: true } },
+  { path: '/invoices/create', component: InvoicesForm, meta: { auth: true } },
   { path: '/invoices/:id', component: InvoicesShow, meta: { auth: true } },
   { path: '/bonuses', component: BonusesIndex, meta: { auth: true } },
   { path: '/notifications', component: NotificationsIndex, meta: { auth: true } },

@@ -32,6 +32,11 @@
               <rect x="2.5" y="5" width="19" height="14" rx="2"></rect>
               <path d="M2.5 10h19M7 15h4"></path>
             </svg>
+            <svg v-else-if="item.path === '/products'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 7l9-4 9 4-9 4-9-4z"></path>
+              <path d="M3 7v10l9 4 9-4V7"></path>
+              <path d="M12 11v10"></path>
+            </svg>
             <svg v-else-if="item.path === '/invoices'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <path d="M7 3h8l4 4v14H7z"></path>
               <path d="M15 3v4h4"></path>
@@ -100,12 +105,13 @@ const router = useRouter()
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard' },
-  { path: '/patients', label: 'Pacientes' },
   { path: '/appointments', label: 'Agenda' },
+  { path: '/patients', label: 'Pacientes' },
+  { path: '/products', label: 'Productos' },
+  { path: '/bonuses', label: 'Bonos' },
+  { path: '/invoices', label: 'Facturación' },
   { path: '/payments', label: 'Pagos' },
   { path: '/notifications', label: 'Notificaciones' },
-  { path: '/invoices', label: 'Facturación' },
-  { path: '/bonuses', label: 'Bonos' },
   { path: '/settings', label: 'Configuración' },
 ]
 

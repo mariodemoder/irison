@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Appointment;
 use App\Models\Bonus;
 use App\Models\Document;
+use App\Models\Patient;
 use App\Models\Payment;
+use App\Models\Product;
 use App\Services\Documents\InvoicingService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
@@ -14,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Spatie\Browsershot\Browsershot;
 
 class DocumentController extends Controller
@@ -164,10 +167,24 @@ class DocumentController extends Controller
     {
         Gate::authorize('view', $document);
 
-        $document->load(['patient:id,counter,first_name,last_name,nif,email,phone,address,zip']);
+        $document->load(['patient:id,counter,first_name,last_name,nif,email,phone,address,zip', 'items']);
         $originDocument = $this->resolveOriginDocument($document);
         $rectificationDocument = $this->resolveRectificationDocument($document);
         $paymentStatus = $this->resolveDocumentPaymentStatus($document);
+
+        $items = $document->items->map(fn ($item) => [
+            'id'           => $item->id,
+            'type'         => $item->type,
+            'reference_id' => $item->reference_id,
+            'description'  => $item->description,
+            'quantity'     => (float) $item->quantity,
+            'unit_price'   => (float) $item->unit_price,
+            'tax_rate'     => (float) $item->tax_rate,
+            'buy_price'    => (float) $item->buy_price,
+            'buy_tax'      => (float) $item->buy_tax,
+            'total'        => (float) $item->total,
+            'sort_order'   => $item->sort_order,
+        ])->values()->all();
 
         return response()->json([
             'id' => $document->id,
@@ -215,7 +232,149 @@ class DocumentController extends Controller
             ] : null,
             'pdf_url' => url('/api/documents/' . $document->id . '/pdf'),
             'created_at' => $document->created_at,
+            'items' => $items,
         ]);
+    }
+
+    public function storeVarios(Request $request): JsonResponse
+    {
+        Gate::authorize('create', Document::class);
+
+        $user = $request->user();
+        $clinicId = (int) ($user?->clinic_id ?? 0);
+
+        try {
+            $result = $this->invoicingService->issueVarios($request->all(), $user, $clinicId);
+        } catch (ValidationException $e) {
+            return response()->json(['errors' => $e->errors()], 422);
+        }
+
+        $document = $result['document'];
+
+        return response()->json([
+            'message' => 'Factura creada correctamente.',
+            'data' => [
+                'id'      => $document->id,
+                'counter' => $document->counter,
+                'type'    => $document->type,
+                'amount'  => (float) $document->amount,
+            ],
+        ], 201);
+    }
+
+    public function searchPatients(Request $request): JsonResponse
+    {
+        Gate::authorize('viewAny', Document::class);
+
+        $q = trim((string) ($request->query('q') ?? ''));
+        if (strlen($q) < 2) {
+            return response()->json(['data' => []]);
+        }
+
+        $clinicId = (int) ($request->user()?->clinic_id ?? 0);
+        $patients = Patient::query()
+            ->where('clinic_id', $clinicId)
+            ->where(function ($builder) use ($q) {
+                $builder->where('first_name', 'like', "%{$q}%")
+                    ->orWhere('last_name', 'like', "%{$q}%")
+                    ->orWhere('nif', 'like', "%{$q}%");
+            })
+            ->limit(15)
+            ->get(['id', 'counter', 'first_name', 'last_name', 'nif'])
+            ->map(fn (Patient $p) => [
+                'id'      => $p->id,
+                'counter' => $p->counter,
+                'name'    => $p->name,
+                'nif'     => $p->nif,
+            ]);
+
+        return response()->json(['data' => $patients]);
+    }
+
+    public function searchAppointments(Request $request): JsonResponse
+    {
+        Gate::authorize('viewAny', Document::class);
+
+        $patientId = (int) ($request->query('patient_id') ?? 0);
+        if (!$patientId) {
+            return response()->json(['data' => []]);
+        }
+
+        $clinicId = (int) ($request->user()?->clinic_id ?? 0);
+        $appointments = Appointment::query()
+            ->where('clinic_id', $clinicId)
+            ->where('patient_id', $patientId)
+            ->whereNull('invoice_id')
+            ->orderByDesc('start_time')
+            ->limit(50)
+            ->get(['id', 'start_time', 'price', 'status', 'custom_type', 'app_type_id'])
+            ->map(fn (Appointment $a) => [
+                'id'          => $a->id,
+                'start_time'  => $a->start_time,
+                'price'       => (float) ($a->price ?? 0),
+                'status'      => $a->status,
+                'description' => $a->custom_type ?? ('Cita #' . $a->id),
+            ]);
+
+        return response()->json(['data' => $appointments]);
+    }
+
+    public function searchBonuses(Request $request): JsonResponse
+    {
+        Gate::authorize('viewAny', Document::class);
+
+        $patientId = (int) ($request->query('patient_id') ?? 0);
+        if (!$patientId) {
+            return response()->json(['data' => []]);
+        }
+
+        $clinicId = (int) ($request->user()?->clinic_id ?? 0);
+        $bonuses = Bonus::query()
+            ->where('clinic_id', $clinicId)
+            ->where('patient_id', $patientId)
+            ->whereNull('invoice_id')
+            ->orderByDesc('id')
+            ->limit(50)
+            ->get(['id', 'name', 'price', 'remaining_sessions', 'counter'])
+            ->map(fn (Bonus $bonus) => [
+                'id' => $bonus->id,
+                'counter' => $bonus->counter,
+                'name' => $bonus->name,
+                'price' => (float) ($bonus->price ?? 0),
+                'remaining_sessions' => (int) ($bonus->remaining_sessions ?? 0),
+                'description' => trim(($bonus->counter ? $bonus->counter . ' · ' : '') . $bonus->name),
+            ]);
+
+        return response()->json(['data' => $bonuses]);
+    }
+
+    public function searchProducts(Request $request): JsonResponse
+    {
+        Gate::authorize('viewAny', Document::class);
+
+        $q = trim((string) ($request->query('q') ?? ''));
+        $clinicId = (int) ($request->user()?->clinic_id ?? 0);
+
+        $query = Product::query()->where('clinic_id', $clinicId);
+        if (strlen($q) >= 1) {
+            $query->where(function ($b) use ($q) {
+                $b->where('name', 'like', "%{$q}%")
+                  ->orWhere('reference', 'like', "%{$q}%");
+            });
+        }
+
+        $products = $query->limit(20)->get(['id', 'reference', 'name', 'sale_price', 'sale_tax', 'purchase_price', 'purchase_tax'])
+            ->map(fn (Product $p) => [
+                'id'            => $p->id,
+                'reference'     => $p->reference,
+                'name'          => $p->name,
+                'sale_price'    => (float) $p->sale_price,
+                'sale_tax'      => (float) $p->sale_tax,
+                'purchase_price'=> (float) $p->purchase_price,
+                'purchase_tax'  => (float) $p->purchase_tax,
+            ]);
+
+        return response()->json(['data' => $products]);
     }
 
     public function issueAbono(Request $request, Document $document): JsonResponse

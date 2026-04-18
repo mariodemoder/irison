@@ -7,6 +7,7 @@
           <div class="form-sub">Listado de facturas</div>
         </div>
         <div>
+          <router-link to="/invoices/create" class="primary" style="margin-right:8px">Nueva Factura</router-link>
           <router-link to="/appointments/day" class="primary">Gestionar en Cita</router-link>
         </div>
       </div>
@@ -191,10 +192,12 @@ function typeInvoiceLabel(doc) {
   if (type === 'abono' && typeinvoice === 'package') return 'Abono de Bono'
   if (type === 'abono' && typeinvoice === 'credit') return 'Abono de Adelanto'
   if (type === 'abono' && typeinvoice === 'manual') return 'Abono Manual'
+  if (type === 'abono' && typeinvoice === 'varios') return 'Abono Varios'
   if (typeinvoice === 'appointment') return 'Factura de Cita'
   if (typeinvoice === 'package') return 'Factura de Bono'
   if (typeinvoice === 'credit') return 'Factura de Adelanto'
   if (typeinvoice === 'manual') return 'Factura Manual'
+  if (typeinvoice === 'varios') return 'Factura Varios'
   return 'Otro'
 }
 

@@ -7,9 +7,14 @@ namespace App\Services\Documents;
 use App\Models\Appointment;
 use App\Models\Bonus;
 use App\Models\Document;
+use App\Models\DocumentItem;
+use App\Models\Patient;
+use App\Models\Product;
 use App\Models\User;
 use DomainException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 class InvoicingService
 {
@@ -224,5 +229,111 @@ class InvoicingService
             'document' => $document,
             'created' => $created,
         ];
+    }
+
+    /**
+     * Crea una factura de tipo 'varios' con líneas de items mixtos.
+     *
+     * @param  array{
+     *     patient_id: int,
+     *     date?: string,
+     *     notes?: string|null,
+     *     items: array<int, array{
+     *         type: string,
+     *         reference_id?: int|null,
+     *         description: string,
+     *         quantity: float,
+     *         unit_price: float,
+     *         tax_rate: float,
+     *         buy_price?: float,
+     *         buy_tax?: float,
+     *     }>
+     * } $input
+     * @return array{document: Document, created: bool}
+     * @throws ValidationException
+     */
+    public function issueVarios(array $input, User $user, int $clinicId): array
+    {
+        $validated = Validator::make($input, [
+            'patient_id'          => ['required', 'integer', 'min:1'],
+            'date'                => ['nullable', 'date'],
+            'notes'               => ['nullable', 'string', 'max:2000'],
+            'items'               => ['required', 'array', 'min:1', 'max:100'],
+            'items.*.type'        => ['required', 'in:appointment,bonus,product,manual'],
+            'items.*.reference_id'=> ['nullable', 'integer', 'min:1'],
+            'items.*.description' => ['required', 'string', 'max:500'],
+            'items.*.quantity'    => ['required', 'numeric', 'min:0.0001'],
+            'items.*.unit_price'  => ['required', 'numeric', 'min:0'],
+            'items.*.tax_rate'    => ['required', 'numeric', 'min:0', 'max:100'],
+            'items.*.buy_price'   => ['nullable', 'numeric', 'min:0'],
+            'items.*.buy_tax'     => ['nullable', 'numeric', 'min:0', 'max:100'],
+        ])->validate();
+
+        $patient = Patient::withTrashed()->find((int) $validated['patient_id']);
+
+        $document = DB::transaction(function () use ($validated, $user, $clinicId, $patient) {
+            $clinic = \App\Models\Clinic::find($clinicId);
+
+            $totalAmount = 0.0;
+            foreach ($validated['items'] as $row) {
+                $totalAmount += DocumentItem::computeTotal(
+                    (float) $row['quantity'],
+                    (float) $row['unit_price'],
+                    (float) $row['tax_rate'],
+                );
+            }
+
+            $document = Document::create([
+                'clinic_id'          => $clinicId,
+                'patient_id'         => (int) $validated['patient_id'],
+                'type'               => Document::TYPE_INVOICE,
+                'type_from'          => 'varios',
+                'from_id'            => null,
+                'typeinvoice'        => Document::TYPEINVOICE_VARIOS,
+                'clinic_name'        => $clinic?->name,
+                'clinic_nif'         => $clinic?->nif,
+                'clinic_address'     => $clinic?->address,
+                'clinic_zip'         => $clinic?->zip,
+                'clinic_province'    => $clinic?->province,
+                'clinic_country'     => $clinic?->country,
+                'user_full_name'     => $user->name,
+                'patient_nif'        => $patient?->nif,
+                'patient_full_name'  => $patient?->name,
+                'patient_email'      => $patient?->email,
+                'patient_phone'      => $patient?->phone,
+                'patient_address'    => $patient?->address,
+                'patient_zip'        => $patient?->zip,
+                'date'               => $validated['date'] ?? now()->toDateString(),
+                'amount'             => $totalAmount,
+                'notes'              => $validated['notes'] ?? null,
+                'status'             => 'issued',
+            ]);
+
+            foreach ($validated['items'] as $index => $row) {
+                $total = DocumentItem::computeTotal(
+                    (float) $row['quantity'],
+                    (float) $row['unit_price'],
+                    (float) $row['tax_rate'],
+                );
+
+                DocumentItem::create([
+                    'document_id'  => $document->id,
+                    'type'         => $row['type'],
+                    'reference_id' => isset($row['reference_id']) ? (int) $row['reference_id'] : null,
+                    'description'  => $row['description'],
+                    'quantity'     => (float) $row['quantity'],
+                    'unit_price'   => (float) $row['unit_price'],
+                    'tax_rate'     => (float) $row['tax_rate'],
+                    'buy_price'    => (float) ($row['buy_price'] ?? 0),
+                    'buy_tax'      => (float) ($row['buy_tax'] ?? 0),
+                    'total'        => $total,
+                    'sort_order'   => $index,
+                ]);
+            }
+
+            return $document;
+        });
+
+        return ['document' => $document, 'created' => true];
     }
 }

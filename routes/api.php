@@ -84,6 +84,10 @@ Route::middleware(['auth:sanctum', 'clinic', 'clinic.active'])->group(function (
     Route::apiResource('payments', \App\Http\Controllers\Api\PaymentController::class)
         ->only(['index', 'store', 'show', 'update']);
 
+    // Productos: CRUD para gestión de inventario/facturación
+    Route::apiResource('products', \App\Http\Controllers\Api\ProductController::class)
+        ->only(['index', 'store', 'show', 'update']);
+
     Route::get('reminders', [\App\Http\Controllers\Api\ReminderController::class, 'index']);
     Route::get('reminders/{reminder}', [\App\Http\Controllers\Api\ReminderController::class, 'show']);
     Route::post('reminders/{reminder}/resend', [\App\Http\Controllers\Api\ReminderController::class, 'resend']);
@@ -91,6 +95,11 @@ Route::middleware(['auth:sanctum', 'clinic', 'clinic.active'])->group(function (
     // Facturación (solo lectura): listado y detalle de facturas/documentos
     Route::get('documents/{document}/pdf', [\App\Http\Controllers\Api\DocumentController::class, 'pdf']);
     Route::post('documents/{document}/abono', [\App\Http\Controllers\Api\DocumentController::class, 'issueAbono']);
+    Route::post('documents/varios', [\App\Http\Controllers\Api\DocumentController::class, 'storeVarios']);
+    Route::get('documents/search/patients', [\App\Http\Controllers\Api\DocumentController::class, 'searchPatients']);
+    Route::get('documents/search/appointments', [\App\Http\Controllers\Api\DocumentController::class, 'searchAppointments']);
+    Route::get('documents/search/bonuses', [\App\Http\Controllers\Api\DocumentController::class, 'searchBonuses']);
+    Route::get('documents/search/products', [\App\Http\Controllers\Api\DocumentController::class, 'searchProducts']);
     Route::apiResource('documents', \App\Http\Controllers\Api\DocumentController::class)
         ->only(['index', 'show']);
 
