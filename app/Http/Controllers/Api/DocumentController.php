@@ -404,7 +404,10 @@ class DocumentController extends Controller
     {
         Gate::authorize('view', $document);
 
-        $document->load(['patient:id,counter,first_name,last_name,nif,email,phone,address,zip']);
+        $document->load([
+            'patient:id,counter,first_name,last_name,nif,email,phone,address,zip',
+            'items',
+        ]);
         $clinic = $request->user()?->clinic;
         $originDocument = $this->resolveOriginDocument($document);
 

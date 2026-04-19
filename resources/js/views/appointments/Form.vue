@@ -14,11 +14,15 @@
           <div class="field">
             <label class="label">Paciente</label>
               <div style="display:flex; gap:12px; align-items:flex-start; width:100%">
-              <select v-model="form.patient_id" @change="onPatientChange" class="input" :disabled="isCanceled && mode !== 'reprogram'" style="flex:1">
-                <option value="" disabled>Selecciona un paciente</option>
-                <option v-for="p in patients" :key="p.id" :value="p.id">{{ p.counter ? (`${p.counter} · `) : '' }}{{ p.name }}{{ p.nif ? (' — ' + p.nif) : '' }}</option>
-                <option value="__create">+ Crear paciente...</option>
-              </select>
+              <PatientSelect
+                v-model="form.patient_id"
+                :patients="patients"
+                class="input"
+                :disabled="isCanceled && mode !== 'reprogram'"
+                placeholder="Selecciona un paciente"
+                style="flex:1"
+                @change="onPatientChange"
+              />
               <button v-if="form.patient_id && form.patient_id !== '__create'" type="button" class="muted" @click.prevent="goToPatient(form.patient_id)" title="Ir a la ficha del paciente" style="height:40px;padding:8px 10px;border-radius:8px;align-self:center">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
               </button>
@@ -443,6 +447,7 @@ import { useRouter, useRoute } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
 import AppLoading from '../../components/AppLoading.vue'
+import PatientSelect from '../../components/PatientSelect.vue'
 import IconCancel from '../../components/icons/IconCancel.vue'
 import { useToast } from 'vue-toastification'
 import Swal from 'sweetalert2'
@@ -1366,31 +1371,26 @@ async function emitInvoice() {
     return
   }
 
-  issuingInvoice.value = true
-  const toast = useToast()
+  const invoiceDescription = String(invoiceNotesDraft.value || '').trim()
+    || appointmentTypeBillingLabel.value
+    || String(form.notes || '').trim()
+    || `Cita #${route.params.id}`
+  const selectedPatientName = String(selectedPatient.value?.name || '').trim()
+  const selectedPatientNif = String(selectedPatient.value?.nif || '').trim()
+  const amount = Number(form.price || 0)
 
-  try {
-    const invoiceNotes = String(invoiceNotesDraft.value || '').trim()
-      || appointmentTypeBillingLabel.value
-      || String(form.notes || '').trim()
-      || undefined
-    const res = await api.post(`/appointments/${route.params.id}/invoice`, {
-      notes: invoiceNotes,
-    })
-    const documentId = res.data?.data?.id
-
-    toast.success(res.data?.message || 'Factura emitida correctamente')
-
-    if (documentId) {
-      appointmentInvoiceId.value = Number(documentId)
-      goToInvoiceFromAppointment(documentId)
-    }
-  } catch (e) {
-    const message = e?.response?.data?.message || 'No se pudo emitir la factura'
-    toast.error(message)
-  } finally {
-    issuingInvoice.value = false
-  }
+  router.push({
+    path: '/invoices/create',
+    query: {
+      from: 'appointment',
+      appointment_id: String(route.params.id),
+      patient_id: String(form.patient_id),
+      patient_name: selectedPatientName,
+      patient_nif: selectedPatientNif,
+      item_description: invoiceDescription,
+      item_amount: Number.isFinite(amount) ? String(amount.toFixed(2)) : '0.00',
+    },
+  })
 }
 
 // formatDate moved to shared/appointmentHelpers

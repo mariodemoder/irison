@@ -10,31 +10,14 @@
         <!-- PACIENTE -->
         <section class="section">
           <h2 class="section-title">Paciente</h2>
-          <div class="patient-search">
-            <input
-              v-model="patientQuery"
-              class="input"
-              placeholder="Buscar paciente por nombre o NIF…"
-              autocomplete="off"
-              @input="onPatientInput"
-            />
-            <div v-if="patientResults.length" class="dropdown">
-              <button
-                v-for="p in patientResults"
-                :key="p.id"
-                type="button"
-                class="dropdown-item"
-                @click="selectPatient(p)"
-              >
-                <span class="dropdown-label">{{ p.name }}</span>
-                <span v-if="p.nif" class="dropdown-sub">{{ p.nif }}</span>
-              </button>
-            </div>
-          </div>
-          <div v-if="selectedPatient" class="patient-chip">
-            <span>{{ selectedPatient.name }}<span v-if="selectedPatient.nif"> · {{ selectedPatient.nif }}</span></span>
-            <button type="button" class="chip-remove" @click="clearPatient">✕</button>
-          </div>
+          <PatientSelect
+            :model-value="selectedPatient?.id ? String(selectedPatient.id) : ''"
+            :patients="patients"
+            :current-patient="selectedPatient"
+            class="input"
+            placeholder="Selecciona paciente"
+            @update:modelValue="handlePatientSelect"
+          />
         </section>
 
         <!-- FECHA Y NOTAS -->
@@ -55,7 +38,7 @@
             <h2 class="section-title" style="margin:0">Conceptos</h2>
             <div class="add-actions">
               <button type="button" class="btn-add" @click="openAddPanel('appointment')">+ Cita</button>
-              <button type="button" class="btn-add" @click="openAddPanel('bonus')">+ Bono</button>
+              <button v-if="!isAppointmentPreloaded" type="button" class="btn-add" @click="openAddPanel('bonus')">+ Bono</button>
               <button type="button" class="btn-add" @click="openAddPanel('product')">+ Producto</button>
               <button type="button" class="btn-add" @click="addManualItem()">+ Manual</button>
             </div>
@@ -85,7 +68,7 @@
             <button type="button" class="panel-close" @click="addPanel = null">Cerrar</button>
           </div>
 
-          <div v-if="addPanel === 'bonus'" class="add-panel">
+          <div v-if="addPanel === 'bonus' && !isAppointmentPreloaded" class="add-panel">
             <div class="panel-title">Seleccionar bono sin facturar</div>
             <div v-if="!selectedPatient" class="panel-notice">Primero selecciona un paciente.</div>
             <div v-else>
@@ -204,12 +187,16 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
+import PatientSelect from '../../components/PatientSelect.vue'
 import { useToast } from 'vue-toastification'
+import Swal from 'sweetalert2'
+import { loadPatients as loadPatientsShared, openCreatePatientPopup as sharedOpenCreatePatientPopup } from '../../shared/formHelpers'
 
 const toast = useToast()
+const route = useRoute()
 const router = useRouter()
 
 // ─── Estado ──────────────────────────────────────────────────────────────────
@@ -222,10 +209,8 @@ const form = ref({
 })
 
 // Paciente
-const patientQuery = ref('')
-const patientResults = ref([])
+const patients = ref([])
 const selectedPatient = ref(null)
-let patientTimer = null
 
 // Productos (buscador)
 const productQuery = ref('')
@@ -245,6 +230,9 @@ const addPanel = ref(null)
 
 // Líneas de factura
 const items = ref([])
+
+const preloadSource = computed(() => String(route.query.from || '').trim())
+const isAppointmentPreloaded = computed(() => preloadSource.value === 'appointment')
 
 // ─── Totales ─────────────────────────────────────────────────────────────────
 const totals = computed(() => {
@@ -267,22 +255,22 @@ function round2(n) {
 }
 
 // ─── Paciente ─────────────────────────────────────────────────────────────────
-function onPatientInput() {
-  clearTimeout(patientTimer)
-  const q = patientQuery.value.trim()
-  if (q.length < 2) { patientResults.value = []; return }
-  patientTimer = setTimeout(async () => {
-    try {
-      const res = await api.get('/documents/search/patients', { params: { q } })
-      patientResults.value = res.data?.data ?? []
-    } catch { patientResults.value = [] }
-  }, 250)
+async function loadPatients() {
+  patients.value = await loadPatientsShared(api, 200)
 }
 
-function selectPatient(p) {
-  selectedPatient.value = p
-  patientQuery.value = ''
-  patientResults.value = []
+async function handlePatientSelect(value) {
+  if (value === '__create') {
+    const newPatient = await sharedOpenCreatePatientPopup({ api, Swal, toast })
+    if (newPatient?.id) {
+      patients.value.unshift(newPatient)
+      selectedPatient.value = newPatient
+    }
+    return
+  }
+
+  const patient = patients.value.find(item => String(item.id) === String(value)) || null
+  selectedPatient.value = patient
   availableAppointments.value = []
   availableBonuses.value = []
 }
@@ -295,6 +283,7 @@ function clearPatient() {
 
 // ─── Citas ───────────────────────────────────────────────────────────────────
 async function openAddPanel(type) {
+  if (type === 'bonus' && isAppointmentPreloaded.value) return
   addPanel.value = type
   if (type === 'appointment' && selectedPatient.value && availableAppointments.value.length === 0) {
     await loadAppointments()
@@ -485,6 +474,45 @@ function itemTypeLabel(type) {
   if (type === 'product') return 'Producto'
   return ''
 }
+
+function preloadFromAppointmentQuery() {
+  if (!isAppointmentPreloaded.value) return
+
+  const patientId = Number(route.query.patient_id || 0)
+  const appointmentId = Number(route.query.appointment_id || 0)
+  const patientName = String(route.query.patient_name || '').trim()
+  const patientNif = String(route.query.patient_nif || '').trim()
+  const itemDescription = String(route.query.item_description || '').trim()
+  const itemAmount = Number(route.query.item_amount || 0)
+
+  if (patientId > 0) {
+    selectedPatient.value = {
+      id: patientId,
+      name: patientName || `Paciente #${patientId}`,
+      nif: patientNif || null,
+    }
+    availableAppointments.value = []
+  }
+
+  if (appointmentId > 0 && !items.value.some(item => item.type === 'appointment' && Number(item.reference_id || 0) === appointmentId)) {
+    items.value.push({
+      type: 'appointment',
+      reference_id: appointmentId,
+      description: itemDescription || `Cita #${appointmentId}`,
+      quantity: 1,
+      unit_price: Number.isFinite(itemAmount) ? itemAmount : 0,
+      tax_rate: 0,
+      buy_price: 0,
+      buy_tax: 0,
+      total: round2(Number.isFinite(itemAmount) ? itemAmount : 0),
+    })
+  }
+}
+
+onMounted(async () => {
+  await loadPatients()
+  preloadFromAppointmentQuery()
+})
 </script>
 
 <style scoped>
@@ -496,17 +524,6 @@ function itemTypeLabel(type) {
 
 .section { margin-bottom:24px }
 .section-title { font-size:15px; font-weight:700; margin:0 0 12px; color:#111827 }
-
-/* Paciente */
-.patient-search { position:relative }
-.dropdown { position:absolute; top:calc(100% + 4px); left:0; right:0; background:#fff; border:1px solid #e5e7eb; border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,.12); z-index:50; max-height:240px; overflow-y:auto }
-.dropdown-item { display:flex; gap:8px; align-items:center; width:100%; padding:10px 14px; border:none; background:none; cursor:pointer; text-align:left }
-.dropdown-item:hover { background:#f3f4f6 }
-.dropdown-label { font-weight:600; font-size:14px }
-.dropdown-sub { font-size:12px; color:#6b7280 }
-.patient-chip { display:inline-flex; align-items:center; gap:8px; margin-top:8px; padding:6px 12px; background:#eff6ff; border-radius:9999px; font-size:14px; font-weight:600; color:#1d4ed8 }
-.chip-remove { border:none; background:none; cursor:pointer; font-size:13px; color:#6b7280 }
-.chip-remove:hover { color:#b91c1c }
 
 /* Grid */
 .grid-form { display:grid; grid-template-columns:repeat(2,1fr); gap:12px }

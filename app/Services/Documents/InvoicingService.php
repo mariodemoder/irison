@@ -271,6 +271,82 @@ class InvoicingService
 
         $patient = Patient::withTrashed()->find((int) $validated['patient_id']);
 
+        if (!$patient || (int) $patient->clinic_id !== $clinicId) {
+            throw ValidationException::withMessages([
+                'patient_id' => ['El paciente seleccionado no es válido.'],
+            ]);
+        }
+
+        $appointmentIds = collect($validated['items'])
+            ->filter(fn (array $row) => ($row['type'] ?? null) === 'appointment' && !empty($row['reference_id']))
+            ->map(fn (array $row) => (int) $row['reference_id'])
+            ->unique()
+            ->values();
+
+        $bonusIds = collect($validated['items'])
+            ->filter(fn (array $row) => ($row['type'] ?? null) === 'bonus' && !empty($row['reference_id']))
+            ->map(fn (array $row) => (int) $row['reference_id'])
+            ->unique()
+            ->values();
+
+        $appointments = $appointmentIds->isEmpty()
+            ? collect()
+            : Appointment::query()
+                ->where('clinic_id', $clinicId)
+                ->whereIn('id', $appointmentIds)
+                ->get()
+                ->keyBy('id');
+
+        $bonuses = $bonusIds->isEmpty()
+            ? collect()
+            : Bonus::query()
+                ->where('clinic_id', $clinicId)
+                ->whereIn('id', $bonusIds)
+                ->get()
+                ->keyBy('id');
+
+        $validationErrors = [];
+
+        foreach ($validated['items'] as $index => $row) {
+            $rowType = (string) ($row['type'] ?? '');
+            $referenceId = isset($row['reference_id']) ? (int) $row['reference_id'] : 0;
+            $errorKey = "items.{$index}.reference_id";
+
+            if ($rowType === 'appointment' && $referenceId > 0) {
+                /** @var Appointment|null $appointment */
+                $appointment = $appointments->get($referenceId);
+                if (!$appointment) {
+                    $validationErrors[$errorKey][] = 'La cita seleccionada no es válida.';
+                    continue;
+                }
+                if ((int) $appointment->patient_id !== (int) $patient->id) {
+                    $validationErrors[$errorKey][] = 'La cita seleccionada no pertenece al paciente de la factura.';
+                }
+                if (!empty($appointment->invoice_id)) {
+                    $validationErrors[$errorKey][] = 'La cita seleccionada ya tiene una factura emitida.';
+                }
+            }
+
+            if ($rowType === 'bonus' && $referenceId > 0) {
+                /** @var Bonus|null $bonus */
+                $bonus = $bonuses->get($referenceId);
+                if (!$bonus) {
+                    $validationErrors[$errorKey][] = 'El bono seleccionado no es válido.';
+                    continue;
+                }
+                if ((int) $bonus->patient_id !== (int) $patient->id) {
+                    $validationErrors[$errorKey][] = 'El bono seleccionado no pertenece al paciente de la factura.';
+                }
+                if (!empty($bonus->invoice_id)) {
+                    $validationErrors[$errorKey][] = 'El bono seleccionado ya tiene una factura emitida.';
+                }
+            }
+        }
+
+        if ($validationErrors !== []) {
+            throw ValidationException::withMessages($validationErrors);
+        }
+
         $document = DB::transaction(function () use ($validated, $user, $clinicId, $patient) {
             $clinic = \App\Models\Clinic::find($clinicId);
 
@@ -329,6 +405,29 @@ class InvoicingService
                     'total'        => $total,
                     'sort_order'   => $index,
                 ]);
+
+                $referenceId = isset($row['reference_id']) ? (int) $row['reference_id'] : 0;
+                if ($referenceId <= 0) {
+                    continue;
+                }
+
+                if (($row['type'] ?? null) === 'appointment') {
+                    Appointment::query()
+                        ->where('clinic_id', $clinicId)
+                        ->where('patient_id', (int) $validated['patient_id'])
+                        ->where('id', $referenceId)
+                        ->whereNull('invoice_id')
+                        ->update(['invoice_id' => $document->id]);
+                }
+
+                if (($row['type'] ?? null) === 'bonus') {
+                    Bonus::query()
+                        ->where('clinic_id', $clinicId)
+                        ->where('patient_id', (int) $validated['patient_id'])
+                        ->where('id', $referenceId)
+                        ->whereNull('invoice_id')
+                        ->update(['invoice_id' => $document->id]);
+                }
             }
 
             return $document;

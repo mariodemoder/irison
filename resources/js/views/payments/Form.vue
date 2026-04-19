@@ -14,13 +14,15 @@
 
           <div class="field full">
             <label class="label">Paciente</label>
-            <select v-model="form.patient_id" @change="onPatientChange" class="input" :disabled="comingFromAppointment" required>
-              <option value="">Selecciona paciente</option>
-              <option v-for="p in patients" :key="p.id" :value="String(p.id)">
-                {{ p.counter ? `${p.counter} · ` : '' }}{{ p.name }} {{ p.nif ? `— ${p.nif}` : '' }}
-              </option>
-              <option value="__create">+ Crear paciente...</option>
-            </select>
+            <PatientSelect
+              v-model="form.patient_id"
+              :patients="patients"
+              class="input"
+              :disabled="comingFromAppointment"
+              :required="true"
+              placeholder="Selecciona paciente"
+              @change="onPatientChange"
+            />
           </div>
 
           <div class="field full">
@@ -159,6 +161,7 @@ import { useToast } from 'vue-toastification'
 import Swal from 'sweetalert2'
 import MainLayout from '../../layouts/MainLayout.vue'
 import AppLoading from '../../components/AppLoading.vue'
+import PatientSelect from '../../components/PatientSelect.vue'
 import api from '../../services/api'
 import {
   openCreatePatientPopup as sharedOpenCreatePatientPopup,

@@ -8,7 +8,6 @@
         </div>
         <div>
           <router-link to="/invoices/create" class="primary" style="margin-right:8px">Nueva Factura</router-link>
-          <router-link to="/appointments/day" class="primary">Gestionar en Cita</router-link>
         </div>
       </div>
 
