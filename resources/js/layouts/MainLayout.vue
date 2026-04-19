@@ -2,7 +2,7 @@
   <div class="layout-shell min-h-screen bg-gray-50">
     <aside v-show="isMobile || open" class="sidebar" :class="{ compact: compactMode || isMobile }">
       <button class="logo-wrap" type="button" @click="toggleMenuMode" :title="isMobile ? 'Menú compacto' : 'Expandir/contraer menú'">
-        <img :src="logo" alt="Logo" class="sidebar-logo" />
+        <img :src="currentLogo" alt="Logo" class="sidebar-logo" />
       </button>
 
       <nav class="space-y-1">
@@ -88,7 +88,8 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import logo from '../assets/logoini.svg'
+import logoCompact from '../assets/logoini.svg'
+import logoFull from '../assets/logonameviolet.svg'
 import logout from '../utils/logout'
 import { meUser, meClinic, meStatus, meTrialEndsAt, ensureMeLoaded } from '../shared/meCache'
 
@@ -144,6 +145,10 @@ const subscriptionStatusDot = computed(() => {
   if (status.value === 'active' || status.value === 'activa') return '🟢'
   if (status.value === 'canceled' || status.value === 'cancelled' || status.value === 'blocked') return '🔴'
   return '🔴'
+})
+
+const currentLogo = computed(() => {
+  return compactMode.value ? logoCompact : logoFull
 })
 
 const columnClasses = computed(() => {
@@ -249,7 +254,7 @@ function isActive(base) {
 }
 
 .logo-wrap {
-  margin-bottom: 24px;
+  margin-bottom: 12px;
   display: flex;
   justify-content: center;
   width: 100%;
@@ -260,14 +265,14 @@ function isActive(base) {
 }
 
 .sidebar-logo {
-  width: 160px;
-  height: 160px;
+  width: 200px;
+  height: 100px;
   object-fit: contain;
 }
 
 .sidebar.compact .sidebar-logo {
-  width: 56px;
-  height: 56px;
+  width: 50px;
+  height: 50px;
 }
 
 .menu-link {

@@ -3,8 +3,11 @@
     <div class="form-wrapper">
       <div class="form-card">
         <div class="form-header">
-          <h1>{{ isEdit ? 'Editar pago' : 'Nuevo pago' }}</h1>
-          <p class="form-sub">{{ isEdit ? 'Actualiza los datos del pago.' : 'Registra un nuevo pago de cliente.' }}</p>
+          <div>
+            <h1>{{ isEdit ? 'Editar pago' : 'Nuevo pago' }}</h1>
+            <p class="form-sub">{{ isEdit ? 'Actualiza los datos del pago.' : 'Registra un nuevo pago de cliente.' }}</p>
+          </div>
+          <button type="button" class="muted back-btn" @click.prevent="cancel">Volver</button>
         </div>
 
         <form class="grid-form" @submit.prevent="submit">
@@ -146,7 +149,7 @@
 
           <div class="actions full">
             <button class="primary" type="submit" :disabled="submitting">{{ submitting ? 'Guardando...' : 'Guardar' }}</button>
-            <button type="button" class="muted" @click.prevent="cancel">Cancelar</button>
+            <button type="button" class="muted" @click.prevent="cancel">Volver</button>
           </div>
         </form>
       </div>
@@ -344,8 +347,9 @@ async function loadForEdit(id) {
   try {
     const res = await api.get(`/payments/${id}`)
     const data = res.data || {}
+    const normalizedConcept = normalizePaymentConcept(data.concept, data.appointment_id, data.package_id)
     form.patient_id = data.patient_id ? String(data.patient_id) : ''
-    form.concept = data.concept || (data.appointment_id ? 'appointment' : (data.package_id ? 'package' : 'credit'))
+    form.concept = normalizedConcept
     form.amount = Number(data.amount || 0)
     form.method = data.method || 'cash'
     form.status = form.concept === 'credit'
@@ -713,6 +717,20 @@ function parseRouteAmount(value) {
   return Number(parsed.toFixed(2))
 }
 
+function normalizePaymentConcept(concept, appointmentId = null, packageId = null) {
+  const raw = String(concept ?? '').trim().toLowerCase()
+  const appointmentIdNumber = Number(appointmentId || 0)
+  const packageIdNumber = Number(packageId || 0)
+
+  if (raw === 'appointment' || raw === 'cita') return 'appointment'
+  if (raw === 'package' || raw === 'pack' || raw === 'bonus' || raw === 'bono' || raw === 'abono') return 'package'
+  if (raw === 'credit' || raw === 'adelanto' || raw === 'advance') return 'credit'
+
+  if (Number.isFinite(packageIdNumber) && packageIdNumber > 0) return 'package'
+  if (Number.isFinite(appointmentIdNumber) && appointmentIdNumber > 0) return 'appointment'
+  return 'credit'
+}
+
 async function submit() {
   submitting.value = true
   clearErrors()
@@ -808,8 +826,8 @@ onMounted(async () => {
     form.patient_id = String(route.query.patient_id)
     form.paid_at = toDateTimeLocal(new Date().toISOString())
 
-    if (typeof route.query.concept === 'string' && ['appointment', 'package', 'credit'].includes(route.query.concept)) {
-      form.concept = route.query.concept
+    if (typeof route.query.concept === 'string') {
+      form.concept = normalizePaymentConcept(route.query.concept, route.query.appointment_id, route.query.package_id)
     }
 
     if (form.concept === 'appointment') {
@@ -930,6 +948,7 @@ watch(
 <style scoped>
 .form-wrapper { display:flex; justify-content:center; padding:24px }
 .form-card { width:100%; max-width:760px; background: #fff; border-radius:12px; box-shadow: 0 10px 30px rgba(2,6,23,0.06); padding:24px }
+.form-header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px }
 .form-header h1 { margin:0; font-size:22px }
 
 .grid-form { display:grid; grid-template-columns: repeat(2, 1fr); gap:12px }

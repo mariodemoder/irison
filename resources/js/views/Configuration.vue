@@ -312,7 +312,7 @@
                         <td data-label="Tipo de pago">
                           <select class="input counter-input" v-model="item.payment_type">
                             <option value="simple">Simple</option>
-                            <option value="abono">Abono</option>
+                            <option value="abono">Bono</option>
                           </select>
                         </td>
                         <td data-label="Acciones">
@@ -616,7 +616,7 @@ async function load() {
       counters.value = defaultCounters()
     }
 
-    const incomingsesiones = Array.isArray(res.data.sesiones) ? res.data.sesiones : []
+    const incomingsesiones = Array.isArray(res.data.cesiones) ? res.data.cesiones : []
     cesionTypes.value = incomingsesiones.map((item) => sanitizeCesionType(item))
 
     const incomingBonusTypes = Array.isArray(res.data.bonus_types) ? res.data.bonus_types : []
@@ -664,7 +664,7 @@ async function save() {
         prefix: (item.prefix ?? '').toString().trim().toUpperCase(),
         last_number: Number.isFinite(Number(item.last_number)) ? Math.max(Number(item.last_number), 0) : 0,
       })),
-      sesiones: cesionTypes.value.map((item) => ({
+      cesiones: cesionTypes.value.map((item) => ({
         description: item.description,
         estimated_hours: item.estimated_hours,
         estimated_minutes: item.estimated_minutes,
@@ -695,7 +695,7 @@ async function save() {
         }
       })
     }
-    const incomingsesiones = Array.isArray(res.data.sesiones) ? res.data.sesiones : []
+    const incomingsesiones = Array.isArray(res.data.cesiones) ? res.data.cesiones : []
     cesionTypes.value = incomingsesiones.map((item) => sanitizeCesionType(item))
 
     const incomingBonusTypesSave = Array.isArray(res.data.bonus_types) ? res.data.bonus_types : []
@@ -712,8 +712,8 @@ async function save() {
 function makeCesionType() {
   return {
     description: '',
-    estimated_hours: 0,
-    estimated_minutes: 60,
+    estimated_hours: 1,
+    estimated_minutes: 0,
     price: 0,
     payment_type: 'simple',
   }
@@ -728,7 +728,7 @@ function sanitizeCesionType(item) {
       : 0,
     estimated_minutes: Number.isFinite(Number(item?.estimated_minutes))
       ? Math.min(Math.max(Number(item.estimated_minutes), 0), 59)
-      : 60,
+      : 0,
     price: Number.isFinite(Number(item?.price))
       ? Math.max(Number(item.price), 0)
       : 0,

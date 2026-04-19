@@ -3,8 +3,11 @@
     <div class="form-wrapper">
       <div class="form-card">
         <div class="form-header">
-          <h1>Nueva Factura</h1>
-          <p class="form-sub">Añade los conceptos que quieras facturar (sesiones, bonos, productos o manual)</p>
+          <div>
+            <h1>Nueva Factura</h1>
+            <p class="form-sub">Añade los conceptos que quieras facturar (sesiones, bonos, productos o manual)</p>
+          </div>
+          <button type="button" class="muted back-btn" @click.prevent="goBack">Volver</button>
         </div>
 
         <!-- PACIENTE -->
@@ -174,7 +177,7 @@
           <button type="button" class="primary" :disabled="saving" @click="submit">
             {{ saving ? 'Guardando…' : 'Emitir Factura' }}
           </button>
-          <button type="button" class="muted" @click="goBack">Cancelar</button>
+          <button type="button" class="muted" @click="goBack">Volver</button>
         </section>
 
         <div v-if="serverErrors.length" class="error-box">
@@ -518,7 +521,7 @@ onMounted(async () => {
 <style scoped>
 .form-wrapper { display:flex; justify-content:center; padding:24px }
 .form-card { width:100%; max-width:860px; background:#fff; border-radius:12px; box-shadow:0 10px 30px rgba(2,6,23,0.06); padding:28px }
-.form-header { margin-bottom:20px }
+.form-header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:20px }
 .form-header h1 { margin:0; font-size:22px }
 .form-sub { margin:4px 0 0; color:#6b7280; font-size:14px }
 

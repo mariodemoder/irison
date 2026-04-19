@@ -442,6 +442,57 @@ onMounted(async () => {
         </div>
       </section>
 
+      <section class="quick-actions">
+        <div class="quick-actions-title">Acciones rápidas</div>
+        <div class="quick-actions-grid">
+          <router-link to="/appointments/create" class="quick-action-card">
+            <div class="quick-action-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="5" width="18" height="16" rx="2"></rect>
+                <path d="M8 3v4M16 3v4M3 10h18"></path>
+              </svg>
+            </div>
+            <div class="quick-action-label">Crear cita</div>
+            <div class="quick-action-desc">Agenda una nueva consulta</div>
+          </router-link>
+
+          <router-link to="/payments/create" class="quick-action-card">
+            <div class="quick-action-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2.5" y="5" width="19" height="14" rx="2"></rect>
+                <path d="M2.5 10h19M7 15h4"></path>
+              </svg>
+            </div>
+            <div class="quick-action-label">Registrar pago</div>
+            <div class="quick-action-desc">Nuevas entradas de dinero</div>
+          </router-link>
+
+          <router-link to="/invoices/create" class="quick-action-card">
+            <div class="quick-action-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M7 3h8l4 4v14H7z"></path>
+                <path d="M15 3v4h4"></path>
+                <path d="M10 12h6M10 16h6"></path>
+              </svg>
+            </div>
+            <div class="quick-action-label">Realizar factura</div>
+            <div class="quick-action-desc">Emitir nuevo documento</div>
+          </router-link>
+
+          <router-link to="/patients/create" class="quick-action-card">
+            <div class="quick-action-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="8" r="3.5"></circle>
+                <path d="M5 19c1.4-3 3.8-4.5 7-4.5s5.6 1.5 7 4.5"></path>
+                <path d="M12 5v6M9 8h6"></path>
+              </svg>
+            </div>
+            <div class="quick-action-label">Alta paciente</div>
+            <div class="quick-action-desc">Registrar nuevo paciente</div>
+          </router-link>
+        </div>
+      </section>
+
       <div class="alerts-row">
         <div class="alerts-inline card-list">
           <div class="inline-title">Alertas</div>
@@ -657,13 +708,14 @@ onMounted(async () => {
 .alerts-inline {
   margin-top: 0;
   background: var(--bg-card);
-  border: 1px solid #93c5fd;
+  border: 2px solid #f59e0b;
   border-radius: 20px;
   padding: 12px 16px;
 }
 
 .risks-inline {
   margin-top: 0;
+  border: 2px solid #fcd34d !important;
 }
 
 .alerts-subtitle {
@@ -709,6 +761,97 @@ onMounted(async () => {
   color: var(--text-muted, #6b7280);
 }
 
+.quick-actions {
+  margin-top: 24px;
+  margin-bottom: 24px;
+  background: linear-gradient(135deg, #f0f9ff 0%, #f3e8ff 100%);
+  border: 1px solid #e0e7ff;
+  border-radius: 20px;
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.quick-actions::before {
+  content: '';
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: rgba(59, 130, 246, 0.05);
+  pointer-events: none;
+}
+
+.quick-actions-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: #0f172a;
+  position: relative;
+  z-index: 1;
+}
+
+.quick-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  position: relative;
+  z-index: 1;
+}
+
+.quick-action-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 12px;
+  background: #ffffff;
+  border: 2px solid #e5e7eb;
+  border-radius: 16px;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.quick-action-card:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 12px 24px rgba(59, 130, 246, 0.15);
+  transform: translateY(-4px);
+}
+
+.quick-action-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  border-radius: 10px;
+  color: white;
+}
+
+.quick-action-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.quick-action-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  text-align: center;
+}
+
+.quick-action-desc {
+  font-size: 11px;
+  color: #6b7280;
+  text-align: center;
+}
+
 @media (max-width: 900px) {
   .dashboard-container {
     padding: 18px;
@@ -728,6 +871,10 @@ onMounted(async () => {
   }
 
   .alerts-row {
+    grid-template-columns: 1fr;
+  }
+
+  .quick-actions-grid {
     grid-template-columns: 1fr;
   }
 }
