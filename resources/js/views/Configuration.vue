@@ -18,7 +18,8 @@
             <button :class="['tab', { active: activeTab==='horarios' }]" @click="activeTab='horarios'">Horarios</button>
             <button :class="['tab', { active: activeTab==='contadores' }]" @click="activeTab='contadores'">Contadores</button>
             <button :class="['tab', { active: activeTab==='factura_pdf' }]" @click="activeTab='factura_pdf'">Factura PDF</button>
-            <button :class="['tab', { active: activeTab==='cesiones' }]" @click="activeTab='cesiones'">Cesiones</button>
+            <button :class="['tab', { active: activeTab==='sesiones' }]" @click="activeTab='sesiones'">Sesiones</button>
+            <button :class="['tab', { active: activeTab==='bonos' }]" @click="activeTab='bonos'">Bonos</button>
             <button :class="['tab', { active: activeTab==='subscripcion' }]" @click="activeTab='subscripcion'">Subscripción</button>
           </div>
 
@@ -256,9 +257,9 @@
                 </div>
               </div>
 
-              <div class="tab-panel tab-card" v-show="activeTab==='cesiones'">
+              <div class="tab-panel tab-card" v-show="activeTab==='sesiones'">
                 <div class="section-head">
-                  <h2>Tipos de cesiones</h2>
+                  <h2>Tipos de sesiones</h2>
                   <button class="btn btn-sm plus-btn" type="button" @click.prevent="addCesionType" title="Agregar tipo" aria-label="Agregar tipo">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                       <path d="M12 5v14"></path>
@@ -271,7 +272,7 @@
                 </div>
 
                 <div class="counter-table-wrap" style="margin-top:14px">
-                  <table class="counter-table cesiones-table">
+                  <table class="counter-table sesiones-table">
                     <colgroup>
                       <col class="cesion-col-description">
                       <col class="cesion-col-time">
@@ -322,9 +323,70 @@
                   </table>
                 </div>
 
-                <div class="cesiones-list" style="margin-top:12px">
+                <div class="sesiones-list" style="margin-top:12px">
                   <div v-if="cesionTypes.length === 0" class="subscription-history-empty">
-                    Aun no hay tipos de cesiones. Usa el botón Agregar para crear el primero.
+                    Aun no hay tipos de sesiones. Usa el botón Agregar para crear el primero.
+                  </div>
+                </div>
+              </div>
+
+              <div class="tab-panel tab-card" v-show="activeTab==='bonos'">
+                <div class="section-head">
+                  <h2>Tipos de bonos</h2>
+                  <button class="btn btn-sm plus-btn" type="button" @click.prevent="addBonusType" title="Agregar bono" aria-label="Agregar bono">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M12 5v14"></path>
+                      <path d="M5 12h14"></path>
+                    </svg>
+                  </button>
+                </div>
+                <div style="margin-top:8px;color:#6b7280;font-size:13px">
+                  Crea las plantillas de bono que ofreces. Podrás asignarlas directamente a pacientes.
+                </div>
+
+                <div class="counter-table-wrap" style="margin-top:14px">
+                  <table class="counter-table sesiones-table">
+                    <colgroup>
+                      <col style="width:38%">
+                      <col style="width:14%">
+                      <col style="width:16%">
+                      <col style="width:18%">
+                      <col style="width:14%">
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th>Descripción</th>
+                        <th>Nº sesiones</th>
+                        <th>Precio</th>
+                        <th>Expira</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="item in bonusTypes" :key="item.id ?? item._key">
+                        <td data-label="Descripción">
+                          <input class="input counter-input" v-model="item.description" placeholder="Ej: Bono 10 sesiones" />
+                        </td>
+                        <td data-label="Nº sesiones">
+                          <input class="input counter-input" type="number" min="1" step="1" v-model.number="item.sessions" />
+                        </td>
+                        <td data-label="Precio">
+                          <input class="input counter-input" type="number" min="0" step="0.01" v-model.number="item.price" />
+                        </td>
+                        <td data-label="Expira">
+                          <input class="input counter-input" type="date" v-model="item.expires_at" />
+                        </td>
+                        <td data-label="Acciones">
+                          <BtnTrash @click.prevent="removeBonusType(item)">Eliminar</BtnTrash>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style="margin-top:12px">
+                  <div v-if="bonusTypes.length === 0" class="subscription-history-empty">
+                    Aún no hay tipos de bono. Usa el botón + para crear el primero.
                   </div>
                 </div>
               </div>
@@ -371,7 +433,7 @@
             </div>
 
             <div class="action-plane">
-              <div v-if="activeTab==='clinica' || activeTab==='horarios' || activeTab==='contadores' || activeTab==='cesiones'" class="action-row">
+              <div v-if="activeTab==='clinica' || activeTab==='horarios' || activeTab==='contadores' || activeTab==='sesiones' || activeTab==='bonos'" class="action-row">
                 <button class="btn btn-sm" type="button" :disabled="saving" @click.prevent="save">Guardar</button>
               </div>
 
@@ -473,6 +535,7 @@ function defaultCounters() {
 
 const counters = ref(defaultCounters())
 const cesionTypes = ref([])
+const bonusTypes = ref([])
 const businessHours = ref(defaultBusinessHours())
 const closedDays = ref([])
 const newClosedDay = ref('')
@@ -553,8 +616,11 @@ async function load() {
       counters.value = defaultCounters()
     }
 
-    const incomingCesiones = Array.isArray(res.data.cesiones) ? res.data.cesiones : []
-    cesionTypes.value = incomingCesiones.map((item) => sanitizeCesionType(item))
+    const incomingsesiones = Array.isArray(res.data.sesiones) ? res.data.sesiones : []
+    cesionTypes.value = incomingsesiones.map((item) => sanitizeCesionType(item))
+
+    const incomingBonusTypes = Array.isArray(res.data.bonus_types) ? res.data.bonus_types : []
+    bonusTypes.value = incomingBonusTypes.map((item) => sanitizeBonusType(item))
 
     if (activeTab.value === 'factura_pdf') {
       await refreshPreview()
@@ -598,12 +664,18 @@ async function save() {
         prefix: (item.prefix ?? '').toString().trim().toUpperCase(),
         last_number: Number.isFinite(Number(item.last_number)) ? Math.max(Number(item.last_number), 0) : 0,
       })),
-      cesiones: cesionTypes.value.map((item) => ({
+      sesiones: cesionTypes.value.map((item) => ({
         description: item.description,
         estimated_hours: item.estimated_hours,
         estimated_minutes: item.estimated_minutes,
         price: item.price,
         payment_type: item.payment_type,
+      })),
+      bonus_types: bonusTypes.value.map((item) => ({
+        description: item.description,
+        sessions: item.sessions,
+        price: item.price,
+        expires_at: item.expires_at || null,
       })),
     }
 
@@ -623,8 +695,11 @@ async function save() {
         }
       })
     }
-    const incomingCesiones = Array.isArray(res.data.cesiones) ? res.data.cesiones : []
-    cesionTypes.value = incomingCesiones.map((item) => sanitizeCesionType(item))
+    const incomingsesiones = Array.isArray(res.data.sesiones) ? res.data.sesiones : []
+    cesionTypes.value = incomingsesiones.map((item) => sanitizeCesionType(item))
+
+    const incomingBonusTypesSave = Array.isArray(res.data.bonus_types) ? res.data.bonus_types : []
+    bonusTypes.value = incomingBonusTypesSave.map((item) => sanitizeBonusType(item))
   } catch (e) {
     console.error('Error guardando configuración', e)
     const msg = e.response?.data?.message || 'Error guardando datos'
@@ -753,6 +828,38 @@ function formatClosedDay(value) {
 
 function addCesionType() {
   cesionTypes.value.push(makeCesionType())
+}
+
+let _bonusKey = 0
+function makeBonusType() {
+  return { _key: ++_bonusKey, description: '', sessions: 1, price: 0, expires_at: '' }
+}
+
+function sanitizeBonusType(item) {
+  const expiresRaw = (item?.expires_at ?? '').toString().trim()
+  const expiresAt = /^\d{4}-\d{2}-\d{2}$/.test(expiresRaw)
+    ? expiresRaw
+    : (/^\d{4}-\d{2}-\d{2}T/.test(expiresRaw) ? expiresRaw.slice(0, 10) : '')
+
+  return {
+    id: item?.id,
+    description: (item?.description ?? '').toString(),
+    sessions: Number.isFinite(Number(item?.sessions)) ? Math.max(Number(item.sessions), 1) : 1,
+    price: Number.isFinite(Number(item?.price)) ? Math.max(Number(item.price), 0) : 0,
+    expires_at: expiresAt,
+  }
+}
+
+function addBonusType() {
+  bonusTypes.value.push(makeBonusType())
+}
+
+function removeBonusType(item) {
+  if (item.id != null) {
+    bonusTypes.value = bonusTypes.value.filter((b) => b !== item)
+  } else {
+    bonusTypes.value = bonusTypes.value.filter((b) => b !== item)
+  }
 }
 
 function removeCesionType(id) {
@@ -929,7 +1036,7 @@ onBeforeUnmount(() => {
 .card-stage { min-height:560px }
 .tabs {
   display:grid;
-  grid-template-columns:repeat(6, minmax(0, 1fr));
+  grid-template-columns:repeat(7, minmax(0, 1fr));
   gap:6px;
   margin-bottom:12px;
 }
@@ -1015,11 +1122,11 @@ onBeforeUnmount(() => {
 .counter-input {
   min-width: 120px;
 }
-.cesiones-table .cesion-col-description { width: 42%; }
-.cesiones-table .cesion-col-time { width: 16%; }
-.cesiones-table .cesion-col-price { width: 14%; }
-.cesiones-table .cesion-col-payment { width: 18%; }
-.cesiones-table .cesion-col-actions { width: 10%; }
+.sesiones-table .cesion-col-description { width: 42%; }
+.sesiones-table .cesion-col-time { width: 16%; }
+.sesiones-table .cesion-col-price { width: 14%; }
+.sesiones-table .cesion-col-payment { width: 18%; }
+.sesiones-table .cesion-col-actions { width: 10%; }
 .section-head {
   display: flex;
   align-items: center;
@@ -1179,7 +1286,7 @@ onBeforeUnmount(() => {
   background: #dbeafe;
   border-color: #60a5fa;
 }
-.cesiones-list {
+.sesiones-list {
   display: grid;
   gap: 12px;
 }

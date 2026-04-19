@@ -73,6 +73,20 @@ class MeController
             'clinic_invoice_background_url' => $invoiceBackgroundUrl,
             'counters' => $clinic ? $this->counterService->getProfileCounters((int) $clinic->id) : [],
             'cesiones' => $clinic ? $clinic->appointmentTypes()->orderBy('id')->get(['id', 'description', 'estimated_hours', 'estimated_minutes', 'price', 'payment_type'])->toArray() : [],
+            'bonus_types' => $clinic
+                ? $clinic->bonusTypes()->orderBy('id')->get(['id', 'description', 'sessions', 'price', 'expires_at'])
+                    ->map(static function ($item) {
+                        return [
+                            'id' => $item->id,
+                            'description' => $item->description,
+                            'sessions' => (int) $item->sessions,
+                            'price' => (float) $item->price,
+                            'expires_at' => $item->expires_at ? $item->expires_at->toDateString() : null,
+                        ];
+                    })
+                    ->values()
+                    ->toArray()
+                : [],
             'subscription_payments' => $subscriptionPayments,
             'status' => $status,
             'trial_ends_at' => $trialEnds,
@@ -129,6 +143,12 @@ class MeController
             'cesiones.*.estimated_minutes' => ['required', 'integer', 'min:0', 'max:59'],
             'cesiones.*.price' => ['required', 'numeric', 'min:0'],
             'cesiones.*.payment_type' => ['required', Rule::in(['simple', 'abono'])],
+            'bonus_types' => ['nullable', 'array'],
+            'bonus_types.*.id' => ['nullable', 'string'],
+            'bonus_types.*.description' => ['nullable', 'string', 'max:255'],
+            'bonus_types.*.sessions' => ['required', 'integer', 'min:1'],
+            'bonus_types.*.price' => ['required', 'numeric', 'min:0'],
+            'bonus_types.*.expires_at' => ['nullable', 'date'],
         ]);
 
         DB::transaction(function () use ($data, $user, $clinic) {
@@ -187,6 +207,22 @@ class MeController
                 $clinic->appointmentTypes()->delete();
                 $clinic->appointmentTypes()->createMany($sanitized);
             }
+
+            // Guardar tipos de bono (bonus_types)
+            if (isset($data['bonus_types']) && is_array($data['bonus_types'])) {
+                $sanitizedBonusTypes = array_map(function ($item) use ($clinic) {
+                    return [
+                        'clinic_id'   => $clinic->id,
+                        'description' => $item['description'] ?? '',
+                        'sessions'    => max((int)($item['sessions'] ?? 1), 1),
+                        'price'       => max((float)($item['price'] ?? 0), 0),
+                        'expires_at'  => !empty($item['expires_at']) ? $item['expires_at'] : null,
+                    ];
+                }, $data['bonus_types']);
+
+                $clinic->bonusTypes()->delete();
+                $clinic->bonusTypes()->createMany($sanitizedBonusTypes);
+            }
         }, 3);
 
         return response()->json([
@@ -197,6 +233,18 @@ class MeController
                 : null,
             'counters' => $this->counterService->getProfileCounters((int) $clinic->id),
             'cesiones' => $clinic->fresh()->appointmentTypes()->orderBy('id')->get(['id', 'description', 'estimated_hours', 'estimated_minutes', 'price', 'payment_type'])->toArray(),
+            'bonus_types' => $clinic->fresh()->bonusTypes()->orderBy('id')->get(['id', 'description', 'sessions', 'price', 'expires_at'])
+                ->map(static function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'description' => $item->description,
+                        'sessions' => (int) $item->sessions,
+                        'price' => (float) $item->price,
+                        'expires_at' => $item->expires_at ? $item->expires_at->toDateString() : null,
+                    ];
+                })
+                ->values()
+                ->toArray(),
             'message' => 'Datos actualizados',
         ]);
     }
