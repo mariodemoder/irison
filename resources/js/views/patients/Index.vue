@@ -41,7 +41,7 @@
             <div class="row-col">{{ p.phone ?? '—' }}</div>
             <div class="row-col">{{ p.email ?? '—' }}</div>
             <div class="row-action">
-              <router-link :to="{ path: `/patients/${p.id}/edit`, query: { from: 'list' } }" class="action-btn datos" aria-label="Datos" @click.stop>✎ Datos</router-link>
+              <router-link :to="{ path: `/patients/${p.id}/edit`, query: { from: 'list' } }" class="action-btn datos" aria-label="Datos" @click.stop>✎ Editar</router-link>
               <!-- <button class="action-btn" @click.prevent="deletePatient(p)" :disabled="deletingId===p.id" style="margin-left:6px">🗑️ Eliminar</button> -->
             </div>
           </div>

@@ -33,7 +33,15 @@
         </div>
 
         <div class="list">
-          <div v-for="product in products" :key="product.id" class="product-row">
+          <div
+            v-for="product in products"
+            :key="product.id"
+            class="product-row"
+            role="button"
+            tabindex="0"
+            @click="goToShow(product.id)"
+            @keydown.enter="goToShow(product.id)"
+          >
             <div>{{ product.id }}</div>
             <div>{{ product.reference }}</div>
             <div class="name-col">{{ product.name }}</div>
@@ -42,8 +50,7 @@
             <div>{{ product.family || '—' }}</div>
             <div>{{ product.lot || '—' }}</div>
             <div class="row-action">
-              <router-link :to="`/products/${product.id}`" class="action-btn datos">Ver</router-link>
-              <router-link :to="`/products/${product.id}/edit`" class="action-btn datos">✎ Editar</router-link>
+              <router-link :to="`/products/${product.id}/edit`" class="action-btn datos" @click.stop>✎ Editar</router-link>
             </div>
           </div>
 
@@ -65,6 +72,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import MainLayout from '../../layouts/MainLayout.vue'
 import AppLoading from '../../components/AppLoading.vue'
 import EmptyIndexState from '../../components/EmptyIndexState.vue'
@@ -72,6 +80,7 @@ import api from '../../services/api'
 import { useToast } from 'vue-toastification'
 
 const toast = useToast()
+const router = useRouter()
 const loading = ref(false)
 const products = ref([])
 const meta = ref(null)
@@ -115,6 +124,10 @@ function debouncedLoad() {
   searchTimer = setTimeout(() => load(1), 250)
 }
 
+function goToShow(productId) {
+  router.push(`/products/${productId}`)
+}
+
 onMounted(() => {
   load(1)
 })
@@ -130,6 +143,8 @@ onMounted(() => {
 .list { display:flex; flex-direction:column; gap:8px }
 .list-header { display:grid; grid-template-columns: 80px 1.2fr 2fr 1fr 1fr 1fr 1fr 170px; gap:10px; color:#6b7280; font-size:13px; font-weight:600; padding:6px 10px }
 .product-row { display:grid; grid-template-columns: 80px 1.2fr 2fr 1fr 1fr 1fr 1fr 170px; gap:10px; background:#fff; border:1px solid #eef2ff22; border-radius:10px; padding:10px; align-items:center; font-size:13px }
+.product-row { cursor:pointer; transition: border-color .2s ease, box-shadow .2s ease }
+.product-row:hover { border-color:#bfdbfe; box-shadow:0 4px 14px rgba(59,130,246,.08) }
 .name-col { font-weight:600 }
 
 .row-action { display:flex; align-items:center; gap:8px; justify-content:flex-start }
