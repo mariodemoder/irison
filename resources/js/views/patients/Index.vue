@@ -1,63 +1,77 @@
 <template>
   <MainLayout>
     <div>
-      <div class="page-header">
-        <div>
-          <h1>Pacientes</h1>
-          <div class="form-sub">Listado de pacientes</div>
-        </div>
-
-        <div class="search-center">
-          <div class="search-wrapper">
-            <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-            <input v-model="query" placeholder="Buscar pacientes por numero, nombre, NIF, teléfono o email" class="search-input" />
+      <div class="entity-card">
+        <div class="page-header">
+          <div>
+            <h1>Pacientes</h1>
+            <div class="form-sub">Listado de pacientes</div>
           </div>
-        </div>
 
-        <router-link to="/patients/create" class="btn btn-sm small">Nuevo paciente</router-link>
-      </div>
-
-      <AppLoading v-if="loading" message="Cargando pacientes..." />
-
-      <div v-else>
-        
-        <div class="list-header">
-          <div>Número</div>
-          <div>Fecha</div>
-          <div>Paciente</div>
-          <div>Teléfono</div>
-          <div>Email</div>
-          <div></div>
-        </div>
-
-        <div class="list">
-          <div v-for="p in filteredPatients" :key="p.id" class="patient-row" role="button" tabindex="0" @click="goToPatient(p.id)" @keydown.enter="goToPatient(p.id)">
-            <div class="row-col row-number">{{ p.counter ?? '—' }}</div>
-            <div class="row-col">{{ formatDateOnlyDay(p.created_at) }}</div>
-            <div class="row-left">
-              <div class="row-name">{{ p.name }}</div>
-              <div class="row-sub">{{ p.nif ?? '—' }}</div>
-            </div>
-            <div class="row-col">{{ p.phone ?? '—' }}</div>
-            <div class="row-col">{{ p.email ?? '—' }}</div>
-            <div class="row-action">
-              <router-link :to="{ path: `/patients/${p.id}/edit`, query: { from: 'list' } }" class="action-btn datos" aria-label="Datos" @click.stop>✎ Editar</router-link>
-              <!-- <button class="action-btn" @click.prevent="deletePatient(p)" :disabled="deletingId===p.id" style="margin-left:6px">🗑️ Eliminar</button> -->
+          <div class="search-center">
+            <div class="search-wrapper">
+              <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <input v-model="query" placeholder="Buscar pacientes por numero, nombre, NIF, teléfono o email" class="search-input" />
             </div>
           </div>
-          <EmptyIndexState v-if="filteredPatients.length === 0 && !hasActiveFilters" />
-          <div v-else-if="filteredPatients.length === 0" class="empty">No hay resultados para los filtros aplicados.</div>
+
+          <router-link to="/patients/create" class="btn btn-sm small">Nuevo paciente</router-link>
         </div>
 
-        <div v-if="meta" class="pagination">
-          <div class="pagination-info">Página {{ meta.current_page }} / {{ meta.last_page }} — {{ meta.total }} pacientes</div>
-          <div class="pagination-actions">
-            <button :disabled="meta.current_page <= 1" @click="load(meta.current_page - 1)" class="icon-btn" aria-label="Anterior">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-            </button>
-            <button :disabled="meta.current_page >= meta.last_page" @click="load(meta.current_page + 1)" class="icon-btn" aria-label="Siguiente">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
-            </button>
+        <AppLoading v-if="loading" message="Cargando pacientes..." />
+
+        <div v-else>
+          <div v-if="filteredPatients.length > 0" class="entity-table-wrap">
+            <table class="entity-table">
+              <thead>
+                <tr>
+                  <th class="wide-min">Número</th>
+                  <th class="wide-max">Nombre</th>
+                  <th class="wide-min">Alta</th>
+                  <th class="wide-min">Teléfono</th>
+                  <th class="wide-mid">Email</th>
+                  <th class="patients-action-col"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="p in filteredPatients"
+                  :key="p.id"
+                  class="entity-table-row"
+                  role="button"
+                  tabindex="0"
+                  @click="goToPatient(p.id)"
+                  @keydown.enter="goToPatient(p.id)"
+                >
+                  <td class="row-number wide-min">{{ p.counter ?? '—' }}</td>
+                  <td class="wide-max">
+                    <div class="row-name">{{ p.nif ?? '—' }} - {{ p.name }}</div>
+                  </td>
+                  <td class="wide-min">{{ formatDateOnlyDay(p.created_at) }}</td>
+                  <td class="wide-min">{{ p.phone ?? '—' }}</td>
+                  <td class="wide-mid">{{ p.email ?? '—' }}</td>
+                  <td class="row-action patients-action-col">
+                    <router-link :to="{ path: `/patients/${p.id}/edit`, query: { from: 'list' } }" class="action-btn datos" aria-label="Datos" @click.stop>✎ Editar</router-link>
+                    <!-- <button class="action-btn" @click.prevent="deletePatient(p)" :disabled="deletingId===p.id" style="margin-left:6px">🗑️ Eliminar</button> -->
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <EmptyIndexState v-else-if="!hasActiveFilters" />
+          <div v-else class="empty">No hay resultados para los filtros aplicados.</div>
+
+          <div v-if="meta" class="pagination">
+            <div class="pagination-info">Página {{ meta.current_page }} / {{ meta.last_page }} — {{ meta.total }} pacientes</div>
+            <div class="pagination-actions">
+              <button :disabled="meta.current_page <= 1" @click="load(meta.current_page - 1)" class="icon-btn" aria-label="Anterior">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+              </button>
+              <button :disabled="meta.current_page >= meta.last_page" @click="load(meta.current_page + 1)" class="icon-btn" aria-label="Siguiente">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -176,23 +190,16 @@ function goToPatient(id) {
 </script>
 
 <style scoped>
-/* Button uses global .btn styles from resources/css/app.css */
+/* Button/search/entity-table styles are now global in resources/css/app.css */
 
 .page-header { display:grid; grid-template-columns: 1fr 480px auto; align-items:center; gap:12px; margin-bottom:16px }
 
-  /* Search styles moved to global resources/css/app.css */
-
-
-.list { display:flex; flex-direction:column; gap:8px }
-.list-header { display:grid; grid-template-columns: 120px 1.1fr 2fr 1fr 1fr auto; gap:12px; align-items:center; padding:8px 14px; color:#6b7280; font-weight:600; font-size:13px }
-.patient-row { display:grid; grid-template-columns: 120px 1.1fr 2fr 1fr 1fr auto; gap:12px; align-items:center; background:#fff; padding:12px 14px; border-radius:10px; text-decoration:none; color:inherit; border:1px solid #eef2ff22 }
-.patient-row:hover { box-shadow: 0 10px 24px rgba(2,6,23,0.06); transform: translateY(-2px) }
 .row-left { display:flex; flex-direction:column }
 .row-name { font-weight:600; font-size:15px }
 .row-sub { color:#6b7280; font-size:13px }
-.row-col { color:#374151; font-size:13px }
 .row-number { font-weight:600 }
-.row-action { display:flex; align-items:center; justify-content:center; color:#6b7280 }
+.row-action { text-align:left }
+.patients-action-col { width:130px }
 .empty { color:#6b7280; padding:12px; text-align:center }
 
 .action-btn { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:8px; text-decoration:none; color:#374151; font-size:13px; border:1px solid transparent }
@@ -209,11 +216,6 @@ function goToPatient(id) {
 
 @media (max-width: 900px) {
   .page-header { grid-template-columns: 1fr auto }
-}
-
-@media (max-width: 480px) {
-  .patient-row { grid-template-columns: 1fr; gap:6px }
-  .row-action { justify-content:flex-start }
 }
 </style>
 

@@ -1,126 +1,125 @@
 <template>
   <MainLayout>
     <div>
-      <div class="page-header">
-        <div>
-          <h1>Facturación</h1>
-          <div class="form-sub">Listado de facturas</div>
-        </div>
-        <div>
-          <router-link to="/invoices/create" class="primary" style="margin-right:8px">Nueva Factura</router-link>
-        </div>
-      </div>
-
-      <div class="filters">
-        <div class="search-wrapper">
-          <input v-model="filters.q" placeholder="Buscar por paciente o NIF" class="search-input" @input="debouncedReload" />
-        </div>
-        <select v-model="filters.status" @change="load(1)">
-          <option value="">Estado: todos</option>
-          <option value="issued">Pagado</option>
-          <option value="draft">Pendiente</option>
-          <option value="cancelled">Cancelado</option>
-        </select>
-        <input v-model="filters.from_date" type="date" class="search-input" @change="load(1)" />
-        <input v-model="filters.to_date" type="date" class="search-input" @change="load(1)" />
-      </div>
-
-      <div class="summary">
-        <div><strong>{{ summary.count }}</strong> factura(s)</div>
-        <div>Total: <strong>{{ formatCurrency(summary.total_amount) }}</strong></div>
-      </div>
-
-      <AppLoading v-if="loading" message="Cargando facturas..." />
-
-      <template v-else>
-        <div class="list-header">
-          <div>Número</div>
-          <div>Fecha</div>
-          <div>Paciente</div>
-          <div>Tipo</div>
-          <div>Importe</div>
-          <div>Estado de pago</div>
-          <div>PDF</div>
-        </div>
-
-        <div class="list">
-          <div
-            v-for="doc in documents"
-            :key="doc.id"
-            class="invoice-row"
-            role="button"
-            tabindex="0"
-            @click="goToShow(doc.id)"
-            @keydown.enter.prevent="goToShow(doc.id)"
-          >
-            <div>{{ doc.counter }}</div>
-            <div>{{ formatDateOnlyDay(doc.date || doc.created_at) }}</div>
-            <router-link
-              v-if="doc.patient?.id"
-              :to="`/patients/${doc.patient.id}`"
-              class="patient-link"
-              @click.stop
-            >
-              {{ patientLabel(doc) }}
-            </router-link>
-            <div v-else>{{ patientLabel(doc) }}</div>
-            <div>
-              <span class="type-chip">
-                <svg v-if="doc.typeinvoice === 'package'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="type-icon">
-                  <rect x="3" y="8" width="18" height="4" rx="1"></rect>
-                  <path d="M4 12h16v8H4z"></path>
-                  <path d="M12 8v12"></path>
-                  <path d="M12 8c-1.8 0-3-1.2-3-2.5S10 3 12 5.5"></path>
-                  <path d="M12 8c1.8 0 3-1.2 3-2.5S14 3 12 5.5"></path>
-                </svg>
-                <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="type-icon">
-                  <path d="M7 3h8l4 4v14H7z"></path>
-                  <path d="M15 3v4h4"></path>
-                  <path d="M10 12h6M10 16h6"></path>
-                </svg>
-                <span>{{ typeInvoiceLabel(doc) }}</span>
-              </span>
-            </div>
-            <div>{{ formatCurrency(doc.amount) }}</div>
-            <div><span class="status" :class="paymentStatusClass(doc)">{{ statusLabel(paymentStatusValue(doc)) }}</span></div>
-            <div class="pdf-actions">
-              <button
-                type="button"
-                class="pdf-btn"
-                title="Vista previa PDF"
-                @click.stop="previewPdf(doc)"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="pdf-icon">
-                  <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"></path>
-                  <circle cx="12" cy="12" r="2.5"></circle>
-                </svg>
-              </button>
-              <button
-                type="button"
-                class="pdf-btn"
-                title="Descargar PDF"
-                @click.stop="downloadPdf(doc)"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="pdf-icon">
-                  <path d="M12 4v11"></path>
-                  <path d="M8.5 11.5L12 15l3.5-3.5"></path>
-                  <path d="M5 19h14"></path>
-                </svg>
-              </button>
-            </div>
+      <div class="entity-card">
+        <div class="page-header">
+          <div>
+            <h1>Facturación</h1>
+            <div class="form-sub">Listado de facturas</div>
           </div>
-          <EmptyIndexState v-if="documents.length === 0 && !hasActiveFilters" />
-          <div v-else-if="documents.length === 0" class="empty">No hay resultados para los filtros aplicados.</div>
-        </div>
-
-        <div v-if="meta" class="pagination">
-          <div class="pagination-info">Página {{ meta.current_page }} / {{ meta.last_page }} — {{ meta.total }} facturas</div>
-          <div class="pagination-actions">
-            <button :disabled="meta.current_page <= 1" @click="load(meta.current_page - 1)" class="icon-btn">‹</button>
-            <button :disabled="meta.current_page >= meta.last_page" @click="load(meta.current_page + 1)" class="icon-btn">›</button>
+          <div>
+            <router-link to="/invoices/create" class="btn btn-sm small">Nueva Factura</router-link>
           </div>
         </div>
-      </template>
+
+        <div class="filters">
+          <div class="search-wrapper">
+            <input v-model="filters.q" placeholder="Buscar por paciente o NIF" class="search-input" @input="debouncedReload" />
+          </div>
+          <select v-model="filters.status" @change="load(1)">
+            <option value="">Estado: todos</option>
+            <option value="issued">Pagado</option>
+            <option value="draft">Pendiente</option>
+            <option value="cancelled">Cancelado</option>
+          </select>
+          <input v-model="filters.from_date" type="date" class="search-input" @change="load(1)" />
+          <input v-model="filters.to_date" type="date" class="search-input" @change="load(1)" />
+        </div>
+
+        <div class="summary">
+          <div><strong>{{ summary.count }}</strong> factura(s)</div>
+          <div>Total: <strong>{{ formatCurrency(summary.total_amount) }}</strong></div>
+        </div>
+
+        <AppLoading v-if="loading" message="Cargando facturas..." />
+
+        <template v-else>
+          <EntityTable v-if="documents.length > 0" :columns="tableColumns" table-class="invoices-table">
+            <template #default>
+              <tr
+                v-for="doc in documents"
+                :key="doc.id"
+                class="entity-table-row"
+                role="button"
+                tabindex="0"
+                @click="goToShow(doc.id)"
+                @keydown.enter.prevent="goToShow(doc.id)"
+              >
+                <td class="col-min">{{ doc.counter }}</td>
+                <td class="col-min">{{ formatDateOnlyDay(doc.date || doc.created_at) }}</td>
+                <td class="col-mid">
+                  <router-link
+                    v-if="doc.patient?.id"
+                    :to="`/patients/${doc.patient.id}`"
+                    class="patient-link"
+                    @click.stop
+                  >
+                    {{ patientLabel(doc) }}
+                  </router-link>
+                  <span v-else>{{ patientLabel(doc) }}</span>
+                </td>
+                <td class="col-min">
+                  <span class="type-chip">
+                    <svg v-if="doc.typeinvoice === 'package'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="type-icon">
+                      <rect x="3" y="8" width="18" height="4" rx="1"></rect>
+                      <path d="M4 12h16v8H4z"></path>
+                      <path d="M12 8v12"></path>
+                      <path d="M12 8c-1.8 0-3-1.2-3-2.5S10 3 12 5.5"></path>
+                      <path d="M12 8c1.8 0 3-1.2 3-2.5S14 3 12 5.5"></path>
+                    </svg>
+                    <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="type-icon">
+                      <path d="M7 3h8l4 4v14H7z"></path>
+                      <path d="M15 3v4h4"></path>
+                      <path d="M10 12h6M10 16h6"></path>
+                    </svg>
+                    <span>{{ typeInvoiceLabel(doc) }}</span>
+                  </span>
+                </td>
+                <td class="col-min">{{ formatCurrency(doc.amount) }}</td>
+                <td class="col-min"><span class="status" :class="paymentStatusClass(doc)">{{ statusLabel(paymentStatusValue(doc)) }}</span></td>
+                <td class="col-min invoice-pdf-col">
+                  <div class="pdf-actions">
+                    <button
+                      type="button"
+                      class="pdf-btn"
+                      title="Vista previa PDF"
+                      @click.stop="previewPdf(doc)"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="pdf-icon">
+                        <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"></path>
+                        <circle cx="12" cy="12" r="2.5"></circle>
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      class="pdf-btn"
+                      title="Descargar PDF"
+                      @click.stop="downloadPdf(doc)"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="pdf-icon">
+                        <path d="M12 4v11"></path>
+                        <path d="M8.5 11.5L12 15l3.5-3.5"></path>
+                        <path d="M5 19h14"></path>
+                      </svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </template>
+          </EntityTable>
+
+          <EmptyIndexState v-else-if="!hasActiveFilters" />
+          <div v-else class="empty">No hay resultados para los filtros aplicados.</div>
+
+          <div v-if="meta" class="pagination">
+            <div class="pagination-info">Página {{ meta.current_page }} / {{ meta.last_page }} — {{ meta.total }} facturas</div>
+            <div class="pagination-actions">
+              <button :disabled="meta.current_page <= 1" @click="load(meta.current_page - 1)" class="icon-btn">‹</button>
+              <button :disabled="meta.current_page >= meta.last_page" @click="load(meta.current_page + 1)" class="icon-btn">›</button>
+            </div>
+          </div>
+        </template>
+      </div>
     </div>
   </MainLayout>
 </template>
@@ -132,6 +131,7 @@ import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
 import AppLoading from '../../components/AppLoading.vue'
 import EmptyIndexState from '../../components/EmptyIndexState.vue'
+import EntityTable from '../../components/EntityTable.vue'
 import { useToast } from 'vue-toastification'
 import { formatDateOnlyDay } from '../../shared/dateHelpers'
 
@@ -143,6 +143,16 @@ const documents = ref([])
 const meta = ref(null)
 const summary = ref({ count: 0, total_amount: 0 })
 let searchTimer = null
+
+const tableColumns = [
+  { key: 'counter', label: 'Número', thClass: 'col-min' },
+  { key: 'date', label: 'Fecha', thClass: 'col-min' },
+  { key: 'patient', label: 'Paciente', thClass: 'col-mid' },
+  { key: 'type', label: 'Tipo', thClass: 'col-min' },
+  { key: 'amount', label: 'Importe', thClass: 'col-min' },
+  { key: 'payment_status', label: 'Estado de pago', thClass: 'col-min' },
+  { key: 'pdf', label: 'PDF', thClass: 'col-min invoice-pdf-col' },
+]
 
 const filters = ref({
   q: '',
@@ -187,16 +197,16 @@ function typeInvoiceLabel(doc) {
   const type = String(doc?.type || '')
   const typeinvoice = String(doc?.typeinvoice || '')
 
-  if (type === 'abono' && typeinvoice === 'appointment') return 'Abono de Cita'
-  if (type === 'abono' && typeinvoice === 'package') return 'Abono de Bono'
-  if (type === 'abono' && typeinvoice === 'credit') return 'Abono de Adelanto'
-  if (type === 'abono' && typeinvoice === 'manual') return 'Abono Manual'
-  if (type === 'abono' && typeinvoice === 'varios') return 'Abono Varios'
-  if (typeinvoice === 'appointment') return 'Factura de Cita'
-  if (typeinvoice === 'package') return 'Factura de Bono'
-  if (typeinvoice === 'credit') return 'Factura de Adelanto'
-  if (typeinvoice === 'manual') return 'Factura Manual'
-  if (typeinvoice === 'varios') return 'Factura Varios'
+  if (type === 'abono' && typeinvoice === 'appointment') return 'Cita'
+  if (type === 'abono' && typeinvoice === 'package') return 'Bono'
+  if (type === 'abono' && typeinvoice === 'credit') return 'Adelanto'
+  if (type === 'abono' && typeinvoice === 'manual') return 'Manual'
+  if (type === 'abono' && typeinvoice === 'varios') return 'Varios'
+  if (typeinvoice === 'appointment') return 'Cita'
+  if (typeinvoice === 'package') return 'Bono'
+  if (typeinvoice === 'credit') return 'Adelanto'
+  if (typeinvoice === 'manual') return 'Manual'
+  if (typeinvoice === 'varios') return 'Varios'
   return 'Otro'
 }
 
@@ -300,10 +310,7 @@ onMounted(async () => {
 
 .summary { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; color:#374151; font-size:14px }
 
-.list { display:flex; flex-direction:column; gap:8px }
-.list-header { display:grid; grid-template-columns: 1fr 1.1fr 2fr 2fr 1fr 1fr .7fr; gap:10px; color:#6b7280; font-size:13px; font-weight:600; padding:6px 10px }
-.invoice-row { display:grid; grid-template-columns: 1fr 1.1fr 2fr 2fr 1fr 1fr .7fr; gap:10px; background:#fff; border:1px solid #eef2ff22; border-radius:10px; padding:10px; align-items:center; font-size:13px; cursor:pointer }
-.invoice-row:hover { border-color:#dbeafe; background:#f8fbff }
+.invoice-pdf-col { width:120px }
 
 .type-chip { display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border-radius:9999px; background:#eff6ff; color:#1d4ed8; font-weight:600; font-size:12px }
 .type-icon { width:13px; height:13px; display:block }
@@ -334,6 +341,7 @@ onMounted(async () => {
 .icon-btn:disabled { opacity:0.45 }
 
 @media (max-width: 900px) {
-  .filters, .list-header, .invoice-row { grid-template-columns:1fr }
+  .filters,
+  .page-header { grid-template-columns:1fr }
 }
 </style>

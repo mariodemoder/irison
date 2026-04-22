@@ -1,71 +1,64 @@
 <template>
   <MainLayout>
     <div>
-      <div class="page-header">
-        <div>
-          <h1>Productos</h1>
-          <div class="form-sub">Listado y búsqueda de productos</div>
-        </div>
-        <router-link to="/products/create" class="primary">Nuevo producto</router-link>
-      </div>
-
-      <div class="filters">
-        <input
-          v-model="query"
-          class="search-input"
-          placeholder="Buscar por referencia, nombre, familia o lote"
-          @input="debouncedLoad"
-        />
-      </div>
-
-      <AppLoading v-if="loading" message="Cargando productos..." />
-
-      <template v-else>
-        <div class="list-header">
-          <div>ID</div>
-          <div>Referencia</div>
-          <div>Nombre</div>
-          <div>Precio venta</div>
-          <div>IVA venta</div>
-          <div>Familia</div>
-          <div>Lote</div>
-          <div></div>
+      <div class="entity-card">
+        <div class="page-header">
+          <div>
+            <h1>Productos</h1>
+            <div class="form-sub">Listado y búsqueda de productos</div>
+          </div>
+          <router-link to="/products/create" class="btn btn-sm small">Nuevo producto</router-link>
         </div>
 
-        <div class="list">
-          <div
-            v-for="product in products"
-            :key="product.id"
-            class="product-row"
-            role="button"
-            tabindex="0"
-            @click="goToShow(product.id)"
-            @keydown.enter="goToShow(product.id)"
-          >
-            <div>{{ product.id }}</div>
-            <div>{{ product.reference }}</div>
-            <div class="name-col">{{ product.name }}</div>
-            <div>{{ formatMoney(product.sale_price) }}</div>
-            <div>{{ formatTax(product.sale_tax) }}</div>
-            <div>{{ product.family || '—' }}</div>
-            <div>{{ product.lot || '—' }}</div>
-            <div class="row-action">
-              <router-link :to="`/products/${product.id}/edit`" class="action-btn datos" @click.stop>✎ Editar</router-link>
+        <div class="filters">
+          <input
+            v-model="query"
+            class="search-input"
+            placeholder="Buscar por referencia, nombre, familia o lote"
+            @input="debouncedLoad"
+          />
+        </div>
+
+        <AppLoading v-if="loading" message="Cargando productos..." />
+
+        <template v-else>
+          <EntityTable v-if="products.length > 0" :columns="tableColumns" table-class="products-table">
+            <template #default>
+                <tr
+                  v-for="product in products"
+                  :key="product.id"
+                  class="entity-table-row"
+                  role="button"
+                  tabindex="0"
+                  @click="goToShow(product.id)"
+                  @keydown.enter="goToShow(product.id)"
+                >
+                  <td class="col-min">{{ product.id }}</td>
+                  <td class="col-min">{{ product.reference }}</td>
+                  <td class="col-mid name-col">{{ product.name }}</td>
+                  <td class="col-min">{{ formatMoney(product.sale_price) }}</td>
+                  <td class="col-min">{{ formatTax(product.sale_tax) }}</td>
+                  <td class="col-min">{{ product.family || '—' }}</td>
+                  <td class="col-min">{{ product.lot || '—' }}</td>
+                  <td class="row-action products-action-col">
+                    <router-link :to="`/products/${product.id}/edit`" class="action-btn datos" @click.stop>✎ Editar</router-link>
+                  </td>
+                </tr>
+            </template>
+          </EntityTable>
+
+          <EmptyIndexState v-else-if="!hasActiveFilters" />
+          <div v-else class="empty">No hay resultados para los filtros aplicados.</div>
+
+          <div v-if="meta" class="pagination">
+            <div class="pagination-info">Página {{ meta.current_page }} / {{ meta.last_page }} — {{ meta.total }} productos</div>
+            <div class="pagination-actions">
+              <button :disabled="meta.current_page <= 1" @click="load(meta.current_page - 1)" class="icon-btn">‹</button>
+              <button :disabled="meta.current_page >= meta.last_page" @click="load(meta.current_page + 1)" class="icon-btn">›</button>
             </div>
           </div>
-
-          <EmptyIndexState v-if="products.length === 0 && !hasActiveFilters" />
-          <div v-else-if="products.length === 0" class="empty">No hay resultados para los filtros aplicados.</div>
-        </div>
-
-        <div v-if="meta" class="pagination">
-          <div class="pagination-info">Página {{ meta.current_page }} / {{ meta.last_page }} — {{ meta.total }} productos</div>
-          <div class="pagination-actions">
-            <button :disabled="meta.current_page <= 1" @click="load(meta.current_page - 1)" class="icon-btn">‹</button>
-            <button :disabled="meta.current_page >= meta.last_page" @click="load(meta.current_page + 1)" class="icon-btn">›</button>
-          </div>
-        </div>
-      </template>
+        </template>
+      </div>
     </div>
   </MainLayout>
 </template>
@@ -76,6 +69,7 @@ import { useRouter } from 'vue-router'
 import MainLayout from '../../layouts/MainLayout.vue'
 import AppLoading from '../../components/AppLoading.vue'
 import EmptyIndexState from '../../components/EmptyIndexState.vue'
+import EntityTable from '../../components/EntityTable.vue'
 import api from '../../services/api'
 import { useToast } from 'vue-toastification'
 
@@ -86,6 +80,17 @@ const products = ref([])
 const meta = ref(null)
 const query = ref('')
 let searchTimer = null
+
+const tableColumns = [
+  { key: 'id', label: 'ID', thClass: 'col-min' },
+  { key: 'reference', label: 'Referencia', thClass: 'col-min' },
+  { key: 'name', label: 'Nombre', thClass: 'col-mid' },
+  { key: 'sale_price', label: 'Precio venta', thClass: 'col-min' },
+  { key: 'sale_tax', label: 'IVA venta', thClass: 'col-min' },
+  { key: 'family', label: 'Familia', thClass: 'col-min' },
+  { key: 'lot', label: 'Lote', thClass: 'col-min' },
+  { key: 'actions', label: '', thClass: 'products-action-col' },
+]
 
 const hasActiveFilters = computed(() => Boolean(String(query.value || '').trim()))
 
@@ -134,20 +139,13 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.primary { padding:8px 14px; border-radius:9999px; border:2px solid #3b82f6; color:#3b82f6; background:#fff; font-weight:600 }
-.primary:hover { background:#eff6ff }
-
 .filters { margin-bottom:10px }
 .search-input { padding:8px; border:1px solid #e5e7eb; border-radius:8px; font-size:13px; width:100% }
 
-.list { display:flex; flex-direction:column; gap:8px }
-.list-header { display:grid; grid-template-columns: 80px 1.2fr 2fr 1fr 1fr 1fr 1fr 170px; gap:10px; color:#6b7280; font-size:13px; font-weight:600; padding:6px 10px }
-.product-row { display:grid; grid-template-columns: 80px 1.2fr 2fr 1fr 1fr 1fr 1fr 170px; gap:10px; background:#fff; border:1px solid #eef2ff22; border-radius:10px; padding:10px; align-items:center; font-size:13px }
-.product-row { cursor:pointer; transition: border-color .2s ease, box-shadow .2s ease }
-.product-row:hover { border-color:#bfdbfe; box-shadow:0 4px 14px rgba(59,130,246,.08) }
 .name-col { font-weight:600 }
 
 .row-action { display:flex; align-items:center; gap:8px; justify-content:flex-start }
+.products-action-col { width:130px }
 .action-btn { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:8px; text-decoration:none; color:#374151; font-size:13px; border:1px solid #e5e7eb; background:#fff }
 
 .empty { color:#6b7280; padding:12px }
@@ -159,7 +157,6 @@ onMounted(() => {
 .icon-btn:disabled { opacity:0.45 }
 
 @media (max-width: 900px) {
-  .list-header,
-  .product-row { grid-template-columns: 1fr }
+  .page-header { grid-template-columns: 1fr auto }
 }
 </style>

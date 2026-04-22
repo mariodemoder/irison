@@ -927,7 +927,7 @@ watch(totalPages, (pages) => {
 
 .list { display:flex; flex-direction:column; gap:8px; overflow-x:auto }
 .list-header { display:grid; grid-template-columns: 140px 1.25fr 2.6fr 110px 120px 110px; gap:12px; align-items:center; padding:8px 14px; color:#6b7280; font-weight:600; font-size:13px }
-.appointment-row { display:grid; grid-template-columns: 140px 1.25fr 2.6fr 110px 120px 110px; gap:12px; align-items:center; background:#fff; padding:12px 14px; border-radius:10px; text-decoration:none; color:inherit; border:1px solid #eef2ff22; min-width:820px }
+.appointment-row { display:grid; grid-template-columns: 140px 1.25fr 2.6fr 110px 120px 110px; gap:12px; align-items:center; background:#f8fbfe; padding:12px 14px; border-radius:10px; text-decoration:none; color:inherit; border:1px solid #eef2ff22; min-width:820px }
 .appointment-row:hover { box-shadow: 0 10px 24px rgba(2,6,23,0.06); transform: translateY(-2px) }
 .row-left { display:flex; flex-direction:column }
 .row-name { font-weight:600; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
