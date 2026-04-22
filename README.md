@@ -1,4 +1,4 @@
-# 🏥 SaaS Multi-Tenant – Gestión de Clínicas
+# 🏥 SaaS Multi-Tenant – IRISON
 
 > Base sólida para un SaaS profesional, seguro y escalable, orientado a clínicas y centros de salud.
 
@@ -85,8 +85,4 @@ Resumen del estado actual del proyecto (actualizado):
 > Nota: durante desarrollo Vite puede mostrar errores WebSocket para HMR si la configuración de host no coincide con `localhost`/`127.0.0.1`. Eso no impide las llamadas API; para eliminar los warnings ajusta `vite.config.js` o inicia Vite con `--host`.
 
 ## 🔜 Próximos pasos sugeridos
-
-- Paginación/filtrado del lado del servidor para la búsqueda (actualmente es local sobre la página cargada).
-- Implementar creación directa de `Citas` / `Bonos` desde la ficha del paciente (modales o rutas dedicadas).
-- Añadir conteos y paginación en relaciones grandes (appointments/packs/payments).
 - Tests automatizados para endpoints críticos (nif único, multi-tenant scope).
