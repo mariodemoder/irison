@@ -8,9 +8,9 @@ class Resolver
     {
         $provider = config('billing.provider', 'fake');
         return match ($provider) {
-            'fake' => new FakePaymentProvider(),
-            // 'stripe' => new StripePaymentProvider(),
-            default => new FakePaymentProvider(),
+            'fake'   => new FakePaymentProvider(),
+            'stripe' => new StripePaymentProvider(),
+            default  => new FakePaymentProvider(),
         };
     }
 }

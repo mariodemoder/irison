@@ -28,32 +28,51 @@ class StripeWebhookController extends Controller
         }
 
         if ($event->type === 'checkout.session.completed') {
-            $email = $event->data->object->customer_email ?? null;
+            $session = $event->data->object;
+            $email   = $session->customer_email ?? null;
+
+            // Marcar BillingPayment como pagado si viene en metadata
+            $paymentId = $session->metadata->payment_id ?? null;
+            if ($paymentId) {
+                \App\Models\BillingPayment::where('id', $paymentId)
+                    ->whereIn('status', ['pending'])
+                    ->update(['status' => 'paid']);
+            }
 
             if ($email) {
                 $user = User::where('email', $email)->first();
                 if ($user && $user->clinic) {
                     $clinic = $user->clinic;
 
-                    // Crear registro de suscripción activa en la tabla subscriptions
-                    \App\Models\Subscription::create([
-                        'clinic_id' => $clinic->id,
-                        'status' => 'active',
-                        'trial_ends_at' => null,
-                        'current_period_end' => Carbon::now()->addMonth(),
-                        'stripe_customer_id' => $event->data->object->customer ?? null,
-                        'stripe_subscription_id' => $event->data->object->subscription ?? null,
-                    ]);
+                    // Crear o actualizar suscripción activa
+                    $existing = \App\Models\Subscription::where('clinic_id', $clinic->id)
+                        ->where('status', 'active')
+                        ->orderByDesc('id')
+                        ->first();
+
+                    if ($existing) {
+                        $existing->current_period_end    = Carbon::now()->addMonth();
+                        $existing->stripe_customer_id    = $session->customer ?? $existing->stripe_customer_id;
+                        $existing->stripe_subscription_id = $session->subscription ?? $existing->stripe_subscription_id;
+                        $existing->save();
+                    } else {
+                        \App\Models\Subscription::create([
+                            'clinic_id'              => $clinic->id,
+                            'status'                 => 'active',
+                            'trial_ends_at'          => null,
+                            'current_period_end'     => Carbon::now()->addMonth(),
+                            'stripe_customer_id'     => $session->customer ?? null,
+                            'stripe_subscription_id' => $session->subscription ?? null,
+                        ]);
+                    }
 
                     // Eliminar registros de trial previos
                     \App\Models\Subscription::where('clinic_id', $clinic->id)
                         ->where('status', 'trial')
                         ->delete();
 
-                    // Limpiar columnas antiguas en clinics si existieran
-                    $clinic->subscribed_at = null;
-                    $clinic->subscription_provider = null;
-                    $clinic->subscription_reference = null;
+                    $clinic->subscribed_at         = Carbon::now();
+                    $clinic->subscription_provider = 'stripe';
                     $clinic->save();
                 }
             }

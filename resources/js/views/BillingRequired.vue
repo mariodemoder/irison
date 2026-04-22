@@ -32,10 +32,15 @@
           </div>
 
           <div class="flex items-center gap-2">
-            <button type="submit" class="btn btn--solid">Activar suscripción</button>
-            <button type="button" class="btn btn--ghost" @click="usarFake">Usar proveedor de pruebas</button>
+            <button type="submit" class="btn btn--solid" :disabled="loading">
+              {{ loading ? 'Redirigiendo...' : 'Activar suscripción' }}
+            </button>
+            <button type="button" class="btn btn--ghost" :disabled="confirming" @click="confirmCheckoutReturn">
+              {{ confirming ? 'Verificando...' : 'Ya pagué, verificar estado' }}
+            </button>
           </div>
 
+          <p v-if="info" class="text-green-700">{{ info }}</p>
           <p v-if="error" class="text-red-600">{{ error }}</p>
         </form>
 
@@ -45,34 +50,65 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import api from '../services/api'
+import { ensureMeLoaded } from '../shared/meCache'
 
 const router = useRouter()
+const route = useRoute()
 const method = ref('card')
 const error = ref(null)
-const STRIPE_TEST_PAYMENT_LINK = 'https://buy.stripe.com/test_aFa3cv8Ype4B8MVfup9bO00'
+const loading = ref(false)
+const confirming = ref(false)
+const info = ref('')
 
 async function startCheckout() {
   error.value = null
+  info.value = ''
+  loading.value = true
   try {
-    // Abrir enlace de pago Stripe de pruebas provisto por negocio
-    window.open(STRIPE_TEST_PAYMENT_LINK, '_blank')
+    const res = await api.post('/billing/checkout', { method: method.value })
+    const checkoutUrl = res.data?.checkout?.checkout_url
+    if (!checkoutUrl) throw new Error('No se recibió URL de pago')
+    window.location.href = checkoutUrl
   } catch (e) {
     error.value = e.response?.data?.message || e.message
+  } finally {
+    loading.value = false
   }
 }
 
-async function usarFake() {
+async function confirmCheckoutReturn() {
+  error.value = null
+  info.value = ''
+  confirming.value = true
+
   try {
-    await api.post('/subscribe/fake')
-    // Flujo fake: activar suscripcion de prueba sin redirigir a Stripe
-    router.push('/dashboard')
+    const sessionId = String(route.query.session_id || '').trim()
+    const res = await api.post('/billing/confirm', { session_id: sessionId || undefined })
+
+    if (res.data?.status === 'active') {
+      info.value = 'Pago confirmado. Activando suscripción...'
+      await ensureMeLoaded({ force: true })
+      await router.replace('/dashboard')
+      return
+    }
+
+    error.value = res.data?.message || 'Stripe todavía no confirma el pago. Intenta nuevamente en unos segundos.'
   } catch (e) {
-    error.value = 'No se pudo activar proveedor fake'
+    error.value = e.response?.data?.message || e.message
+  } finally {
+    confirming.value = false
   }
 }
+
+onMounted(async () => {
+  if (route.query.checkout === 'success' || route.query.session_id) {
+    await confirmCheckoutReturn()
+  }
+})
+
 </script>
 
 <style scoped>

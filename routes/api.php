@@ -132,5 +132,6 @@ Route::middleware(['auth:sanctum', 'clinic'])->put('/me', [\App\Http\Controllers
 Route::middleware(['auth:sanctum', 'clinic'])->post('/me/invoice-background', [\App\Http\Controllers\Api\MeController::class, 'uploadInvoiceBackground']);
 Route::middleware(['auth:sanctum', 'clinic'])->delete('/me/invoice-background', [\App\Http\Controllers\Api\MeController::class, 'deleteInvoiceBackground']);
 Route::middleware(['auth:sanctum', 'clinic'])->post('/me/invoice-background/preview-pdf', [\App\Http\Controllers\Api\MeController::class, 'previewInvoiceBackgroundPdf']);
+Route::middleware(['auth:sanctum', 'clinic'])->post('/billing/confirm', [\App\Http\Controllers\BillingController::class, 'confirmCheckout']);
 
 
