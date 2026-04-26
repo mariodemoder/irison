@@ -55,6 +55,7 @@ class ActivateAccountController extends Controller
                 }
 
                 $clinic->trial_ends_at = $trialEnds;
+                $clinic->subscription_status = 'trial';
                 $clinic->save();
             }
         }

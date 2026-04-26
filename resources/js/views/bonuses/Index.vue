@@ -4,7 +4,7 @@
       <div class="entity-card">
         <div class="page-header">
           <div>
-            <h1>Bonos</h1>
+            <h1>Bonos asignados</h1>
             <div class="form-sub">Listado y búsqueda de bonos</div>
           </div>
           <div>

@@ -370,7 +370,9 @@ async function loadForEdit(id) {
       syncAppointmentDisplayFromId()
     }
   } catch (e) {
-    toast.error('Error cargando pago')
+    const status = e?.response?.status
+    const message = e?.response?.data?.message
+    toast.error((status === 402 || status === 403) && message ? `Error cargando pago - ${message}` : 'Error cargando pago')
     router.push('/payments')
   } finally {
     loadingEditData.value = false

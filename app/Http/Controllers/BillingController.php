@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\BillingPayment;
 use App\Services\PaymentProvider\Resolver;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Stripe\Stripe;
 use Stripe\StripeClient;
 
@@ -16,13 +17,18 @@ class BillingController extends Controller
         $clinic = $request->user()->clinic;
         $amount = (int) ($request->input('amount', 2900)); // cents default 29.00
 
-        $payment = BillingPayment::create([
+        $paymentPayload = [
             'clinic_id' => $clinic->id,
             'amount' => $amount,
             'currency' => 'EUR',
             'status' => 'pending',
             'provider' => config('billing.provider', 'fake'),
-        ]);
+        ];
+        if ($this->hasBillingMethodColumn()) {
+            $paymentPayload['method'] = 'transaction';
+        }
+
+        $payment = BillingPayment::create($paymentPayload);
 
         $provider = Resolver::resolve();
         $checkout = $provider->createCheckout([
@@ -46,7 +52,7 @@ class BillingController extends Controller
                 $current = $clinic->saasSubscriptions()->orderByDesc('id')->first();
                 $fakeSubId = 'fake-' . uniqid();
 
-                if (! $current || $current->status !== 'active') {
+                if (! $current) {
                     $clinic->saasSubscriptions()->create([
                         'status' => 'active',
                         'trial_ends_at' => null,
@@ -55,12 +61,15 @@ class BillingController extends Controller
                     ]);
                 } else {
                     $current->status = 'active';
+                    $current->trial_ends_at = null;
                     $current->current_period_end = now()->addMonth();
                     $current->stripe_subscription_id = $current->stripe_subscription_id ?? $fakeSubId;
                     $current->save();
                 }
 
                 $clinic->subscribed_at = now();
+                $clinic->trial_ends_at = null;
+                $clinic->subscription_status = 'active';
                 $clinic->subscription_provider = 'fake';
                 $clinic->subscription_reference = $fakeSubId;
                 $clinic->save();
@@ -79,6 +88,7 @@ class BillingController extends Controller
     {
         $provider = Resolver::resolve();
         $provider->handleWebhook($request->all());
+
         return response('ok');
     }
 
@@ -88,7 +98,7 @@ class BillingController extends Controller
         $clinic = $user ? $user->clinic : null;
 
         if (! $clinic) {
-            return response()->json(['message' => 'Clínica no disponible'], 403);
+            return response()->json(['message' => 'Clinica no disponible'], 403);
         }
 
         $sessionId = (string) $request->input('session_id', '');
@@ -103,7 +113,7 @@ class BillingController extends Controller
 
         if ($sessionId === '') {
             return response()->json([
-                'message' => 'No se encontró una sesión pendiente para validar',
+                'message' => 'No se encontro una sesion pendiente para validar',
             ], 422);
         }
 
@@ -128,18 +138,29 @@ class BillingController extends Controller
             $session = $stripe->checkout->sessions->retrieve($sessionId, []);
         } catch (\Throwable $e) {
             return response()->json([
-                'message' => 'No se pudo validar la sesión de Stripe: ' . $e->getMessage(),
+                'message' => 'No se pudo validar la sesion de Stripe: ' . $e->getMessage(),
             ], 422);
         }
 
         $isPaid = (($session->payment_status ?? null) === 'paid')
             || (($session->status ?? null) === 'complete');
 
+        $resolvedMethod = 'transaction';
+        $methodTypes = $session->payment_method_types ?? [];
+        if (is_array($methodTypes) && ! empty($methodTypes[0])) {
+            $resolvedMethod = strtolower((string) $methodTypes[0]);
+        }
+
         if (! $isPaid) {
             return response()->json([
                 'status' => 'pending',
-                'message' => 'El pago todavía no figura como completado en Stripe',
+                'message' => 'El pago todavia no figura como completado en Stripe',
             ]);
+        }
+
+        $updatePayload = ['status' => 'paid'];
+        if ($this->hasBillingMethodColumn()) {
+            $updatePayload['method'] = $resolvedMethod;
         }
 
         $paymentId = $session->metadata->payment_id ?? null;
@@ -147,16 +168,16 @@ class BillingController extends Controller
             BillingPayment::query()
                 ->where('id', (int) $paymentId)
                 ->where('clinic_id', $clinic->id)
-                ->update(['status' => 'paid']);
+                ->update($updatePayload);
         } else {
             BillingPayment::query()
                 ->where('clinic_id', $clinic->id)
                 ->where('provider', 'stripe')
                 ->where('provider_ref', $sessionId)
-                ->update(['status' => 'paid']);
+                ->update($updatePayload);
         }
 
-        $current = $clinic->saasSubscriptions()->where('status', 'active')->orderByDesc('id')->first();
+        $current = $clinic->saasSubscriptions()->orderByDesc('id')->first();
         if (! $current) {
             $clinic->saasSubscriptions()->create([
                 'status' => 'active',
@@ -167,6 +188,7 @@ class BillingController extends Controller
             ]);
         } else {
             $current->status = 'active';
+            $current->trial_ends_at = null;
             $current->current_period_end = now()->addMonth();
             $current->stripe_customer_id = $session->customer ?? $current->stripe_customer_id;
             $current->stripe_subscription_id = $session->subscription ?? $current->stripe_subscription_id;
@@ -174,6 +196,8 @@ class BillingController extends Controller
         }
 
         $clinic->subscribed_at = now();
+        $clinic->trial_ends_at = null;
+        $clinic->subscription_status = 'active';
         $clinic->subscription_provider = 'stripe';
         $clinic->subscription_reference = $sessionId;
         $clinic->save();
@@ -184,14 +208,59 @@ class BillingController extends Controller
         ]);
     }
 
+    public function cancelSubscription(Request $request)
+    {
+        $user = $request->user();
+        $clinic = $user ? $user->clinic : null;
+
+        if (! $clinic) {
+            return response()->json(['message' => 'Clinica no disponible'], 403);
+        }
+
+        $subscription = $clinic->currentSubscription();
+
+        if (! $subscription || ! in_array((string) $subscription->status, ['active', 'trial'], true)) {
+            return response()->json([
+                'message' => 'No hay una suscripcion activa para cancelar',
+            ], 422);
+        }
+
+        $provider = Resolver::resolve();
+
+        try {
+            $provider->cancelSubscription([
+                'clinic_id' => (int) $clinic->id,
+                'stripe_subscription_id' => $subscription->stripe_subscription_id,
+                'subscription_reference' => $clinic->subscription_reference,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'No se pudo cancelar la suscripcion: ' . $e->getMessage(),
+            ], 422);
+        }
+
+        $subscription->status = 'canceled';
+        $subscription->current_period_end = now()->addDays(7);
+        $subscription->save();
+
+        $clinic->subscribed_at = null;
+        $clinic->subscription_status = 'canceled';
+        $clinic->save();
+
+        return response()->json([
+            'status' => 'canceled',
+            'message' => 'Suscripcion cancelada correctamente',
+        ]);
+    }
+
     // fake success route for local testing
     public function fakeSuccess(Request $request)
     {
         $user = $request->user();
         if ($user && $clinic = $user->clinic) {
-            // marcar último payment pendiente como pagado
+            // marcar ultimo payment pendiente como pagado
             try {
-                $pending = \App\Models\BillingPayment::where('clinic_id', $clinic->id)
+                $pending = BillingPayment::where('clinic_id', $clinic->id)
                     ->where('status', 'pending')
                     ->orderByDesc('id')
                     ->first();
@@ -203,9 +272,9 @@ class BillingController extends Controller
                 // ignore
             }
 
-            // crear o actualizar suscripción activa
+            // crear o actualizar suscripcion activa
             $current = $clinic->saasSubscriptions()->orderByDesc('id')->first();
-            if (! $current || $current->status !== 'active') {
+            if (! $current) {
                 $clinic->saasSubscriptions()->create([
                     'status' => 'active',
                     'trial_ends_at' => null,
@@ -213,20 +282,28 @@ class BillingController extends Controller
                 ]);
             } else {
                 $current->status = 'active';
+                $current->trial_ends_at = null;
                 $current->current_period_end = now()->addMonth();
                 $current->save();
             }
 
             $clinic->subscribed_at = now();
+            $clinic->trial_ends_at = null;
+            $clinic->subscription_status = 'active';
             $clinic->save();
         }
 
-        // Redirigir al dashboard de la SPA — la SPA debe consultar /api/me
+        // Redirigir al dashboard de la SPA - la SPA debe consultar /api/me
         return redirect('/dashboard');
     }
 
     public function thankyou()
     {
         return view('billing.thankyou');
+    }
+
+    private function hasBillingMethodColumn(): bool
+    {
+        return Schema::hasColumn('billing_payments', 'method');
     }
 }

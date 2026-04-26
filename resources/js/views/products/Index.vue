@@ -118,7 +118,9 @@ async function load(page = 1) {
   } catch (e) {
     products.value = []
     meta.value = null
-    toast.error('Error cargando productos')
+    const status = e?.response?.status
+    const message = e?.response?.data?.message
+    toast.error((status === 402 || status === 403) && message ? `Error cargando productos - ${message}` : 'Error cargando productos')
   } finally {
     loading.value = false
   }

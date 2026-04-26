@@ -30,7 +30,8 @@ class RegisterController extends Controller
             'name' => $data['clinic_name'],
             'legal_name' => $data['clinic_name'],
             'email' => $data['email'],
-            'trial_ends_at' => null,
+            'trial_ends_at' => now()->addDays(30),
+            'subscription_status' => 'trial',
         ]);
 
         $user = User::create([

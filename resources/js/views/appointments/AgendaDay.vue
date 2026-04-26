@@ -1,7 +1,8 @@
 <template>
   <MainLayout>
     <div>
-    <div class="page-header agenda-page-header">
+      <div class="entity-card">
+        <div class="page-header agenda-page-header">
         <div>
           <h1>Agenda</h1>
           <div class="form-sub">Visualiza y gestiona tus citas</div>
@@ -181,6 +182,7 @@
             <button class="icon-btn" :disabled="currentPage >= totalPages" @click="nextPage">›</button>
           </div>
         </div>
+      </div>
       </div>
     </div>
   </MainLayout>

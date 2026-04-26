@@ -53,7 +53,7 @@ Route::post('/billing/webhook', [\App\Http\Controllers\BillingController::class,
 // RUTAS PROTEGIDAS (auth + tenant activo)
 // -----------------------------
 
-Route::middleware(['auth:sanctum', 'clinic', 'clinic.active'])->group(function () {
+Route::middleware(['auth:sanctum', 'clinic', 'check.subscription'])->group(function () {
 
     // Pacientes: CRUD multitenant
     Route::apiResource('patients', PatientController::class);
@@ -133,5 +133,6 @@ Route::middleware(['auth:sanctum', 'clinic'])->post('/me/invoice-background', [\
 Route::middleware(['auth:sanctum', 'clinic'])->delete('/me/invoice-background', [\App\Http\Controllers\Api\MeController::class, 'deleteInvoiceBackground']);
 Route::middleware(['auth:sanctum', 'clinic'])->post('/me/invoice-background/preview-pdf', [\App\Http\Controllers\Api\MeController::class, 'previewInvoiceBackgroundPdf']);
 Route::middleware(['auth:sanctum', 'clinic'])->post('/billing/confirm', [\App\Http\Controllers\BillingController::class, 'confirmCheckout']);
+Route::middleware(['auth:sanctum', 'clinic'])->post('/billing/cancel', [\App\Http\Controllers\BillingController::class, 'cancelSubscription']);
 
 

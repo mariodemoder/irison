@@ -19,6 +19,14 @@ interface PaymentProviderInterface
     public function handleWebhook(array $payload): void;
 
     /**
+     * Cancel an existing subscription in the payment provider.
+     *
+     * @param array $data
+     * @return void
+     */
+    public function cancelSubscription(array $data): void;
+
+    /**
      * Human-friendly provider name key
      * @return string
      */

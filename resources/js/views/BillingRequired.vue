@@ -52,6 +52,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import Swal from 'sweetalert2'
 import api from '../services/api'
 import { ensureMeLoaded } from '../shared/meCache'
 
@@ -62,6 +63,26 @@ const error = ref(null)
 const loading = ref(false)
 const confirming = ref(false)
 const info = ref('')
+
+async function showSubscriberWelcomePopup() {
+  await Swal.fire({
+    html: `
+      <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+        <svg width="42" height="42" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" stroke="#111827" stroke-width="1.6" />
+          <circle cx="9" cy="10" r="1" fill="#111827" />
+          <circle cx="15" cy="10" r="1" fill="#111827" />
+          <path d="M8 14c1 1.3 2.4 2 4 2s3-.7 4-2" stroke="#111827" stroke-width="1.6" stroke-linecap="round" />
+        </svg>
+        <div style="font-weight:700;color:#0f172a;">Enhorabuena</div>
+        <div style="color:#334155;">Ya eres un suscriptor activo en Irisis</div>
+      </div>
+    `,
+    showConfirmButton: false,
+    timer: 1900,
+    timerProgressBar: true,
+  })
+}
 
 async function startCheckout() {
   error.value = null
@@ -91,6 +112,7 @@ async function confirmCheckoutReturn() {
     if (res.data?.status === 'active') {
       info.value = 'Pago confirmado. Activando suscripción...'
       await ensureMeLoaded({ force: true })
+      await showSubscriberWelcomePopup()
       await router.replace('/dashboard')
       return
     }

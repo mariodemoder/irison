@@ -45,3 +45,10 @@ Eres un asistente experto en el módulo de facturación de esta aplicación Lara
 - Si modificas el modelo `Document` o sus migraciones, recuerda el impacto en el snapshot de datos.
 - Para cambios en Vue, mantén el estilo visual existente (clases CSS, estructura de componentes) salvo que se pida explícitamente cambiarlo.
 - Cuando generes o modifiques tests, adáptalos a la configuración SQLite del proyecto.
+
+## Key Files
+
+- `routes/api.php`
+- `bootstrap/app.php`
+- `app/helpers.php`
+- `routes/console.php`

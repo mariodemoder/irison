@@ -61,7 +61,7 @@
     </aside>
 
     <div class="app-column" :class="columnClasses">
-      <header class="h-14 bg-white border-b flex items-center px-4 justify-between">
+      <header class="h-14 border-b flex items-center px-4 justify-between" :class="headerClasses">
         <div class="flex items-center gap-4">
         </div>
 
@@ -78,7 +78,18 @@
         </div>
       </header>
 
-      <main class="p-6">
+      <div v-if="showCanceledBanner" class="subscription-canceled-banner">
+        <strong>Suscripción cancelada.</strong>
+        Tu cuenta y tus datos se guardarán hasta siete días a partir de la cancelación.
+        <span v-if="cancellationDaysLeftLabel" class="banner-days">Quedan {{ cancellationDaysLeftLabel }}.</span>
+      </div>
+
+      <div v-if="showTrialReadOnlyBanner" class="subscription-canceled-banner">
+        <strong>Trial finalizado.</strong>
+        Dispones de una semana adicional en modo solo lectura. Puedes consultar datos, pero no crear ni editar transacciones.
+      </div>
+
+      <main class="p-6" :class="{ 'readonly-mode': isReadOnlyNoTransactions }">
         <slot />
       </main>
     </div>
@@ -91,7 +102,16 @@ import { useRoute, useRouter } from 'vue-router'
 import logoCompact from '../assets/logoini.svg'
 import logoFull from '../assets/logonameviolet.svg'
 import logout from '../utils/logout'
-import { meUser, meClinic, meStatus, meTrialEndsAt, ensureMeLoaded } from '../shared/meCache'
+import {
+  meUser,
+  meClinic,
+  meStatus,
+  meTrialEndsAt,
+  meCancellationDaysLeft,
+  meReadOnlyNoTransactions,
+  meCanTransact,
+  ensureMeLoaded,
+} from '../shared/meCache'
 
 const MENU_OPEN_KEY = 'layout_menu_open'
 const MENU_COMPACT_KEY = 'layout_menu_compact'
@@ -120,6 +140,9 @@ const user = meUser
 const clinic = meClinic
 const status = meStatus
 const trial_ends_at = meTrialEndsAt
+const cancellationDaysLeft = meCancellationDaysLeft
+const readOnlyNoTransactions = meReadOnlyNoTransactions
+const canTransact = meCanTransact
 
 const daysLeft = computed(() => {
   if (!trial_ends_at.value) return null
@@ -137,14 +160,60 @@ const subscriptionState = computed(() => {
     if (daysLeft.value > 0) return { color: 'red', label: `Prueba — quedan ${daysLeft.value} días` }
     return { color: 'red', label: 'Tu prueba ha finalizado' }
   }
+  if (status.value === 'canceled' || status.value === 'cancelled') {
+    return { color: 'red', label: 'Suscripción cancelada' }
+  }
+  if (status.value === 'trial_read_only') {
+    return { color: 'red', label: 'Trial finalizado — solo lectura (7 días)' }
+  }
   return { color: 'red', label: 'Suscripción vencida' }
 })
 
 const subscriptionStatusDot = computed(() => {
   if (status.value === 'trial') return '🟠'
   if (status.value === 'active' || status.value === 'activa') return '🟢'
+  if (status.value === 'trial_read_only') return '🔴'
   if (status.value === 'canceled' || status.value === 'cancelled' || status.value === 'blocked') return '🔴'
   return '🔴'
+})
+
+const isReadOnlyNoTransactions = computed(() => {
+  if (readOnlyNoTransactions.value) {
+    return true
+  }
+
+  if (status.value === 'trial_read_only') {
+    return true
+  }
+
+  if (!canTransact.value && (status.value === 'canceled' || status.value === 'cancelled')) {
+    return true
+  }
+
+  return false
+})
+
+const showCanceledBanner = computed(() => {
+  return (status.value === 'canceled' || status.value === 'cancelled') && isReadOnlyNoTransactions.value
+})
+
+const showTrialReadOnlyBanner = computed(() => {
+  return status.value === 'trial_read_only' && isReadOnlyNoTransactions.value
+})
+
+const cancellationDaysLeftLabel = computed(() => {
+  const days = Number(cancellationDaysLeft.value ?? 0)
+  if (!Number.isFinite(days) || days <= 0) return ''
+  return days === 1 ? '1 día' : `${days} días`
+})
+
+const isTrialEndingSoon = computed(() => {
+  const days = Number(daysLeft.value ?? 0)
+  return status.value === 'trial' && Number.isFinite(days) && days > 0 && days <= 7
+})
+
+const headerClasses = computed(() => {
+  return isTrialEndingSoon.value ? ['header-trial-warning'] : ['header-default']
 })
 
 const currentLogo = computed(() => {
@@ -322,6 +391,42 @@ function isActive(base) {
   transition: padding-left 0.2s ease;
 }
 
+.subscription-canceled-banner {
+  margin: 12px 24px 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid #fca5a5;
+  background: #fff1f2;
+  color: #9f1239;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.banner-days {
+  margin-left: 6px;
+  font-weight: 700;
+}
+
+.readonly-mode :deep(button[type='submit']),
+.readonly-mode :deep(a.action-btn),
+.readonly-mode :deep(.action-btn),
+.readonly-mode :deep(.btn-primary),
+.readonly-mode :deep(.plus-btn),
+.readonly-mode :deep(a[href*='/edit']),
+.readonly-mode :deep(a[href*='/create']),
+.readonly-mode :deep(.quick-action-card),
+.readonly-mode :deep(button.primary),
+.readonly-mode :deep(button.muted),
+.readonly-mode :deep(button[data-action='emit-invoice']),
+.readonly-mode :deep(a[href*='/payments/create']),
+.readonly-mode :deep(a[href*='/invoices/create']) {
+  display: none !important;
+}
+
+.readonly-mode :deep(.allow-readonly-action) {
+  display: inline-flex !important;
+}
+
 .app-column.with-sidebar-full {
   padding-left: 260px;
 }
@@ -359,6 +464,16 @@ function isActive(base) {
 .sub-label { color:#6b7280 }
 .logout-btn { padding:6px 12px; border-radius:999px; border:1px solid #e5e7eb; background:#fff; color:#374151; font-size:13px; font-weight:600; white-space:nowrap }
 .logout-btn:hover { background:#f8fafc }
+
+.header-default {
+  background: #ffffff;
+  border-bottom-color: #e5e7eb;
+}
+
+.header-trial-warning {
+  background: #fee2e2;
+  border-bottom-color: #fca5a5;
+}
 
 @media (max-width: 767px) {
   .sidebar {

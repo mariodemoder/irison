@@ -13,7 +13,7 @@ class BillingPayment extends Model
     protected $table = 'billing_payments';
 
     protected $fillable = [
-        'clinic_id', 'amount', 'currency', 'status', 'provider', 'provider_ref', 'counter'
+        'clinic_id', 'amount', 'currency', 'status', 'provider', 'provider_ref', 'method', 'counter'
     ];
 
     protected static function booted(): void

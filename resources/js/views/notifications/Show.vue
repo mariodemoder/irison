@@ -118,7 +118,9 @@ async function load() {
     notificationData.value = res.data || null
   } catch (e) {
     notificationData.value = null
-    toast.error('Error cargando notificación')
+    const status = e?.response?.status
+    const message = e?.response?.data?.message
+    toast.error((status === 402 || status === 403) && message ? `Error cargando notificación - ${message}` : 'Error cargando notificación')
   } finally {
     loading.value = false
   }

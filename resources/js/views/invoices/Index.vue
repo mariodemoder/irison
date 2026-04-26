@@ -287,7 +287,9 @@ async function load(page = 1) {
     documents.value = []
     meta.value = null
     summary.value = { count: 0, total_amount: 0 }
-    toast.error('Error cargando facturas')
+    const status = e?.response?.status
+    const message = e?.response?.data?.message
+    toast.error((status === 402 || status === 403) && message ? `Error cargando facturas - ${message}` : 'Error cargando facturas')
   } finally {
     loading.value = false
   }

@@ -69,6 +69,17 @@ class StripePaymentProvider implements PaymentProviderInterface
         // Los eventos de Stripe se procesan en StripeWebhookController (/api/stripe/webhook)
         // Este método existe para cumplir la interfaz; no se usa con este provider.
     }
+    
+    public function cancelSubscription(array $data): void
+    {
+        $subscriptionId = (string) ($data['stripe_subscription_id'] ?? '');
+        
+        if ($subscriptionId === '') {
+            throw new \InvalidArgumentException('No hay una suscripción de Stripe para cancelar');
+        }
+        
+        $this->stripe->subscriptions->cancel($subscriptionId, []);
+    }
 
     public function getName(): string
     {

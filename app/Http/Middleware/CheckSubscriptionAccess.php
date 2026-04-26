@@ -5,22 +5,23 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 
-class EnsureClinicIsActive
+class CheckSubscriptionAccess
 {
     public function handle(Request $request, Closure $next)
     {
-        $user = $request->user();
+        $clinic = currentClinic();
 
-        if (! $user || ! $user->clinic) {
-            return response()->json(['message' => 'No clinic assigned'], 403);
+        // 1. Sin clínica
+        if (! $clinic) {
+            return response()->json(['message' => 'No clinic'], 403);
         }
 
-        $clinic = $user->clinic;
-
-        if ($clinic->isTrialActive() || $clinic->isSubscribed()) {
+        // 2. Suscripción activa o trial vigente -> OK
+        if ($clinic->isSubscribed() || $clinic->isTrialActive()) {
             return $next($request);
         }
 
+        // 3. Semana de gracia en solo lectura -> permitir consultar datos existentes
         if ($clinic->isInReadOnlyNoTransactionsWindow()) {
             if ($request->isMethodSafe() || $this->canStartPaidPlanWhileReadOnly($request)) {
                 return $next($request);
@@ -32,14 +33,20 @@ class EnsureClinicIsActive
             ], 403);
         }
 
-        if (! $clinic->isTrialActive() && ! $clinic->isSubscribed()) {
+        // 4. Pago fallido
+        $status = strtolower(trim((string) ($clinic->subscription_status ?? 'inactive')));
+        if ($status === 'past_due') {
             return response()->json([
-                'message' => 'Tu periodo de prueba ha finalizado',
+                'message' => 'Payment required',
                 'code' => 'SUBSCRIPTION_REQUIRED',
-            ], 403);
+            ], 402);
         }
 
-        return $next($request);
+        // 5. Trial expirado, cancelada o inactiva fuera de gracia
+        return response()->json([
+            'message' => 'Tu periodo de prueba ha finalizado',
+            'code' => 'SUBSCRIPTION_REQUIRED',
+        ], 403);
     }
 
     private function canStartPaidPlanWhileReadOnly(Request $request): bool

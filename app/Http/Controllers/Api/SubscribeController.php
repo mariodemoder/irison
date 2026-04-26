@@ -40,6 +40,10 @@ class SubscribeController extends Controller
             ->newSubscription('default', $priceId)
             ->create($request->payment_method);
 
+        $clinic->subscription_status = 'active';
+        $clinic->subscribed_at = now();
+        $clinic->save();
+
         return response()->json([
             'status'    => $subscription->stripe_status,
             'stripe_id' => $subscription->stripe_id,

@@ -314,7 +314,9 @@ async function load() {
     documentData.value = res.data || null
   } catch (e) {
     documentData.value = null
-    toast.error('Error cargando factura')
+    const status = e?.response?.status
+    const message = e?.response?.data?.message
+    toast.error((status === 402 || status === 403) && message ? `Error cargando factura - ${message}` : 'Error cargando factura')
   } finally {
     loading.value = false
   }

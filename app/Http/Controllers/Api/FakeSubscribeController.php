@@ -68,17 +68,14 @@ class FakeSubscribeController extends Controller
 
             // Marcar clínica como suscrita y guardar referencias
             $clinic->subscribed_at = Carbon::now();
+            $clinic->subscription_status = 'active';
             $clinic->subscription_provider = 'fake';
             $clinic->subscription_reference = $subscription->stripe_subscription_id;
             $clinic->save();
 
             $clinic->load('saasSubscriptions');
 
-            $status = match (true) {
-                $clinic->isSubscribed() => 'active',
-                $clinic->isTrialActive() => 'trial',
-                default => 'blocked',
-            };
+                $status = strtolower(trim((string) ($clinic->subscription_status ?? 'inactive')));
 
             return [
                 'payment' => $payment,

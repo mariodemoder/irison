@@ -1,7 +1,8 @@
 <template>
   <MainLayout>
     <div>
-     <div class="page-header">
+      <div class="entity-card">
+        <div class="page-header">
         <div>
           <h1>Agenda</h1>
           <div class="form-sub">Visualiza y gestiona tus citas</div>
@@ -94,6 +95,7 @@
           </div>
         </div>
 
+      </div>
       </div>
 
     </div>

@@ -1,14 +1,15 @@
 <template>
   <MainLayout>
     <div>
-      <div class="page-header">
-        <div>
-          <h1>Notificaciones</h1>
-          <div class="form-sub">Historial de emails enviados y fallidos</div>
+      <div class="entity-card">
+        <div class="page-header">
+          <div>
+            <h1>Notificaciones</h1>
+            <div class="form-sub">Historial de emails enviados y fallidos</div>
+          </div>
         </div>
-      </div>
 
-      <div class="filters">
+        <div class="filters">
         <div class="search-wrapper">
           <input v-model="filters.q" placeholder="Buscar por paciente o email" class="search-input" @input="debouncedReload" />
         </div>
@@ -34,59 +35,66 @@
       <AppLoading v-if="loading" message="Cargando notificaciones..." />
 
       <template v-else>
-        <div class="list-header">
-          <div>Fecha</div>
-          <div>Paciente</div>
-          <div>Tipo</div>
-          <div>Email</div>
-          <div>Estado</div>
-          <div>Error</div>
-          <div></div>
-        </div>
-
-        <div class="list">
-          <div
-            v-for="item in reminders"
-            :key="item.id"
-            class="notification-row"
-            role="button"
-            tabindex="0"
-            @click="goToShow(item.id)"
-            @keydown.enter.prevent="goToShow(item.id)"
-          >
-            <div>{{ formatDate(item.sent_at || item.created_at) }}</div>
-            <div>
-              <router-link v-if="item.patient?.id" :to="`/patients/${item.patient.id}`" class="patient-link" @click.stop>
-                {{ patientLabel(item) }}
-              </router-link>
-              <span v-else>{{ patientLabel(item) }}</span>
-            </div>
-            <div><span class="type-chip">{{ typeLabel(item.reminder_type) }}</span></div>
-            <div>{{ item.recipient_email || '—' }}</div>
-            <div><span class="status" :class="item.status">{{ statusLabel(item.status) }}</span></div>
-            <div class="error-col">{{ item.error_message || '—' }}</div>
-            <div class="row-action">
-              <button
-                type="button"
-                class="action-btn details"
-                @click.stop="goToShow(item.id)"
+        <div v-if="reminders.length > 0" class="entity-table-wrap">
+          <table class="entity-table">
+            <thead>
+              <tr>
+                <th class="col-min">Fecha</th>
+                <th class="col-max">Paciente</th>
+                <th class="col-min">Tipo</th>
+                <th class="col-mid">Email</th>
+                <th class="col-min">Estado</th>
+                <th class="col-max">Error</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="item in reminders"
+                :key="item.id"
+                class="entity-table-row"
+                role="button"
+                tabindex="0"
+                @click="goToShow(item.id)"
+                @keydown.enter.prevent="goToShow(item.id)"
               >
-                Ver detalle
-              </button>
-              <button
-                v-if="item.status === 'failed'"
-                type="button"
-                class="action-btn resend"
-                :disabled="resendingId === item.id"
-                @click="resend(item)"
-              >
-                {{ resendingId === item.id ? 'Reenviando...' : 'Reenviar' }}
-              </button>
-            </div>
-          </div>
-          <EmptyIndexState v-if="reminders.length === 0 && !hasActiveFilters" />
-          <div v-else-if="reminders.length === 0" class="empty">No hay resultados para los filtros aplicados.</div>
+                <td class="col-min">{{ formatDate(item.sent_at || item.created_at) }}</td>
+                <td class="col-max">
+                  <div class="row-name">
+                    <router-link v-if="item.patient?.id" :to="`/patients/${item.patient.id}`" class="patient-link" @click.stop>
+                      {{ patientLabel(item) }}
+                    </router-link>
+                    <span v-else>{{ patientLabel(item) }}</span>
+                  </div>
+                </td>
+                <td class="col-min"><span class="type-chip">{{ typeLabel(item.reminder_type) }}</span></td>
+                <td class="col-mid">{{ item.recipient_email || '—' }}</td>
+                <td class="col-min"><span class="status" :class="item.status">{{ statusLabel(item.status) }}</span></td>
+                <td class="col-max">{{ item.error_message || '—' }}</td>
+                <td class="row-action">
+                  <button
+                    type="button"
+                    class="action-btn details"
+                    @click.stop="goToShow(item.id)"
+                  >
+                    Ver detalle
+                  </button>
+                  <button
+                    v-if="item.status === 'failed'"
+                    type="button"
+                    class="action-btn resend"
+                    :disabled="resendingId === item.id"
+                    @click="resend(item)"
+                  >
+                    {{ resendingId === item.id ? 'Reenviando...' : 'Reenviar' }}
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
+        <EmptyIndexState v-else-if="!hasActiveFilters" />
+        <div v-else class="empty">No hay resultados para los filtros aplicados.</div>
 
         <div v-if="meta" class="pagination">
           <div class="pagination-info">Página {{ meta.current_page }} / {{ meta.last_page }} — {{ meta.total }} notificaciones</div>
@@ -96,6 +104,7 @@
           </div>
         </div>
       </template>
+      </div>
     </div>
   </MainLayout>
 </template>
@@ -187,7 +196,9 @@ async function load(page = 1) {
     reminders.value = []
     meta.value = null
     summary.value = { count: 0, sent_count: 0, failed_count: 0 }
-    toast.error('Error cargando notificaciones')
+    const status = e?.response?.status
+    const message = e?.response?.data?.message
+    toast.error((status === 402 || status === 403) && message ? `Error cargando notificaciones - ${message}` : 'Error cargando notificaciones')
   } finally {
     loading.value = false
   }
@@ -226,38 +237,35 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.filters { display: grid; grid-template-columns: 1.8fr 1fr 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px }
+.filters select, .search-input { padding: 8px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 13px; width: 100% }
 
-.filters { display:grid; grid-template-columns:1.8fr 1fr 1fr 1fr 1fr; gap:8px; margin-bottom:10px }
-.filters select, .search-input { padding:8px; border:1px solid #e5e7eb; border-radius:8px; font-size:13px; width:100% }
+.summary { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; color: #374151; font-size: 14px }
 
-.summary { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; color:#374151; font-size:14px }
+.patient-link { color: var(--secondary); text-decoration: none; font-weight: 600 }
+.patient-link:hover { text-decoration: underline }
 
-.list { display:flex; flex-direction:column; gap:8px }
-.list-header { display:grid; grid-template-columns:1.1fr 1.6fr .9fr 1.5fr .9fr 2fr 120px; gap:10px; color:#6b7280; font-size:13px; font-weight:600; padding:6px 10px }
-.notification-row { display:grid; grid-template-columns:1.1fr 1.6fr .9fr 1.5fr .9fr 2fr 210px; gap:10px; background:#fff; border:1px solid #eef2ff22; border-radius:10px; padding:10px; align-items:center; font-size:13px; cursor:pointer }
-.notification-row:hover { border-color:#dbeafe; background:#f8fbff }
+.type-chip { display: inline-flex; align-items: center; padding: 4px 8px; border-radius: 9999px; background: #eff6ff; color: #1d4ed8; font-size: 12px; font-weight: 600 }
 
-.patient-link { color: var(--secondary); text-decoration:none; font-weight:600 }
-.patient-link:hover { text-decoration:underline }
+.status { display: inline-flex; align-items: center; padding: 5px 8px; border-radius: 9999px; font-weight: 700; font-size: 11px }
+.status.sent { background: #dcfce7; color: #166534 }
+.status.failed { background: #fee2e2; color: #991b1b }
 
-.type-chip { display:inline-flex; align-items:center; padding:4px 8px; border-radius:9999px; background:#eff6ff; color:#1d4ed8; font-size:12px; font-weight:600 }
-.status { display:inline-flex; align-items:center; padding:5px 8px; border-radius:9999px; font-weight:700; font-size:11px }
-.status.sent { background:#dcfce7; color:#166534 }
-.status.failed { background:#fee2e2; color:#991b1b }
-.error-col { color:#6b7280; word-break:break-word }
-.row-action { display:flex; align-items:center; justify-content:flex-start }
-.action-btn { display:inline-flex; align-items:center; justify-content:center; padding:6px 10px; border-radius:8px; border:1px solid transparent; font-size:13px }
-.action-btn.details { background:#fff; color:#374151; border-color:#e5e7eb }
-.action-btn.resend { background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe }
-.action-btn:disabled { opacity:.55 }
-.empty { color:#6b7280; padding:12px }
+.row-action { display: flex; align-items: center; justify-content: flex-start; gap: 6px }
+.action-btn { display: inline-flex; align-items: center; justify-content: center; padding: 6px 10px; border-radius: 8px; border: 1px solid transparent; font-size: 13px; white-space: nowrap }
+.action-btn.details { background: #fff; color: #374151; border-color: #e5e7eb }
+.action-btn.resend { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe }
+.action-btn:disabled { opacity: 0.55; cursor: not-allowed }
 
-.pagination { margin-top:12px; display:flex; justify-content:flex-end; gap:12px; align-items:center }
-.pagination-info { color:#6b7280; font-size:13px }
-.pagination-actions { display:flex; gap:8px }
-.icon-btn { width:32px; height:32px; border-radius:8px; border:1px solid #e5e7eb; background:#fff }
+.empty { color: #6b7280; padding: 16px; text-align: center }
+
+.pagination { margin-top: 16px; display: flex; justify-content: flex-end; gap: 12px; align-items: center }
+.pagination-info { color: #6b7280; font-size: 13px }
+.pagination-actions { display: flex; gap: 8px }
+.icon-btn { width: 32px; height: 32px; border-radius: 8px; border: 1px solid #e5e7eb; background: #fff; cursor: pointer }
+.icon-btn:disabled { opacity: 0.5; cursor: not-allowed }
 
 @media (max-width: 900px) {
-  .filters, .list-header, .notification-row { grid-template-columns:1fr }
+  .filters { grid-template-columns: 1fr }
 }
 </style>

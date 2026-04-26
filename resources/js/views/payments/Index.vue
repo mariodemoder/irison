@@ -215,7 +215,9 @@ async function load(page = 1) {
     payments.value = []
     meta.value = null
     summary.value = { count: 0, total_amount: 0 }
-    toast.error('Error cargando pagos')
+    const status = e?.response?.status
+    const message = e?.response?.data?.message
+    toast.error((status === 402 || status === 403) && message ? `Error cargando pagos - ${message}` : 'Error cargando pagos')
   } finally {
     loading.value = false
   }

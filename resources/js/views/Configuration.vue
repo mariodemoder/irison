@@ -178,18 +178,73 @@
               </div>
 
               <div class="tab-panel tab-card" v-show="activeTab==='subscripcion'">
-                <h2>Subscripción</h2>
-                <div style="display:flex;align-items:center;gap:12px;margin-top:8px">
+                
+                <div class="subscription-header">
                   <div>{{ subscriptionStatusDot }} {{ subscriptionState.label }}</div>
+                  <div class="subscription-actions">
+                    <button v-if="status !== 'active'" class="btn btn-primary allow-readonly-action" @click.prevent="beginPaidPlanFake">Activar cuenta de pago</button>
+                    <button v-if="status==='blocked'" class="btn" @click.prevent="subscribe">Activar plan (Stripe)</button>
+                    <div v-if="status==='active'" class="sub-menu-wrap">
+                      <button class="btn sub-menu-trigger" @click.stop="showSubscriptionMenu = !showSubscriptionMenu" title="Opciones de suscripción">
+                        &#8942;
+                      </button>
+                      <div v-if="showSubscriptionMenu" class="sub-menu-dropdown">
+                        <button class="sub-menu-item sub-menu-item--danger" :disabled="cancellingSubscription" @click.prevent="openCancelSubscriptionModal(); showSubscriptionMenu = false">
+                          Cancelar suscripción
+                        </button>
+                        <button class="sub-menu-item" @click.stop="scrollToPayments">
+                          Consultar pago
+                        </button>
+                        <a class="sub-menu-item" href="/legal" target="_blank" @click="showSubscriptionMenu = false">
+                          Legales
+                        </a>
+                      </div>
+                    </div>
+                  </div>
                 </div>
+                
+                  <div class="subscription-meta">
+                    <div><strong>Modo de pago:</strong> {{ paymentModeLabel }}</div>
+                  </div>
                 <div style="margin-top:12px">
                   <div v-if="status==='trial'">
                     <div>Quedan <strong>{{ daysLeft ?? '—' }}</strong> días de demo.</div>
+                    <div class="subscription-warning">
+                      <div class="warning-header">
+                        ⚠️ Tu suscripción está por vencer
+                      </div>
+
+                      <div class="warning-body">
+                        <p>
+                          Una vez finalizado el período de prueba, si no se registra el pago,
+                          no podrás realizar transacciones.
+                        </p>
+
+                        <p>
+                          Tus datos y tu cuenta se conservarán durante <strong>7 días adicionales</strong>.
+                        </p>
+
+                        <p>
+                          Transcurrido ese plazo sin activación, la cuenta y toda la información
+                          serán eliminadas de forma definitiva.
+                        </p>
+                      </div>
+
+                      <div class="warning-footer">
+                        No pierdas tu información. Activa tu plan para seguir operando.
+                      </div>
+                    </div>
+                  </div>
+                  <div v-else-if="status==='trial_read_only'">
+                    <div>Tu periodo de prueba ha finalizado.</div>
+                    <div class="subscription-warning" style="margin-top:10px">
+                      Estás en una semana de acceso solo lectura. Para seguir operando con normalidad, activa tu cuenta de pago.
+                    </div>
                   </div>
                   <div v-else-if="status==='active'">
                     <div>Tu suscripción está activa.</div>
 
-                    <div class="subscription-history" style="margin-top:14px">
+                    <div class="subscription-history" id="sub-pagos" style="margin-top:14px">
                       <div class="subscription-history-title">Pagos realizados</div>
                       <div v-if="subscriptionPayments.length === 0" class="subscription-history-empty">
                         No hay pagos registrados.
@@ -216,9 +271,19 @@
                     <div>No tienes suscripción activa.</div>
                   </div>
 
-                  <div class="subscription-actions">
-                    <button v-if="status !== 'active'" class="btn btn-primary" @click.prevent="beginPaidPlanFake">Comenzar plan pago</button>
-                    <button v-if="status==='blocked'" class="btn" @click.prevent="subscribe">Activar plan (Stripe)</button>
+                  
+
+                  <div v-if="showCancelSubscriptionModal" class="confirm-modal-backdrop" @click.self="closeCancelSubscriptionModal">
+                    <div class="confirm-modal" role="dialog" aria-modal="true" aria-label="Confirmar cancelación de suscripción">
+                      <h3>Cancelar suscripción</h3>
+                      <p>Esta acción cancelará tu suscripción activa. ¿Deseas continuar?</p>
+                      <div class="confirm-modal-actions">
+                        <button class="btn" :disabled="cancellingSubscription" @click.prevent="closeCancelSubscriptionModal">Volver</button>
+                        <button class="btn subscription-cancel-btn" :disabled="cancellingSubscription" @click.prevent="confirmCancelSubscription">
+                          {{ cancellingSubscription ? 'Cancelando...' : 'Sí, cancelar suscripción' }}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -471,6 +536,22 @@ const status = ref('blocked')
 const trial_ends_at = ref(null)
 const loading = ref(true)
 const saving = ref(false)
+const cancellingSubscription = ref(false)
+const showCancelSubscriptionModal = ref(false)
+const showSubscriptionMenu = ref(false)
+
+function handleClickOutsideSubMenu() {
+  showSubscriptionMenu.value = false
+}
+
+function scrollToPayments() {
+  showSubscriptionMenu.value = false
+  const el = document.getElementById('sub-pagos')
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+onMounted(() => document.addEventListener('click', handleClickOutsideSubMenu))
+onBeforeUnmount(() => document.removeEventListener('click', handleClickOutsideSubMenu))
 const subscriptionPayments = ref([])
 const invoiceBackgroundUrl = ref(null)
 const invoiceBackgroundFile = ref(null)
@@ -557,6 +638,8 @@ const daysLeft = computed(() => {
 const subscriptionState = computed(() => {
   if (status.value === 'active') return { color: 'green', label: 'Suscripción activa' }
   if (status.value === 'trial') return { color: 'yellow', label: `Prueba — quedan ${daysLeft.value ?? '—'} días` }
+  if (status.value === 'trial_read_only') return { color: 'red', label: 'Trial finalizado — solo lectura (7 días)' }
+  if (status.value === 'canceled' || status.value === 'cancelled') return { color: 'red', label: 'Suscripción cancelada — solo lectura' }
   return { color: 'red', label: 'Sin suscripción' }
 })
 
@@ -566,6 +649,13 @@ const subscriptionStatusDot = computed(() => {
   if (status.value === 'canceled' || status.value === 'cancelled' || status.value === 'blocked') return '🔴'
   return '🔴'
 })
+
+    const paymentModeLabel = computed(() => {
+      const provider = String(clinic.value?.subscription_provider || '').trim().toLowerCase()
+      if (provider === 'stripe') return 'Stripe'
+      if (provider === 'fake') return 'Fake (desarrollo)'
+      return 'No configurado'
+    })
 
 onMounted(async () => {
   await load()
@@ -627,7 +717,9 @@ async function load() {
     }
   } catch (e) {
     console.error('Error cargando /me', e)
-    toast.error('Error cargando configuración')
+    const status = e?.response?.status
+    const message = e?.response?.data?.message
+    toast.error((status === 402 || status === 403) && message ? `Error cargando configuración - ${message}` : 'Error cargando configuración')
   } finally {
     loading.value = false
   }
@@ -994,6 +1086,33 @@ function beginPaidPlanFake() {
   router.push('/billing/required')
 }
 
+function openCancelSubscriptionModal() {
+  if (cancellingSubscription.value) return
+  showCancelSubscriptionModal.value = true
+}
+
+function closeCancelSubscriptionModal() {
+  if (cancellingSubscription.value) return
+  showCancelSubscriptionModal.value = false
+}
+
+async function confirmCancelSubscription() {
+  if (cancellingSubscription.value) return
+
+  cancellingSubscription.value = true
+  try {
+    await api.post('/billing/cancel')
+    toast.success('Suscripción cancelada correctamente')
+    showCancelSubscriptionModal.value = false
+    await load()
+  } catch (e) {
+    const message = e?.response?.data?.message || 'No se pudo cancelar la suscripción'
+    toast.error(message)
+  } finally {
+    cancellingSubscription.value = false
+  }
+}
+
 function formatDateTime(value) {
   if (!value) return '—'
   const date = new Date(value)
@@ -1080,7 +1199,89 @@ onBeforeUnmount(() => {
   color:#9a3412;
   font-size:13px;
 }
-.subscription-actions { display:flex; gap:8px; margin-top:16px; flex-wrap:wrap }
+.subscription-header { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-top:4px }
+.subscription-actions { display:flex; gap:8px; margin-top:0; margin-left:auto; flex-wrap:wrap }
+  .subscription-meta { margin-top:10px; color:#374151; font-size:14px }
+  .subscription-cancel-btn { background:#fff; border:1px solid #ef4444; color:#b91c1c }
+  .subscription-cancel-btn:hover { background:#fef2f2 }
+  .sub-menu-wrap { position:relative; display:inline-block }
+  .sub-menu-trigger {
+    padding:0;
+    width:32px;
+    height:32px;
+    font-size:18px;
+    line-height:1;
+    background:#f9fafb;
+    border:1px solid #d1d5db;
+    color:#6b7280;
+    border-radius:6px;
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .sub-menu-trigger:hover { background:#f3f4f6; color:#374151 }
+  .sub-menu-dropdown {
+    position:absolute;
+    top:calc(100% + 4px);
+    left:0;
+    min-width:170px;
+    background:#fff;
+    border:1px solid #e5e7eb;
+    border-radius:8px;
+    box-shadow:0 4px 12px rgba(0,0,0,.1);
+    z-index:100;
+    overflow:hidden;
+  }
+  .sub-menu-item {
+    display:block;
+    width:100%;
+    padding:9px 14px;
+    font-size:13px;
+    color:#374151;
+    background:none;
+    border:none;
+    text-align:left;
+    cursor:pointer;
+    text-decoration:none;
+  }
+  .sub-menu-item:hover { background:#f3f4f6 }
+  .sub-menu-item--danger { color:#b91c1c }
+  .sub-menu-item--danger:hover { background:#fef2f2 }
+  .confirm-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(17, 24, 39, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1200;
+  }
+  .confirm-modal {
+    width: min(520px, calc(100vw - 32px));
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    padding: 16px;
+    box-shadow: 0 20px 40px rgba(15, 23, 42, 0.22);
+  }
+  .confirm-modal h3 {
+    margin: 0;
+    font-size: 18px;
+    color: #111827;
+  }
+  .confirm-modal p {
+    margin: 10px 0 0;
+    color: #4b5563;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  .confirm-modal-actions {
+    margin-top: 14px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
 .subscription-history-title { font-size:13px; font-weight:700; color:#111827; margin-bottom:8px }
 .subscription-history-empty { color:#6b7280; font-size:13px; padding:10px; border:1px dashed #d1d5db; border-radius:8px }
 .subscription-history-list { border:1px solid #e5e7eb; border-radius:10px; overflow:hidden }

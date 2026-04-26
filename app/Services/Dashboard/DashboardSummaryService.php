@@ -252,7 +252,9 @@ class DashboardSummaryService
         }
 
         if (empty($intervals)) {
-            return max(0, $openAt->diffInMinutes($windowEnd));
+            $elapsedMinutes = (int) floor($openAt->diffInMinutes($windowEnd));
+
+            return max(0, $elapsedMinutes);
         }
 
         usort($intervals, function (array $a, array $b): int {
@@ -282,10 +284,10 @@ class DashboardSummaryService
 
         $busyMinutes = 0;
         foreach ($merged as [$start, $end]) {
-            $busyMinutes += $start->diffInMinutes($end);
+            $busyMinutes += (int) floor($start->diffInMinutes($end));
         }
 
-        $elapsedMinutes = $openAt->diffInMinutes($windowEnd);
+        $elapsedMinutes = (int) floor($openAt->diffInMinutes($windowEnd));
 
         return max(0, $elapsedMinutes - $busyMinutes);
     }

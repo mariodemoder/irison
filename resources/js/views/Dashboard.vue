@@ -541,8 +541,7 @@ onMounted(async () => {
 
 <style scoped>
 .dashboard-container {
-  padding: 40px;
-  background: var(--bg-app);
+    background: var(--bg-app);
   min-height: 100vh;
 }
 
