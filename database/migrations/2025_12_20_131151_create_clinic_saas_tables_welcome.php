@@ -8,15 +8,18 @@ return new class extends Migration
 {
     public function up(): void
     {
-        /*
-        |--------------------------------------------------------------------------
-        | clinics
-        |--------------------------------------------------------------------------
-        */
+
+       //--------------------------------------------------------------------------
+       // clinics
+       //--------------------------------------------------------------------------
+        
         Schema::dropIfExists('clinics');
         Schema::create('clinics', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+            $table->string('legal_name')->nullable();
+            $table->string('cif')->nullable();
+            $table->boolean('is_active')->default(true);
             $table->string('email')->nullable();
             $table->string('phone')->nullable();
             $table->string('address')->nullable();
@@ -24,32 +27,32 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        /*
-        |--------------------------------------------------------------------------
-        | users
-        |--------------------------------------------------------------------------
-        */
+       
+       //--------------------------------------------------------------------------
+       // users
+       //--------------------------------------------------------------------------
+        
         Schema::dropIfExists('users');
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->foreignId('clinic_id')->constrained()->cascadeOnDelete();
             $table->string('name');
             $table->string('email')->unique();
-            $table->string('password_hash');
-            $table->enum('role', ['owner', 'staff'])->default('owner');
+            $table->string('password');
+            $table->string('role', 50)->default('owner');
             $table->timestamps();
         });
 
-        /*
-        |--------------------------------------------------------------------------
-        | subscriptions
-        |--------------------------------------------------------------------------
-        */
+       
+       //--------------------------------------------------------------------------
+       // subscriptions
+       //--------------------------------------------------------------------------
+        
         Schema::dropIfExists('subscriptions');
         Schema::create('subscriptions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('clinic_id')->constrained()->cascadeOnDelete();
-            $table->enum('status', ['trial', 'active', 'past_due', 'canceled'])->default('trial');
+            $table->string('status', 50)->default('trial');
             $table->timestamp('trial_ends_at')->nullable();
             $table->timestamp('current_period_end')->nullable();
             $table->string('stripe_customer_id')->nullable();
@@ -57,11 +60,11 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        /*
-        |--------------------------------------------------------------------------
-        | patients
-        |--------------------------------------------------------------------------
-        */
+       
+       //--------------------------------------------------------------------------
+       // patients
+       //--------------------------------------------------------------------------
+        
         Schema::create('patients', function (Blueprint $table) {
             $table->id();
             $table->foreignId('clinic_id')->constrained()->cascadeOnDelete();
@@ -76,29 +79,30 @@ return new class extends Migration
             $table->index(['clinic_id', 'last_name']);
         });
 
-        /*
-        |--------------------------------------------------------------------------
-        | appointments
-        |--------------------------------------------------------------------------
-        */
+       
+       //--------------------------------------------------------------------------
+       // appointments
+       //--------------------------------------------------------------------------
+        
         Schema::create('appointments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('clinic_id')->constrained()->cascadeOnDelete();
             $table->foreignId('patient_id')->constrained()->cascadeOnDelete();
             $table->timestamp('start_time');
             $table->timestamp('end_time')->nullable();
-            $table->enum('status', ['scheduled', 'completed', 'canceled', 'no_show'])->default('scheduled');
-            $table->enum('payment_status', ['pending', 'paid', 'covered_by_pack'])->default('pending');
+            $table->string('status', 50)->default('scheduled');
+            $table->string('payment_status', 50)->default('pending');
             $table->timestamps();
 
             $table->index(['clinic_id', 'start_time']);
+            $table->index(['patient_id']);
         });
 
-        /*
-        |--------------------------------------------------------------------------
-        | clinical_records
-        |--------------------------------------------------------------------------
-        */
+       
+       //--------------------------------------------------------------------------
+       // clinical_records
+       //--------------------------------------------------------------------------
+        
         Schema::create('clinical_records', function (Blueprint $table) {
             $table->id();
             $table->foreignId('clinic_id')->constrained()->cascadeOnDelete();
@@ -110,11 +114,11 @@ return new class extends Migration
             $table->index(['clinic_id', 'patient_id']);
         });
 
-        /*
-        |--------------------------------------------------------------------------
-        | packs
-        |--------------------------------------------------------------------------
-        */
+       
+       //--------------------------------------------------------------------------
+       // packs
+       //--------------------------------------------------------------------------
+        
         Schema::create('packs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('clinic_id')->constrained()->cascadeOnDelete();
@@ -122,17 +126,17 @@ return new class extends Migration
             $table->unsignedInteger('total_sessions');
             $table->unsignedInteger('remaining_sessions');
             $table->decimal('price', 10, 2);
-            $table->enum('status', ['active', 'exhausted', 'expired'])->default('active');
+            $table->string('status', 50)->default('active');
             $table->timestamps();
 
             $table->index(['clinic_id', 'patient_id']);
         });
 
-        /*
-        |--------------------------------------------------------------------------
-        | payments
-        |--------------------------------------------------------------------------
-        */
+       
+       //--------------------------------------------------------------------------
+       // payments
+       //--------------------------------------------------------------------------
+        
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('clinic_id')->constrained()->cascadeOnDelete();
@@ -140,27 +144,28 @@ return new class extends Migration
             $table->foreignId('appointment_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('pack_id')->nullable()->constrained()->nullOnDelete();
             $table->decimal('amount', 10, 2);
-            $table->enum('method', ['cash', 'card', 'transfer'])->default('cash');
-            $table->enum('status', ['paid', 'pending'])->default('paid');
+            $table->string('method', 50)->default('cash');
+            $table->string('status', 50)->default('paid');
             $table->timestamp('created_at')->useCurrent();
 
             $table->index(['clinic_id', 'patient_id']);
         });
 
-        /*
-        |--------------------------------------------------------------------------
-        | reminders
-        |--------------------------------------------------------------------------
-        */
+       
+       //--------------------------------------------------------------------------
+       // reminders
+       //--------------------------------------------------------------------------
+        
         Schema::create('reminders', function (Blueprint $table) {
             $table->id();
             $table->foreignId('clinic_id')->constrained()->cascadeOnDelete();
             $table->foreignId('appointment_id')->constrained()->cascadeOnDelete();
-            $table->enum('channel', ['email', 'whatsapp']);
+            $table->string('channel', 50);
             $table->timestamp('sent_at')->nullable();
-            $table->enum('status', ['sent', 'failed'])->default('sent');
+            $table->string('status', 50)->default('sent');
             $table->timestamps();
         });
+        
     }
 
     public function down(): void

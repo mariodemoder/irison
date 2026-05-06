@@ -35,4 +35,13 @@ return [
         ],
     ],
 
+    'stripe' => [
+        'key' => env('STRIPE_KEY'),
+        'secret' => env('STRIPE_SECRET'),
+        'price_id' => env('STRIPE_PRICE_ID'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+        'ca_bundle' => env('STRIPE_CA_BUNDLE', env('CURL_CA_BUNDLE', null)),
+        'verify_ssl' => env('STRIPE_VERIFY_SSL', true),
+    ],
+
 ];

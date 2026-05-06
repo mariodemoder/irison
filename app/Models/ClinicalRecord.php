@@ -4,13 +4,16 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Concerns\BelongsToClinic;
 
 class ClinicalRecord extends Model
 {
+    use BelongsToClinic;
+    
     public $timestamps = false;
 
     protected $fillable = [
-        'clinic_id', 'patient_id', 'appointment_id', 'notes'
+         'clinic_id', 'patient_id', 'appointment_id', 'notes'
     ];
 
     public function clinic(): BelongsTo

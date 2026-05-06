@@ -1,3 +1,257 @@
+@import "./theme.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+html,body,#app { height: 100%; }
+body { background: var(--bg-app); color: var(--text-main); }
+
+/* Shared page header block used across configuration-like screens */
+.page-header {
+	margin-bottom: 14px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+}
+.page-header h1 { margin: 0; font-size: 20px; font-weight: 800 }
+.form-sub { color: #6b7280; font-size: 13px; margin-top: 4px }
+
+/* Make Auth layout respect global bg if it used explicit color */
+.auth-container, .auth-left { background: transparent }
+
+/* Ensure auth layout doesn't force its own background */
+.auth-container, .auth-left { background: transparent }
+
+/* SweetAlert2 global theming to match app buttons and popup */
+.swal2-popup {
+	font-family: inherit;
+	border-radius: 12px;
+	padding: 18px;
+	box-shadow: 0 10px 30px rgba(2,6,23,0.08);
+}
+.swal2-title { font-size: 16px; font-weight: 700; color: #111827; margin-bottom: 6px }
+.swal2-content { color: #6b7280; font-size: 14px; margin-bottom: 6px }
+.swal2-icon { margin: 0 auto 8px }
+.swal2-actions { display: flex; gap: 8px; justify-content: center; margin-top: 12px }
+
+/* Confirm button - primary warning */
+.swal2-confirm {
+	background-color: #f97316 !important;
+	color: #ffffff !important;
+	border-radius: 9999px !important;
+	padding: 8px 14px !important;
+	border: 2px solid transparent !important;
+	font-weight: 600 !important;
+	min-width: 110px !important;
+	box-shadow: none !important;
+}
+.swal2-confirm:hover { background-color: #ef7a1e !important }
+
+/* Cancel button - muted outline */
+.swal2-cancel {
+	background-color: #ffffff !important;
+	color: #374151 !important;
+	border-radius: 9999px !important;
+	padding: 8px 14px !important;
+	border: 2px solid #e5e7eb !important;
+	font-weight: 600 !important;
+	min-width: 110px !important;
+}
+.swal2-cancel:hover { background-color: #f9fafb !important }
+
+/* Make default icon warning color consistent */
+.swal2-icon.swal2-warning .swal2-icon-content { color: #ffffff }
+.swal2-icon.swal2-warning { background-color: #f97316 !important }
+
+/* Global primary button used across the app (matches patients Index styling) */
+.btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	text-decoration: none;
+}
+.btn.btn-sm {
+	padding: 6px 12px;
+	font-size: 13px;
+	border-radius: 9999px;
+	border: 2px solid #3b82f6; /* azul */
+	color: #3b82f6;
+	background: #ffffff;
+	font-weight: 600;
+}
+.btn.btn-sm:hover { background: #eff6ff }
+.btn.btn-sm.small { padding:6px 10px; font-size:13px }
+
+/* Disabled buttons (global): unified very light gray style across the app */
+button:disabled,
+button[disabled],
+.btn:disabled,
+.btn[disabled],
+.btn--solid:disabled,
+.btn--solid[disabled],
+.btn--ghost:disabled,
+.btn--ghost[disabled],
+.primary:disabled,
+.primary[disabled],
+.muted:disabled,
+.muted[disabled] {
+	background: #f3f4f6 !important;
+	border-color: #e5e7eb !important;
+	color: #9ca3af !important;
+	box-shadow: none !important;
+	cursor: not-allowed !important;
+	opacity: 1 !important;
+	filter: none !important;
+	pointer-events: none !important;
+}
+
+/* Solid primary button (filled) */
+.btn--solid {
+	padding: 10px 16px;
+	border-radius: 12px;
+	background: var(--black, #0f172a);
+	color: #ffffff;
+	font-size: 15px;
+	font-weight: 700;
+	border: none;
+	cursor: pointer;
+	box-shadow: 0 10px 28px rgba(2,6,23,0.18);
+	transition: transform 0.1s ease, box-shadow 0.15s ease;
+}
+.btn--solid:hover { transform: translateY(-1px); box-shadow: 0 14px 32px rgba(2,6,23,0.22); }
+
+/* Ghost / muted outline variant */
+.btn--ghost {
+	padding: 8px 14px;
+	border-radius: 9999px;
+	background: #ffffff;
+	color: #374151;
+	border: 2px solid #e5e7eb;
+}
+
+/* Muted pill button — used for "Volver" and secondary actions across all views */
+.muted { padding:8px 14px; border-radius:9999px; border:1px solid #e5e7eb; background:#fff; cursor:pointer }
+.muted:hover { background:#f9fafb }
+
+/* Back buttons: rounded on the left, squared on the right */
+.muted.back-btn {
+	border-radius: 9999px 0 0 9999px !important;
+}
+
+/* Right-side menu buttons: squared on the left, rounded on the right */
+.muted.menu-right-btn {
+	border-radius: 0 9999px 9999px 0 !important;
+	margin-left: 7px;
+}
+
+.back-menu-group {
+	display: inline-flex;
+	align-items: center;
+	gap: 0;
+}
+
+/* Warning variant — subtle orange used for destructive/attention actions */
+.warning {
+	padding: 8px 16px;
+	border-radius: 9999px;
+	background: #fff7ed;
+	color: #c2410c;
+	border: 2px solid #f97316;
+	font-weight: 600;
+	font-size: 14px;
+}
+.warning:hover { background: #fff2e6 }
+
+/* Global search input used in Patients and Appointments (unified style) */
+.search-center { display:flex; justify-content:center }
+.search-wrapper { position:relative; width:100%; max-width:480px }
+.search-icon { position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#9ca3af }
+.search-input { width:100%; padding:8px 12px 8px 36px; border-radius:9999px; border:1px solid #e5e7eb; font-size:14px }
+
+/* Generic entity index shell: reusable in all Index views */
+.entity-card {
+	background: #fff;
+	border: 1px solid var(--border);
+	border-radius: 14px;
+	padding: 16px;
+}
+
+/* Generic responsive table wrapper and table styles */
+.entity-table-wrap {
+	width: 100%;
+	overflow-x: auto;
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	background: #fff;
+}
+.entity-table {
+	width: 100%;
+	min-width: 860px;
+	border-collapse: separate;
+	border-spacing: 0;
+	table-layout: fixed;
+}
+.entity-table thead th {
+	text-align: left;
+	padding: 12px 14px;
+	font-size: 13px;
+	font-weight: 600;
+	color: #6b7280;
+	border-bottom: 1px solid var(--border);
+	background: #f8fafc;
+	white-space: nowrap;
+}
+.entity-table tbody td {
+	text-align: left;
+	padding: 12px 14px;
+	font-size: 13px;
+	color: #374151;
+	border-bottom: 1px solid #f1f5f9;
+	vertical-align: middle;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.entity-table tbody tr:last-child td { border-bottom: none }
+
+/* Per-view table sizing overrides */
+.entity-table.products-table { min-width: 1120px }
+.entity-table.bonuses-table { min-width: 1260px }
+.entity-table.invoices-table { min-width: 1040px }
+.entity-table.payments-table { min-width: 1160px }
+
+/* Generic reusable width helpers for table columns */
+.entity-table .wide-min { width: 85px }
+.entity-table .wide-mid { width: 150px }
+.entity-table .wide-max { width: 20% }
+
+/* Aliases (preferred naming) for reusable column sizing */
+.entity-table .col-min { width: 85px }
+.entity-table .col-mid { width: 150px }
+.entity-table .col-max { width: 20% }
+
+/* Generic table row interaction */
+.entity-table-row {
+	cursor: pointer;
+	transition: background .15s ease;
+}
+.entity-table-row:hover { background: #f8fbff }
+
+/* Mobile adjustments: make search compact and full-width on small screens */
+@media (max-width: 480px) {
+	.search-wrapper { max-width: 100%; padding: 0 12px }
+	.search-input { font-size: 13px; padding: 8px 10px 8px 36px }
+	.search-icon { left:8px }
+}
+
+@media (max-width: 900px) {
+	.entity-table { min-width: 760px }
+}
+
+@media (max-width: 640px) {
+	.entity-card { padding: 12px }
+}
+
+
+

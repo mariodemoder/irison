@@ -13,11 +13,31 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        // Asegurar que exista una clínica antes de crear el usuario
+        $clinic = \App\Models\Clinic::first();
+        if (! $clinic) {
+            $clinic = \App\Models\Clinic::create([
+                'name' => 'Clinica Demo',
+                'legal_name' => 'Clinica Demo SL',
+                'email' => 'demo@clinic.test'
+            ]);
+        }
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        // Crear usuario de prueba sin usar la factory para evitar columnas ausentes
+        if (! \App\Models\User::where('email', 'test@example.com')->exists()) {
+            \App\Models\User::create([
+                'clinic_id' => $clinic->id,
+                'name' => 'Test User',
+                'email' => 'test@example.com',
+                'password' => bcrypt('password'),
+            ]);
+        }
+
+        // Pacientes de prueba
+        $this->call(PatientSeeder::class);
+
+        if (app()->environment(['local', 'testing'])) {
+            $this->call(TestAppointmentsTodayTomorrowSeeder::class);
+        }
     }
 }
