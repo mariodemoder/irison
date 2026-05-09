@@ -568,7 +568,7 @@ onMounted(async () => {
 .dashboard-grid {
   margin-top: 24px;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 24px;
 }
 
@@ -858,7 +858,6 @@ onMounted(async () => {
 
   .dashboard-grid {
     grid-template-columns: 1fr;
-
   }
 
   .today-grid {

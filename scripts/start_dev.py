@@ -41,7 +41,7 @@ def check_available(cmd):
 cmds = [
     'mailpit',
     'npm run dev',
-    'php artisan serve --host=127.0.0.1 --port=8000'
+    'php artisan serve --host=127.0.0.1 --port=8000 --no-reload'
 ]
 
 titles = {}

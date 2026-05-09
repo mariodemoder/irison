@@ -1,5 +1,5 @@
 <template>
-  <div class="layout-shell min-h-screen bg-gray-50">
+  <div class="layout-shell min-h-screen" :style="{ backgroundColor: 'var(--theme-color-light)' }">
     <aside v-show="isMobile || open" class="sidebar" :class="{ compact: compactMode || isMobile }">
       <button class="logo-wrap" type="button" @click="toggleMenuMode" :title="isMobile ? 'Menú compacto' : 'Expandir/contraer menú'">
         <img :src="currentLogo" alt="Logo" class="sidebar-logo" />
@@ -92,6 +92,24 @@
       <main class="p-6" :class="{ 'readonly-mode': isReadOnlyNoTransactions }">
         <slot />
       </main>
+
+      <footer class="app-footer">
+        <div class="app-footer-inner">
+          <div class="app-footer-brand">
+            <img :src="faviconUrl" alt="Irison" class="app-footer-logo" />
+            <span class="app-footer-name">Irison</span>
+          </div>
+
+          <nav class="app-footer-nav">
+            <router-link to="/privacy" class="app-footer-link">Privacidad</router-link>
+            <router-link to="/terms" class="app-footer-link">Términos</router-link>
+            <button type="button" class="app-footer-link app-footer-btn" @click="openContactForm">Contacto</button>
+          </nav>
+
+          <p class="app-footer-copy">© {{ currentYear }} Irison. All rights reserved.</p>
+          <p class="app-footer-tagline">Simplify your time. Focus on what matters.</p>
+        </div>
+      </footer>
     </div>
   </div>
 </template>
@@ -99,6 +117,8 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import Swal from 'sweetalert2'
+import api from '../services/api'
 import logoCompact from '../assets/logoini.svg'
 import logoFull from '../assets/logonameviolet.svg'
 import logout from '../utils/logout'
@@ -120,6 +140,8 @@ const MOBILE_BREAKPOINT = 768
 const open = ref(true)
 const compactMode = ref(false)
 const isMobile = ref(false)
+const currentYear = new Date().getFullYear()
+const faviconUrl = `${import.meta.env.BASE_URL}favicon.svg`
 
 const route = useRoute()
 const router = useRouter()
@@ -291,6 +313,44 @@ function isActive(base) {
   const p = route.path || ''
   return p === base || p.startsWith(base + '/')
 }
+
+async function openContactForm() {
+  const { value: formValues, isConfirmed } = await Swal.fire({
+    title: 'Contacto',
+    html: `
+      <div style="text-align:left;margin-bottom:8px">
+        <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:4px">Asunto</label>
+        <input id="swal-contact-subject" class="swal2-input" style="margin:0;width:100%;box-sizing:border-box" placeholder="Asunto del mensaje" maxlength="200" />
+      </div>
+      <div style="text-align:left">
+        <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:4px">Mensaje</label>
+        <textarea id="swal-contact-body" class="swal2-textarea" style="margin:0;width:100%;box-sizing:border-box;height:140px;resize:vertical" placeholder="Describe tu consulta..." maxlength="4000"></textarea>
+      </div>
+    `,
+    customClass: { popup: 'swal-popup-card' },
+    confirmButtonText: 'Enviar',
+    cancelButtonText: 'Cancelar',
+    showCancelButton: true,
+    focusConfirm: false,
+    preConfirm: () => {
+      const subject = document.getElementById('swal-contact-subject').value.trim()
+      const body    = document.getElementById('swal-contact-body').value.trim()
+      if (!subject) { Swal.showValidationMessage('El asunto es obligatorio'); return false }
+      if (!body)    { Swal.showValidationMessage('El mensaje no puede estar vacío'); return false }
+      return { subject, body }
+    },
+  })
+
+  if (!isConfirmed || !formValues) return
+
+  try {
+    await api.post('/contact', formValues)
+    Swal.fire({ icon: 'success', title: 'Mensaje enviado', text: 'Nos pondremos en contacto contigo pronto.', customClass: { popup: 'swal-popup-card' } })
+  } catch (err) {
+    const msg = err?.response?.data?.message || 'No se pudo enviar el mensaje.'
+    Swal.fire({ icon: 'error', title: 'Error', text: msg, customClass: { popup: 'swal-popup-card' } })
+  }
+}
 </script>
 
 <style scoped>
@@ -307,7 +367,7 @@ function isActive(base) {
   height: 100vh;
   overflow: auto;
   background: #ffffff;
-  border-right: 1px solid #e5e7eb;
+  border-right: 1px solid var(--theme-color);
   padding: 16px;
   box-shadow: 0 14px 28px rgba(15, 23, 42, 0.12);
   transition: width 0.2s ease;
@@ -439,6 +499,79 @@ function isActive(base) {
   padding-left: 68px;
 }
 
+/* ── Footer ── */
+.app-footer {
+  margin-top: auto;
+  border-top: 1px solid var(--theme-color);
+  background: #ffffff;
+  padding: 10px 16px;
+  font-size: 13px;
+}
+
+.app-footer-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.app-footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-footer-logo {
+  width: 18px;
+  height: 18px;
+  opacity: 0.8;
+  filter: grayscale(1);
+}
+
+.app-footer-name {
+  font-weight: 600;
+  color: #111827;
+  font-size: 14px;
+}
+
+.app-footer-nav {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.app-footer-link {
+  color: #6b7280;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.app-footer-link:hover {
+  color: #111827;
+}
+
+.app-footer-copy {
+  margin: 0;
+  color: #6b7280;
+}
+
+.app-footer-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: inherit;
+  font-family: inherit;
+}
+
+.app-footer-tagline {
+  margin: 0;
+  font-size: 11px;
+  color: #9ca3af;
+  letter-spacing: 0.02em;
+}
+
 /* Estilos mínimos: el diseño depende de utilidades de Tailwind si está disponible. */
 .menu-active {
   background: #dbeafe;
@@ -462,12 +595,12 @@ function isActive(base) {
 .user-link:hover { text-decoration:underline }
 .header-card-sub { display:flex; align-items:center; gap:8px; color:#6b7280; font-size:13px }
 .sub-label { color:#6b7280 }
-.logout-btn { padding:6px 12px; border-radius:999px; border:1px solid #e5e7eb; background:#fff; color:#374151; font-size:13px; font-weight:600; white-space:nowrap }
+.logout-btn { padding:6px 12px; border-radius:999px; border:1px solid var(--theme-color); background:#fff; color:#374151; font-size:13px; font-weight:600; white-space:nowrap }
 .logout-btn:hover { background:#f8fafc }
 
 .header-default {
   background: #ffffff;
-  border-bottom-color: #e5e7eb;
+  border-bottom-color: var(--theme-color);
 }
 
 .header-trial-warning {

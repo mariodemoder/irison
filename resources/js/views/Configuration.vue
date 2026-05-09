@@ -74,6 +74,14 @@
                     </div>
                   </div>
 
+                  <div>
+                    <label class="label">Color de tema</label>
+                    <div class="color-palette">
+                      <button type="button" class="color-option" v-for="color in themeColors" :key="color" :style="{ backgroundColor: color }" :class="{ selected: form.clinic_theme_color === color }" @click="form.clinic_theme_color = color" :title="color"></button>
+                    </div>
+                    <div class="color-preview">Seleccionado: <span :style="{ color: form.clinic_theme_color || '#e5e7eb' }">■</span> {{ form.clinic_theme_color || '#e5e7eb' }}</div>
+                  </div>
+
                   <div v-if="status==='blocked'" class="panel-note">
                     Tu clínica no tiene suscripción activa. Puedes activarla desde la pestaña de Subscripción.
                   </div>
@@ -503,7 +511,6 @@
               </div>
 
               <div v-else-if="activeTab==='factura_pdf'" class="action-row">
-                <button class="btn btn-sm" type="button" :disabled="previewingInvoiceBackgroundPdf" @click.prevent="refreshPreview()">Actualizar preview</button>
                 <button class="btn btn-sm" type="button" :disabled="previewingInvoiceBackgroundPdf" @click.prevent="openPdfInNewTab()">Abrir PDF</button>
                 <button class="btn btn-sm" type="button" :disabled="uploadingInvoiceBackground || !invoiceBackgroundFile" @click.prevent="uploadInvoiceBackground">Subir fondo</button>
                 <BtnTrash :disabled="removingInvoiceBackground || !invoiceBackgroundUrl" @click.prevent="removeInvoiceBackground">Eliminar fondo</BtnTrash>
@@ -526,6 +533,7 @@ import AppLoading from '../components/AppLoading.vue'
 import BtnTrash from '../components/BtnTrash.vue'
 import api from '../services/api'
 import { useToast } from 'vue-toastification'
+import { meClinic } from '../shared/meCache'
 
 const router = useRouter()
 const toast = useToast()
@@ -572,7 +580,17 @@ const form = ref({
   clinic_province: '',
   clinic_country: '',
   clinic_zip: '',
+  clinic_theme_color: '',
 })
+
+const themeColors = [
+  '#FFB3BA', // pastel pink
+  '#FFD6BA', // pastel peach
+  '#FFFFBA', // pastel yellow
+  '#BAE1BA', // pastel green
+  '#BAC8FF', // pastel blue
+  '#E1BAFF', // pastel purple
+]
 
 const dayLabels = {
   monday: 'Lunes',
@@ -689,6 +707,7 @@ async function load() {
     form.value.clinic_province = clinic.value?.province ?? ''
     form.value.clinic_country = clinic.value?.country ?? ''
     form.value.clinic_zip = clinic.value?.zip ?? ''
+    form.value.clinic_theme_color = clinic.value?.theme_color ?? ''
     businessHours.value = sanitizeBusinessHours(clinic.value?.business_hours)
     closedDays.value = sanitizeClosedDays(clinic.value?.closed_days)
 
@@ -743,6 +762,7 @@ async function save() {
         province: form.value.clinic_province,
         country: form.value.clinic_country,
         zip: form.value.clinic_zip,
+        theme_color: form.value.clinic_theme_color || null,
         business_hours: businessHours.value.map((item) => ({
           day: item.day,
           enabled: Boolean(item.enabled),
@@ -775,6 +795,7 @@ async function save() {
     toast.success('Configuración guardada')
     user.value = res.data.user ?? user.value
     clinic.value = res.data.clinic ?? clinic.value
+    meClinic.value = clinic.value
     businessHours.value = sanitizeBusinessHours(clinic.value?.business_hours)
     closedDays.value = sanitizeClosedDays(clinic.value?.closed_days)
     if (Array.isArray(res.data.counters) && res.data.counters.length > 0) {
@@ -1149,7 +1170,7 @@ onBeforeUnmount(() => {
 
 .profile-container {
   width: 100%;
-  max-width: 1180px;
+  max-width: none;
 }
 .profile-shell { display:grid; gap:14px }
 .card-stage { min-height:560px }
@@ -1604,5 +1625,42 @@ onBeforeUnmount(() => {
   .closed-card-actions {
     grid-template-columns: 1fr 1fr;
   }
+}
+
+.color-palette {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.color-option {
+  width: 100%;
+  aspect-ratio: 1;
+  border: 3px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.color-option:hover {
+  transform: scale(1.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.color-option.selected {
+  border-color: #111827;
+  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.1), 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.color-preview {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.color-preview span {
+  font-size: 20px;
+  margin: 0 4px;
 }
 </style>

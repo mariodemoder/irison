@@ -7,16 +7,20 @@
             <h1>Productos</h1>
             <div class="form-sub">Listado y búsqueda de productos</div>
           </div>
-          <router-link to="/products/create" class="btn btn-sm small">Nuevo producto</router-link>
-        </div>
 
-        <div class="filters">
-          <input
-            v-model="query"
-            class="search-input"
-            placeholder="Buscar por referencia, nombre, familia o lote"
-            @input="debouncedLoad"
-          />
+          <div class="search-center">
+            <div class="search-wrapper">
+              <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <input
+                v-model="query"
+                class="search-input"
+                placeholder="Buscar por referencia, nombre, familia o lote"
+                @input="debouncedLoad"
+              />
+            </div>
+          </div>
+
+          <router-link to="/products/create" class="btn btn-sm small btn-nuevo-producto">Nuevo producto</router-link>
         </div>
 
         <AppLoading v-if="loading" message="Cargando productos..." />
@@ -141,8 +145,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.filters { margin-bottom:10px }
-.search-input { padding:8px; border:1px solid #e5e7eb; border-radius:8px; font-size:13px; width:100% }
+.search-center { width: 100%; max-width: 520px; }
 
 .name-col { font-weight:600 }
 
@@ -159,6 +162,19 @@ onMounted(() => {
 .icon-btn:disabled { opacity:0.45 }
 
 @media (max-width: 900px) {
-  .page-header { grid-template-columns: 1fr auto }
+  .search-center { max-width: 100%; }
+  .btn-nuevo-producto { margin-left: 0 !important; }
+}
+.btn-nuevo-producto {
+  min-width: 0 !important;
+  max-width: 120px !important;
+  padding-left: 6px !important;
+  padding-right: 6px !important;
+  font-size: 13px !important;
+  margin-left: auto !important;
+  display: inline-flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  white-space: nowrap !important;
 }
 </style>
