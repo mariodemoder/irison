@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\PatientController;
 use App\Http\Controllers\API\ActivateAccountController;
 use App\Http\Controllers\API\RegisterController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\DashboardSummaryController;
 
 /*
@@ -123,6 +124,9 @@ Route::middleware(['auth:sanctum', 'clinic', 'check.subscription'])->group(funct
     Route::post('appointments/{appointment}/invoice', [\App\Http\Controllers\Api\AppointmentController::class, 'issueInvoice']);
     // payment subscribe
     Route::post('/subscribe', \App\Http\Controllers\Api\SubscribeController::class);
+
+    // Formulario de contacto: envía email al equipo de Irison
+    Route::post('/contact', [ContactController::class, 'send']);
 });
 
 // Información del usuario autenticado (`/me`): debe estar disponible

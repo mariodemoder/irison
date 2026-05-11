@@ -6,7 +6,7 @@
   <style>
     body { margin: 0; font-family: DejaVu Sans, sans-serif; color: #0f172a; font-size: 12px; }
     .page { position: relative; min-height: 1040px; padding: 18px 50px; background: #fff; overflow: hidden; }
-    .bg-layer { position: absolute; inset: 0; background-position: center; background-size: cover; background-repeat: no-repeat; opacity: 0.5; z-index: 1; }
+    .bg-layer { position: absolute; inset: 0; background-position: center; background-size: cover; background-repeat: no-repeat; opacity: 1; z-index: 1; }
     .content-layer { position: relative; z-index: 2; }
     .header { display: flex; justify-content: space-between; align-items: flex-start; margin-top: 30px; margin-bottom: 20px; gap: 16px; }
     .header-left { flex: 0 0 auto; }

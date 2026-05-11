@@ -26,6 +26,8 @@ import InvoicesForm from '../views/invoices/Form.vue'
 import BonusesIndex from '../views/bonuses/Index.vue'
 import NotificationsIndex from '../views/notifications/Index.vue'
 import NotificationsShow from '../views/notifications/Show.vue'
+import Privacy from '../views/Privacy.vue'
+import Terms from '../views/Terms.vue'
 
 const routes = [
   { path: '/login', component: Login },
@@ -59,6 +61,8 @@ const routes = [
   { path: '/appointments/create', component: AppointmentsForm, meta: { auth: true } },
   { path: '/appointments/:id', component: AppointmentsShow, meta: { auth: true } },
   { path: '/appointments/:id/edit', component: AppointmentsForm, meta: { auth: true } },
+  { path: '/privacy', component: Privacy },
+  { path: '/terms', component: Terms },
 ]
 
 const router = createRouter({
