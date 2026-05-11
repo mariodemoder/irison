@@ -77,9 +77,17 @@
                   <div>
                     <label class="label">Color de tema</label>
                     <div class="color-palette">
-                      <button type="button" class="color-option" v-for="color in themeColors" :key="color" :style="{ backgroundColor: color }" :class="{ selected: form.clinic_theme_color === color }" @click="form.clinic_theme_color = color" :title="color"></button>
+                      <button
+                        type="button"
+                        class="color-option"
+                        v-for="color in themeColors"
+                        :key="color.value"
+                        :style="{ backgroundColor: color.value }"
+                        :class="{ selected: form.clinic_theme_color === color.value }"
+                        @click="form.clinic_theme_color = color.value"
+                        :title="color.name"
+                      ></button>
                     </div>
-                    <div class="color-preview">Seleccionado: <span :style="{ color: form.clinic_theme_color || '#e5e7eb' }">■</span> {{ form.clinic_theme_color || '#e5e7eb' }}</div>
                   </div>
 
                   <div v-if="status==='blocked'" class="panel-note">
@@ -567,6 +575,7 @@ const uploadingInvoiceBackground = ref(false)
 const removingInvoiceBackground = ref(false)
 const previewingInvoiceBackgroundPdf = ref(false)
 const profilePreviewPdfUrl = ref(null)
+const IRISON_COLOR = '#F8FAFC'
 
 const form = ref({
   name: '',
@@ -580,16 +589,17 @@ const form = ref({
   clinic_province: '',
   clinic_country: '',
   clinic_zip: '',
-  clinic_theme_color: '',
+  clinic_theme_color: IRISON_COLOR,
 })
 
 const themeColors = [
-  '#FFB3BA', // pastel pink
-  '#FFD6BA', // pastel peach
-  '#FFFFBA', // pastel yellow
-  '#BAE1BA', // pastel green
-  '#BAC8FF', // pastel blue
-  '#E1BAFF', // pastel purple
+  { name: 'Irison', value: IRISON_COLOR },
+  { name: 'Rosa pastel', value: '#FFE7EC' },
+  { name: 'Durazno pastel', value: '#FFF0E6' },
+  { name: 'Amarillo pastel', value: '#FFFBE8' },
+  { name: 'Verde pastel', value: '#ECFDF3' },
+  { name: 'Azul pastel', value: '#EAF3FF' },
+  { name: 'Lila pastel', value: '#F3ECFF' },
 ]
 
 const dayLabels = {
@@ -707,7 +717,7 @@ async function load() {
     form.value.clinic_province = clinic.value?.province ?? ''
     form.value.clinic_country = clinic.value?.country ?? ''
     form.value.clinic_zip = clinic.value?.zip ?? ''
-    form.value.clinic_theme_color = clinic.value?.theme_color ?? ''
+    form.value.clinic_theme_color = clinic.value?.theme_color || IRISON_COLOR
     businessHours.value = sanitizeBusinessHours(clinic.value?.business_hours)
     closedDays.value = sanitizeClosedDays(clinic.value?.closed_days)
 
@@ -762,7 +772,7 @@ async function save() {
         province: form.value.clinic_province,
         country: form.value.clinic_country,
         zip: form.value.clinic_zip,
-        theme_color: form.value.clinic_theme_color || null,
+        theme_color: form.value.clinic_theme_color || IRISON_COLOR,
         business_hours: businessHours.value.map((item) => ({
           day: item.day,
           enabled: Boolean(item.enabled),
@@ -1628,24 +1638,24 @@ onBeforeUnmount(() => {
 }
 
 .color-palette {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   margin-bottom: 12px;
 }
 
 .color-option {
-  width: 100%;
-  aspect-ratio: 1;
-  border: 3px solid transparent;
-  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  border: 2px solid transparent;
+  border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
 .color-option:hover {
-  transform: scale(1.08);
+  transform: scale(1.05);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 

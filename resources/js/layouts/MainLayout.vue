@@ -374,12 +374,12 @@ async function openContactForm() {
 }
 
 .sidebar.compact {
-  width: 86px;
+  width: 72px;
 }
 
 .sidebar.compact .menu-link {
   justify-content: center;
-  padding: 10px 8px;
+  padding: 8px 6px;
 }
 
 .logo-wrap {
@@ -394,14 +394,14 @@ async function openContactForm() {
 }
 
 .sidebar-logo {
-  width: 200px;
-  height: 100px;
+  width: 160px;
+  height: 80px;
   object-fit: contain;
 }
 
 .sidebar.compact .sidebar-logo {
-  width: 50px;
-  height: 50px;
+  width: 42px;
+  height: 42px;
 }
 
 .menu-link {
@@ -492,7 +492,7 @@ async function openContactForm() {
 }
 
 .app-column.with-sidebar-compact {
-  padding-left: 86px;
+  padding-left: 72px;
 }
 
 .app-column.with-sidebar-mobile {
