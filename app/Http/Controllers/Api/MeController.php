@@ -145,6 +145,7 @@ class MeController
             'clinic.province' => ['nullable', 'string', 'max:120'],
             'clinic.country' => ['nullable', 'string', 'max:120'],
             'clinic.zip' => ['nullable', 'string', 'max:20'],
+            'clinic.theme_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'clinic.business_hours' => ['nullable', 'array'],
             'clinic.business_hours.*.day' => ['required', Rule::in(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'])],
             'clinic.business_hours.*.enabled' => ['required', 'boolean'],
@@ -202,6 +203,7 @@ class MeController
                 'province' => $clinicPayload['province'] ?? null,
                 'country' => $clinicPayload['country'] ?? null,
                 'zip' => $clinicPayload['zip'] ?? null,
+                'theme_color' => $clinicPayload['theme_color'] ?? null,
                 'business_hours' => $businessHours,
                 'closed_days' => $closedDays,
             ]);
