@@ -1,7 +1,13 @@
 <template>
   <MainLayout>
     <div>
-
+      <div class="entity-card">
+        <div class="page-header">
+        <div>
+          <h1>Agenda</h1>
+          <div class="form-sub">Visualiza y gestiona tus citas</div>
+        </div>
+      </div>
       <CalendarHeader
         view="week"
         :label="weekRangeLabel"
@@ -19,10 +25,11 @@
           <div
             v-for="day in weekDays"
             :key="day.iso"
-            :class="['dh-cell', { 'dh-today': day.isToday }]"
+            :class="['dh-cell', { 'dh-today': day.isToday, 'dh-closed': day.isClosed }]"
           >
             <span class="dh-name">{{ day.name }}</span>
             <span :class="['dh-num', { 'dh-bubble': day.isToday }]">{{ day.num }}</span>
+            <span v-if="day.isClosed" class="dh-closed-badge">Cerrado</span>
             <span v-if="apptCountForDay(day.iso) > 0" class="dh-badge">{{ apptCountForDay(day.iso) }}</span>
           </div>
         </div>
@@ -43,16 +50,18 @@
               <div
                 v-for="day in weekDays"
                 :key="day.iso"
-                :class="['dc', { 'dc-today': day.isToday, 'dc-weekend': day.isWeekend }]"
+                :class="['dc', { 'dc-today': day.isToday, 'dc-weekend': day.isWeekend, 'dc-closed': day.isClosed }]"
               >
                 <!-- Filas de hora (guías) -->
                 <div
                   v-for="h in hours"
                   :key="h"
-                  class="hr-row"
+                  :class="['hr-row', { 'hr-row-closed': day.isClosed }]"
                   :title="`Nueva cita ${String(h).padStart(2,'0')}:00`"
                   @click="goToNewSlot(day.iso, h)"
                 ></div>
+
+                <div v-if="day.isClosed" class="day-closed-overlay">Día cerrado</div>
 
                 <!-- Indicador de hora actual -->
                 <div
@@ -87,6 +96,7 @@
         </div>
 
       </div>
+      </div>
 
     </div>
   </MainLayout>
@@ -98,8 +108,11 @@ import { useRouter } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
 import CalendarHeader from '../../components/calendar/CalendarHeader.vue'
+import { isDateClosed, normalizeClosedDays } from '../../shared/clinicCalendar'
+import { useToast } from 'vue-toastification'
 
 const router = useRouter()
+const toast = useToast()
 
 // ── Constantes ────────────────────────────────────────
 const HOUR_START = 0
@@ -113,6 +126,7 @@ const nowTop     = ref(null)
 const calBodyRef = ref(null)
 const appointments = ref([])
 const loading = ref(false)
+const closedDays = ref([])
 let   timerId    = null
 
 // ── Utilidades ────────────────────────────────────────
@@ -181,6 +195,15 @@ async function load() {
   }
 }
 
+async function loadClinicCalendarConfig() {
+  try {
+    const res = await api.get('/me')
+    closedDays.value = normalizeClosedDays(res?.data?.clinic?.closed_days)
+  } catch (e) {
+    closedDays.value = []
+  }
+}
+
 // ── Días de la semana ─────────────────────────────────
 const DAY_NAMES = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 const todayISO  = toISO(new Date())
@@ -189,11 +212,13 @@ const weekDays = computed(() =>
   Array.from({ length: 7 }, (_, i) => {
     const d = new Date(weekStart.value)
     d.setDate(d.getDate() + i)
+    const iso = toISO(d)
     return {
-      iso:       toISO(d),
+      iso,
       name:      DAY_NAMES[i],
       num:       d.getDate(),
-      isToday:   toISO(d) === todayISO,
+      isToday:   iso === todayISO,
+      isClosed:  isDateClosed(iso, closedDays.value),
       isWeekend: i >= 5,
     }
   })
@@ -226,6 +251,10 @@ function goToAppointment(id) {
 }
 
 function goToNewSlot(iso, hour) {
+  if (isDateClosed(iso, closedDays.value)) {
+    toast.info('La clínica está cerrada en esa fecha')
+    return
+  }
   const pad = n => String(n).padStart(2, '0')
   const start = `${iso}T${pad(hour)}:00`
   const end   = `${iso}T${pad(Math.min(hour + 1, 23))}:00`
@@ -309,6 +338,7 @@ function updateNow() {
 onMounted(async () => {
   updateNow()
   timerId = setInterval(updateNow, 60_000)
+  await loadClinicCalendarConfig()
   await load()
   await nextTick()
   if (calBodyRef.value) {
@@ -361,6 +391,21 @@ onUnmounted(() => {
   gap: 3px;
   min-width: 0;
   position: relative;
+}
+.dh-closed .dh-name,
+.dh-closed .dh-num {
+  text-decoration: line-through;
+  color: #b91c1c;
+}
+.dh-closed-badge {
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #9f1239;
+  background: #ffe4e6;
+  border: 1px solid #fecdd3;
+  border-radius: 999px;
+  padding: 1px 6px;
 }
 .dh-cell:last-child { border-right: none }
 
@@ -443,6 +488,15 @@ onUnmounted(() => {
   position: relative;
   border-right: 1px solid #e5e7eb;
 }
+.dc-closed {
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(244, 63, 94, 0.06),
+    rgba(244, 63, 94, 0.06) 8px,
+    rgba(255, 255, 255, 0.8) 8px,
+    rgba(255, 255, 255, 0.8) 16px
+  );
+}
 .dc:last-child { border-right: none }
 
 /* Fin de semana con fondo levemente distinto */
@@ -457,6 +511,22 @@ onUnmounted(() => {
   border-bottom: 1px solid #f3f4f6;
   pointer-events: auto;
   cursor: pointer;
+}
+.hr-row-closed {
+  cursor: not-allowed;
+}
+.day-closed-overlay {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #9f1239;
+  background: rgba(255, 241, 242, 0.96);
+  border: 1px solid #fecdd3;
+  border-radius: 999px;
+  padding: 2px 8px;
+  pointer-events: none;
 }
 .hr-row:hover {
   background: rgba(59, 130, 246, 0.08);

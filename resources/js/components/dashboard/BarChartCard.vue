@@ -82,7 +82,7 @@ onBeforeUnmount(() => {
   border-radius: 20px;
   padding: 24px;
   position: relative;
-  min-height: 280px;
+  min-height: 0;
 }
 
 .card-title {
@@ -98,7 +98,30 @@ onBeforeUnmount(() => {
 }
 
 .chart-wrap {
-  height: 220px;
+  width: 100%;
+  height: clamp(220px, 32vw, 320px);
   margin-top: 12px;
+}
+
+.chart-wrap canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+@media (max-width: 768px) {
+  .card {
+    padding: 16px;
+  }
+
+  .card-title {
+    left: 16px;
+    font-size: 13px;
+    padding: 5px 12px;
+  }
+
+  .chart-wrap {
+    height: 220px;
+  }
 }
 </style>

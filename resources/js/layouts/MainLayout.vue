@@ -1,8 +1,8 @@
 <template>
-  <div class="layout-shell min-h-screen bg-gray-50">
-    <aside v-show="open" class="sidebar" :class="{ compact: compactMode }">
-      <button class="logo-wrap" type="button" @click="toggleMenuMode" :title="isMobile ? 'Mostrar/ocultar menú' : 'Expandir/contraer menú'">
-        <img :src="logo" alt="Logo" class="sidebar-logo" />
+  <div class="layout-shell min-h-screen" :style="{ backgroundColor: 'var(--theme-color-light)' }">
+    <aside v-show="isMobile || open" class="sidebar" :class="{ compact: compactMode || isMobile }">
+      <button class="logo-wrap" type="button" @click="toggleMenuMode" :title="isMobile ? 'Menú compacto' : 'Expandir/contraer menú'">
+        <img :src="currentLogo" alt="Logo" class="sidebar-logo" />
       </button>
 
       <nav class="space-y-1">
@@ -32,35 +32,45 @@
               <rect x="2.5" y="5" width="19" height="14" rx="2"></rect>
               <path d="M2.5 10h19M7 15h4"></path>
             </svg>
+            <svg v-else-if="item.path === '/products'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 7l9-4 9 4-9 4-9-4z"></path>
+              <path d="M3 7v10l9 4 9-4V7"></path>
+              <path d="M12 11v10"></path>
+            </svg>
             <svg v-else-if="item.path === '/invoices'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <path d="M7 3h8l4 4v14H7z"></path>
               <path d="M15 3v4h4"></path>
               <path d="M10 12h6M10 16h6"></path>
+            </svg>
+            <svg v-else-if="item.path === '/notifications'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5"></path>
+              <path d="M10 17a2 2 0 0 0 4 0"></path>
+            </svg>
+            <svg v-else-if="item.path === '/settings'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 1-3 0 1.7 1.7 0 0 0-1-.6 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 1 0-3 1.7 1.7 0 0 0 .6-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 1 3 0 1.7 1.7 0 0 0 1 .6 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.24.37.37.8.37 1.24 0 .44-.13.87-.37 1.24a1.7 1.7 0 0 0 0 3.52z"></path>
             </svg>
             <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <path d="M4 9l8-5 8 5v10l-8 4-8-4z"></path>
               <path d="M9 12h6"></path>
             </svg>
           </span>
-          <span v-if="!compactMode" class="menu-label">{{ item.label }}</span>
+          <span v-if="!(compactMode || isMobile)" class="menu-label">{{ item.label }}</span>
         </router-link>
       </nav>
     </aside>
 
-    <div v-if="isMobile && open" class="sidebar-backdrop" @click="open = false"></div>
-
     <div class="app-column" :class="columnClasses">
-      <header class="h-14 bg-white border-b flex items-center px-4 justify-between">
+      <header class="h-14 border-b flex items-center px-4 justify-between" :class="headerClasses">
         <div class="flex items-center gap-4">
         </div>
 
         <div class="flex items-center gap-4">
           <div class="header-card">
             <div class="header-card-meta">
-              <div class="header-card-label">{{ clinic?.name ?? '—' }} — <router-link to="/profile" class="user-link">{{ user?.name ?? '—' }}</router-link></div>
+              <div class="header-card-label">{{ clinic?.name ?? '—' }} — <router-link to="/profile" class="user-link">MI CUENTA</router-link></div>
               <div class="header-card-sub">
-                <span :class="['status-dot', subscriptionState.color]" aria-hidden="true"></span>
-                <span class="sub-label">{{ subscriptionState.label }}</span>
+                <span class="sub-label">{{ subscriptionStatusDot }} {{ subscriptionState.label }}</span>
               </div>
             </div>
             <button class="logout-btn" @click.prevent="logoutAction">Cerrar sesión</button>
@@ -68,9 +78,38 @@
         </div>
       </header>
 
-      <main class="p-6">
+      <div v-if="showCanceledBanner" class="subscription-canceled-banner">
+        <strong>Suscripción cancelada.</strong>
+        Tu cuenta y tus datos se guardarán hasta siete días a partir de la cancelación.
+        <span v-if="cancellationDaysLeftLabel" class="banner-days">Quedan {{ cancellationDaysLeftLabel }}.</span>
+      </div>
+
+      <div v-if="showTrialReadOnlyBanner" class="subscription-canceled-banner">
+        <strong>Trial finalizado.</strong>
+        Dispones de una semana adicional en modo solo lectura. Puedes consultar datos, pero no crear ni editar transacciones.
+      </div>
+
+      <main class="p-6" :class="{ 'readonly-mode': isReadOnlyNoTransactions }">
         <slot />
       </main>
+
+      <footer class="app-footer">
+        <div class="app-footer-inner">
+          <div class="app-footer-brand">
+            <img :src="faviconUrl" alt="Irison" class="app-footer-logo" />
+            <span class="app-footer-name">Irison</span>
+          </div>
+
+          <nav class="app-footer-nav">
+            <router-link to="/privacy" class="app-footer-link">Privacidad</router-link>
+            <router-link to="/terms" class="app-footer-link">Términos</router-link>
+            <button type="button" class="app-footer-link app-footer-btn" @click="openContactForm">Contacto</button>
+          </nav>
+
+          <p class="app-footer-copy">© {{ currentYear }} Irison. All rights reserved.</p>
+          <p class="app-footer-tagline">Simplify your time. Focus on what matters.</p>
+        </div>
+      </footer>
     </div>
   </div>
 </template>
@@ -78,9 +117,21 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import logo from '../assets/fisiomeca.svg'
+import Swal from 'sweetalert2'
+import api from '../services/api'
+import logoCompact from '../assets/logoini.svg'
+import logoFull from '../assets/logonameviolet.svg'
 import logout from '../utils/logout'
-import { meUser, meClinic, meStatus, meTrialEndsAt, ensureMeLoaded } from '../shared/meCache'
+import {
+  meUser,
+  meClinic,
+  meStatus,
+  meTrialEndsAt,
+  meCancellationDaysLeft,
+  meReadOnlyNoTransactions,
+  meCanTransact,
+  ensureMeLoaded,
+} from '../shared/meCache'
 
 const MENU_OPEN_KEY = 'layout_menu_open'
 const MENU_COMPACT_KEY = 'layout_menu_compact'
@@ -89,23 +140,31 @@ const MOBILE_BREAKPOINT = 768
 const open = ref(true)
 const compactMode = ref(false)
 const isMobile = ref(false)
+const currentYear = new Date().getFullYear()
+const faviconUrl = `${import.meta.env.BASE_URL}favicon.svg`
 
 const route = useRoute()
 const router = useRouter()
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard' },
-  { path: '/patients', label: 'Pacientes' },
   { path: '/appointments', label: 'Agenda' },
-  { path: '/payments', label: 'Pagos' },
-  { path: '/invoices', label: 'Facturación' },
+  { path: '/patients', label: 'Pacientes' },
+  { path: '/products', label: 'Productos' },
   { path: '/bonuses', label: 'Bonos' },
+  { path: '/invoices', label: 'Facturación' },
+  { path: '/payments', label: 'Pagos' },
+  { path: '/notifications', label: 'Notificaciones' },
+  { path: '/settings', label: 'Configuración' },
 ]
 
 const user = meUser
 const clinic = meClinic
 const status = meStatus
 const trial_ends_at = meTrialEndsAt
+const cancellationDaysLeft = meCancellationDaysLeft
+const readOnlyNoTransactions = meReadOnlyNoTransactions
+const canTransact = meCanTransact
 
 const daysLeft = computed(() => {
   if (!trial_ends_at.value) return null
@@ -123,11 +182,72 @@ const subscriptionState = computed(() => {
     if (daysLeft.value > 0) return { color: 'red', label: `Prueba — quedan ${daysLeft.value} días` }
     return { color: 'red', label: 'Tu prueba ha finalizado' }
   }
+  if (status.value === 'canceled' || status.value === 'cancelled') {
+    return { color: 'red', label: 'Suscripción cancelada' }
+  }
+  if (status.value === 'trial_read_only') {
+    return { color: 'red', label: 'Trial finalizado — solo lectura (7 días)' }
+  }
   return { color: 'red', label: 'Suscripción vencida' }
 })
 
+const subscriptionStatusDot = computed(() => {
+  if (status.value === 'trial') return '🟠'
+  if (status.value === 'active' || status.value === 'activa') return '🟢'
+  if (status.value === 'trial_read_only') return '🔴'
+  if (status.value === 'canceled' || status.value === 'cancelled' || status.value === 'blocked') return '🔴'
+  return '🔴'
+})
+
+const isReadOnlyNoTransactions = computed(() => {
+  if (readOnlyNoTransactions.value) {
+    return true
+  }
+
+  if (status.value === 'trial_read_only') {
+    return true
+  }
+
+  if (!canTransact.value && (status.value === 'canceled' || status.value === 'cancelled')) {
+    return true
+  }
+
+  return false
+})
+
+const showCanceledBanner = computed(() => {
+  return (status.value === 'canceled' || status.value === 'cancelled') && isReadOnlyNoTransactions.value
+})
+
+const showTrialReadOnlyBanner = computed(() => {
+  return status.value === 'trial_read_only' && isReadOnlyNoTransactions.value
+})
+
+const cancellationDaysLeftLabel = computed(() => {
+  const days = Number(cancellationDaysLeft.value ?? 0)
+  if (!Number.isFinite(days) || days <= 0) return ''
+  return days === 1 ? '1 día' : `${days} días`
+})
+
+const isTrialEndingSoon = computed(() => {
+  const days = Number(daysLeft.value ?? 0)
+  return status.value === 'trial' && Number.isFinite(days) && days > 0 && days <= 7
+})
+
+const headerClasses = computed(() => {
+  return isTrialEndingSoon.value ? ['header-trial-warning'] : ['header-default']
+})
+
+const currentLogo = computed(() => {
+  return compactMode.value ? logoCompact : logoFull
+})
+
 const columnClasses = computed(() => {
-  if (isMobile.value || !open.value) {
+  if (isMobile.value) {
+    return ['with-sidebar-mobile']
+  }
+
+  if (!open.value) {
     return []
   }
 
@@ -137,21 +257,19 @@ const columnClasses = computed(() => {
 function syncViewportMode() {
   isMobile.value = window.innerWidth < MOBILE_BREAKPOINT
 
-  if (!isMobile.value) {
-    open.value = true
+  if (isMobile.value) {
+    open.value = false
+    return
   }
+
+  open.value = true
 }
 
 onMounted(async () => {
-  const persistedOpen = localStorage.getItem(MENU_OPEN_KEY)
   const persistedCompact = localStorage.getItem(MENU_COMPACT_KEY)
 
   compactMode.value = persistedCompact === '1'
   syncViewportMode()
-
-  if (isMobile.value) {
-    open.value = persistedOpen === '1'
-  }
 
   window.addEventListener('resize', syncViewportMode)
 
@@ -176,17 +294,11 @@ watch(compactMode, (value) => {
 })
 
 function keepMenuOpen() {
-  if (!isMobile.value) {
-    open.value = true
-    return
-  }
-
-  open.value = false
+  open.value = true
 }
 
 function toggleMenuMode() {
   if (isMobile.value) {
-    open.value = !open.value
     return
   }
 
@@ -200,6 +312,44 @@ function logoutAction() {
 function isActive(base) {
   const p = route.path || ''
   return p === base || p.startsWith(base + '/')
+}
+
+async function openContactForm() {
+  const { value: formValues, isConfirmed } = await Swal.fire({
+    title: 'Contacto',
+    html: `
+      <div style="text-align:left;margin-bottom:8px">
+        <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:4px">Asunto</label>
+        <input id="swal-contact-subject" class="swal2-input" style="margin:0;width:100%;box-sizing:border-box" placeholder="Asunto del mensaje" maxlength="200" />
+      </div>
+      <div style="text-align:left">
+        <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:4px">Mensaje</label>
+        <textarea id="swal-contact-body" class="swal2-textarea" style="margin:0;width:100%;box-sizing:border-box;height:140px;resize:vertical" placeholder="Describe tu consulta..." maxlength="4000"></textarea>
+      </div>
+    `,
+    customClass: { popup: 'swal-popup-card' },
+    confirmButtonText: 'Enviar',
+    cancelButtonText: 'Cancelar',
+    showCancelButton: true,
+    focusConfirm: false,
+    preConfirm: () => {
+      const subject = document.getElementById('swal-contact-subject').value.trim()
+      const body    = document.getElementById('swal-contact-body').value.trim()
+      if (!subject) { Swal.showValidationMessage('El asunto es obligatorio'); return false }
+      if (!body)    { Swal.showValidationMessage('El mensaje no puede estar vacío'); return false }
+      return { subject, body }
+    },
+  })
+
+  if (!isConfirmed || !formValues) return
+
+  try {
+    await api.post('/contact', formValues)
+    Swal.fire({ icon: 'success', title: 'Mensaje enviado', text: 'Nos pondremos en contacto contigo pronto.', customClass: { popup: 'swal-popup-card' } })
+  } catch (err) {
+    const msg = err?.response?.data?.message || 'No se pudo enviar el mensaje.'
+    Swal.fire({ icon: 'error', title: 'Error', text: msg, customClass: { popup: 'swal-popup-card' } })
+  }
 }
 </script>
 
@@ -217,18 +367,23 @@ function isActive(base) {
   height: 100vh;
   overflow: auto;
   background: #ffffff;
-  border-right: 1px solid #e5e7eb;
+  border-right: 1px solid var(--theme-color);
   padding: 16px;
   box-shadow: 0 14px 28px rgba(15, 23, 42, 0.12);
   transition: width 0.2s ease;
 }
 
 .sidebar.compact {
-  width: 86px;
+  width: 72px;
+}
+
+.sidebar.compact .menu-link {
+  justify-content: center;
+  padding: 8px 6px;
 }
 
 .logo-wrap {
-  margin-bottom: 24px;
+  margin-bottom: 12px;
   display: flex;
   justify-content: center;
   width: 100%;
@@ -240,13 +395,13 @@ function isActive(base) {
 
 .sidebar-logo {
   width: 160px;
-  height: 160px;
+  height: 80px;
   object-fit: contain;
 }
 
 .sidebar.compact .sidebar-logo {
-  width: 56px;
-  height: 56px;
+  width: 42px;
+  height: 42px;
 }
 
 .menu-link {
@@ -296,12 +451,125 @@ function isActive(base) {
   transition: padding-left 0.2s ease;
 }
 
+.subscription-canceled-banner {
+  margin: 12px 24px 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid #fca5a5;
+  background: #fff1f2;
+  color: #9f1239;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.banner-days {
+  margin-left: 6px;
+  font-weight: 700;
+}
+
+.readonly-mode :deep(button[type='submit']),
+.readonly-mode :deep(a.action-btn),
+.readonly-mode :deep(.action-btn),
+.readonly-mode :deep(.btn-primary),
+.readonly-mode :deep(.plus-btn),
+.readonly-mode :deep(a[href*='/edit']),
+.readonly-mode :deep(a[href*='/create']),
+.readonly-mode :deep(.quick-action-card),
+.readonly-mode :deep(button.primary),
+.readonly-mode :deep(button.muted),
+.readonly-mode :deep(button[data-action='emit-invoice']),
+.readonly-mode :deep(a[href*='/payments/create']),
+.readonly-mode :deep(a[href*='/invoices/create']) {
+  display: none !important;
+}
+
+.readonly-mode :deep(.allow-readonly-action) {
+  display: inline-flex !important;
+}
+
 .app-column.with-sidebar-full {
   padding-left: 260px;
 }
 
 .app-column.with-sidebar-compact {
-  padding-left: 86px;
+  padding-left: 72px;
+}
+
+.app-column.with-sidebar-mobile {
+  padding-left: 68px;
+}
+
+/* ── Footer ── */
+.app-footer {
+  margin-top: auto;
+  border-top: 1px solid var(--theme-color);
+  background: #ffffff;
+  padding: 10px 16px;
+  font-size: 13px;
+}
+
+.app-footer-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.app-footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-footer-logo {
+  width: 18px;
+  height: 18px;
+  opacity: 0.8;
+  filter: grayscale(1);
+}
+
+.app-footer-name {
+  font-weight: 600;
+  color: #111827;
+  font-size: 14px;
+}
+
+.app-footer-nav {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.app-footer-link {
+  color: #6b7280;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.app-footer-link:hover {
+  color: #111827;
+}
+
+.app-footer-copy {
+  margin: 0;
+  color: #6b7280;
+}
+
+.app-footer-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: inherit;
+  font-family: inherit;
+}
+
+.app-footer-tagline {
+  margin: 0;
+  font-size: 11px;
+  color: #9ca3af;
+  letter-spacing: 0.02em;
 }
 
 /* Estilos mínimos: el diseño depende de utilidades de Tailwind si está disponible. */
@@ -327,13 +595,47 @@ function isActive(base) {
 .user-link:hover { text-decoration:underline }
 .header-card-sub { display:flex; align-items:center; gap:8px; color:#6b7280; font-size:13px }
 .sub-label { color:#6b7280 }
-.logout-btn { padding:6px 12px; border-radius:999px; border:1px solid #e5e7eb; background:#fff; color:#374151; font-size:13px; font-weight:600; white-space:nowrap }
+.logout-btn { padding:6px 12px; border-radius:999px; border:1px solid var(--theme-color); background:#fff; color:#374151; font-size:13px; font-weight:600; white-space:nowrap }
 .logout-btn:hover { background:#f8fafc }
 
+.header-default {
+  background: #ffffff;
+  border-bottom-color: var(--theme-color);
+}
+
+.header-trial-warning {
+  background: #fee2e2;
+  border-bottom-color: #fca5a5;
+}
+
 @media (max-width: 767px) {
+  .sidebar {
+    width: 68px;
+    padding: 10px 6px;
+    box-shadow: 0 8px 16px rgba(15, 23, 42, 0.1);
+  }
+
+  .sidebar-logo,
+  .sidebar.compact .sidebar-logo {
+    width: 34px;
+    height: 34px;
+  }
+
+  .logo-wrap {
+    margin-bottom: 12px;
+  }
+
+  .menu-link,
+  .sidebar.compact .menu-link {
+    padding: 10px 6px;
+    justify-content: center;
+    border-radius: 8px;
+  }
+
   .app-column.with-sidebar-full,
-  .app-column.with-sidebar-compact {
-    padding-left: 0;
+  .app-column.with-sidebar-compact,
+  .app-column.with-sidebar-mobile {
+    padding-left: 68px;
   }
 }
 </style>

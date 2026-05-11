@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use App\Models\Concerns\BelongsToClinic;
 use App\Models\BonusUsage;
 use App\Models\CreditUsage;
+use App\Models\Reminder;
 
 class Appointment extends Model
 {
@@ -21,6 +22,8 @@ class Appointment extends Model
         'patient_id',
         'start_time',
         'end_time',
+        'reminder_24h_sent_at',
+        'reminder_2h_sent_at',
         'status',
         'payment_status',
         'price',
@@ -28,11 +31,15 @@ class Appointment extends Model
         'notes',
         'payment_type',
         'bonus_id',
+        'app_type_id',
+        'custom_type',
     ];
 
     protected $casts = [
         'start_time' => 'datetime:Y-m-d H:i:s',
         'end_time'   => 'datetime:Y-m-d H:i:s',
+        'reminder_24h_sent_at' => 'datetime:Y-m-d H:i:s',
+        'reminder_2h_sent_at' => 'datetime:Y-m-d H:i:s',
         'price' => 'decimal:2',
     ];
 
@@ -54,6 +61,11 @@ class Appointment extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    public function reminders(): HasMany
+    {
+        return $this->hasMany(Reminder::class);
     }
 
     public function creditUsages(): HasMany
@@ -83,6 +95,10 @@ class Appointment extends Model
         return $this->belongsTo(Document::class, 'invoice_id');
     }
 
+    public function appointmentType(): BelongsTo
+    {
+        return $this->belongsTo(AppointmentType::class, 'app_type_id');
+    }
     /**
      * Convenience: apply a bonus to this appointment by id using BonusService.
      * Throws exceptions from BonusService on failure.

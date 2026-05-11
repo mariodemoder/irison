@@ -8,7 +8,10 @@
           @click="toggleInactiveVisibility"
           :title="showInactiveBonuses ? 'Ver solo bonos disponibles' : 'Ver todos los bonos'"
         >
-          🔎
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:14px;height:14px">
+                    <circle cx="11" cy="11" r="7"></circle>
+                    <path d="M21 21l-4.3-4.3"></path>
+          </svg>
         </button>
         <button @click="showForm = !showForm" class="primary" style="padding:6px 10px;font-size:13px">Crear</button>
       </div>
@@ -17,6 +20,19 @@
     <div v-if="showForm" style="margin-top:8px">
       <div class="create-card">
         <form @submit.prevent="create" class="create-form">
+          <div class="create-row">
+            <label>Tipo de bono</label>
+            <select v-model="selectedTemplateId" @change="applySelectedTemplate">
+              <option value="manual">Manual</option>
+              <option
+                v-for="tpl in bonusTemplates"
+                :key="tpl.id"
+                :value="String(tpl.id)"
+              >
+                {{ tpl.description || 'Bono sin descripción' }}
+              </option>
+            </select>
+          </div>
           <div class="create-row">
             <label>Nombre</label>
             <input v-model="form.name" type="text" required />
@@ -146,9 +162,38 @@ const bonuses = ref([])
 const showForm = ref(false)
 const showInactiveBonuses = ref(false)
 const form = ref({ name: 'Bono', total_sessions: 1, price: 0, expires_at: '' })
+const bonusTemplates = ref([])
+const selectedTemplateId = ref('manual')
 const toast = useToast()
 const router = useRouter()
 const invoicingBonusId = ref(null)
+
+function normalizeTemplate(item) {
+  const rawDate = String(item?.expires_at || '').trim()
+  const expiresAt = /^\d{4}-\d{2}-\d{2}$/.test(rawDate)
+    ? rawDate
+    : (/^\d{4}-\d{2}-\d{2}T/.test(rawDate) ? rawDate.slice(0, 10) : '')
+
+  return {
+    id: Number(item?.id),
+    description: String(item?.description || '').trim(),
+    sessions: Number.isFinite(Number(item?.sessions)) ? Math.max(Number(item.sessions), 1) : 1,
+    price: Number.isFinite(Number(item?.price)) ? Math.max(Number(item.price), 0) : 0,
+    expires_at: expiresAt,
+  }
+}
+
+function applySelectedTemplate() {
+  if (selectedTemplateId.value === 'manual') return
+
+  const selected = bonusTemplates.value.find((tpl) => String(tpl.id) === String(selectedTemplateId.value))
+  if (!selected) return
+
+  form.value.name = selected.description || 'Bono'
+  form.value.total_sessions = selected.sessions
+  form.value.price = selected.price
+  form.value.expires_at = selected.expires_at || ''
+}
 
 function statusLabel(status) {
   switch (status) {
@@ -242,16 +287,28 @@ watch(bonuses, () => emitActiveCount(), { immediate: true })
 
 async function load() {
   try {
-    const res = await api.get(`/patients/${props.patientId}/bonuses`)
+    const [bonusesRes, meRes] = await Promise.all([
+      api.get(`/patients/${props.patientId}/bonuses`),
+      api.get('/me'),
+    ])
+
+    const incomingTemplates = Array.isArray(meRes?.data?.bonus_types) ? meRes.data.bonus_types : []
+    bonusTemplates.value = incomingTemplates
+      .map(normalizeTemplate)
+      .filter((tpl) => Number.isFinite(tpl.id) && tpl.id > 0)
+
+    const res = bonusesRes
     bonuses.value = Array.isArray(res.data.data) ? res.data.data.map(normalizeBonus) : []
   } catch (e) {
     bonuses.value = []
+    bonusTemplates.value = []
   }
 }
 
 function cancelForm() {
   showForm.value = false
   form.value = { name: 'Bono', total_sessions: 1, price: 0, expires_at: '' }
+  selectedTemplateId.value = 'manual'
 }
 
 async function create() {
@@ -347,6 +404,7 @@ function goToBonusPayment(bonus) {
 onMounted(load)
 
 function prefillRenew(b) {
+  selectedTemplateId.value = 'manual'
   form.value.name = b.name || 'Bono'
   form.value.total_sessions = b.total_sessions != null ? Number(b.total_sessions) : 1
   form.value.price = b.price != null ? b.price : 0
@@ -359,6 +417,7 @@ function prefillRenew(b) {
 <style scoped>
 .patient-bonuses label { display:block; font-weight:600; margin-bottom:4px }
 .patient-bonuses input { padding:8px; border:1px solid #e5e7eb; border-radius:6px }
+.patient-bonuses select { padding:8px; border:1px solid #e5e7eb; border-radius:6px; background:#fff }
 .primary { padding:6px 12px; border-radius:9999px; border:2px solid #3b82f6; color:#3b82f6; background:#fff }
 .muted { padding:6px 12px; border-radius:8px; border:1px solid #e5e7eb; background:#fff }
 .action-btn { padding:4px 8px; border-radius:8px; border:1px solid #e5e7eb; background:#fff; font-size:12px }

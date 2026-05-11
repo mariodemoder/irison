@@ -32,10 +32,15 @@
           </div>
 
           <div class="flex items-center gap-2">
-            <button type="submit" class="btn btn--solid">Activar suscripción</button>
-            <button type="button" class="btn btn--ghost" @click="usarFake">Usar proveedor de pruebas</button>
+            <button type="submit" class="btn btn--solid" :disabled="loading">
+              {{ loading ? 'Redirigiendo...' : 'Activar suscripción' }}
+            </button>
+            <button type="button" class="btn btn--ghost" :disabled="confirming" @click="confirmCheckoutReturn">
+              {{ confirming ? 'Verificando...' : 'Ya pagué, verificar estado' }}
+            </button>
           </div>
 
+          <p v-if="info" class="text-green-700">{{ info }}</p>
           <p v-if="error" class="text-red-600">{{ error }}</p>
         </form>
 
@@ -45,39 +50,87 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import Swal from 'sweetalert2'
 import api from '../services/api'
+import { ensureMeLoaded } from '../shared/meCache'
 
 const router = useRouter()
+const route = useRoute()
 const method = ref('card')
 const error = ref(null)
+const loading = ref(false)
+const confirming = ref(false)
+const info = ref('')
+
+async function showSubscriberWelcomePopup() {
+  await Swal.fire({
+    html: `
+      <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+        <svg width="42" height="42" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" stroke="#111827" stroke-width="1.6" />
+          <circle cx="9" cy="10" r="1" fill="#111827" />
+          <circle cx="15" cy="10" r="1" fill="#111827" />
+          <path d="M8 14c1 1.3 2.4 2 4 2s3-.7 4-2" stroke="#111827" stroke-width="1.6" stroke-linecap="round" />
+        </svg>
+        <div style="font-weight:700;color:#0f172a;">Enhorabuena</div>
+        <div style="color:#334155;">Ya eres un suscriptor activo en Irisis</div>
+      </div>
+    `,
+    showConfirmButton: false,
+    timer: 1900,
+    timerProgressBar: true,
+  })
+}
 
 async function startCheckout() {
   error.value = null
+  info.value = ''
+  loading.value = true
   try {
-    const res = await api.post('/billing/checkout', { amount: 2900, method: method.value })
-    const data = res.data
-    if (data.checkout && data.checkout.checkout_url) {
-      // abrir pasarela en nueva ventana
-      window.open(data.checkout.checkout_url, '_blank')
-      return
-    }
-    error.value = 'No se pudo crear el checkout'
+    const res = await api.post('/billing/checkout', { method: method.value })
+    const checkoutUrl = res.data?.checkout?.checkout_url
+    if (!checkoutUrl) throw new Error('No se recibió URL de pago')
+    window.location.href = checkoutUrl
   } catch (e) {
     error.value = e.response?.data?.message || e.message
+  } finally {
+    loading.value = false
   }
 }
 
-async function usarFake() {
+async function confirmCheckoutReturn() {
+  error.value = null
+  info.value = ''
+  confirming.value = true
+
   try {
-    await api.post('/subscribe/fake')
-    // reintentar checkout ahora que la clínica está marcada como suscrita (dev)
-    startCheckout()
+    const sessionId = String(route.query.session_id || '').trim()
+    const res = await api.post('/billing/confirm', { session_id: sessionId || undefined })
+
+    if (res.data?.status === 'active') {
+      info.value = 'Pago confirmado. Activando suscripción...'
+      await ensureMeLoaded({ force: true })
+      await showSubscriberWelcomePopup()
+      await router.replace('/dashboard')
+      return
+    }
+
+    error.value = res.data?.message || 'Stripe todavía no confirma el pago. Intenta nuevamente en unos segundos.'
   } catch (e) {
-    error.value = 'No se pudo activar proveedor fake'
+    error.value = e.response?.data?.message || e.message
+  } finally {
+    confirming.value = false
   }
 }
+
+onMounted(async () => {
+  if (route.query.checkout === 'success' || route.query.session_id) {
+    await confirmCheckoutReturn()
+  }
+})
+
 </script>
 
 <style scoped>

@@ -24,6 +24,7 @@ const unpaidBonusesCount = ref(0)
 const creditInFavorAmount = ref(0)
 const unpaidSessionsCount = ref(0)
 const unpaidSessionsTodayCount = ref(0)
+const todayInactivityMinutes = ref(0)
 const completedUnpaidAppointmentsCount = ref(0)
 const partialAppointmentsCount = ref(0)
 const exhaustedBonusPatientsCount = ref(0)
@@ -44,6 +45,32 @@ const todayLabel = computed(() => {
 })
 
 const todayDateQuery = computed(() => dashboardDate.value)
+
+function formatMinutesAsHours(minutes) {
+  const safeMinutes = Math.max(0, Number(minutes || 0))
+  const hours = Math.floor(safeMinutes / 60)
+  const remainingMinutes = safeMinutes % 60
+
+  if (hours <= 0) {
+    return `${remainingMinutes} min`
+  }
+
+  if (remainingMinutes <= 0) {
+    return `${hours} h`
+  }
+
+  return `${hours} h ${remainingMinutes} min`
+}
+
+function dashboardStatusDot(kind) {
+  const dots = {
+    today: '🔵',
+    pending: '🟠',
+    completed: '🟢',
+    canceled: '🔴',
+  }
+  return dots[String(kind || '')] || '⚪'
+}
 
 const importantAlerts = computed(() => {
   const items = []
@@ -83,6 +110,7 @@ const importantAlerts = computed(() => {
         query: {
           unpaid: '1',
           all: '1',
+          appointment_scope: 'all',
         },
       },
     })
@@ -97,6 +125,21 @@ const importantAlerts = computed(() => {
         query: {
           date: dashboardDate.value,
           unpaid: '1',
+          appointment_scope: 'all',
+        },
+      },
+    })
+  }
+
+  if (todayInactivityMinutes.value > 0) {
+    items.push({
+      key: 'today-inactivity-time',
+      text: `Tiempo de inactividad de hoy: ${formatMinutesAsHours(todayInactivityMinutes.value)}.`,
+      to: {
+        path: '/appointments/day',
+        query: {
+          date: dashboardDate.value,
+          appointment_scope: 'all',
         },
       },
     })
@@ -117,6 +160,7 @@ const riskAlerts = computed(() => {
           status: 'completed',
           unpaid: '1',
           all: '1',
+          appointment_scope: 'all',
         },
       },
     },
@@ -129,6 +173,7 @@ const riskAlerts = computed(() => {
         query: {
           payment: 'partially_paid',
           all: '1',
+          appointment_scope: 'all',
         },
       },
     },
@@ -154,7 +199,7 @@ const riskAlerts = computed(() => {
         },
       },
     },
-  ]
+  ].filter((risk) => risk.value > 0)
 })
 
 const monthlyRevenue = ref([0, 0, 0, 0])
@@ -195,6 +240,7 @@ function resetAlertsAndRisks() {
   creditInFavorAmount.value = 0
   unpaidSessionsCount.value = 0
   unpaidSessionsTodayCount.value = 0
+  todayInactivityMinutes.value = 0
   completedUnpaidAppointmentsCount.value = 0
   partialAppointmentsCount.value = 0
   exhaustedBonusPatientsCount.value = 0
@@ -278,6 +324,7 @@ async function fetchDashboard() {
     creditInFavorAmount.value = Number(important.creditInFavorAmount || 0)
     unpaidSessionsCount.value = Number(important.unpaidSessionsCount || 0)
     unpaidSessionsTodayCount.value = Number(important.unpaidSessionsTodayCount || 0)
+    todayInactivityMinutes.value = Number(important.todayInactivityMinutes || 0)
 
     const risks = data.risk_alerts ?? {}
     completedUnpaidAppointmentsCount.value = Number(risks.completedUnpaidAppointmentsCount || 0)
@@ -313,22 +360,22 @@ onMounted(async () => {
 
         <div v-else class="today-grid">
           <router-link class="today-card" :to="{ path: '/appointments/day', query: { date: todayDateQuery } }">
-            <div class="today-label"><span class="today-icon today" aria-hidden="true"></span> Citas hoy</div>
+            <div class="today-label">{{ dashboardStatusDot('today') }} Citas hoy</div>
             <div class="today-value">{{ todaySummary.total }}</div>
           </router-link>
 
           <router-link class="today-card" :to="{ path: '/appointments/day', query: { date: todayDateQuery, status: 'completed' } }">
-            <div class="today-label"><span class="today-icon completed" aria-hidden="true"></span> Citas completadas</div>
+            <div class="today-label">{{ dashboardStatusDot('completed') }} Citas completadas</div>
             <div class="today-value">{{ todaySummary.completed }}</div>
           </router-link>
 
           <router-link class="today-card" :to="{ path: '/appointments/day', query: { date: todayDateQuery, status: 'canceled' } }">
-            <div class="today-label"><span class="today-icon canceled" aria-hidden="true"></span> Canceladas</div>
+            <div class="today-label">{{ dashboardStatusDot('canceled') }} Canceladas</div>
             <div class="today-value">{{ todaySummary.canceled }}</div>
           </router-link>
 
           <router-link class="today-card" :to="{ path: '/appointments/day', query: { date: todayDateQuery, status: 'pending' } }">
-            <div class="today-label"><span class="today-icon pending" aria-hidden="true"></span> Pendientes</div>
+            <div class="today-label">{{ dashboardStatusDot('pending') }} Pendientes</div>
             <div class="today-value">{{ todaySummary.pending }}</div>
           </router-link>
         </div>
@@ -354,8 +401,8 @@ onMounted(async () => {
               <div class="today-label">
                 <span class="finance-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4z"></path>
-                    <path d="M12 6v12"></path>
+                    <path d="M4 9l8-5 8 5v10l-8 4-8-4z"></path>
+                    <path d="M9 12h6"></path>
                   </svg>
                 </span>
                 Sesiones con bono
@@ -395,6 +442,57 @@ onMounted(async () => {
         </div>
       </section>
 
+      <section class="quick-actions">
+        <div class="quick-actions-title">Acciones rápidas</div>
+        <div class="quick-actions-grid">
+          <router-link to="/appointments/create" class="quick-action-card">
+            <div class="quick-action-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="5" width="18" height="16" rx="2"></rect>
+                <path d="M8 3v4M16 3v4M3 10h18"></path>
+              </svg>
+            </div>
+            <div class="quick-action-label">Crear cita</div>
+            <div class="quick-action-desc">Agenda una nueva consulta</div>
+          </router-link>
+
+          <router-link to="/payments/create" class="quick-action-card">
+            <div class="quick-action-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2.5" y="5" width="19" height="14" rx="2"></rect>
+                <path d="M2.5 10h19M7 15h4"></path>
+              </svg>
+            </div>
+            <div class="quick-action-label">Registrar pago</div>
+            <div class="quick-action-desc">Nuevas entradas de dinero</div>
+          </router-link>
+
+          <router-link to="/invoices/create" class="quick-action-card">
+            <div class="quick-action-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M7 3h8l4 4v14H7z"></path>
+                <path d="M15 3v4h4"></path>
+                <path d="M10 12h6M10 16h6"></path>
+              </svg>
+            </div>
+            <div class="quick-action-label">Realizar factura</div>
+            <div class="quick-action-desc">Emitir nuevo documento</div>
+          </router-link>
+
+          <router-link to="/patients/create" class="quick-action-card">
+            <div class="quick-action-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="8" r="3.5"></circle>
+                <path d="M5 19c1.4-3 3.8-4.5 7-4.5s5.6 1.5 7 4.5"></path>
+                <path d="M12 5v6M9 8h6"></path>
+              </svg>
+            </div>
+            <div class="quick-action-label">Alta paciente</div>
+            <div class="quick-action-desc">Registrar nuevo paciente</div>
+          </router-link>
+        </div>
+      </section>
+
       <div class="alerts-row">
         <div class="alerts-inline card-list">
           <div class="inline-title">Alertas</div>
@@ -412,12 +510,13 @@ onMounted(async () => {
           <div class="inline-title">Pendientes</div>
           <div class="alerts-subtitle">Estos son puntos donde se pierde dinero.</div>
           <AppLoading v-if="loading" compact message="Cargando riesgos..." />
-          <ul v-else class="alerts-list">
+          <ul v-else-if="riskAlerts.length" class="alerts-list">
             <li v-for="risk in riskAlerts" :key="risk.key" class="alerts-item">
               <span class="alert-dot" aria-hidden="true"></span>
               <router-link :to="risk.to" class="alert-link">{{ risk.text }}: {{ risk.value }}</router-link>
             </li>
           </ul>
+          <div v-else class="alerts-empty">Sin pendientes de riesgo.</div>
         </div>
       </div>
 
@@ -442,8 +541,7 @@ onMounted(async () => {
 
 <style scoped>
 .dashboard-container {
-  padding: 40px;
-  background: var(--bg-app);
+    background: var(--bg-app);
   min-height: 100vh;
 }
 
@@ -470,7 +568,7 @@ onMounted(async () => {
 .dashboard-grid {
   margin-top: 24px;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 24px;
 }
 
@@ -609,13 +707,14 @@ onMounted(async () => {
 .alerts-inline {
   margin-top: 0;
   background: var(--bg-card);
-  border: 1px solid #93c5fd;
+  border: 2px solid #f59e0b;
   border-radius: 20px;
   padding: 12px 16px;
 }
 
 .risks-inline {
   margin-top: 0;
+  border: 2px solid #fcd34d !important;
 }
 
 .alerts-subtitle {
@@ -661,6 +760,97 @@ onMounted(async () => {
   color: var(--text-muted, #6b7280);
 }
 
+.quick-actions {
+  margin-top: 24px;
+  margin-bottom: 24px;
+  background: linear-gradient(135deg, #f0f9ff 0%, #f3e8ff 100%);
+  border: 1px solid #e0e7ff;
+  border-radius: 20px;
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.quick-actions::before {
+  content: '';
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: rgba(59, 130, 246, 0.05);
+  pointer-events: none;
+}
+
+.quick-actions-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: #0f172a;
+  position: relative;
+  z-index: 1;
+}
+
+.quick-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  position: relative;
+  z-index: 1;
+}
+
+.quick-action-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 12px;
+  background: #ffffff;
+  border: 2px solid #e5e7eb;
+  border-radius: 16px;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.quick-action-card:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 12px 24px rgba(59, 130, 246, 0.15);
+  transform: translateY(-4px);
+}
+
+.quick-action-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  border-radius: 10px;
+  color: white;
+}
+
+.quick-action-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.quick-action-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  text-align: center;
+}
+
+.quick-action-desc {
+  font-size: 11px;
+  color: #6b7280;
+  text-align: center;
+}
+
 @media (max-width: 900px) {
   .dashboard-container {
     padding: 18px;
@@ -668,7 +858,6 @@ onMounted(async () => {
 
   .dashboard-grid {
     grid-template-columns: 1fr;
-
   }
 
   .today-grid {
@@ -680,6 +869,10 @@ onMounted(async () => {
   }
 
   .alerts-row {
+    grid-template-columns: 1fr;
+  }
+
+  .quick-actions-grid {
     grid-template-columns: 1fr;
   }
 }

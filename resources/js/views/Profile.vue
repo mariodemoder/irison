@@ -2,89 +2,34 @@
   <MainLayout>
     <div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
-        <h1>Mi cuenta</h1>
-        <div class="sub-banner">
-          <div class="meta">
-            <div style="font-weight:600">{{ user?.name ?? '—' }}</div>
-            <div class="small">{{ clinic?.name ?? '—' }}</div>
-          </div>
-
-          <div style="display:flex;align-items:center;gap:8px">
-            <span :class="['status-dot', subscriptionState.color]"></span>
-            <div style="font-size:13px">{{ subscriptionState.label }}</div>
-          </div>
-
-          <div style="margin-left:12px">
-            <button class="btn btn-sm" @click.prevent="logoutAction">Cerrar sesión</button>
-          </div>
+        <div>
+          <h1>Mi cuenta</h1>
+          <div class="page-subtitle">Tus datos personales y seguridad.</div>
         </div>
       </div>
 
       <AppLoading v-if="loading" message="Cargando perfil..." />
 
       <div v-else>
-        <div style="max-width:760px">
+        <div class="profile-container">
           <div class="tabs">
             <button :class="['tab', { active: activeTab==='datos' }]" @click="activeTab='datos'">Datos</button>
-            <button :class="['tab', { active: activeTab==='contadores' }]" @click="activeTab='contadores'">Contadores</button>
-            <button :class="['tab', { active: activeTab==='factura_pdf' }]" @click="activeTab='factura_pdf'">Fondo factura PDF</button>
             <button :class="['tab', { active: activeTab==='seguridad' }]" @click="activeTab='seguridad'">Seguridad</button>
-            <button :class="['tab', { active: activeTab==='subscripcion' }]" @click="activeTab='subscripcion'">Subscripción</button>
           </div>
 
           <div class="profile-shell">
             <div class="card-stage">
               <div class="tab-panel tab-card" v-show="activeTab==='datos'">
                 <form @submit.prevent="save" style="display:grid;gap:12px;">
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-                <div>
-                  <label class="label">Nombre</label>
-                  <input class="input" v-model="form.name" />
-                </div>
-                <div>
-                  <label class="label">Email</label>
-                  <input class="input" v-model="form.email" />
-                </div>
-              </div>
-
-              <div>
-                <label class="label">Nombre clínica</label>
-                <input class="input" v-model="form.clinic_name" />
-              </div>
-
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-                <div>
-                  <label class="label">NIF</label>
-                  <input class="input" v-model="form.clinic_nif" />
-                </div>
-                <div>
-                  <label class="label">Código postal</label>
-                  <input class="input" v-model="form.clinic_zip" />
-                </div>
-              </div>
-
-              <div>
-                <label class="label">Dirección</label>
-                <input class="input" v-model="form.clinic_address" />
-              </div>
-
-              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
-                <div>
-                  <label class="label">Localidad</label>
-                  <input class="input" v-model="form.clinic_locality" />
-                </div>
-                <div>
-                  <label class="label">Provincia</label>
-                  <input class="input" v-model="form.clinic_province" />
-                </div>
-                <div>
-                  <label class="label">País</label>
-                  <input class="input" v-model="form.clinic_country" />
-                </div>
-              </div>
-
-                  <div v-if="status==='blocked'" class="panel-note">
-                    Tu clínica no tiene suscripción activa. Puedes activarla desde la pestaña de Subscripción.
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                    <div>
+                      <label class="label">Nombre</label>
+                      <input class="input" v-model="form.name" />
+                    </div>
+                    <div>
+                      <label class="label">Email</label>
+                      <input class="input" v-model="form.email" />
+                    </div>
                   </div>
                 </form>
               </div>
@@ -109,137 +54,11 @@
                   </div>
                 </form>
               </div>
-
-              <div class="tab-panel tab-card" v-show="activeTab==='subscripcion'">
-                <h2>Subscripción</h2>
-                <div style="display:flex;align-items:center;gap:12px;margin-top:8px">
-                  <span :class="['status-dot', subscriptionState.color]"></span>
-                  <div>{{ subscriptionState.label }}</div>
-                </div>
-                <div style="margin-top:12px">
-                  <div v-if="status==='trial'">
-                    <div>Quedan <strong>{{ daysLeft ?? '—' }}</strong> días de demo.</div>
-                  </div>
-                  <div v-else-if="status==='active'">
-                    <div>Tu suscripción está activa.</div>
-
-                    <div class="subscription-history" style="margin-top:14px">
-                      <div class="subscription-history-title">Pagos realizados</div>
-                      <div v-if="subscriptionPayments.length === 0" class="subscription-history-empty">
-                        No hay pagos registrados.
-                      </div>
-                      <div v-else class="subscription-history-list">
-                        <div class="subscription-history-head">
-                          <div>Fecha</div>
-                          <div>Número</div>
-                          <div>Importe</div>
-                        </div>
-                        <div
-                          v-for="payment in subscriptionPayments"
-                          :key="payment.id"
-                          class="subscription-history-row"
-                        >
-                          <div>{{ formatDateTime(payment.created_at) }}</div>
-                          <div>{{ payment.counter || '—' }}</div>
-                          <div>{{ formatBillingAmount(payment.amount, payment.currency) }}</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div v-else>
-                    <div>No tienes suscripción activa.</div>
-                  </div>
-
-                  <div class="subscription-actions">
-                    <button v-if="status !== 'active'" class="btn btn-primary" @click.prevent="beginPaidPlanFake">Comenzar plan pago</button>
-                    <button v-if="status==='blocked'" class="btn" @click.prevent="subscribe">Activar plan (Stripe)</button>
-                  </div>
-                </div>
-              </div>
-
-              <div class="tab-panel tab-card" v-show="activeTab==='contadores'">
-                <h2>Contadores</h2>
-                <div style="margin-top:8px;color:#6b7280;font-size:13px">
-                  Formato final: <strong>PREFIJO-000001</strong> (prefijo de 1 a 4 caracteres)
-                </div>
-
-                <div style="margin-top:12px;display:grid;gap:10px">
-                  <div
-                    v-for="row in counters"
-                    :key="row.table_type"
-                    class="counter-grid"
-                  >
-                    <div>
-                      <label class="label">Tipo</label>
-                      <input class="input" :value="counterTypeLabels[row.table_type] || row.table_type" disabled />
-                    </div>
-                    <div>
-                      <label class="label">Prefijo</label>
-                      <input class="input" maxlength="4" v-model="row.prefix" />
-                    </div>
-                    <div>
-                      <label class="label">Último número</label>
-                      <input class="input" type="number" min="0" v-model.number="row.last_number" />
-                    </div>
-                    <div>
-                      <label class="label">Siguiente</label>
-                      <input class="input" :value="previewCounter(row)" disabled />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="tab-panel tab-card" v-show="activeTab==='factura_pdf'">
-                <h2>Fondo de factura</h2>
-                <div class="invoice-bg-help">
-                  Sube una imagen para usarla como fondo en tus facturas PDF. Formatos: JPG, PNG o WEBP. Tamaño máximo: 5MB.<br>
-                  La imagen se ajustará al tamaño A4 (210x297mm) manteniendo su proporción. Si la imagen no es A4, se centrará y se le aplicarán márgenes para llenar el espacio restante. Para mejores resultados, se recomienda usar una imagen con proporción cercana a A4 (aprox. 1:1.41) y al menos 1240x1754 píxeles de resolución.
-                </div>
-
-                <div style="margin-top:12px">
-                  <label class="label">Seleccionar imagen</label>
-                  <input class="input" type="file" accept=".jpg,.jpeg,.png,.webp,image/*" @change="onInvoiceBackgroundPicked" />
-                </div>
-
-                <div class="invoice-pdf-preview-wrap" style="margin-top:12px">
-                  <div v-if="previewingInvoiceBackgroundPdf" class="invoice-bg-empty">Generando preview PDF...</div>
-                  <iframe
-                    v-else-if="profilePreviewPdfUrl"
-                    class="invoice-pdf-preview-frame"
-                    :src="profilePreviewPdfUrl"
-                    title="Preview PDF factura"
-                  ></iframe>
-                  <div v-else class="invoice-bg-empty">No se pudo cargar la vista previa del PDF.</div>
-                </div>
-
-                <div class="invoice-preview-actions">
-                  <button
-                    type="button"
-                    class="pdf-btn"
-                    title="Vista previa factura demo"
-                    :disabled="previewingInvoiceBackgroundPdf"
-                    @click.prevent="previewAndOpen()"
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="pdf-icon">
-                      <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"></path>
-                      <circle cx="12" cy="12" r="2.5"></circle>
-                    </svg>
-                  </button>
-                  <span class="invoice-preview-label">Preview PDF real (demo con datos fake)</span>
-                </div>
-              </div>
             </div>
 
             <div class="action-plane">
-              <div v-if="activeTab==='datos' || activeTab==='contadores'" class="action-row">
+              <div v-if="activeTab==='datos'" class="action-row">
                 <button class="btn btn-sm" type="button" :disabled="saving" @click.prevent="save">Guardar</button>
-              </div>
-
-              <div v-else-if="activeTab==='factura_pdf'" class="action-row">
-                <button class="btn btn-sm" type="button" :disabled="previewingInvoiceBackgroundPdf" @click.prevent="refreshPreview()">Actualizar preview</button>
-                <button class="btn btn-sm" type="button" :disabled="previewingInvoiceBackgroundPdf" @click.prevent="openPdfInNewTab()">Abrir PDF</button>
-                <button class="btn btn-sm" type="button" :disabled="uploadingInvoiceBackground || !invoiceBackgroundFile" @click.prevent="uploadInvoiceBackground">Subir fondo</button>
-                <button class="btn btn-sm" type="button" :disabled="removingInvoiceBackground || !invoiceBackgroundUrl" @click.prevent="removeInvoiceBackground">Eliminar fondo</button>
               </div>
 
               <div v-else-if="activeTab==='seguridad'" class="action-row">
@@ -257,98 +76,31 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, onBeforeUnmount, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted } from 'vue'
 import MainLayout from '../layouts/MainLayout.vue'
 import AppLoading from '../components/AppLoading.vue'
 import api from '../services/api'
 import { useToast } from 'vue-toastification'
-import logout from '../utils/logout'
 
-const router = useRouter()
 const toast = useToast()
 
 const user = ref(null)
-const clinic = ref(null)
-const status = ref('blocked')
-const trial_ends_at = ref(null)
 const loading = ref(true)
 const saving = ref(false)
-const subscriptionPayments = ref([])
-const invoiceBackgroundUrl = ref(null)
-const invoiceBackgroundFile = ref(null)
-const uploadingInvoiceBackground = ref(false)
-const removingInvoiceBackground = ref(false)
-const previewingInvoiceBackgroundPdf = ref(false)
-const profilePreviewPdfUrl = ref(null)
 
 const form = ref({
   name: '',
   email: '',
-  clinic_name: '',
-  clinic_nif: '',
-  clinic_address: '',
-  clinic_locality: '',
-  clinic_province: '',
-  clinic_country: '',
-  clinic_zip: '',
 })
 
-const counterTypeLabels = {
-  documents: 'Facturación',
-  payout: 'Abonos',
-  bonuses: 'Bonos',
-  payments: 'Pagos',
-  patients: 'Pacientes',
-}
-
-function defaultCounters() {
-  return [
-    { table_type: 'documents', prefix: 'FR', last_number: 0 },
-    { table_type: 'payout', prefix: 'AB', last_number: 0 },
-    { table_type: 'bonuses', prefix: 'B0', last_number: 0 },
-    { table_type: 'payments', prefix: 'PA', last_number: 0 },
-    { table_type: 'patients', prefix: 'PC', last_number: 0 },
-  ]
-}
-
-const counters = ref(defaultCounters())
-
-// pestañas: 'datos' | 'seguridad' | 'subscripcion' | 'contadores'
 const activeTab = ref('datos')
 
-// password change
 const pw = ref({ current_password: '', password: '', password_confirmation: '' })
 const pwSaving = ref(false)
 const pwMessage = ref('')
 
-const daysLeft = computed(() => {
-  if (!trial_ends_at.value) return null
-  const end = new Date(trial_ends_at.value)
-  const now = new Date()
-  const diff = end.getTime() - now.getTime()
-  return Math.ceil(diff / (1000 * 60 * 60 * 24))
-})
-
-const subscriptionState = computed(() => {
-  if (status.value === 'active') return { color: 'green', label: 'Suscripción activa' }
-  if (status.value === 'trial') return { color: 'yellow', label: `Prueba — quedan ${daysLeft.value ?? '—'} días` }
-  return { color: 'red', label: 'Sin suscripción' }
-})
-
-// indica si el trial está vencido
-const trialExpired = computed(() => {
-  return status.value === 'trial' && daysLeft.value !== null && daysLeft.value <= 0
-})
-
 onMounted(async () => {
   await load()
-})
-
-watch(activeTab, async (tab) => {
-  if (tab === 'factura_pdf' && !profilePreviewPdfUrl.value) {
-    await refreshPreview()
-  }
 })
 
 async function load() {
@@ -356,49 +108,16 @@ async function load() {
   try {
     const res = await api.get('/me')
     user.value = res.data.user
-    clinic.value = res.data.clinic
-    status.value = res.data.status || status.value
-    trial_ends_at.value = res.data.trial_ends_at || null
-    subscriptionPayments.value = Array.isArray(res.data.subscription_payments) ? res.data.subscription_payments : []
-    invoiceBackgroundUrl.value = res.data.clinic_invoice_background_url || null
-
     form.value.name = user.value?.name ?? ''
     form.value.email = user.value?.email ?? ''
-    form.value.clinic_name = clinic.value?.name ?? ''
-    form.value.clinic_nif = clinic.value?.nif ?? ''
-    form.value.clinic_address = clinic.value?.address ?? ''
-    form.value.clinic_locality = clinic.value?.locality ?? ''
-    form.value.clinic_province = clinic.value?.province ?? ''
-    form.value.clinic_country = clinic.value?.country ?? ''
-    form.value.clinic_zip = clinic.value?.zip ?? ''
-
-    const incomingCounters = Array.isArray(res.data.counters) ? res.data.counters : []
-    if (incomingCounters.length > 0) {
-      counters.value = defaultCounters().map((base) => {
-        const found = incomingCounters.find((item) => item.table_type === base.table_type)
-        return {
-          table_type: base.table_type,
-          prefix: (found?.prefix ?? base.prefix ?? '').toString().toUpperCase(),
-          last_number: Number.isFinite(Number(found?.last_number)) ? Math.max(Number(found?.last_number), 0) : 0,
-        }
-      })
-    } else {
-      counters.value = defaultCounters()
-    }
-
-    if (activeTab.value === 'factura_pdf') {
-      await refreshPreview()
-    }
   } catch (e) {
     console.error('Error cargando /me', e)
-    toast.error('Error cargando datos de usuario')
+    const status = e?.response?.status
+    const message = e?.response?.data?.message
+    toast.error((status === 402 || status === 403) && message ? `Error cargando datos de usuario - ${message}` : 'Error cargando datos de usuario')
   } finally {
     loading.value = false
   }
-}
-
-function logoutAction() {
-  logout(router)
 }
 
 async function save() {
@@ -407,37 +126,11 @@ async function save() {
     const payload = {
       name: form.value.name,
       email: form.value.email,
-      clinic: {
-        name: form.value.clinic_name,
-        nif: form.value.clinic_nif,
-        address: form.value.clinic_address,
-        locality: form.value.clinic_locality,
-        province: form.value.clinic_province,
-        country: form.value.clinic_country,
-        zip: form.value.clinic_zip,
-      },
-      counters: counters.value.map((item) => ({
-        table_type: item.table_type,
-        prefix: (item.prefix ?? '').toString().trim().toUpperCase(),
-        last_number: Number.isFinite(Number(item.last_number)) ? Math.max(Number(item.last_number), 0) : 0,
-      }))
     }
-    // Intentamos PUT a /me (backend debe aceptar actualización parcial)
+
     const res = await api.put('/me', payload)
     toast.success('Datos guardados')
-    // actualizar estado local
     user.value = res.data.user ?? user.value
-    clinic.value = res.data.clinic ?? clinic.value
-    if (Array.isArray(res.data.counters) && res.data.counters.length > 0) {
-      counters.value = defaultCounters().map((base) => {
-        const found = res.data.counters.find((item) => item.table_type === base.table_type)
-        return {
-          table_type: base.table_type,
-          prefix: (found?.prefix ?? base.prefix ?? '').toString().toUpperCase(),
-          last_number: Number.isFinite(Number(found?.last_number)) ? Math.max(Number(found?.last_number), 0) : 0,
-        }
-      })
-    }
   } catch (e) {
     console.error('Error guardando perfil', e)
     const msg = e.response?.data?.message || 'Error guardando datos'
@@ -445,119 +138,6 @@ async function save() {
   } finally {
     saving.value = false
   }
-}
-
-function reload() { load() }
-
-function onInvoiceBackgroundPicked(event) {
-  const files = event?.target?.files
-  invoiceBackgroundFile.value = files && files.length > 0 ? files[0] : null
-
-  refreshPreview()
-}
-
-async function uploadInvoiceBackground() {
-  if (!invoiceBackgroundFile.value) {
-    toast.error('Seleccioná una imagen antes de subir')
-    return
-  }
-
-  uploadingInvoiceBackground.value = true
-  try {
-    const formData = new FormData()
-    formData.append('image', invoiceBackgroundFile.value)
-
-    const res = await api.post('/me/invoice-background', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
-
-    invoiceBackgroundUrl.value = res.data?.invoice_background_url || null
-    invoiceBackgroundFile.value = null
-    await refreshPreview()
-    toast.success('Fondo de factura actualizado')
-  } catch (e) {
-    console.error('Error subiendo fondo de factura', e)
-    const msg = e.response?.data?.message || 'No se pudo subir el fondo'
-    toast.error(msg)
-  } finally {
-    uploadingInvoiceBackground.value = false
-  }
-}
-
-async function removeInvoiceBackground() {
-  removingInvoiceBackground.value = true
-  try {
-    await api.delete('/me/invoice-background')
-    invoiceBackgroundUrl.value = null
-    invoiceBackgroundFile.value = null
-    await refreshPreview()
-    toast.success('Fondo de factura eliminado')
-  } catch (e) {
-    console.error('Error eliminando fondo de factura', e)
-    const msg = e.response?.data?.message || 'No se pudo eliminar el fondo'
-    toast.error(msg)
-  } finally {
-    removingInvoiceBackground.value = false
-  }
-}
-
-async function refreshPreview() {
-  previewingInvoiceBackgroundPdf.value = true
-  try {
-    const formData = new FormData()
-    if (invoiceBackgroundFile.value) {
-      formData.append('image', invoiceBackgroundFile.value)
-    }
-
-    const res = await api.post('/me/invoice-background/preview-pdf?format=html', formData, {
-      responseType: 'text',
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
-
-    const blob = new Blob([res.data], { type: 'text/html' })
-    const fileUrl = URL.createObjectURL(blob)
-
-    if (profilePreviewPdfUrl.value) {
-      URL.revokeObjectURL(profilePreviewPdfUrl.value)
-    }
-    profilePreviewPdfUrl.value = fileUrl
-  } catch (e) {
-    console.error('Error generando preview demo', e)
-    const msg = e.response?.data?.message || 'No se pudo generar la vista previa de factura'
-    toast.error(msg)
-  } finally {
-    previewingInvoiceBackgroundPdf.value = false
-  }
-}
-
-async function openPdfInNewTab() {
-  previewingInvoiceBackgroundPdf.value = true
-  try {
-    const formData = new FormData()
-    if (invoiceBackgroundFile.value) {
-      formData.append('image', invoiceBackgroundFile.value)
-    }
-
-    const res = await api.post('/me/invoice-background/preview-pdf', formData, {
-      responseType: 'blob',
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
-
-    const file = new Blob([res.data], { type: 'application/pdf' })
-    const fileUrl = URL.createObjectURL(file)
-    window.open(fileUrl, '_blank', 'noopener,noreferrer')
-  } catch (e) {
-    console.error('Error generando PDF demo', e)
-    const msg = e.response?.data?.message || 'No se pudo generar la vista previa de factura'
-    toast.error(msg)
-  } finally {
-    previewingInvoiceBackgroundPdf.value = false
-  }
-}
-
-async function previewAndOpen() {
-  await refreshPreview()
-  await openPdfInNewTab()
 }
 
 function pwReset() {
@@ -573,13 +153,11 @@ async function changePassword() {
   try {
     await api.post('/me/password', { ...pw.value })
     pwReset()
-    const toast = useToast()
     toast.success('Contraseña actualizada')
   } catch (e) {
     console.error('Error cambiando contraseña', e)
     if (e.response && e.response.status === 422) {
       const errs = e.response.data.errors || {}
-      // Mostrar primer error encontrado
       const first = Object.values(errs)[0]
       pwMessage.value = Array.isArray(first) ? first[0] : String(first)
     } else {
@@ -589,66 +167,39 @@ async function changePassword() {
     pwSaving.value = false
   }
 }
-
-async function subscribe() {
-  try {
-    const res = await api.post('/stripe/checkout')
-    window.location.href = res.data.url
-  } catch (e) {
-    console.error('Error creando checkout', e)
-    toast.error('Error iniciando subscripción')
-  }
-}
-
-function beginPaidPlanFake() {
-  router.push('/billing/required')
-}
-
-function formatDateTime(value) {
-  if (!value) return '—'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '—'
-  return date.toLocaleString('es-ES')
-}
-
-function formatBillingAmount(amountInCents, currency = 'EUR') {
-  const cents = Number(amountInCents || 0)
-  const amount = Number.isFinite(cents) ? cents / 100 : 0
-  return new Intl.NumberFormat('es-ES', { style: 'currency', currency: currency || 'EUR' }).format(amount)
-}
-
-function previewCounter(row) {
-  const prefix = (row?.prefix ?? '').toString().trim().toUpperCase().slice(0, 4)
-  const value = Number.isFinite(Number(row?.last_number)) ? Math.max(Number(row.last_number) + 1, 1) : 1
-  return `${prefix || '---'}-${String(value).padStart(6, '0')}`
-}
-
-onBeforeUnmount(() => {
-  if (profilePreviewPdfUrl.value) {
-    URL.revokeObjectURL(profilePreviewPdfUrl.value)
-  }
-})
 </script>
 
 <style scoped>
 .label { display:block; font-weight:600; margin-bottom:6px }
 .input { width:100%; padding:10px; border-radius:8px; border:1px solid #e5e7eb }
-.sub-banner { display:flex; align-items:center; gap:12px; background: rgba(255,255,255,0.9); padding:8px 10px; border-radius:10px; box-shadow: 0 6px 18px rgba(2,6,23,0.06) }
-.sub-banner .meta { display:flex; flex-direction:column }
-.sub-banner .small { font-size:12px; color:var(--text-muted,#6b7280) }
-.status-dot { width:10px; height:10px; border-radius:50%; display:inline-block }
-.status-dot.green { background: #10b981 }
-.status-dot.yellow { background: #f59e0b }
-.status-dot.red { background: #ef4444 }
+.page-subtitle { color:#6b7280; font-size:13px; margin-top:4px }
 
+.profile-container {
+  width: 100%;
+  max-width: 860px;
+}
 .profile-shell { display:grid; gap:14px }
-.card-stage { min-height:560px }
-.tabs { display:flex; gap:8px; margin-bottom:12px }
-.tab { padding:8px 12px; border-radius:8px; background:transparent; border:1px solid transparent; cursor:pointer }
+.card-stage { min-height:420px }
+.tabs {
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:8px;
+  margin-bottom:12px;
+}
+.tab {
+  width: 100%;
+  text-align: center;
+  padding:8px 12px;
+  border-radius:8px;
+  background:transparent;
+  border:1px solid transparent;
+  cursor:pointer;
+}
 .tab.active { background:#eef2ff; border-color:#c7d2fe; font-weight:600 }
 .tab-panel { background:transparent }
 .tab-card {
-  min-height:560px;
+  min-height:420px;
+  width: 100%;
   padding:20px;
   border:1px solid #e5e7eb;
   border-radius:16px;
@@ -667,64 +218,7 @@ onBeforeUnmount(() => {
 }
 .action-row { display:flex; gap:8px; min-height:38px; align-items:center }
 .action-row-empty { justify-content:flex-end }
-.panel-note {
-  margin-top:auto;
-  padding:12px 14px;
-  border-radius:12px;
-  background:#fff7ed;
-  color:#9a3412;
-  font-size:13px;
-}
-.subscription-actions { display:flex; gap:8px; margin-top:16px; flex-wrap:wrap }
-.subscription-history-title { font-size:13px; font-weight:700; color:#111827; margin-bottom:8px }
-.subscription-history-empty { color:#6b7280; font-size:13px; padding:10px; border:1px dashed #d1d5db; border-radius:8px }
-.subscription-history-list { border:1px solid #e5e7eb; border-radius:10px; overflow:hidden }
-.subscription-history-head,
-.subscription-history-row {
-  display:grid;
-  grid-template-columns:1.4fr 1fr 1fr;
-  gap:10px;
-  padding:8px 10px;
-  font-size:13px;
-  align-items:center;
-}
-.subscription-history-head { background:#f9fafb; color:#6b7280; font-weight:600 }
-.subscription-history-row { border-top:1px solid #f3f4f6 }
-.counter-grid {
-  display:grid;
-  grid-template-columns:180px 140px 160px 1fr;
-  gap:10px;
-  align-items:end;
-}
-.invoice-bg-help {
-  margin-top: 8px;
-  color: #4b5563;
-  font-size: 13px;
-}
-.invoice-pdf-preview-wrap {
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #f8fafc;
-  aspect-ratio: 210 / 297;
-  overflow: hidden;
-}
-.invoice-pdf-preview-frame {
-  width: 100%;
-  height: 100%;
-  border: 0;
-  background: #ffffff;
-}
-.invoice-bg-empty {
-  margin: 0;
-  height: 100%;
-  display: grid;
-  place-items: center;
-  border: 1px dashed #d1d5db;
-  border-radius: 8px;
-  padding: 12px;
-  color: #6b7280;
-  font-size: 13px;
-}
+.field-error { color:#b91c1c; font-size:13px; margin-bottom:10px }
 
 @media (max-width: 768px) {
   .tab-card { min-height:auto; }
@@ -732,17 +226,6 @@ onBeforeUnmount(() => {
   .action-plane {
     position:static;
     bottom:auto;
-  }
-  .counter-grid {
-    grid-template-columns:1fr;
-  }
-  .subscription-history-head,
-  .subscription-history-row {
-    grid-template-columns:1fr;
-  }
-  .invoice-pdf-preview-wrap {
-    min-height: 440px;
-    aspect-ratio: auto;
   }
 }
 </style>

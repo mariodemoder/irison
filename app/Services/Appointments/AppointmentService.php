@@ -8,6 +8,7 @@ use Some\Dependency;
 use App\Models\Appointment;
 use App\Models\Bonus;
 use App\Models\BonusUsage;
+use App\Models\Clinic;
 use App\Models\CreditUsage;
 use App\Models\Payment;
 use App\Models\Patient;
@@ -31,7 +32,7 @@ class AppointmentService
             ->where('end_time', '<', Carbon::now())
             ->update(['status' => 'completed']);
 
-        $query = Appointment::with(['patient', 'payments', 'creditUsages']);
+        $query = Appointment::with(['patient', 'payments', 'creditUsages', 'appointmentType']);
 
         if (!empty($filters['date'])) {
             $date = Carbon::parse($filters['date']);
@@ -60,11 +61,41 @@ class AppointmentService
         return DB::transaction(function () use ($data) {
             $clinicId = $this->resolveClinic($data);
 
+            $this->validateClinicScheduleConstraints((int) $clinicId, $data, null);
+
             $this->checkAvailability($clinicId, $data);
 
             $this->validatePaymentRules($data, $clinicId);
 
             $data['clinic_id'] = $clinicId;
+
+            if (isset($data['custom_type'])) {
+                $customType = trim((string) $data['custom_type']);
+                $data['custom_type'] = $customType !== '' ? $customType : null;
+            }
+            
+            // Si se proporciona app_type_id, sugerir precio y tipo de pago del tipo
+            if (!empty($data['app_type_id']) && is_numeric($data['app_type_id'])) {
+                $appType = \App\Models\AppointmentType::query()
+                    ->where('clinic_id', $clinicId)
+                    ->find($data['app_type_id']);
+                
+                if ($appType) {
+                    if (!isset($data['price']) || $data['price'] === '' || $data['price'] === null) {
+                        $data['price'] = $appType->price;
+                    }
+
+                    if (!isset($data['payment_type']) || $data['payment_type'] === '' || $data['payment_type'] === null) {
+                        $data['payment_type'] = $appType->payment_type === 'abono' ? 'bonus' : 'single';
+                    }
+
+                    // Si el tipo viene tipificado, limpiar cualquier texto libre
+                    $data['custom_type'] = null;
+                }
+            } else {
+                $data['app_type_id'] = null;
+            }
+            
             if (isset($data['use_bonus_id'])) {
                 $data['use_bonus_id'] = $this->normalizeBonusId($data['use_bonus_id']);
                 $data['bonus_id'] = $data['use_bonus_id'];
@@ -85,7 +116,7 @@ class AppointmentService
             $this->syncPendingCreditPaymentUsage($appointment, $data);
             $this->appointmentPendingPaymentService->syncPaymentStatus($appointment);
 
-            return $appointment->load(['patient', 'bonus']);
+            return $appointment->load(['patient', 'bonus', 'appointmentType']);
         });
     }
 
@@ -109,7 +140,7 @@ class AppointmentService
             }
         }
 
-        $appointment->load(['bonus', 'patient', 'creditUsages', 'payments']);
+        $appointment->load(['bonus', 'patient', 'creditUsages', 'payments', 'appointmentType']);
 
         $bonusPayments = collect();
         if ((string) $appointment->payment_status === 'covered_by_pack' && !empty($appointment->bonus_id)) {
@@ -134,6 +165,7 @@ class AppointmentService
             $newPaymentType = $data['payment_type'] ?? $oldPaymentType;
 
             if ($this->needsAvailabilityCheck($data)) {
+                $this->validateClinicScheduleConstraints((int) $appointment->clinic_id, $data, $appointment);
                 $this->checkAvailability($appointment->clinic_id, $data, $appointment->id);
             }
 
@@ -529,6 +561,85 @@ private function resolveClinic(array $data)
     private function needsAvailabilityCheck(array $data): bool
     {
         return isset($data['start_time']) || isset($data['end_time']);
+    }
+
+    private function validateClinicScheduleConstraints(int $clinicId, array $data, ?Appointment $currentAppointment = null): void
+    {
+        $startValue = $data['start_time'] ?? ($currentAppointment?->start_time ? (string) $currentAppointment->start_time : null);
+        $endValue = $data['end_time'] ?? ($currentAppointment?->end_time ? (string) $currentAppointment->end_time : null);
+
+        if (!$startValue || !$endValue) {
+            return;
+        }
+
+        $clinic = Clinic::query()->find($clinicId);
+        if (!$clinic) {
+            return;
+        }
+
+        $start = Carbon::parse($startValue);
+        $end = Carbon::parse($endValue);
+        $dateIso = $start->toDateString();
+
+        if ($this->isDateClosedForClinic($dateIso, (array) ($clinic->closed_days ?? []))) {
+            throw new DomainException('La clínica está cerrada en la fecha seleccionada');
+        }
+
+        $businessHours = (array) ($clinic->business_hours ?? []);
+        if (empty($businessHours)) {
+            return;
+        }
+
+        $dayKey = strtolower($start->englishDayOfWeek);
+        $dayConfig = collect($businessHours)->first(function ($item) use ($dayKey) {
+            return strtolower((string) ($item['day'] ?? '')) === $dayKey;
+        });
+
+        if (!$dayConfig) {
+            return;
+        }
+
+        if (!filter_var($dayConfig['enabled'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+            throw new DomainException('La clínica está cerrada en la fecha seleccionada');
+        }
+
+        $openStart = trim((string) ($dayConfig['start'] ?? ''));
+        $openEnd = trim((string) ($dayConfig['end'] ?? ''));
+        if (!preg_match('/^\d{2}:\d{2}$/', $openStart) || !preg_match('/^\d{2}:\d{2}$/', $openEnd)) {
+            return;
+        }
+
+        $startHm = $start->format('H:i');
+        $endHm = $end->format('H:i');
+        if ($startHm < $openStart || $endHm > $openEnd) {
+            throw new DomainException('La cita está fuera del horario de atención de la clínica');
+        }
+    }
+
+    private function isDateClosedForClinic(string $dateIso, array $rules): bool
+    {
+        foreach ($rules as $ruleRaw) {
+            $rule = trim((string) $ruleRaw);
+            if ($rule === '') {
+                continue;
+            }
+
+            if (!str_contains($rule, '..')) {
+                if ($rule === $dateIso) {
+                    return true;
+                }
+                continue;
+            }
+
+            [$from, $to] = array_pad(explode('..', $rule, 2), 2, null);
+            $from = trim((string) $from);
+            $to = trim((string) $to);
+            if ($from !== '' && $to !== '' && $from <= $dateIso && $dateIso <= $to) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function validateBonusForAppointment($bonusId, Appointment $appointment, ?string $targetStatus = null)

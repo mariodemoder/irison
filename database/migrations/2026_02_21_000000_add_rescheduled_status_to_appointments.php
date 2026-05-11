@@ -10,7 +10,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Add 'rescheduled' to appointments.status enum
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         DB::statement("ALTER TABLE `appointments` MODIFY `status` ENUM('scheduled','rescheduled','completed','canceled','no_show') NOT NULL DEFAULT 'scheduled'");
     }
 
@@ -19,7 +22,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // Revert to previous enum without 'rescheduled'
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         DB::statement("ALTER TABLE `appointments` MODIFY `status` ENUM('scheduled','completed','canceled','no_show') NOT NULL DEFAULT 'scheduled'");
     }
 };

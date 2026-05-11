@@ -20,6 +20,11 @@ class FakePaymentProvider implements PaymentProviderInterface
         // This could dispatch events or update Payment models
     }
 
+    public function cancelSubscription(array $data): void
+    {
+        // No external cancellation is needed for fake provider.
+    }
+
     public function getName(): string
     {
         return 'fake';

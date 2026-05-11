@@ -15,12 +15,12 @@ class AddTypeToPayments extends Migration
 
         if (! Schema::hasColumn('payments', 'type')) {
             Schema::table('payments', function (Blueprint $table) {
-                $table->enum('type', ['single','bonus'])->default('single');
+                $table->string('type', 50)->default('single');
             });
         }
         if (! Schema::hasColumn('appointments', 'payment_type')) {
             Schema::table('appointments', function (Blueprint $table) {
-                $table->enum('payment_type', ['single','bonus'])->default('single');
+                $table->string('payment_type', 50)->default('single');
                 $table->unsignedBigInteger('bonus_id')->nullable();
             });
         }

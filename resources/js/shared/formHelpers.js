@@ -4,13 +4,25 @@ import { goBackWithPriority } from './navigationHelpers'
 export async function openCreatePatientPopup({ api, Swal, toast } = {}) {
   const { value: formValues } = await Swal.fire({
     title: 'Crear paciente',
-    html:
-      '<div class="swal-card">' +
-      '<input id="swal-name" class="input" placeholder="Nombre">' +
-      '<input id="swal-nif" class="input" placeholder="NIF (opcional)">' +
-      '<input id="swal-phone" class="input" placeholder="Teléfono (opcional)">' +
-      '<input id="swal-email" class="input" placeholder="Email (opcional)">' +
-      '</div>',
+    html: `
+      <div class="swal-card" style="display:grid;gap:8px;text-align:left;max-height:55vh;overflow:auto;padding-right:4px;">
+        <input id="swal-name" class="input" placeholder="Nombre">
+        <input id="swal-nif" class="input" placeholder="NIF (opcional)">
+        <input id="swal-phone" class="input" placeholder="Telefono (opcional)">
+        <input id="swal-email" class="input" placeholder="Email (opcional)">
+        <input id="swal-birth-date" class="input" type="date" placeholder="Fecha de nacimiento">
+        <input id="swal-address" class="input" placeholder="Direccion (opcional)">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <input id="swal-zip" class="input" placeholder="ZIP (opcional)">
+          <input id="swal-city" class="input" placeholder="Ciudad (opcional)">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <input id="swal-province" class="input" placeholder="Provincia (opcional)">
+          <input id="swal-country" class="input" placeholder="Pais (opcional)">
+        </div>
+        <textarea id="swal-notes" class="input" rows="3" placeholder="Notas (opcional)" style="resize:vertical;"></textarea>
+      </div>
+    `,
     focusConfirm: false,
     showCancelButton: true,
     confirmButtonText: 'Crear',
@@ -26,15 +38,43 @@ export async function openCreatePatientPopup({ api, Swal, toast } = {}) {
       const nif = document.getElementById('swal-nif')?.value?.trim() || null
       const phone = document.getElementById('swal-phone')?.value?.trim() || null
       const email = document.getElementById('swal-email')?.value?.trim() || null
+      const birth_date = document.getElementById('swal-birth-date')?.value?.trim() || null
+      const address = document.getElementById('swal-address')?.value?.trim() || null
+      const zip = document.getElementById('swal-zip')?.value?.trim() || null
+      const city = document.getElementById('swal-city')?.value?.trim() || null
+      const province = document.getElementById('swal-province')?.value?.trim() || null
+      const country = document.getElementById('swal-country')?.value?.trim() || null
+      const notes = document.getElementById('swal-notes')?.value?.trim() || null
+
       if (!name) {
         Swal.showValidationMessage('El nombre es requerido')
         return false
       }
+
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        Swal.showValidationMessage('Formato de email invalido')
+        return false
+      }
+
       try {
-        const res = await api.post('/patients', { name, nif, phone, email })
+        const res = await api.post('/patients', {
+          name,
+          nif,
+          phone,
+          email,
+          birth_date,
+          address,
+          zip,
+          city,
+          province,
+          country,
+          notes,
+        })
         return res.data || res.data?.data || res
       } catch (e) {
-        const msg = e.response?.data?.message || 'Error creando paciente'
+        const validationErrors = e.response?.data?.errors
+        const firstFieldError = validationErrors && Object.values(validationErrors)[0]?.[0]
+        const msg = firstFieldError || e.response?.data?.message || 'Error creando paciente'
         Swal.showValidationMessage(msg)
         return false
       }

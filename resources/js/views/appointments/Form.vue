@@ -5,7 +5,7 @@
         <div class="form-header">
           <div>
             <h1>{{ isEdit ? 'Editar cita' : 'Nueva cita' }}</h1>
-            <p class="form-sub">{{ isEdit ? 'Modifica la fecha, hora y notas de la cita.' : 'Crea una nueva cita.' }}</p>
+            
           </div>
           <button type="button" class="muted back-btn" @click.prevent="cancel">Volver</button>
         </div>
@@ -14,11 +14,15 @@
           <div class="field">
             <label class="label">Paciente</label>
               <div style="display:flex; gap:12px; align-items:flex-start; width:100%">
-              <select v-model="form.patient_id" @change="onPatientChange" class="input" :disabled="isCanceled && mode !== 'reprogram'" style="flex:1">
-                <option value="" disabled>Selecciona un paciente</option>
-                <option v-for="p in patients" :key="p.id" :value="p.id">{{ p.counter ? (`${p.counter} · `) : '' }}{{ p.name }}{{ p.nif ? (' — ' + p.nif) : '' }}</option>
-                <option value="__create">+ Crear paciente...</option>
-              </select>
+              <PatientSelect
+                v-model="form.patient_id"
+                :patients="patients"
+                class="input"
+                :disabled="isCanceled && mode !== 'reprogram'"
+                placeholder="Selecciona un paciente"
+                style="flex:1"
+                @change="onPatientChange"
+              />
               <button v-if="form.patient_id && form.patient_id !== '__create'" type="button" class="muted" @click.prevent="goToPatient(form.patient_id)" title="Ir a la ficha del paciente" style="height:40px;padding:8px 10px;border-radius:8px;align-self:center">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
               </button>
@@ -27,9 +31,15 @@
           </div>
           <div class="field">
             <label class="label">Estado</label>
-            <OptionSelect v-model="form.status" :options="statusOptions" :disabled="isCanceled && mode !== 'reprogram'" />
+            <div class="status-select-wrap">
+              <select v-model="form.status" class="input" :disabled="isCanceled && mode !== 'reprogram'">
+                <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">{{ statusOptionDot(opt.value) }} {{ opt.label }}</option>
+              </select>
+            </div>
             <div v-if="errors.status" class="field-error">{{ errors.status[0] }}</div>
           </div>
+
+    
 
           <div class="full tab-bar">
             <button type="button" class="tab-btn" :class="{ active: activeTab === 'session' }" @click="activeTab = 'session'">
@@ -46,16 +56,46 @@
           <template v-if="activeTab === 'session'">
           <div class="full tab-content-card">
             <div class="tab-content-grid">
+          <div class="field" v-if="activeTab === 'session'">
+            <label class="label">Tipo</label>
+            <select v-model="form.app_type_id" class="input" :disabled="isCanceled && mode !== 'reprogram'">
+              <option value="">Selecciona un tipo</option>
+              <option value="__custom">Otro (escribir)</option>
+              <option v-for="type in appointmentTypes" :key="type.id" :value="String(type.id)">
+                {{ type.description || `Tipo #${type.id}` }}
+              </option>
+            </select>
+            <div v-if="errors.app_type_id" class="field-error">{{ errors.app_type_id[0] }}</div>
+          </div>
+          <div class="field" v-if="isCustomAppointmentType">
+            <label class="label">Tipo personalizado</label>
+            <input v-model="form.custom_type" type="text" class="input" placeholder="Ej: Seguimiento post-operatorio" :disabled="isCanceled && mode !== 'reprogram'" />
+            <div v-if="errors.custom_type" class="field-error">{{ errors.custom_type[0] }}</div>
+          </div>
           <div class="field">
             <label class="label">Inicio</label>
-            <input v-model="form.start_time" @change="normalizeDateTimeField('start_time')" type="datetime-local" step="300" class="input" :disabled="isCanceled && mode !== 'reprogram'" />
+            <div class="datetime-pair">
+              <input v-model="startDateModel" type="date" class="input" :disabled="isCanceled && mode !== 'reprogram'" />
+              <select v-model="startTimeModel" class="input" :disabled="isCanceled && mode !== 'reprogram'">
+                <option value="" disabled>Hora</option>
+                <option v-for="opt in timeOptions" :key="'s'+opt" :value="opt">{{ opt }}</option>
+              </select>
+            </div>
             <div v-if="errors.start_time" class="field-error">{{ errors.start_time[0] }}</div>
           </div>
-          
-
+          <div class="field" v-if="hasSelectedAppointmentType">
+            <label class="label">Duración</label>
+            <input :value="appointmentTypeDurationLabel" type="text" class="input" disabled />
+          </div>
           <div class="field">
             <label class="label">Fin</label>
-            <input v-model="form.end_time" @change="normalizeDateTimeField('end_time')" type="datetime-local" step="300" class="input" :disabled="isCanceled && mode !== 'reprogram'" />
+            <div class="datetime-pair">
+              <input v-model="endDateModel" type="date" class="input" :disabled="isCanceled && mode !== 'reprogram'" />
+              <select v-model="endTimeModel" class="input" :disabled="isCanceled && mode !== 'reprogram'">
+                <option value="" disabled>Hora</option>
+                <option v-for="opt in timeOptions" :key="'e'+opt" :value="opt">{{ opt }}</option>
+              </select>
+            </div>
             <div v-if="errors.end_time" class="field-error">{{ errors.end_time[0] }}</div>
             <div v-if="calendarErrorMessage" class="calendar-inline-alert">{{ calendarErrorMessage }}</div>
             <div v-if="overlapping.length">
@@ -76,13 +116,36 @@
             </div>
           </div>
         <div class="field" v-if="hasSelectedPatient">
-                    <label class="label">Precio Sesión</label>
+                    <label class="label">Precio</label>
                     <input v-model.number="form.price" type="number" min="0.01" step="0.01" class="input" style="max-width:220px" required />
+                    <div v-if="isCustomAppointmentType" class="field-help">Precio manual para tipo no tipificado.</div>
                   </div>
           <div class="field full">
             <label class="label">Notas</label>
             <textarea v-model="form.notes" class="textarea" rows="4" :disabled="isCanceled && mode !== 'reprogram'"></textarea>
             <div v-if="errors.notes" class="field-error">{{ errors.notes[0] }}</div>
+          </div>
+
+          <div v-if="hasSelectedPatient && form.start_time" class="field full">
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:14px; color:#374151;">
+                <input type="checkbox" v-model="sendWhatsapp" style="width:16px;height:16px;" />
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#25D366" style="flex-shrink:0"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+                <span>Enviar recordatorio por WhatsApp</span>
+              </label>
+              <button
+                v-if="whatsappReminderMessage"
+                type="button"
+                class="muted"
+                @click.prevent="copyReminderToClipboard"
+                :title="reminderCopied ? 'Copiado!' : 'Copiar mensaje de recordatorio'"
+                style="display:flex;align-items:center;gap:6px;padding:6px 10px;font-size:13px;"
+              >
+                <svg v-if="!reminderCopied" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                <svg v-else xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                {{ reminderCopied ? 'Copiado' : 'Copiar recordatorio' }}
+              </button>
+            </div>
           </div>
             </div>
           </div>
@@ -112,8 +175,8 @@
                 class="textarea"
                 rows="2"
                 style="width:100%; box-sizing:border-box"
-                placeholder="Detalle que aparecerá en la factura (deja vacío para usar las notas de la cita)"
-                :disabled="isCanceled && mode !== 'reprogram'"
+                :placeholder="billingDetailLabel"
+                :disabled="isCanceled"
               ></textarea>
             </div>
 
@@ -379,13 +442,13 @@
 
 
 <script setup>
-import { reactive, ref, onMounted, watch, computed } from 'vue'
+import { reactive, ref, onMounted, watch, computed, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
 import AppLoading from '../../components/AppLoading.vue'
+import PatientSelect from '../../components/PatientSelect.vue'
 import IconCancel from '../../components/icons/IconCancel.vue'
-import OptionSelect from '../../components/OptionSelect.vue'
 import { useToast } from 'vue-toastification'
 import Swal from 'sweetalert2'
 import { formatDate, toDatetimeLocalValue } from '../../shared/appointmentHelpers'
@@ -404,9 +467,11 @@ const router = useRouter()
 const route = useRoute()
 const isEdit = ref(false)
 const mode = ref(route.query.mode || null)
-const form = reactive({ patient_id: '', status: 'scheduled', start_time: '', end_time: '', notes: '', price: '', use_bonus_id: '', use_credit_payment_id: '', bonus_notes: '', bonus_name: '', payment_type: 'single', apply_credit: false, apply_credit_mode: 'auto', apply_credit_amount: '' })
+const form = reactive({ patient_id: '', status: 'scheduled', start_time: '', end_time: '', notes: '', price: '', app_type_id: '', custom_type: '', use_bonus_id: '', use_credit_payment_id: '', bonus_notes: '', bonus_name: '', payment_type: 'single', apply_credit: false, apply_credit_mode: 'auto', apply_credit_amount: '' })
 const invoiceNotesDraft = ref('')
 const applyCreditConfirmed = ref(false)
+const sendWhatsapp = ref(false)
+const reminderCopied = ref(false)
 
 const statusOptions = [
   { value: 'scheduled', label: 'Programada', color: '#99b1ff' },
@@ -414,6 +479,16 @@ const statusOptions = [
   { value: 'completed', label: 'Completada', color: '#a1f7bf' },
   { value: 'canceled', label: 'Cancelada', color: '#ffcccc' }
 ]
+
+function statusOptionDot(status) {
+  const map = {
+    scheduled: '🔵',
+    rescheduled: '🟠',
+    completed: '🟢',
+    canceled: '🔴',
+  }
+  return map[String(status || '')] || '⚪'
+}
 const isCanceled = ref(false)
 const originalStart = ref(null)
 const originalStartLocal = ref('')
@@ -425,6 +500,7 @@ const cancelling = ref(false)
 const loading = ref(false)
 const calendarInfoMessage = ref('')
 const patients = ref([])
+const appointmentTypes = ref([])
 const overlapping = ref([])
 const hasScheduledOverlap = computed(() => overlapping.value.some(a => a.status === 'scheduled'))
 let overlapTimer = null
@@ -444,6 +520,7 @@ const appointmentCoveredAmount = ref(0)
 const issuingInvoice = ref(false)
 const appointmentInvoiceId = ref(null)
 const appointmentPaymentStatus = ref('')
+const suppressTypeChangePrompt = ref(false)
 
 const selectedBonus = computed(() => {
   if (!form.use_bonus_id || !bonuses.value) return null
@@ -554,6 +631,38 @@ const hasSelectedPatient = computed(() => {
   return !!form.patient_id && form.patient_id !== '__create'
 })
 
+const selectedAppointmentType = computed(() => {
+  if (!form.app_type_id) return null
+  return appointmentTypes.value.find((item) => String(item.id) === String(form.app_type_id)) || null
+})
+
+const isCustomAppointmentType = computed(() => form.app_type_id === '__custom')
+
+const appointmentTypeBillingLabel = computed(() => {
+  if (isCustomAppointmentType.value) {
+    const customType = String(form.custom_type || '').trim()
+    return customType || ''
+  }
+
+  const selectedTypeName = String(selectedAppointmentType.value?.description || '').trim()
+  return selectedTypeName || ''
+})
+
+const hasSelectedAppointmentType = computed(() => !!selectedAppointmentType.value)
+
+const appointmentTypeDurationLabel = computed(() => {
+  if (!selectedAppointmentType.value) return '—'
+  const hours = Number(selectedAppointmentType.value.estimated_hours || 0)
+  const minutes = Number(selectedAppointmentType.value.estimated_minutes || 0)
+  const safeHours = Number.isFinite(hours) ? Math.max(hours, 0) : 0
+  const safeMinutes = Number.isFinite(minutes) ? Math.max(minutes, 0) : 0
+  return `${safeHours}h ${safeMinutes}min`
+})
+
+const isEndTimeLocked = computed(() => {
+  return !isEdit.value && hasSelectedAppointmentType.value
+})
+
 const selectedPatient = computed(() => {
   if (!form.patient_id || form.patient_id === '__create') return null
   return patients.value.find(p => String(p.id) === String(form.patient_id)) || null
@@ -583,7 +692,9 @@ const bonusInvoiceId = computed(() => {
 
 const billingDetailLabel = computed(() => {
   if (!isCoveredByBonus.value) {
-    return invoiceNotesDraft.value || form.notes || '—'
+    const manualInvoiceDetail = String(invoiceNotesDraft.value || '').trim()
+    const appointmentNotes = String(form.notes || '').trim()
+    return manualInvoiceDetail || appointmentTypeBillingLabel.value || appointmentNotes || '—'
   }
 
   const selectedBonusName = selectedBonus.value?.name || form.bonus_name || ''
@@ -594,6 +705,11 @@ const billingDetailLabel = computed(() => {
   }
 
   return base
+})
+
+const billingDetailSuggestedText = computed(() => {
+  const text = String(appointmentTypeBillingLabel.value || form.notes || '').trim()
+  return text
 })
 
 const billingAmountLabel = computed(() => {
@@ -928,6 +1044,7 @@ async function loadFormBootstrap({ appointmentId = null, patientId = null } = {}
   const data = res.data?.data ?? {}
 
   patients.value = Array.isArray(data.patients) ? data.patients : []
+  appointmentTypes.value = Array.isArray(data.appointment_types) ? data.appointment_types : []
   bonuses.value = Array.isArray(data.bonuses) ? data.bonuses : []
   pendingCreditPayments.value = Array.isArray(data.pending_credit_payments) ? data.pending_credit_payments : []
 
@@ -969,6 +1086,11 @@ async function applyAppointmentData(data) {
   form.notes = data.notes || ''
   invoiceNotesDraft.value = form.notes || ''
   form.price = data.price != null ? Number(data.price) : ''
+  suppressTypeChangePrompt.value = true
+  form.app_type_id = data.app_type_id != null ? String(data.app_type_id) : (data.custom_type ? '__custom' : '')
+  await nextTick()
+  suppressTypeChangePrompt.value = false
+  form.custom_type = data.custom_type || ''
   appointmentInvoiceId.value = data.invoice_id ? Number(data.invoice_id) : null
   appointmentPaymentStatus.value = String(data.payment_status || '')
 
@@ -1076,6 +1198,58 @@ function onBonusSelectChange() {
   }
 }
 
+const whatsappReminderMessage = computed(() => {
+  const patientName = selectedPatient.value?.name || ''
+  const start = form.start_time
+  const end = form.end_time
+
+  if (!patientName || !start) return ''
+
+  const fmtDate = (val) => {
+    if (!val) return ''
+    const d = new Date(val)
+    if (Number.isNaN(d.getTime())) return val
+    const dd = String(d.getDate()).padStart(2, '0')
+    const mm = String(d.getMonth() + 1).padStart(2, '0')
+    const yyyy = d.getFullYear()
+    const hh = String(d.getHours()).padStart(2, '0')
+    const min = String(d.getMinutes()).padStart(2, '0')
+    return `${dd}/${mm}/${yyyy} a las ${hh}:${min}`
+  }
+
+  const fmtTime = (val) => {
+    if (!val) return ''
+    const d = new Date(val)
+    if (Number.isNaN(d.getTime())) return ''
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  }
+
+  let msg = `Hola ${patientName} Recuerda que tienes una cita\nFecha: ${fmtDate(start)}`
+  // if (form.notes) msg += `\nNotas: ${form.notes}`
+  msg += `\nContesta este mensaje si quieres confirmar, reprogramar o cancelar tu cita.`
+  return msg
+})
+
+async function copyReminderToClipboard() {
+  const msg = whatsappReminderMessage.value
+  if (!msg) return
+  try {
+    await navigator.clipboard.writeText(msg)
+    reminderCopied.value = true
+    setTimeout(() => { reminderCopied.value = false }, 2000)
+  } catch (e) {
+    // fallback
+    const el = document.createElement('textarea')
+    el.value = msg
+    document.body.appendChild(el)
+    el.select()
+    document.execCommand('copy')
+    document.body.removeChild(el)
+    reminderCopied.value = true
+    setTimeout(() => { reminderCopied.value = false }, 2000)
+  }
+}
+
 function cancel() {
   sharedGoBack(router, route)
 }
@@ -1158,6 +1332,10 @@ function handleBillingTabClick() {
   }
 
   activeTab.value = 'billing'
+
+  if (!isCoveredByBonus.value && !String(invoiceNotesDraft.value || '').trim()) {
+    invoiceNotesDraft.value = billingDetailSuggestedText.value
+  }
 }
 
 function goToBonusInvoice() {
@@ -1193,28 +1371,26 @@ async function emitInvoice() {
     return
   }
 
-  issuingInvoice.value = true
-  const toast = useToast()
+  const invoiceDescription = String(invoiceNotesDraft.value || '').trim()
+    || appointmentTypeBillingLabel.value
+    || String(form.notes || '').trim()
+    || `Cita #${route.params.id}`
+  const selectedPatientName = String(selectedPatient.value?.name || '').trim()
+  const selectedPatientNif = String(selectedPatient.value?.nif || '').trim()
+  const amount = Number(form.price || 0)
 
-  try {
-    const invoiceNotes = String(invoiceNotesDraft.value || '').trim() || String(form.notes || '').trim() || undefined
-    const res = await api.post(`/appointments/${route.params.id}/invoice`, {
-      notes: invoiceNotes,
-    })
-    const documentId = res.data?.data?.id
-
-    toast.success(res.data?.message || 'Factura emitida correctamente')
-
-    if (documentId) {
-      appointmentInvoiceId.value = Number(documentId)
-      goToInvoiceFromAppointment(documentId)
-    }
-  } catch (e) {
-    const message = e?.response?.data?.message || 'No se pudo emitir la factura'
-    toast.error(message)
-  } finally {
-    issuingInvoice.value = false
-  }
+  router.push({
+    path: '/invoices/create',
+    query: {
+      from: 'appointment',
+      appointment_id: String(route.params.id),
+      patient_id: String(form.patient_id),
+      patient_name: selectedPatientName,
+      patient_nif: selectedPatientNif,
+      item_description: invoiceDescription,
+      item_amount: Number.isFinite(amount) ? String(amount.toFixed(2)) : '0.00',
+    },
+  })
 }
 
 // formatDate moved to shared/appointmentHelpers
@@ -1238,6 +1414,57 @@ function toDatetimeLocalString(date) {
   return `${yyyy}-${mm}-${dd}T${hh}:${min}`
 }
 
+const timeOptions = computed(() => {
+  const opts = []
+  for (let h = 0; h < 24; h++) {
+    for (let m = 0; m < 60; m += 5) {
+      opts.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`)
+    }
+  }
+  return opts
+})
+
+const startDateModel = computed({
+  get() {
+    return form.start_time ? form.start_time.slice(0, 10) : ''
+  },
+  set(date) {
+    const time = form.start_time ? form.start_time.slice(11, 16) : '00:00'
+    form.start_time = date ? `${date}T${time}` : ''
+  }
+})
+
+const startTimeModel = computed({
+  get() {
+    return form.start_time ? form.start_time.slice(11, 16) : ''
+  },
+  set(time) {
+    const date = form.start_time ? form.start_time.slice(0, 10) : new Date().toISOString().slice(0, 10)
+    form.start_time = time ? `${date}T${time}` : ''
+    normalizeDateTimeField('start_time')
+  }
+})
+
+const endDateModel = computed({
+  get() {
+    return form.end_time ? form.end_time.slice(0, 10) : ''
+  },
+  set(date) {
+    const time = form.end_time ? form.end_time.slice(11, 16) : '00:00'
+    form.end_time = date ? `${date}T${time}` : ''
+  }
+})
+
+const endTimeModel = computed({
+  get() {
+    return form.end_time ? form.end_time.slice(11, 16) : ''
+  },
+  set(time) {
+    const date = form.end_time ? form.end_time.slice(0, 10) : new Date().toISOString().slice(0, 10)
+    form.end_time = time ? `${date}T${time}` : ''
+  }
+})
+
 function roundDatetimeLocalToNearestMinutes(value, stepMinutes = 5) {
   if (!value) return value
   const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/)
@@ -1258,6 +1485,81 @@ function normalizeDateTimeField(fieldName) {
   if (roundedValue !== currentValue) {
     form[fieldName] = roundedValue
   }
+}
+
+function toIsoFromLocal(localValue) {
+  if (!localValue) return null
+  const date = new Date(localValue)
+  if (Number.isNaN(date.getTime())) return null
+  return date.toISOString()
+}
+
+function toLocalFromIso(isoValue) {
+  if (!isoValue) return ''
+  return toDatetimeLocalValue(isoValue)
+}
+
+function applyAppointmentTypeDefaults() {
+  if (isEdit.value || !selectedAppointmentType.value) return
+
+  const minutes = Number(selectedAppointmentType.value.estimated_minutes || 0)
+  const hours = Number(selectedAppointmentType.value.estimated_hours || 0)
+  const totalMinutes = (Number.isFinite(hours) ? Math.max(hours, 0) * 60 : 0) + (Number.isFinite(minutes) ? Math.max(minutes, 0) : 0)
+
+  const typePrice = Number(selectedAppointmentType.value.price || 0)
+  if (Number.isFinite(typePrice) && typePrice >= 0) {
+    form.price = Number(typePrice.toFixed(2))
+  }
+
+  if (selectedAppointmentType.value.payment_type === 'abono' && hasAvailableBonuses.value) {
+    form.payment_type = 'bonus'
+  } else {
+    form.payment_type = 'single'
+  }
+
+  if (!form.start_time || totalMinutes <= 0) return
+
+  const startIso = toIsoFromLocal(form.start_time)
+  if (!startIso) return
+  const startDate = new Date(startIso)
+  startDate.setMinutes(startDate.getMinutes() + totalMinutes)
+  form.end_time = toLocalFromIso(startDate.toISOString())
+}
+
+async function confirmAndApplyTypeDefaultsOnEdit() {
+  if (!selectedAppointmentType.value) return
+
+  const result = await Swal.fire({
+    title: 'Recalcular automáticamente',
+    text: '¿Deseas recalcular precio, tipo de pago y hora de fin según el tipo seleccionado?',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, recalcular',
+    cancelButtonText: 'No, mantener actual',
+  })
+
+  if (!result.isConfirmed) return
+
+  const minutes = Number(selectedAppointmentType.value.estimated_minutes || 0)
+  const hours = Number(selectedAppointmentType.value.estimated_hours || 0)
+  const totalMinutes = (Number.isFinite(hours) ? Math.max(hours, 0) * 60 : 0) + (Number.isFinite(minutes) ? Math.max(minutes, 0) : 0)
+
+  const typePrice = Number(selectedAppointmentType.value.price || 0)
+  if (Number.isFinite(typePrice) && typePrice >= 0) {
+    form.price = Number(typePrice.toFixed(2))
+  }
+
+  form.payment_type = (selectedAppointmentType.value.payment_type === 'abono' && hasAvailableBonuses.value)
+    ? 'bonus'
+    : 'single'
+
+  if (!form.start_time || totalMinutes <= 0) return
+
+  const startIso = toIsoFromLocal(form.start_time)
+  if (!startIso) return
+  const startDate = new Date(startIso)
+  startDate.setMinutes(startDate.getMinutes() + totalMinutes)
+  form.end_time = toLocalFromIso(startDate.toISOString())
 }
 
 const isFutureAppointment = computed(() => {
@@ -1398,6 +1700,8 @@ watch(() => route.params.id, (id) => {
     form.notes = ''
     invoiceNotesDraft.value = ''
     form.price = ''
+    form.app_type_id = ''
+    form.custom_type = ''
     form.use_bonus_id = ''
     form.use_credit_payment_id = ''
     form.payment_type = 'single'
@@ -1410,8 +1714,63 @@ watch(() => route.params.id, (id) => {
   }
 })
 
+watch([activeTab, billingDetailSuggestedText, isCoveredByBonus], ([tab, suggestedText, coveredByBonus]) => {
+  if (coveredByBonus || tab !== 'billing') return
+
+  if (!String(invoiceNotesDraft.value || '').trim()) {
+    invoiceNotesDraft.value = suggestedText
+  }
+})
+
 watch(() => [form.start_time, form.end_time], () => {
   checkOverlap()
+})
+
+watch(() => form.start_time, (newVal, oldVal) => {
+  if (suppressTypeChangePrompt.value) return
+  if (!newVal || !oldVal) return
+  if (!selectedAppointmentType.value) return
+
+  const minutes = Number(selectedAppointmentType.value.estimated_minutes || 0)
+  const hours = Number(selectedAppointmentType.value.estimated_hours || 0)
+  const totalMinutes = Math.max(hours, 0) * 60 + Math.max(minutes, 0)
+  if (totalMinutes <= 0) return
+
+  const startIso = toIsoFromLocal(newVal)
+  if (!startIso) return
+  const endDate = new Date(startIso)
+  endDate.setMinutes(endDate.getMinutes() + totalMinutes)
+  form.end_time = toLocalFromIso(endDate.toISOString())
+})
+
+watch(() => form.app_type_id, () => {
+  if (suppressTypeChangePrompt.value) return
+
+  if (selectedAppointmentType.value) {
+    confirmAndApplyTypeDefaultsOnEdit()
+  }
+
+  if (isCustomAppointmentType.value) {
+    if (!isEdit.value) {
+      form.price = ''
+    }
+    form.payment_type = 'single'
+    form.use_bonus_id = ''
+    form.bonus_notes = ''
+    form.bonus_name = ''
+    return
+  }
+
+  if (!isCustomAppointmentType.value) {
+    form.custom_type = ''
+  }
+  applyAppointmentTypeDefaults()
+})
+
+watch(() => form.start_time, () => {
+  if (!isEdit.value && hasSelectedAppointmentType.value) {
+    applyAppointmentTypeDefaults()
+  }
 })
 
 watch(() => form.end_time, () => {
@@ -1512,6 +1871,8 @@ async function submit(payNow = false) {
       status: form.status,
       start_time: form.start_time,
       end_time: form.end_time,
+      app_type_id: (!isCustomAppointmentType.value && form.app_type_id) ? form.app_type_id : undefined,
+      custom_type: isCustomAppointmentType.value ? (form.custom_type || undefined) : undefined,
       notes: form.notes,
       price: effectiveSessionPrice.value > 0 ? Number(effectiveSessionPrice.value) : undefined,
       payment_type: form.payment_type === 'credit' ? 'single' : form.payment_type,
@@ -1538,6 +1899,9 @@ async function submit(payNow = false) {
       if (estimatedCreditApplied > 0) {
         toast.info(`Se aplicaron ${estimatedCreditApplied.toFixed(2)}€ de crédito.`)
       }
+      if (sendWhatsapp.value) {
+        window.open('https://web.whatsapp.com/', '_blank', 'noopener,noreferrer')
+      }
       router.push(`/appointments/${route.params.id}`)
     } else {
       // If user selected 'bonus' as payment type but there are no bonuses, block and show error
@@ -1558,6 +1922,9 @@ async function submit(payNow = false) {
       toast.success('Cita creada')
       if (estimatedCreditApplied > 0) {
         toast.info(`Se aplicaron ${estimatedCreditApplied.toFixed(2)}€ de crédito.`)
+      }
+      if (sendWhatsapp.value) {
+        window.open('https://web.whatsapp.com/', '_blank', 'noopener,noreferrer')
       }
       if (createdId > 0) {
         router.push(`/appointments/${createdId}`)
@@ -1597,7 +1964,9 @@ async function submit(payNow = false) {
 
           const rangeMessage = rangeCandidates.find((message) => {
             const text = String(message || '').toLowerCase()
-            return text.includes('hora de inicio') && text.includes('hora de fin')
+            return (text.includes('hora de inicio') && text.includes('hora de fin'))
+              || text.includes('clínica está cerrada')
+              || text.includes('horario de atención')
           })
 
           if (rangeMessage) {
@@ -1619,11 +1988,23 @@ async function submit(payNow = false) {
 </script>
 
 <style scoped>
-.form-wrapper { display:flex; justify-content:center; padding:24px }
-.form-card { width:100%; max-width:760px; background: #fff; border-radius:12px; box-shadow: 0 10px 30px rgba(2,6,23,0.06); padding:24px }
+.form-wrapper {
+  display:flex;
+  justify-content:center;
+  width:100%;
+  padding:16px;
+  box-sizing:border-box;
+}
+.form-card {
+  width:min(100%, 980px);
+  background:#fff;
+  border-radius:12px;
+  box-shadow:0 10px 30px rgba(2,6,23,0.06);
+  padding:clamp(14px, 2vw, 24px);
+  box-sizing:border-box;
+}
 .form-header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px }
 .form-header h1 { margin:0; font-size:22px }
-.form-sub { color:#6b7280; font-size:13px; margin-top:6px }
 
 .grid-form { display:grid; grid-template-columns: repeat(2, 1fr); gap:12px }
 .grid-form .full { grid-column: 1 / -1 }
@@ -1632,13 +2013,26 @@ async function submit(payNow = false) {
 .tab-content-grid .full { grid-column: 1 / -1 }
 .field { display:flex; flex-direction:column }
 .label { font-weight:600; margin-bottom:6px }
-.tab-bar { display:flex; gap:8px; margin-top:2px }
+.tab-bar { display:flex; gap:8px; margin-top:2px; flex-wrap:wrap }
 .tab-btn { padding:8px 14px; border-radius:9999px; border:1px solid #e5e7eb; background:#fff; font-weight:600; color:#6b7280 }
 .tab-btn.active { border-color:#3b82f6; color:#3b82f6; background:#eff6ff }
 .tab-btn-success { border-color:#86efac; color:#166534; background:#dcfce7 }
-.input, .textarea { padding:12px; border:1px solid #e5e7eb; border-radius:8px; font-size:14px }
+.input, .textarea { width:100%; box-sizing:border-box; padding:12px; border:1px solid #e5e7eb; border-radius:8px; font-size:14px }
+.datetime-pair { display:grid; grid-template-columns: 1fr 120px; gap:6px; align-items:center }
+:deep(.option-select .select-btn) {
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  background: #fff;
+}
+.status-select-wrap {
+  position: relative;
+  width: 100%;
+}
 .textarea { resize:vertical }
 .field-error { color:#b91c1c; font-size:13px; margin-top:6px }
+.field-help { color:#6b7280; font-size:12px; margin-top:6px }
 .calendar-inline-alert { margin-top:6px; background:#fffbeb; border:1px solid #fde68a; padding:6px 8px; border-radius:8px; color:#92400e; font-size:12px }
 
 .actions { display:flex; gap:12px; align-items:center }
@@ -1661,6 +2055,7 @@ async function submit(payNow = false) {
 .right-actions { display:flex; gap:8px; align-items:center }
 
 @media (max-width: 768px) {
+  .form-wrapper { padding:10px }
   .grid-form { grid-template-columns: 1fr }
   .tab-content-grid { grid-template-columns: 1fr }
 }

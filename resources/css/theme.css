@@ -1,8 +1,8 @@
 :root {
-  --primary: #22C55E;
-  --primary-hover: #16A34A;
-  --primary-soft: #DCFCE7;
-  --primary-rgb: 34,197,94;
+  --primary: #2563EB;
+  --primary-hover: #1D4ED8;
+  --primary-soft: #DBEAFE;
+  --primary-rgb: 37,99,235;
 
   --secondary: #2563EB;
   --secondary-dark: #1E40AF;
@@ -64,6 +64,7 @@
 
 /* Error text for auth */
 .error-text { color: var(--error); }
+.success-text { color: var(--success); }
 
 /* Subscription banner (top-right) */
 .sub-banner { display: flex; gap: 12px; align-items: center; background: var(--bg-card); padding: 10px 14px; border-radius: 12px; box-shadow: 0 8px 24px rgba(2,6,23,0.06); border: 1px solid var(--border); }

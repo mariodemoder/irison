@@ -17,22 +17,12 @@ return new class extends Migration
             DB::statement('UPDATE payments SET package_id = pack_id WHERE package_id IS NULL AND pack_id IS NOT NULL');
         }
 
-        if (DB::getDriverName() === 'mysql') {
-            $foreignKeyName = DB::table('information_schema.KEY_COLUMN_USAGE')
-                ->select('CONSTRAINT_NAME')
-                ->where('TABLE_SCHEMA', DB::getDatabaseName())
-                ->where('TABLE_NAME', 'payments')
-                ->where('COLUMN_NAME', 'pack_id')
-                ->whereNotNull('REFERENCED_TABLE_NAME')
-                ->value('CONSTRAINT_NAME');
-
-            if ($foreignKeyName) {
-                DB::statement(sprintf('ALTER TABLE payments DROP FOREIGN KEY %s', $foreignKeyName));
-            }
-        }
-
         Schema::table('payments', function (Blueprint $table) {
-            $table->dropColumn('pack_id');
+            try {
+                $table->dropConstrainedForeignId('pack_id');
+            } catch (\Throwable $e) {
+                $table->dropColumn('pack_id');
+            }
         });
     }
 

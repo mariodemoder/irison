@@ -103,7 +103,9 @@ async function load() {
     paymentData.value = res.data || null
   } catch (e) {
     paymentData.value = null
-    toast.error('Error cargando pago')
+    const status = e?.response?.status
+    const message = e?.response?.data?.message
+    toast.error((status === 402 || status === 403) && message ? `Error cargando pago - ${message}` : 'Error cargando pago')
   } finally {
     loading.value = false
   }
@@ -119,7 +121,6 @@ onMounted(async () => {
 .show-card { width:100%; background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:16px; box-shadow:0 10px 30px rgba(2,6,23,0.06) }
 .show-header { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px }
 .show-header h1 { margin:0; font-size:22px }
-.form-sub { color:#6b7280; font-size:13px; margin-top:4px }
 .header-actions { display:flex; align-items:center; gap:8px }
 
 .details-grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:12px }

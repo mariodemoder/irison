@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Services\Counters\CounterService;
+use App\Services\Counters\MySaasCounterService;
 
 class BillingPayment extends Model
 {
@@ -13,17 +13,17 @@ class BillingPayment extends Model
     protected $table = 'billing_payments';
 
     protected $fillable = [
-        'clinic_id', 'amount', 'currency', 'status', 'provider', 'provider_ref', 'counter'
+        'clinic_id', 'amount', 'currency', 'status', 'provider', 'provider_ref', 'method', 'counter'
     ];
 
     protected static function booted(): void
     {
         static::creating(function (BillingPayment $billingPayment) {
-            if (!empty($billingPayment->counter) || empty($billingPayment->clinic_id)) {
+            if (!empty($billingPayment->counter)) {
                 return;
             }
 
-            $billingPayment->counter = app(CounterService::class)->nextFormatted((int) $billingPayment->clinic_id, 'payout');
+            $billingPayment->counter = app(MySaasCounterService::class)->nextFormatted('billing_payments');
         });
     }
 

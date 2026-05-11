@@ -24,9 +24,14 @@ class ProfileController extends Controller
         if ($user->clinic) {
             $clinic = $user->clinic;
             $trial_ends_at = $clinic->trial_ends_at ?? null;
-            if ($clinic->isSubscribed()) $status = 'active';
-            else if ($clinic->isTrialActive()) $status = 'trial';
-            else $status = 'blocked';
+                  $clinicStatus = strtolower(trim((string) ($clinic->subscription_status ?? 'inactive')));
+                  if ($clinicStatus === 'active') {
+                      $status = 'active';
+                  } elseif ($clinicStatus === 'trial' && $clinic->isTrialActive()) {
+                      $status = 'trial';
+                  } else {
+                      $status = 'blocked';
+                  }
         }
 
         return view('profile.edit', [

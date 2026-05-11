@@ -11,7 +11,8 @@ use App\Models\{
     Bonus,
     Payment,
     Reminder,
-    Document
+    Document,
+    Product
 };
 
 use App\Policies\{
@@ -21,7 +22,8 @@ use App\Policies\{
     PackPolicy,
     PaymentPolicy,
     ReminderPolicy,
-    DocumentPolicy
+    DocumentPolicy,
+    ProductPolicy
 };
 
 class AuthServiceProvider extends ServiceProvider
@@ -34,6 +36,7 @@ class AuthServiceProvider extends ServiceProvider
         Payment::class        => PaymentPolicy::class,
         Reminder::class       => ReminderPolicy::class,
         Document::class       => DocumentPolicy::class,
+        Product::class        => ProductPolicy::class,
     ];
 
     public function boot(): void

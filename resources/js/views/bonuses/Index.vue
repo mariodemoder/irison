@@ -1,120 +1,118 @@
 <template>
   <MainLayout>
     <div>
-      <div class="page-header">
-        <div>
-          <h1>Bonos</h1>
-          <div class="form-sub">Listado y búsqueda de bonos</div>
-        </div>
-        <div>
-          <router-link to="/patients" class="primary">Gestionar en paciente</router-link>
-        </div>
-      </div>
-
-      <div class="filters">
-        <div class="search-wrapper">
-          <input v-model="filters.q" placeholder="Buscar por bono, paciente o NIF" class="search-input" @input="debouncedReload" />
-        </div>
-        <select v-model="filters.status" @change="load(1)">
-          <option value="">Estado: todos</option>
-          <option value="active">Activo</option>
-          <option value="last">Última sesión</option>
-          <option value="exhausted">Agotado</option>
-          <option value="expired">Expirado</option>
-        </select>
-        <select v-model="filters.payment_state" @change="load(1)">
-          <option value="">Pago: todos</option>
-          <option value="unpaid">Impagos</option>
-          <option value="paid">Pagados</option>
-        </select>
-      </div>
-
-      <div class="summary">
-        <div><strong>{{ summary.count }}</strong> bono(s)</div>
-        <div>Total: <strong>{{ formatCurrency(summary.total_amount) }}</strong></div>
-      </div>
-
-      <AppLoading v-if="loading" message="Cargando bonos..." />
-
-      <template v-else>
-        <div class="list-header">
-          <div>Número</div>
-          <div>Fecha</div>
-          <div>Paciente</div>
-          <div>Bono</div>
-          <div>Sesiones</div>
-          <div>Precio</div>
-          <div>Vencimiento</div>
-          <div>Estado</div>
-          <div>Pago</div>
-          <div>Factura</div>
-        </div>
-
-        <div class="list">
-          <div v-for="bonus in bonuses" :key="bonus.id" class="payment-row">
-            <div>{{ bonus.counter || '—' }}</div>
-            <div>{{ formatDateOnlyDay(bonus.created_at) }}</div>
-            <div>
-              <router-link v-if="bonus.patient?.id" :to="`/patients/${bonus.patient.id}`" class="patient-link">
-                {{ bonus.patient?.counter ? `${bonus.patient.counter} · ` : '' }}{{ bonus.patient?.name ?? `Paciente #${bonus.patient_id}` }}
-              </router-link>
-              <span v-else>{{ bonus.patient?.counter ? `${bonus.patient.counter} · ` : '' }}{{ bonus.patient?.name ?? `Paciente #${bonus.patient_id}` }}</span>
-            </div>
-            <div>{{ bonus.name || `Bono #${bonus.id}` }}</div>
-            <div>{{ bonus.remaining_sessions }}/{{ bonus.total_sessions }}</div>
-            <div>{{ formatCurrency(bonus.price) }}</div>
-            <div>{{ bonus.expires_at ? formatDateOnlyDay(bonus.expires_at) : '—' }}</div>
-            <div><span class="status" :class="bonus.status">{{ statusLabel(bonus.status) }}</span></div>
-            <div><span class="status" :class="bonus.is_paid ? 'completed' : 'pending'">{{ bonus.is_paid ? 'Pagado' : 'Impago' }}</span></div>
-            <div>
-              <div v-if="bonus.invoice_id" class="pdf-actions">
-                <button
-                  type="button"
-                  class="pdf-btn"
-                  title="Vista previa PDF"
-                  @click.stop="previewPdf(bonus)"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="pdf-icon">
-                    <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"></path>
-                    <circle cx="12" cy="12" r="2.5"></circle>
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  class="pdf-btn"
-                  title="Descargar PDF"
-                  @click.stop="downloadPdf(bonus)"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="pdf-icon">
-                    <path d="M12 4v11"></path>
-                    <path d="M8.5 11.5L12 15l3.5-3.5"></path>
-                    <path d="M5 19h14"></path>
-                  </svg>
-                </button>
-              </div>
-              <button
-                v-else
-                type="button"
-                class="secondary"
-                :disabled="loading || invoicingId === bonus.id"
-                @click="issueBonusInvoice(bonus)"
-              >
-                {{ invoicingId === bonus.id ? 'Facturando...' : 'Facturar' }}
-              </button>
-            </div>
+      <div class="entity-card">
+        <div class="page-header">
+          <div>
+            <h1>Bonos asignados</h1>
+            <div class="form-sub">Listado y búsqueda de bonos</div>
           </div>
-          <EmptyIndexState v-if="bonuses.length === 0 && !hasActiveFilters" />
-          <div v-else-if="bonuses.length === 0" class="empty">No hay resultados para los filtros aplicados.</div>
-        </div>
-
-        <div v-if="meta" class="pagination">
-          <div class="pagination-info">Página {{ meta.current_page }} / {{ meta.last_page }} — {{ meta.total }} bonos</div>
-          <div class="pagination-actions">
-            <button :disabled="meta.current_page <= 1" @click="load(meta.current_page - 1)" class="icon-btn">‹</button>
-            <button :disabled="meta.current_page >= meta.last_page" @click="load(meta.current_page + 1)" class="icon-btn">›</button>
+          <div>
+            <router-link to="/patients" class="btn btn-sm small">Gestionar en paciente</router-link>
           </div>
         </div>
-      </template>
+
+        <div class="filters">
+          <div class="search-wrapper">
+            <input v-model="filters.q" placeholder="Buscar por bono, paciente o NIF" class="search-input" @input="debouncedReload" />
+          </div>
+          <select v-model="filters.status" @change="load(1)">
+            <option value="">Estado: todos</option>
+            <option value="active">Activo</option>
+            <option value="last">Última sesión</option>
+            <option value="exhausted">Agotado</option>
+            <option value="expired">Expirado</option>
+          </select>
+          <select v-model="filters.payment_state" @change="load(1)">
+            <option value="">Pago: todos</option>
+            <option value="unpaid">Impagos</option>
+            <option value="paid">Pagados</option>
+          </select>
+        </div>
+
+        <div class="summary">
+          <div><strong>{{ summary.count }}</strong> bono(s)</div>
+          <div>Total: <strong>{{ formatCurrency(summary.total_amount) }}</strong></div>
+        </div>
+
+        <AppLoading v-if="loading" message="Cargando bonos..." />
+
+        <template v-else>
+          <EntityTable v-if="bonuses.length > 0" :columns="tableColumns" table-class="bonuses-table">
+            <template #default>
+              <tr v-for="bonus in bonuses" :key="bonus.id" class="entity-table-row">
+                <td class="col-min">{{ bonus.counter || '—' }}</td>
+                <td class="col-min">{{ formatDateOnlyDay(bonus.created_at) }}</td>
+                <td class="col-mid">
+                  <div class="truncate-cell">
+                    <router-link v-if="bonus.patient?.id" :to="`/patients/${bonus.patient.id}`" class="patient-link truncate-text">
+                      {{ bonus.patient?.counter ? `${bonus.patient.counter} · ` : '' }}{{ bonus.patient?.name ?? `Paciente #${bonus.patient_id}` }}
+                    </router-link>
+                    <span v-else class="truncate-text">{{ bonus.patient?.counter ? `${bonus.patient.counter} · ` : '' }}{{ bonus.patient?.name ?? `Paciente #${bonus.patient_id}` }}</span>
+                  </div>
+                </td>
+                <td class="col-min">
+                  <div class="truncate-cell">
+                    <span class="truncate-text">{{ bonus.name || `Bono #${bonus.id}` }}</span>
+                  </div>
+                </td>
+                <td class="col-min">{{ bonus.remaining_sessions }}/{{ bonus.total_sessions }}</td>
+                <td class="col-min">{{ formatCurrency(bonus.price) }}</td>
+                <td class="col-min">{{ bonus.expires_at ? formatDateOnlyDay(bonus.expires_at) : '—' }}</td>
+                <td class="col-min"><span class="status" :class="bonus.status">{{ statusLabel(bonus.status) }}</span></td>
+                <td class="col-min"><span class="status" :class="bonus.is_paid ? 'completed' : 'pending'">{{ bonus.is_paid ? 'Pagado' : 'Impago' }}</span></td>
+                <td class="col-min">
+                  <div v-if="bonus.invoice_id" class="pdf-actions">
+                    <button
+                      type="button"
+                      class="pdf-btn"
+                      title="Vista previa PDF"
+                      @click.stop="previewPdf(bonus)"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="pdf-icon">
+                        <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"></path>
+                        <circle cx="12" cy="12" r="2.5"></circle>
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      class="pdf-btn"
+                      title="Descargar PDF"
+                      @click.stop="downloadPdf(bonus)"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="pdf-icon">
+                        <path d="M12 4v11"></path>
+                        <path d="M8.5 11.5L12 15l3.5-3.5"></path>
+                        <path d="M5 19h14"></path>
+                      </svg>
+                    </button>
+                  </div>
+                  <button
+                    v-else
+                    type="button"
+                    class="secondary"
+                    :disabled="loading || invoicingId === bonus.id"
+                    @click="issueBonusInvoice(bonus)"
+                  >
+                    {{ invoicingId === bonus.id ? 'Facturando...' : 'Facturar' }}
+                  </button>
+                </td>
+              </tr>
+            </template>
+          </EntityTable>
+
+          <EmptyIndexState v-else-if="!hasActiveFilters" />
+          <div v-else class="empty">No hay resultados para los filtros aplicados.</div>
+
+          <div v-if="meta" class="pagination">
+            <div class="pagination-info">Página {{ meta.current_page }} / {{ meta.last_page }} — {{ meta.total }} bonos</div>
+            <div class="pagination-actions">
+              <button :disabled="meta.current_page <= 1" @click="load(meta.current_page - 1)" class="icon-btn">‹</button>
+              <button :disabled="meta.current_page >= meta.last_page" @click="load(meta.current_page + 1)" class="icon-btn">›</button>
+            </div>
+          </div>
+        </template>
+      </div>
     </div>
   </MainLayout>
 </template>
@@ -126,6 +124,7 @@ import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
 import AppLoading from '../../components/AppLoading.vue'
 import EmptyIndexState from '../../components/EmptyIndexState.vue'
+import EntityTable from '../../components/EntityTable.vue'
 import { useToast } from 'vue-toastification'
 import { formatDateOnlyDay } from '../../shared/dateHelpers'
 
@@ -139,6 +138,19 @@ const meta = ref(null)
 const summary = ref({ count: 0, total_amount: 0 })
 const invoicingId = ref(null)
 let searchTimer = null
+
+const tableColumns = [
+  { key: 'counter', label: 'Número', thClass: 'col-min' },
+  { key: 'created_at', label: 'Fecha', thClass: 'col-min' },
+  { key: 'patient', label: 'Paciente', thClass: 'col-mid' },
+  { key: 'name', label: 'Bono', thClass: 'col-min' },
+  { key: 'sessions', label: 'Sesiones', thClass: 'col-min' },
+  { key: 'price', label: 'Precio', thClass: 'col-min' },
+  { key: 'expires_at', label: 'Vencimiento', thClass: 'col-min' },
+  { key: 'status', label: 'Estado', thClass: 'col-min' },
+  { key: 'payment_state', label: 'Pago', thClass: 'col-min' },
+  { key: 'invoice', label: 'Factura', thClass: 'col-min' },
+]
 
 const filters = ref({
   q: '',
@@ -280,22 +292,10 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page-header { margin-bottom:14px }
-.page-header { display:flex; justify-content:space-between; align-items:center; gap:12px }
-.page-header h1 { margin:0; font-size:20px; font-weight:800 }
-.form-sub { color:#6b7280; font-size:13px; margin-top:4px }
-
-.primary { padding:8px 14px; border-radius:9999px; border:2px solid #3b82f6; color:#3b82f6; background:#fff; font-weight:600 }
-.primary:hover { background:#eff6ff }
-
 .filters { display:grid; grid-template-columns:1.6fr 1fr 1fr; gap:8px; margin-bottom:10px }
 .filters select, .search-input { padding:8px; border:1px solid #e5e7eb; border-radius:8px; font-size:13px; width:100% }
 
 .summary { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; color:#374151; font-size:14px }
-
-.list { display:flex; flex-direction:column; gap:8px }
-.list-header { display:grid; grid-template-columns: 1.1fr 1.2fr 1.8fr 1.4fr 1fr 1fr 1fr 1.1fr 1fr 1.2fr; gap:10px; color:#6b7280; font-size:13px; font-weight:600; padding:6px 10px }
-.payment-row { display:grid; grid-template-columns: 1.1fr 1.2fr 1.8fr 1.4fr 1fr 1fr 1fr 1.1fr 1fr 1.2fr; gap:10px; background:#fff; border:1px solid #eef2ff22; border-radius:10px; padding:10px; align-items:center; font-size:13px }
 
 .status { padding:5px 8px; border-radius:9999px; font-weight:700; text-transform:capitalize; font-size:11px; white-space:nowrap; display:inline-block }
 .status.completed { background:#dcfce7; color:#166534 }
@@ -307,6 +307,16 @@ onMounted(async () => {
 
 .patient-link { color: var(--secondary); text-decoration: none; font-weight: 600 }
 .patient-link:hover { text-decoration: underline }
+
+.truncate-cell { min-width: 0; width: 100% }
+.truncate-text {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .invoice-link { color: var(--secondary); text-decoration: none; font-weight: 600 }
 .invoice-link:hover { text-decoration: underline }
@@ -328,6 +338,7 @@ onMounted(async () => {
 .icon-btn:disabled { opacity:0.45 }
 
 @media (max-width: 900px) {
-  .filters, .list-header, .payment-row { grid-template-columns:1fr }
+  .filters,
+  .page-header { grid-template-columns:1fr }
 }
 </style>

@@ -9,6 +9,7 @@ import PatientsForm from '../views/patients/Form.vue'
 import PatientsShow from '../views/patients/Show.vue'
 import ClinicalHistory from '../views/patients/ClinicalHistory.vue'
 import Profile from '../views/Profile.vue'
+import Configuration from '../views/Configuration.vue'
 import AgendaDay from '../views/appointments/AgendaDay.vue'
 import AgendaWeek from '../views/appointments/AgendaWeek.vue'
 import AppointmentsForm from '../views/appointments/Form.vue'
@@ -16,22 +17,38 @@ import AppointmentsShow from '../views/appointments/Show.vue'
 import PaymentsIndex from '../views/payments/Index.vue'
 import PaymentsForm from '../views/payments/Form.vue'
 import PaymentsShow from '../views/payments/Show.vue'
+import ProductsIndex from '../views/products/Index.vue'
+import ProductsForm from '../views/products/Form.vue'
+import ProductsShow from '../views/products/Show.vue'
 import InvoicesIndex from '../views/invoices/Index.vue'
 import InvoicesShow from '../views/invoices/Show.vue'
+import InvoicesForm from '../views/invoices/Form.vue'
 import BonusesIndex from '../views/bonuses/Index.vue'
+import NotificationsIndex from '../views/notifications/Index.vue'
+import NotificationsShow from '../views/notifications/Show.vue'
+import Privacy from '../views/Privacy.vue'
+import Terms from '../views/Terms.vue'
 
 const routes = [
   { path: '/login', component: Login },
   { path: '/register', component: Register },
   { path: '/dashboard', component: Dashboard, meta: { auth: true } },
   { path: '/profile', component: Profile, meta: { auth: true } },
+  { path: '/settings', component: Configuration, meta: { auth: true } },
   { path: '/payments', component: PaymentsIndex, meta: { auth: true } },
   { path: '/payments/create', component: PaymentsForm, meta: { auth: true } },
   { path: '/payments/:id', component: PaymentsShow, meta: { auth: true } },
   { path: '/payments/:id/edit', component: PaymentsForm, meta: { auth: true } },
+  { path: '/products', component: ProductsIndex, meta: { auth: true } },
+  { path: '/products/create', component: ProductsForm, meta: { auth: true } },
+  { path: '/products/:id', component: ProductsShow, meta: { auth: true } },
+  { path: '/products/:id/edit', component: ProductsForm, meta: { auth: true } },
   { path: '/invoices', component: InvoicesIndex, meta: { auth: true } },
+  { path: '/invoices/create', component: InvoicesForm, meta: { auth: true } },
   { path: '/invoices/:id', component: InvoicesShow, meta: { auth: true } },
   { path: '/bonuses', component: BonusesIndex, meta: { auth: true } },
+  { path: '/notifications', component: NotificationsIndex, meta: { auth: true } },
+  { path: '/notifications/:id', component: NotificationsShow, meta: { auth: true } },
   { path: '/patients', component: PatientsIndex, meta: { auth: true } },
   { path: '/patients/create', component: PatientsForm, meta: { auth: true } },
   { path: '/patients/:id', component: PatientsShow, meta: { auth: true } },
@@ -44,6 +61,8 @@ const routes = [
   { path: '/appointments/create', component: AppointmentsForm, meta: { auth: true } },
   { path: '/appointments/:id', component: AppointmentsShow, meta: { auth: true } },
   { path: '/appointments/:id/edit', component: AppointmentsForm, meta: { auth: true } },
+  { path: '/privacy', component: Privacy },
+  { path: '/terms', component: Terms },
 ]
 
 const router = createRouter({

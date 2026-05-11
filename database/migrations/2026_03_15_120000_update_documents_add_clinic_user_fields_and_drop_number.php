@@ -13,6 +13,8 @@ return new class extends Migration
             return;
         }
 
+        $driver = DB::getDriverName();
+
         Schema::table('documents', function (Blueprint $table) {
             if (Schema::hasColumn('documents', 'number')) {
                 $table->dropColumn('number');
@@ -56,8 +58,11 @@ return new class extends Migration
         });
 
         if (Schema::hasColumn('documents', 'status')) {
-            DB::statement("UPDATE `documents` SET `status` = 'issued' WHERE `status` IS NULL OR `status` NOT IN ('issued','draft','cancelled')");
-            DB::statement("ALTER TABLE `documents` MODIFY `status` ENUM('issued','draft','cancelled') NOT NULL DEFAULT 'issued'");
+            DB::statement("UPDATE documents SET status = 'issued' WHERE status IS NULL OR status NOT IN ('issued','draft','cancelled')");
+
+            if ($driver === 'mysql') {
+                DB::statement("ALTER TABLE `documents` MODIFY `status` ENUM('issued','draft','cancelled') NOT NULL DEFAULT 'issued'");
+            }
         }
     }
 
@@ -66,6 +71,8 @@ return new class extends Migration
         if (!Schema::hasTable('documents')) {
             return;
         }
+
+        $driver = DB::getDriverName();
 
         Schema::table('documents', function (Blueprint $table) {
             $dropColumns = [];
@@ -96,7 +103,9 @@ return new class extends Migration
         });
 
         if (Schema::hasColumn('documents', 'status')) {
-            DB::statement("ALTER TABLE `documents` MODIFY `status` ENUM('issued','draft','cancelled') NOT NULL DEFAULT 'issued'");
+            if ($driver === 'mysql') {
+                DB::statement("ALTER TABLE `documents` MODIFY `status` ENUM('issued','draft','cancelled') NOT NULL DEFAULT 'issued'");
+            }
         }
     }
 };

@@ -11,6 +11,10 @@ class ConvertMyisamToInnodb extends Migration
      */
     public function up()
     {
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         $database = config('database.connections.mysql.database');
         if (! $database) return;
 

@@ -39,13 +39,7 @@
                   >
                     Imagenes
                   </button>
-                  <button
-                    type="button"
-                    class="quick-item danger"
-                    @click.prevent="runDelete"
-                  >
-                    Eliminar
-                  </button>
+                  <BtnTrash class="quick-item danger" @click.prevent="runDelete">Eliminar</BtnTrash>
                 </div>
               </div>
             </div>
@@ -265,15 +259,7 @@
                 <div class="attach-file-name">{{ row.fileName || 'Sin archivo seleccionado' }}</div>
               </div>
 
-              <button
-                type="button"
-                class="attach-remove"
-                :disabled="uploadingImages || attachImageRows.length === 1"
-                @click="removeAttachRow(index)"
-                title="Eliminar fila"
-              >
-                Eliminar
-              </button>
+              <BtnTrash class="attach-remove" :disabled="uploadingImages || attachImageRows.length === 1" @click="removeAttachRow(index)" title="Eliminar fila">Eliminar</BtnTrash>
             </div>
           </div>
 
@@ -338,6 +324,7 @@ import api from '../../services/api'
 import { useToast } from 'vue-toastification'
 import Swal from 'sweetalert2'
 import { goBackWithStack } from '../../shared/navigationHelpers'
+import BtnTrash from '../../components/BtnTrash.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -816,7 +803,6 @@ async function confirmDelete() {
 .form-wrapper { display:flex; justify-content:center; padding:24px }
 .form-card { width:100%; max-width:960px; background: #fff; border-radius:12px; box-shadow: 0 10px 30px rgba(2,6,23,0.06); padding:24px }
 .form-header h1 { margin:0; font-size:22px }
-.form-sub { color:#6b7280; font-size:13px; margin-top:6px }
 .header-actions { display:flex; gap:8px; align-items:center }
 .quick-trigger { padding:11px 12px; display:inline-flex; align-items:center; justify-content:center }
 .quick-trigger-icon { width:18px; height:18px; color:#4b5563 }

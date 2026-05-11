@@ -3,8 +3,10 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AppointmentController;
 use App\Http\Controllers\Api\PatientController;
+use App\Http\Controllers\API\ActivateAccountController;
 use App\Http\Controllers\API\RegisterController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\DashboardSummaryController;
 
 /*
@@ -33,6 +35,9 @@ use App\Http\Controllers\Api\DashboardSummaryController;
 
 // Registro de usuario (mobile/SPA) — crea usuario y tenant inicial
 Route::post('/register', RegisterController::class);
+Route::get('/register/activate/{user}', ActivateAccountController::class)
+    ->middleware(['signed', 'throttle:6,1'])
+    ->name('api.register.activate');
 
 // Login para clientes SPA — valida credenciales y devuelve token
 Route::post('/login', [AuthController::class, 'login']);
@@ -49,7 +54,7 @@ Route::post('/billing/webhook', [\App\Http\Controllers\BillingController::class,
 // RUTAS PROTEGIDAS (auth + tenant activo)
 // -----------------------------
 
-Route::middleware(['auth:sanctum', 'clinic', 'clinic.active'])->group(function () {
+Route::middleware(['auth:sanctum', 'clinic', 'check.subscription'])->group(function () {
 
     // Pacientes: CRUD multitenant
     Route::apiResource('patients', PatientController::class);
@@ -80,9 +85,22 @@ Route::middleware(['auth:sanctum', 'clinic', 'clinic.active'])->group(function (
     Route::apiResource('payments', \App\Http\Controllers\Api\PaymentController::class)
         ->only(['index', 'store', 'show', 'update']);
 
+    // Productos: CRUD para gestión de inventario/facturación
+    Route::apiResource('products', \App\Http\Controllers\Api\ProductController::class)
+        ->only(['index', 'store', 'show', 'update']);
+
+    Route::get('reminders', [\App\Http\Controllers\Api\ReminderController::class, 'index']);
+    Route::get('reminders/{reminder}', [\App\Http\Controllers\Api\ReminderController::class, 'show']);
+    Route::post('reminders/{reminder}/resend', [\App\Http\Controllers\Api\ReminderController::class, 'resend']);
+
     // Facturación (solo lectura): listado y detalle de facturas/documentos
     Route::get('documents/{document}/pdf', [\App\Http\Controllers\Api\DocumentController::class, 'pdf']);
     Route::post('documents/{document}/abono', [\App\Http\Controllers\Api\DocumentController::class, 'issueAbono']);
+    Route::post('documents/varios', [\App\Http\Controllers\Api\DocumentController::class, 'storeVarios']);
+    Route::get('documents/search/patients', [\App\Http\Controllers\Api\DocumentController::class, 'searchPatients']);
+    Route::get('documents/search/appointments', [\App\Http\Controllers\Api\DocumentController::class, 'searchAppointments']);
+    Route::get('documents/search/bonuses', [\App\Http\Controllers\Api\DocumentController::class, 'searchBonuses']);
+    Route::get('documents/search/products', [\App\Http\Controllers\Api\DocumentController::class, 'searchProducts']);
     Route::apiResource('documents', \App\Http\Controllers\Api\DocumentController::class)
         ->only(['index', 'show']);
 
@@ -104,13 +122,12 @@ Route::middleware(['auth:sanctum', 'clinic', 'clinic.active'])->group(function (
     // Cancelar cita (acción sobre recurso protegido)
     Route::post('appointments/{appointment}/cancel', [\App\Http\Controllers\Api\AppointmentController::class, 'cancel']);
     Route::post('appointments/{appointment}/invoice', [\App\Http\Controllers\Api\AppointmentController::class, 'issueInvoice']);
+    // payment subscribe
+    Route::post('/subscribe', \App\Http\Controllers\Api\SubscribeController::class);
 
+    // Formulario de contacto: envía email al equipo de Irison
+    Route::post('/contact', [ContactController::class, 'send']);
 });
-
-
-// -----------------------------
-// RUTAS CON CASOS ESPECIALES
-// -----------------------------
 
 // Información del usuario autenticado (`/me`): debe estar disponible
 // aunque el trial haya expirado, por eso no incluimos `clinic.active`.
@@ -119,5 +136,7 @@ Route::middleware(['auth:sanctum', 'clinic'])->put('/me', [\App\Http\Controllers
 Route::middleware(['auth:sanctum', 'clinic'])->post('/me/invoice-background', [\App\Http\Controllers\Api\MeController::class, 'uploadInvoiceBackground']);
 Route::middleware(['auth:sanctum', 'clinic'])->delete('/me/invoice-background', [\App\Http\Controllers\Api\MeController::class, 'deleteInvoiceBackground']);
 Route::middleware(['auth:sanctum', 'clinic'])->post('/me/invoice-background/preview-pdf', [\App\Http\Controllers\Api\MeController::class, 'previewInvoiceBackgroundPdf']);
+Route::middleware(['auth:sanctum', 'clinic'])->post('/billing/confirm', [\App\Http\Controllers\BillingController::class, 'confirmCheckout']);
+Route::middleware(['auth:sanctum', 'clinic'])->post('/billing/cancel', [\App\Http\Controllers\BillingController::class, 'cancelSubscription']);
 
 

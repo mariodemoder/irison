@@ -1,6 +1,15 @@
 <template>
   <MainLayout>
     <div>
+      <div class="entity-card">
+        <div class="page-header agenda-page-header">
+        <div>
+          <h1>Agenda</h1>
+          <div class="form-sub">Visualiza y gestiona tus citas</div>
+        </div>
+
+      </div>
+
       <CalendarHeader
         view="day"
         :label="dayLabel"
@@ -9,15 +18,13 @@
         @next="nextDay"
         @today="goToToday"
       />
-
-      <div class="agenda-content-card">
-
-      <div class="header-secondary">
+      <div class="agenda-card">
+        <div class="header-secondary">
         <div class="header-secondary-left">
           <div class="mini-cal-wrapper">
             <div class="mini-cal">
-              <div class="cal-day" :class="{ 'cal-dimmed': isAllMode }">{{ displayDay }}</div>
-              <div class="cal-month" :class="{ 'cal-dimmed': isAllMode }">{{ displayMonthYear }}</div>
+              <div class="cal-day" :class="{ 'cal-dimmed': isAllMode, 'cal-closed': isSelectedDateClosed }">{{ displayDay }}</div>
+              <div class="cal-month" :class="{ 'cal-dimmed': isAllMode, 'cal-closed': isSelectedDateClosed }">{{ displayMonthYear }}</div>
               <input id="agenda-date" name="date" type="date" v-model="date" class="mini-date" :disabled="isAllMode" aria-label="Seleccionar fecha" />
             </div>
           </div>
@@ -28,8 +35,8 @@
           </div>
 
           <div class="scope-bar" role="group" aria-label="Ámbito de citas">
-            <button :class="['scope-btn', showScheduledOnly && 'scope-active']" @click="setAppointmentScope('scheduled')">Programadas</button>
-            <button :class="['scope-btn', !showScheduledOnly && 'scope-active']" @click="setAppointmentScope('all')">Todas</button>
+            <button :class="['scope-btn', showScheduledOnly && 'scope-active']" @click="setAppointmentScope('scheduled')">Citas programadas</button>
+            <button :class="['scope-btn', !showScheduledOnly && 'scope-active']" @click="setAppointmentScope('all')">Todas las citas</button>
           </div>
           <button
             type="button"
@@ -45,16 +52,38 @@
             </svg>
             <span v-if="detailedFiltersCount > 0" class="filter-badge">{{ detailedFiltersCount }}</span>
           </button>
+
+          <div v-if="appliedDetailedFilterTags.length" class="applied-filter-tags" aria-label="Filtros aplicados">
+            <span v-for="tag in appliedDetailedFilterTags" :key="tag.key" class="applied-filter-tag">
+              <span>{{ tag.label }}</span>
+              <button
+                type="button"
+                class="applied-filter-tag-remove"
+                @click.stop="removeAppliedFilterTag(tag.key)"
+                :aria-label="`Quitar filtro ${tag.label}`"
+                title="Quitar filtro"
+              >
+                ×
+              </button>
+            </span>
+          </div>
         </div>
 
         <div class="header-actions-right">
-          
-
-          <router-link to="/appointments/create" class="btn btn-sm small compact header-create-btn">
+          <button
+            type="button"
+            class="btn btn-sm small compact header-create-btn"
+            :disabled="isSelectedDateClosed && !isAllMode"
+            @click.prevent="createAppointmentFromHeader"
+          >
             Nueva cita
-          </router-link>
+          </button>
         </div>
       </div>
+
+        <div v-if="isSelectedDateClosed" class="closed-day-alert">
+          Día marcado como cerrado. No se mostrarán huecos disponibles ni se permitirán nuevas citas desde esta vista.
+        </div>
 
         <div class="filters-row">
           <div class="search-wrapper">
@@ -155,6 +184,7 @@
         </div>
       </div>
       </div>
+    </div>
   </MainLayout>
 </template>
 
@@ -167,12 +197,16 @@ import CalendarHeader from '../../components/calendar/CalendarHeader.vue'
 import EmptyIndexState from '../../components/EmptyIndexState.vue'
 import AppLoading from '../../components/AppLoading.vue'
 import { statusLabel, timeClass, formatTimeCalendar } from '../../shared/appointmentHelpers'
+import { isDateClosed, normalizeClosedDays } from '../../shared/clinicCalendar'
+import { useToast } from 'vue-toastification'
 
 const router = useRouter()
 const route = useRoute()
+const toast = useToast()
 const appointments = ref([])
 const loading = ref(false)
 const date = ref(localIsoDate())
+const closedDays = ref([])
 const isAllMode = computed(() => String(route.query.all || '') === '1')
 const isTodayMode = computed(() => !isAllMode.value && date.value === localIsoDate())
 const appointmentScope = ref('scheduled')
@@ -193,6 +227,38 @@ const detailedFiltersCount = computed(() => {
   if (paymentFilter.value) count += 1
   return count
 })
+const statusFilterLabelMap = {
+  pending: 'Pendientes',
+  scheduled: 'Programadas',
+  rescheduled: 'Reprogramadas',
+  completed: 'Completadas',
+  canceled: 'Canceladas',
+}
+const paymentFilterLabelMap = {
+  unpaid: 'Impago',
+  pending: 'Pendiente',
+  partially_paid: 'Parcial',
+  paid: 'Pagado',
+}
+const appliedDetailedFilterTags = computed(() => {
+  const tags = []
+
+  if (statusFilter.value) {
+    tags.push({
+      key: 'status',
+      label: `Estado: ${statusFilterLabelMap[statusFilter.value] || statusFilter.value}`,
+    })
+  }
+
+  if (paymentFilter.value) {
+    tags.push({
+      key: 'payment',
+      label: `Pago: ${paymentFilterLabelMap[paymentFilter.value] || paymentFilter.value}`,
+    })
+  }
+
+  return tags
+})
 const displayDay = computed(() => {
   const d = new Date(date.value)
   return d.getDate()
@@ -205,6 +271,7 @@ const dayLabel = computed(() => {
   const d = new Date(`${date.value}T00:00:00`)
   return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
 })
+const isSelectedDateClosed = computed(() => !isAllMode.value && isDateClosed(date.value, closedDays.value))
 
 function localIsoDate() {
   const now = new Date()
@@ -223,6 +290,20 @@ function setMode(all) {
 
 function setAppointmentScope(scope) {
   appointmentScope.value = scope === 'all' ? 'all' : 'scheduled'
+  router.replace({
+    query: {
+      ...route.query,
+      appointment_scope: appointmentScope.value === 'all' ? 'all' : undefined,
+    },
+  })
+}
+
+function normalizeAppointmentScopeInput(value) {
+  return String(value || '').trim() === 'all' ? 'all' : 'scheduled'
+}
+
+function syncAppointmentScopeFromRoute() {
+  appointmentScope.value = normalizeAppointmentScopeInput(route.query.appointment_scope)
 }
 
 function formatDateShort(dt) {
@@ -267,6 +348,15 @@ async function load() {
     appointments.value = []
   } finally {
     loading.value = false
+  }
+}
+
+async function loadClinicCalendarConfig() {
+  try {
+    const res = await api.get('/me')
+    closedDays.value = normalizeClosedDays(res?.data?.clinic?.closed_days)
+  } catch (e) {
+    closedDays.value = []
   }
 }
 
@@ -344,6 +434,20 @@ function clearDetailedFilters() {
   draftPaymentFilter.value = ''
 }
 
+function removeAppliedFilterTag(key) {
+  if (key === 'status') {
+    statusFilter.value = ''
+  }
+
+  if (key === 'payment') {
+    paymentFilter.value = ''
+  }
+
+  draftStatusFilter.value = statusFilter.value
+  draftPaymentFilter.value = paymentFilter.value
+  applyRouteFilters()
+}
+
 function prevPage() {
   if (currentPage.value > 1) {
     currentPage.value -= 1
@@ -381,8 +485,13 @@ function goToToday() {
 onMounted(() => load())
 
 onMounted(() => {
+  loadClinicCalendarConfig()
+})
+
+onMounted(() => {
   syncDateFromRoute()
   syncFiltersFromRoute()
+  syncAppointmentScopeFromRoute()
   nowTimerId = setInterval(() => {
     nowTimestamp.value = Date.now()
   }, 60_000)
@@ -398,6 +507,7 @@ watch(date, () => {
 
 watch(() => route.query, () => {
   syncFiltersFromRoute()
+  syncAppointmentScopeFromRoute()
   const changedDate = syncDateFromRoute()
   if (!changedDate) {
     load()
@@ -515,14 +625,38 @@ function hhmm(totalMin) {
 }
 
 function goToNewWithGap(item) {
+  if (isSelectedDateClosed.value) {
+    toast.info('La clínica está cerrada en esta fecha')
+    return
+  }
   const pad = n => String(n).padStart(2, '0')
   const toISO = min => `${date.value}T${pad(Math.floor(min / 60))}:${pad(min % 60)}`
   router.push({ path: '/appointments/create', query: { start: toISO(item.from), end: toISO(item.to) } })
 }
 
+function createAppointmentFromHeader() {
+  if (isSelectedDateClosed.value && !isAllMode.value) {
+    toast.info('La clínica está cerrada en esta fecha')
+    return
+  }
+
+  if (isAllMode.value) {
+    router.push('/appointments/create')
+    return
+  }
+
+  router.push({ path: '/appointments/create', query: { start: `${date.value}T09:00`, end: `${date.value}T10:00` } })
+}
+
 const listWithGaps = computed(() => {
   if (isAllMode.value) {
     return paginatedAppointments.value.map(a => ({ _type: 'appt', ...a }))
+  }
+
+  if (isSelectedDateClosed.value) {
+    return [...filteredAppointments.value]
+      .sort((a, b) => parseMin(a.start_time) - parseMin(b.start_time))
+      .map(a => ({ _type: 'appt', ...a }))
   }
 
   const sorted = [...filteredAppointments.value].sort((a, b) => parseMin(a.start_time) - parseMin(b.start_time))
@@ -565,19 +699,22 @@ watch(totalPages, (pages) => {
 <style scoped>
 *, ::before, ::after { box-sizing: border-box; border-width: 0; border-style: solid; border-color: #e5e7eb }
 
-.agenda-content-card {
-  background: #f8fafc;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  box-shadow: 0 10px 28px rgba(2, 6, 23, 0.06);
-  padding: 14px;
+.agenda-page-header {
+  padding: 0 16px;
 }
 
 .header-secondary { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; flex-wrap:wrap }
 .header-secondary-left { display:flex; align-items:center; gap:12px; flex-wrap:wrap }
 .header-actions-right { display:flex; align-items:center; gap:18px; margin-left:auto }
 
-.form-sub { color:#6b7280; font-size:13px; margin-top:4px }
+.agenda-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(2, 6, 23, 0.05);
+}
+
 .calendar-card { display:flex; align-items:center; gap:12px; background:#fff; padding:10px; border-radius:10px; border:1px solid #eef2ff22 }
 .cal-left, .cal-right { width:36px }
 .cal-center { display:flex; flex-direction:column; align-items:center }
@@ -649,6 +786,42 @@ watch(totalPages, (pages) => {
   top: -5px;
   right: -5px;
   border: 1px solid #bfdbfe;
+}
+
+.applied-filter-tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.applied-filter-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.applied-filter-tag-remove {
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  border: 1px solid #93c5fd;
+  background: #dbeafe;
+  color: #1e3a8a;
+  font-size: 12px;
+  line-height: 1;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
 }
 
 .filters-modal-backdrop {
@@ -755,8 +928,8 @@ watch(totalPages, (pages) => {
 .search-center, .search-wrapper { position: relative; z-index: 0 }
 
 .list { display:flex; flex-direction:column; gap:8px; overflow-x:auto }
-.list-header { display:grid; grid-template-columns: 140px 1.3fr 2fr 130px 160px 120px; gap:12px; align-items:center; padding:8px 14px; color:#6b7280; font-weight:600; font-size:13px }
-.appointment-row { display:grid; grid-template-columns: 140px 1.3fr 2fr 130px 160px 120px; gap:12px; align-items:center; background:#fff; padding:12px 14px; border-radius:10px; text-decoration:none; color:inherit; border:1px solid #eef2ff22; min-width:820px }
+.list-header { display:grid; grid-template-columns: 140px 1.25fr 2.6fr 110px 120px 110px; gap:12px; align-items:center; padding:8px 14px; color:#6b7280; font-weight:600; font-size:13px }
+.appointment-row { display:grid; grid-template-columns: 140px 1.25fr 2.6fr 110px 120px 110px; gap:12px; align-items:center; background:#f8fbfe; padding:12px 14px; border-radius:10px; text-decoration:none; color:inherit; border:1px solid #eef2ff22; min-width:820px }
 .appointment-row:hover { box-shadow: 0 10px 24px rgba(2,6,23,0.06); transform: translateY(-2px) }
 .row-left { display:flex; flex-direction:column }
 .row-name { font-weight:600; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
@@ -817,7 +990,17 @@ watch(totalPages, (pages) => {
 
 /* Mini-cal deshabilitado en modo Ver Todo */
 .cal-dimmed { opacity:.4 }
+.cal-closed { text-decoration: line-through; color:#b91c1c }
 .mini-date:disabled { opacity:.4; cursor:default }
+.closed-day-alert {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #fecaca;
+  background: #fff1f2;
+  color: #9f1239;
+  font-size: 13px;
+}
 
 /* Fecha corta en modo Ver Todo */
 .row-date { display:inline; font-size:13px; font-weight:600; color:#6b7280 }
@@ -838,7 +1021,7 @@ watch(totalPages, (pages) => {
 }
 
 @media (max-width: 480px) {
-  .appointment-row { grid-template-columns: 140px 2fr 220px 130px 160px auto; gap:8px }
+  .appointment-row { grid-template-columns: 140px 2fr 260px 110px 120px auto; gap:8px }
   .row-action { justify-content:flex-start }
 }
 .list-header > div,

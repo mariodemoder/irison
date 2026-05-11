@@ -1,6 +1,6 @@
 # Linux/Cloud Deployment Guide
 
-Esta guía es la referencia oficial para desplegar Dueleahi en servidores Linux/Cloud.
+Esta guía es la referencia oficial para desplegar irison en servidores Linux/Cloud.
 
 ## Objetivo
 
@@ -22,7 +22,7 @@ Incluye:
 - PHP 8.2+ con extensiones necesarias para Laravel.
 - Composer 2.x.
 - Node.js 20+ y npm.
-- MySQL 8+ o MariaDB equivalente.
+- PostgreSQL 15+ (recomendado) o MySQL/MariaDB si se mantiene compatibilidad legacy.
 - Nginx (recomendado) o Apache.
 - Supervisor (para workers de cola).
 
@@ -117,7 +117,7 @@ server {
 ### Supervisor (queue worker)
 
 ```ini
-[program:dueleahi-worker]
+[program:irison-worker]
 process_name=%(program_name)s_%(process_num)02d
 command=php /var/www/dueleahi/artisan queue:work --sleep=3 --tries=3 --timeout=90
 autostart=true

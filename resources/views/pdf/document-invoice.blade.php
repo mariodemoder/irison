@@ -6,7 +6,7 @@
   <style>
     body { margin: 0; font-family: DejaVu Sans, sans-serif; color: #0f172a; font-size: 12px; }
     .page { position: relative; min-height: 1040px; padding: 18px 50px; background: #fff; overflow: hidden; }
-    .bg-layer { position: absolute; inset: 0; background-position: center; background-size: cover; background-repeat: no-repeat; opacity: 0.5; z-index: 1; }
+    .bg-layer { position: absolute; inset: 0; background-position: center; background-size: cover; background-repeat: no-repeat; opacity: 1; z-index: 1; }
     .content-layer { position: relative; z-index: 2; }
     .header { display: flex; justify-content: space-between; align-items: flex-start; margin-top: 30px; margin-bottom: 20px; gap: 16px; }
     .header-left { flex: 0 0 auto; }
@@ -155,6 +155,77 @@
           </tfoot>
         </table>
         @else
+        @php
+          $docItems = $document->items ?? collect();
+          $hasItems = $docItems->isNotEmpty();
+          // Calcular totales
+          $baseTotal = 0;
+          $taxBreakdown = []; // ['rate' => X, 'base' => Y, 'tax' => Z]
+          foreach ($docItems as $item) {
+            $lineBase = (float)$item->quantity * (float)$item->unit_price;
+            $rate = (float)$item->tax_rate;
+            $lineTax = $lineBase * ($rate / 100);
+            $baseTotal += $lineBase;
+            if (!isset($taxBreakdown[$rate])) {
+              $taxBreakdown[$rate] = ['rate' => $rate, 'base' => 0, 'tax' => 0];
+            }
+            $taxBreakdown[$rate]['base'] += $lineBase;
+            $taxBreakdown[$rate]['tax'] += $lineTax;
+          }
+          $taxTotal = array_sum(array_column($taxBreakdown, 'tax'));
+          $grandTotal = $baseTotal + $taxTotal;
+          ksort($taxBreakdown);
+          $hasTax = $taxTotal > 0.001;
+        @endphp
+        @if ($hasItems)
+        <table>
+          <thead>
+            <tr>
+              <td class="label" style="width:40%">Descripción</td>
+              <td class="label" style="width:8%; text-align:center">Cant.</td>
+              <td class="label" style="width:15%; text-align:right">Precio unit.</td>
+              <td class="label" style="width:10%; text-align:center">IVA %</td>
+              <td class="label" style="width:15%; text-align:right">Base</td>
+              <td class="label" style="width:12%; text-align:right">Total</td>
+            </tr>
+          </thead>
+          <tbody>
+            @foreach ($docItems->sortBy('sort_order') as $item)
+            @php
+              $lineBase = (float)$item->quantity * (float)$item->unit_price;
+              $lineTotal = $lineBase * (1 + (float)$item->tax_rate / 100);
+            @endphp
+            <tr>
+              <td>{{ $item->description ?: '—' }}</td>
+              <td style="text-align:center">{{ rtrim(rtrim(number_format((float)$item->quantity, 4, ',', '.'), '0'), ',') }}</td>
+              <td style="text-align:right">{{ '€ ' . number_format((float)$item->unit_price, 2, ',', '.') }}</td>
+              <td style="text-align:center">{{ (float)$item->tax_rate > 0 ? number_format((float)$item->tax_rate, 0) . '%' : '—' }}</td>
+              <td style="text-align:right">{{ '€ ' . number_format($lineBase, 2, ',', '.') }}</td>
+              <td style="text-align:right; font-weight:600">{{ '€ ' . number_format($lineTotal, 2, ',', '.') }}</td>
+            </tr>
+            @endforeach
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="4" style="border:none; padding:4px 0;"></td>
+              <td style="text-align:right; border-top:2px solid #cbd5e1; padding-top:6px; color:#64748b; font-size:11px">Base imponible</td>
+              <td style="text-align:right; border-top:2px solid #cbd5e1; padding-top:6px; color:#64748b; font-size:11px">{{ '€ ' . number_format($baseTotal, 2, ',', '.') }}</td>
+            </tr>
+            @foreach ($taxBreakdown as $row)
+            <tr>
+              <td colspan="4" style="border:none; padding:2px 0;"></td>
+              <td style="text-align:right; border:none; color:#64748b; font-size:11px">IVA {{ number_format($row['rate'], 0) }}%</td>
+              <td style="text-align:right; border:none; color:#64748b; font-size:11px">{{ '€ ' . number_format($row['tax'], 2, ',', '.') }}</td>
+            </tr>
+            @endforeach
+            <tr>
+              <td colspan="4" style="border:none; padding:2px 0;"></td>
+              <td style="text-align:right; border-top:2px solid #0f172a; font-weight:700; padding-top:6px"><u>TOTAL</u></td>
+              <td class="amount" style="text-align:right; border-top:2px solid #0f172a; padding-top:6px">{{ '€ ' . number_format($grandTotal, 2, ',', '.') }}</td>
+            </tr>
+          </tfoot>
+        </table>
+        @else
         <table>
           <tr><td class="label label-w">Tipo</td><td>{{ $typeLabel }}</td></tr>
           <tr><td class="label label-w">Detalle</td><td>{{ $document->notes ?? '—' }}</td></tr>
@@ -167,6 +238,7 @@
             </tr>
           </table>
         </div>
+        @endif
         @endif
       </div>
     </div>

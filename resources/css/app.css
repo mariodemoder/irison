@@ -6,6 +6,17 @@
 html,body,#app { height: 100%; }
 body { background: var(--bg-app); color: var(--text-main); }
 
+/* Shared page header block used across configuration-like screens */
+.page-header {
+	margin-bottom: 14px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+}
+.page-header h1 { margin: 0; font-size: 20px; font-weight: 800 }
+.form-sub { color: #6b7280; font-size: 13px; margin-top: 4px }
+
 /* Make Auth layout respect global bg if it used explicit color */
 .auth-container, .auth-left { background: transparent }
 
@@ -43,11 +54,29 @@ body { background: var(--bg-app); color: var(--text-main); }
 	color: #374151 !important;
 	border-radius: 9999px !important;
 	padding: 8px 14px !important;
-	border: 2px solid #e5e7eb !important;
+	border: 2px solid var(--theme-color) !important;
 	font-weight: 600 !important;
 	min-width: 110px !important;
 }
 .swal2-cancel:hover { background-color: #f9fafb !important }
+
+/* Popups de formularios: botones estilo app (azul outline, sin relleno) */
+.swal-popup-card .swal2-confirm,
+.swal-popup-card .swal2-cancel {
+	background: #ffffff !important;
+	color: #3b82f6 !important;
+	border: 2px solid #3b82f6 !important;
+	border-radius: 9999px !important;
+	padding: 8px 14px !important;
+	font-weight: 600 !important;
+	min-width: 110px !important;
+	box-shadow: none !important;
+}
+
+.swal-popup-card .swal2-confirm:hover,
+.swal-popup-card .swal2-cancel:hover {
+	background: #eff6ff !important;
+}
 
 /* Make default icon warning color consistent */
 .swal2-icon.swal2-warning .swal2-icon-content { color: #ffffff }
@@ -116,11 +145,11 @@ button[disabled],
 	border-radius: 9999px;
 	background: #ffffff;
 	color: #374151;
-	border: 2px solid #e5e7eb;
+	border: 2px solid var(--theme-color);
 }
 
 /* Muted pill button — used for "Volver" and secondary actions across all views */
-.muted { padding:8px 14px; border-radius:9999px; border:1px solid #e5e7eb; background:#fff; cursor:pointer }
+.muted { padding:8px 14px; border-radius:9999px; border:1px solid var(--theme-color); background:#fff; cursor:pointer }
 .muted:hover { background:#f9fafb }
 
 /* Back buttons: rounded on the left, squared on the right */
@@ -156,13 +185,90 @@ button[disabled],
 .search-center { display:flex; justify-content:center }
 .search-wrapper { position:relative; width:100%; max-width:480px }
 .search-icon { position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#9ca3af }
-.search-input { width:100%; padding:8px 12px 8px 36px; border-radius:9999px; border:1px solid #e5e7eb; font-size:14px }
+.search-input { width:100%; padding:8px 12px 8px 36px; border-radius:9999px; border:1px solid var(--theme-color); font-size:14px }
+
+/* Generic entity index shell: reusable in all Index views */
+.entity-card {
+	background: #fff;
+	border: 1px solid var(--border);
+	border-radius: 14px;
+	padding: 16px;
+}
+
+/* Generic responsive table wrapper and table styles */
+.entity-table-wrap {
+	width: 100%;
+	overflow-x: auto;
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	background: #fff;
+}
+.entity-table {
+	width: 100%;
+	min-width: 860px;
+	border-collapse: separate;
+	border-spacing: 0;
+	table-layout: fixed;
+}
+.entity-table thead th {
+	text-align: left;
+	padding: 12px 14px;
+	font-size: 13px;
+	font-weight: 600;
+	color: #6b7280;
+	border-bottom: 1px solid var(--border);
+	background: #f8fafc;
+	white-space: nowrap;
+}
+.entity-table tbody td {
+	text-align: left;
+	padding: 12px 14px;
+	font-size: 13px;
+	color: #374151;
+	border-bottom: 1px solid #f1f5f9;
+	vertical-align: middle;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.entity-table tbody tr:last-child td { border-bottom: none }
+
+/* Per-view table sizing overrides */
+.entity-table.products-table { min-width: 1120px }
+.entity-table.bonuses-table { min-width: 1260px }
+.entity-table.invoices-table { min-width: 1040px }
+.entity-table.payments-table { min-width: 1160px }
+
+/* Generic reusable width helpers for table columns */
+.entity-table .wide-min { width: 85px }
+.entity-table .wide-mid { width: 150px }
+.entity-table .wide-max { width: 20% }
+
+/* Aliases (preferred naming) for reusable column sizing */
+.entity-table .col-min { width: 85px }
+.entity-table .col-mid { width: 150px }
+.entity-table .col-max { width: 20% }
+
+/* Generic table row interaction */
+.entity-table-row {
+	cursor: pointer;
+	transition: background .15s ease;
+}
+.entity-table-row:hover { background: #f8fbff }
 
 /* Mobile adjustments: make search compact and full-width on small screens */
 @media (max-width: 480px) {
 	.search-wrapper { max-width: 100%; padding: 0 12px }
 	.search-input { font-size: 13px; padding: 8px 10px 8px 36px }
 	.search-icon { left:8px }
+}
+
+@media (max-width: 900px) {
+	.entity-table { min-width: 760px }
+}
+
+@media (max-width: 640px) {
+	.entity-card { padding: 12px }
 }
 
 

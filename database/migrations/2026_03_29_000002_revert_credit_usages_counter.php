@@ -15,7 +15,7 @@ return new class extends Migration
         }
 
         // Revert the enum to exclude 'credit_usages' (no longer auto-generating counters for credit_usages)
-        if (Schema::hasTable('counters_clinics')) {
+        if (Schema::hasTable('counters_clinics') && DB::getDriverName() === 'mysql') {
             DB::statement("ALTER TABLE counters_clinics MODIFY COLUMN table_type ENUM('documents', 'payout', 'bonuses', 'payments')");
         }
 
@@ -25,7 +25,7 @@ return new class extends Migration
     public function down(): void
     {
         // Restore the enum to include 'credit_usages'
-        if (Schema::hasTable('counters_clinics')) {
+        if (Schema::hasTable('counters_clinics') && DB::getDriverName() === 'mysql') {
             DB::statement("ALTER TABLE counters_clinics MODIFY COLUMN table_type ENUM('documents', 'payout', 'bonuses', 'payments', 'credit_usages')");
         }
     }

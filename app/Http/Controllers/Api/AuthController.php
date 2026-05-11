@@ -25,6 +25,12 @@ class AuthController extends Controller
             ]);
         }
 
+        if (! $user->email_verified_at) {
+            return response()->json([
+                'message' => 'Debes activar tu cuenta desde el correo antes de iniciar sesión.',
+            ], 403);
+        }
+
         $token = $user->createToken('spa')->plainTextToken;
 
         return response()->json([

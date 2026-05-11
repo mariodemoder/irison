@@ -52,7 +52,7 @@
   </div>
 
   <div class="section">
-    <h3>Detalle de citas</h3>
+    <h3>Historia</h3>
     <table>
       <thead>
         <tr>
@@ -63,7 +63,7 @@
       <tbody>
         @forelse(($patient->appointments ?? []) as $appointment)
           <tr>
-            <td>{{ optional($appointment->start_time)->format('d/m/Y H:i') ?: '—' }}</td>
+            <td>{{ optional($appointment->start_time)->format('d/m/Y') ?: '—' }}</td>
             <td>{{ trim((string) ($appointment->notes ?? '')) !== '' ? $appointment->notes : ($appointment->clinicalRecord?->notes ?: '—') }}</td>
           </tr>
         @empty

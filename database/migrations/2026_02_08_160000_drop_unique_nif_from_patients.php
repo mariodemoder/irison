@@ -12,19 +12,21 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Intentamos eliminar el índice único sobre `nif` si existe.
-        Schema::table('patients', function (Blueprint $table) {
-            try {
+        try {
+            Schema::table('patients', function (Blueprint $table) {
                 $table->dropUnique('patients_nif_unique');
-            } catch (\Throwable $e) {
-                // Fallback: intentar mediante sentencia SQL si el nombre difiere
-                try {
+            });
+        } catch (\Throwable $e) {
+            try {
+                if (DB::getDriverName() === 'mysql') {
                     DB::statement('ALTER TABLE `patients` DROP INDEX `patients_nif_unique`');
-                } catch (\Throwable $e) {
-                    // Silenciar: índice puede no existir o nombre distinto
+                } elseif (DB::getDriverName() === 'pgsql') {
+                    DB::statement('ALTER TABLE patients DROP CONSTRAINT IF EXISTS patients_nif_unique');
                 }
+            } catch (\Throwable $e) {
+                // Silenciar: índice puede no existir o nombre distinto
             }
-        });
+        }
     }
 
     /**

@@ -6,6 +6,7 @@ use App\Models\Concerns\BelongsToClinic;
 use App\Services\Counters\CounterService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Document extends Model
 {
@@ -13,6 +14,7 @@ class Document extends Model
 
     public const TYPE_INVOICE = 'invoice';
     public const TYPE_ABONO = 'abono';
+    public const TYPEINVOICE_VARIOS = 'varios';
 
     public const UPDATED_AT = null;
 
@@ -79,5 +81,10 @@ class Document extends Model
     public function patient(): BelongsTo
     {
         return $this->belongsTo(Patient::class);
+    }
+
+    public function items(): HasMany
+    {
+        return $this->hasMany(DocumentItem::class)->orderBy('sort_order')->orderBy('id');
     }
 }
