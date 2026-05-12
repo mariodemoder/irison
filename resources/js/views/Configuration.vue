@@ -479,17 +479,24 @@
                   La imagen se ajustará al tamaño A4 (210x297mm) manteniendo su proporción. Si la imagen no es A4, se centrará y se le aplicarán márgenes para llenar el espacio restante. Para mejores resultados, se recomienda usar una imagen con proporción cercana a A4 (aprox. 1:1.41) y al menos 1240x1754 píxeles de resolución.
                 </div>
 
-                <div style="margin-top:12px">
-                  <label class="label">Seleccionar imagen</label>
-                  <input class="input" type="file" accept=".jpg,.jpeg,.png,.webp,image/*" @change="onInvoiceBackgroundPicked" />
+                <div class="invoice-toolbar">
+                  <div class="invoice-picker">
+                    <label class="label">Seleccionar imagen</label>
+                    <input class="input" type="file" accept=".jpg,.jpeg,.png,.webp,image/*" @change="onInvoiceBackgroundPicked" />
+                  </div>
+                  <div class="invoice-toolbar-actions">
+                    <button class="btn btn-sm invoice-mini-btn" type="button" :disabled="previewingInvoiceBackgroundPdf" @click.prevent="openPdfInNewTab()">PDF</button>
+                    <button class="btn btn-sm invoice-mini-btn" type="button" :disabled="uploadingInvoiceBackground || !invoiceBackgroundFile" @click.prevent="uploadInvoiceBackground">Subir</button>
+                    <BtnTrash class="invoice-mini-btn" :disabled="removingInvoiceBackground || !invoiceBackgroundUrl" @click.prevent="removeInvoiceBackground">Descartar</BtnTrash>
+                  </div>
                 </div>
 
                 <div class="invoice-pdf-preview-wrap" style="margin-top:12px">
                   <div v-if="previewingInvoiceBackgroundPdf" class="invoice-bg-empty">Generando preview PDF...</div>
                   <iframe
-                    v-else-if="profilePreviewPdfUrl"
+                    v-else-if="previewPdfEmbedUrl"
                     class="invoice-pdf-preview-frame"
-                    :src="profilePreviewPdfUrl"
+                    :src="previewPdfEmbedUrl"
                     title="Preview PDF factura"
                   ></iframe>
                   <div v-else class="invoice-bg-empty">No se pudo cargar la vista previa del PDF.</div>
@@ -514,14 +521,8 @@
             </div>
 
             <div class="action-plane">
-              <div v-if="activeTab==='clinica' || activeTab==='horarios' || activeTab==='contadores' || activeTab==='sesiones' || activeTab==='bonos'" class="action-row">
-                <button class="btn btn-sm" type="button" :disabled="saving" @click.prevent="save">Guardar</button>
-              </div>
-
-              <div v-else-if="activeTab==='factura_pdf'" class="action-row">
-                <button class="btn btn-sm" type="button" :disabled="previewingInvoiceBackgroundPdf" @click.prevent="openPdfInNewTab()">Abrir PDF</button>
-                <button class="btn btn-sm" type="button" :disabled="uploadingInvoiceBackground || !invoiceBackgroundFile" @click.prevent="uploadInvoiceBackground">Subir fondo</button>
-                <BtnTrash :disabled="removingInvoiceBackground || !invoiceBackgroundUrl" @click.prevent="removeInvoiceBackground">Eliminar fondo</BtnTrash>
+              <div v-if="activeTab==='clinica' || activeTab==='horarios' || activeTab==='contadores' || activeTab==='sesiones' || activeTab==='bonos' || activeTab==='factura_pdf'" class="action-row action-row-save">
+                <button class="btn btn-sm save-button" type="button" :disabled="saving" @click.prevent="save">Guardar</button>
               </div>
 
               <div v-else class="action-row action-row-empty"></div>
@@ -576,6 +577,11 @@ const removingInvoiceBackground = ref(false)
 const previewingInvoiceBackgroundPdf = ref(false)
 const profilePreviewPdfUrl = ref(null)
 const IRISON_COLOR = '#F8FAFC'
+
+const previewPdfEmbedUrl = computed(() => {
+  if (!profilePreviewPdfUrl.value) return null
+  return `${profilePreviewPdfUrl.value}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`
+})
 
 const form = ref({
   name: '',
@@ -1221,6 +1227,8 @@ onBeforeUnmount(() => {
   backdrop-filter: blur(8px);
 }
 .action-row { display:flex; gap:8px; min-height:38px; align-items:center }
+.action-row-save { justify-content:center }
+.save-button { width:50% }
 .action-row-empty { justify-content:flex-end }
 .panel-note {
   margin-top:auto;
@@ -1527,7 +1535,33 @@ onBeforeUnmount(() => {
   color: #4b5563;
   font-size: 13px;
 }
+.invoice-toolbar {
+  margin-top: 12px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+.invoice-picker {
+  flex: 1 1 280px;
+  max-width: 320px;
+}
+.invoice-toolbar-actions {
+  display: flex;
+  gap: 8px;
+  align-items: right;
+  flex-wrap: nowrap;
+}
+.invoice-mini-btn {
+  padding: 6px 10px;
+  min-height: 30px;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
 .invoice-pdf-preview-wrap {
+  width: min(100%, 860px);
+  margin: 0 auto;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   background: #f8fafc;
@@ -1600,6 +1634,15 @@ onBeforeUnmount(() => {
   .invoice-pdf-preview-wrap {
     min-height: 440px;
     aspect-ratio: auto;
+  }
+  .invoice-picker {
+    max-width: none;
+    width: 100%;
+  }
+  .invoice-toolbar-actions {
+    width: 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
   }
   .hours-table thead {
     display: table-header-group;

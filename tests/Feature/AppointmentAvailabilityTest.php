@@ -99,4 +99,5 @@ class AppointmentAvailabilityTest extends TestCase
         $response->assertStatus(422);
         $response->assertJsonFragment(['La franja horaria se solapa con otra cita.']);
     }
+
 }

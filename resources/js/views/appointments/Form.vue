@@ -1744,6 +1744,9 @@ watch(() => form.start_time, (newVal, oldVal) => {
 })
 
 watch(() => form.app_type_id, () => {
+  delete errors.app_type_id
+  delete errors.custom_type
+
   if (suppressTypeChangePrompt.value) return
 
   if (selectedAppointmentType.value) {
@@ -1767,6 +1770,10 @@ watch(() => form.app_type_id, () => {
   applyAppointmentTypeDefaults()
 })
 
+watch(() => form.custom_type, () => {
+  delete errors.custom_type
+})
+
 watch(() => form.start_time, () => {
   if (!isEdit.value && hasSelectedAppointmentType.value) {
     applyAppointmentTypeDefaults()
@@ -1781,6 +1788,26 @@ async function submit(payNow = false) {
   submitting.value = true
   calendarInfoMessage.value = ''
   Object.keys(errors).forEach(k => delete errors[k])
+
+  const hasTypedAppointmentType = !!form.app_type_id && form.app_type_id !== '__custom'
+  const isCustomTypeSelected = form.app_type_id === '__custom'
+  const customTypeName = String(form.custom_type || '').trim()
+
+  if (!hasTypedAppointmentType && !isCustomTypeSelected) {
+    errors.app_type_id = ['Debes seleccionar un tipo de cita o indicar un nombre.']
+    submitting.value = false
+    return
+  }
+
+  if (isCustomTypeSelected && !customTypeName) {
+    errors.custom_type = ['Debes indicar un nombre para la cita si no seleccionas un tipo.']
+    submitting.value = false
+    return
+  }
+
+  if (isCustomTypeSelected) {
+    form.custom_type = customTypeName
+  }
 
   const intendedStatus = mode.value === 'reprogram' ? 'rescheduled' : String(form.status || '')
   const endTimeChanged = isEdit.value && (

@@ -9,6 +9,7 @@ use App\Models\Patient;
 use App\Models\Payment;
 use Illuminate\Http\Request;
 use App\Services\Appointments\AppointmentService;
+use App\Services\Validation\RequestValidationOrchestrator;
 use App\Services\Documents\InvoicingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
@@ -16,11 +17,17 @@ use Illuminate\Support\Facades\Gate;
 class AppointmentController extends Controller
 {
     protected AppointmentService $appointmentService;
+    protected RequestValidationOrchestrator $requestValidationOrchestrator;
     protected InvoicingService $invoicingService;
 
-    public function __construct(AppointmentService $appointmentService, InvoicingService $invoicingService)
+    public function __construct(
+        AppointmentService $appointmentService,
+        RequestValidationOrchestrator $requestValidationOrchestrator,
+        InvoicingService $invoicingService
+    )
     {
         $this->appointmentService = $appointmentService;
+        $this->requestValidationOrchestrator = $requestValidationOrchestrator;
         $this->invoicingService = $invoicingService;
     }
 
@@ -35,7 +42,12 @@ class AppointmentController extends Controller
     {
         Gate::authorize('create', Appointment::class);
 
-        $data = $request->all();
+        $validation = $this->requestValidationOrchestrator->validate($request, 'appointments.store');
+        if (!($validation['ok'] ?? false)) {
+            return $validation['response'];
+        }
+
+        $data = $validation['data'] ?? $request->all();
 
         try {
             $appointment = $this->appointmentService->create($data);
