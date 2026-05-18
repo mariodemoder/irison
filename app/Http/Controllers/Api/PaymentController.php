@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Payments\StoreBillingPaymentRequest;
 use App\Models\Payment;
 use App\Services\Payments\PaymentService;
 use DomainException;
@@ -67,13 +68,13 @@ class PaymentController extends Controller
         return response()->json(['data' => $options]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreBillingPaymentRequest $request): JsonResponse
     {
         Gate::authorize('create', Payment::class);
 
         try {
             $clinicId = (int) Auth::user()->clinic_id;
-            $result = $this->paymentService->store($request->all(), $clinicId);
+            $result = $this->paymentService->store($request->validated(), $clinicId);
 
             return response()->json($result['payload'], $result['status']);
         } catch (DomainException $exception) {

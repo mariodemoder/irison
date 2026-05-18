@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Mail\InvoicePaymentFailedMail;
 use App\Http\Controllers\Controller;
 use App\Models\Clinic;
 use App\Models\Subscription;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Stripe\Webhook;
 use Carbon\Carbon;
 
@@ -29,7 +31,13 @@ class StripeWebhookController extends Controller
             return response()->json(['error' => 'Invalid signature'], 400);
         }
 
-            if ($event->type === 'checkout.session.completed') {
+        // Log general para todos los eventos Stripe
+        Log::info('Stripe webhook received', [
+            'type' => $event->type,
+            'id' => $event->id,
+        ]);
+
+        if ($event->type === 'checkout.session.completed') {
             $session = $event->data->object;
             $email   = $session->customer_email ?? null;
 
@@ -98,6 +106,24 @@ class StripeWebhookController extends Controller
                     if ($clinic) {
                         $clinic->subscription_status = 'past_due';
                         $clinic->save();
+
+                        $subscription = Subscription::query()
+                            ->where('clinic_id', $clinic->id)
+                            ->orderByDesc('id')
+                            ->first();
+
+                        if ($subscription && $subscription->status !== 'past_due') {
+                            $subscription->status = 'past_due';
+                            $subscription->save();
+                        }
+
+                        Log::info('Stripe invoice.payment_failed processed', [
+                            'clinic_id' => $clinic->id,
+                            'customer_id' => $customerId,
+                            'invoice_id' => (string) ($invoice->id ?? ''),
+                        ]);
+
+                        $this->sendInvoicePaymentFailedMailIfEnabled($clinic, $invoice);
                     }
                 }
             } elseif ($event->type === 'customer.subscription.deleted') {
@@ -133,5 +159,48 @@ class StripeWebhookController extends Controller
         }
 
         return response()->json(['status' => 'ok']);
+    }
+
+    private function sendInvoicePaymentFailedMailIfEnabled(Clinic $clinic, object $invoice): void
+    {
+        if (! config('billing.notify_on_invoice_payment_failed', false)) {
+            return;
+        }
+
+        $emails = [];
+
+        $clinicEmail = trim((string) ($clinic->email ?? ''));
+        if (filter_var($clinicEmail, FILTER_VALIDATE_EMAIL)) {
+            $emails[] = $clinicEmail;
+        }
+
+        $ownerEmail = (string) User::query()
+            ->where('clinic_id', $clinic->id)
+            ->where('role', 'owner')
+            ->orderBy('id')
+            ->value('email');
+
+        if (filter_var($ownerEmail, FILTER_VALIDATE_EMAIL)) {
+            $emails[] = $ownerEmail;
+        }
+
+        $emails = array_values(array_unique($emails));
+        if (empty($emails)) {
+            Log::warning('Stripe invoice.payment_failed mail skipped: no recipients', [
+                'clinic_id' => $clinic->id,
+                'invoice_id' => (string) ($invoice->id ?? ''),
+            ]);
+            return;
+        }
+
+        try {
+            Mail::to($emails)->send(new InvoicePaymentFailedMail($clinic, $invoice));
+        } catch (\Throwable $e) {
+            Log::warning('Stripe invoice.payment_failed mail send failed', [
+                'clinic_id' => $clinic->id,
+                'invoice_id' => (string) ($invoice->id ?? ''),
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }

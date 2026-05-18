@@ -177,6 +177,8 @@ class InvoicingService
             throw new DomainException('Solo se puede generar un abono desde una factura.');
         }
 
+        $invoice->loadMissing('items');
+
         $created = false;
 
         $document = DB::transaction(function () use ($invoice, &$created) {
@@ -221,6 +223,22 @@ class InvoicingService
                 'is_payed' => $invoice->is_payed,
                 'is_sended' => $invoice->is_sended,
             ]);
+
+            foreach ($invoice->items as $item) {
+                DocumentItem::create([
+                    'document_id' => (int) $document->id,
+                    'type' => $item->type,
+                    'reference_id' => $item->reference_id,
+                    'description' => $item->description,
+                    'quantity' => (float) $item->quantity,
+                    'unit_price' => (float) $item->unit_price,
+                    'tax_rate' => (float) $item->tax_rate,
+                    'buy_price' => (float) ($item->buy_price ?? 0),
+                    'buy_tax' => (float) ($item->buy_tax ?? 0),
+                    'total' => (float) $item->total,
+                    'sort_order' => (int) ($item->sort_order ?? 0),
+                ]);
+            }
 
             return $document;
         });

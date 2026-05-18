@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Bonuses\StoreBonusRequest;
+use App\Http\Requests\Bonuses\UpdateBonusRequest;
 use Illuminate\Http\Request;
 use App\Models\Patient;
 use App\Models\Bonus;
@@ -42,20 +44,13 @@ class BonusController extends Controller
         return response()->json(['data' => $mapped]);
     }
 
-    public function storeForPatient(Request $request, Patient $patient): JsonResponse
+    public function storeForPatient(StoreBonusRequest $request, Patient $patient): JsonResponse
     {
         Gate::authorize('view', $patient);
         Gate::authorize('create', Bonus::class);
 
-        $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'total_sessions' => 'required|integer|min:1',
-            'price' => 'nullable|numeric|min:0',
-            'expires_at' => 'nullable|date',
-        ]);
-
         $clinicId = currentClinicId();
-        $bonus = $this->bonusService->createForPatient($patient->id, $data, $clinicId);
+        $bonus = $this->bonusService->createForPatient($patient->id, $request->validated(), $clinicId);
 
         return response()->json(['data' => $bonus], 201);
     }
@@ -67,19 +62,11 @@ class BonusController extends Controller
         return response()->json(['data' => $bonus]);
     }
 
-    public function update(Request $request, Bonus $bonus): JsonResponse
+    public function update(UpdateBonusRequest $request, Bonus $bonus): JsonResponse
     {
         Gate::authorize('update', $bonus);
 
-        $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'total_sessions' => 'sometimes|integer|min:1',
-            'remaining_sessions' => 'sometimes|integer|min:0',
-            'price' => 'nullable|numeric|min:0',
-            'expires_at' => 'nullable|date',
-        ]);
-
-        $bonus = $this->bonusService->updateBonus($bonus, $data);
+        $bonus = $this->bonusService->updateBonus($bonus, $request->validated());
 
         return response()->json(['data' => $bonus]);
     }

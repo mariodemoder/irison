@@ -2,6 +2,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Appointments\StoreAppointmentRequest;
+use App\Http\Requests\Appointments\UpdateAppointmentRequest;
 use App\Models\Appointment;
 use App\Models\Bonus;
 use App\Models\CreditUsage;
@@ -38,19 +40,12 @@ class AppointmentController extends Controller
         return $this->appointmentService->list($request->all());
     }
 
-    public function store(Request $request)
+    public function store(StoreAppointmentRequest $request)
     {
         Gate::authorize('create', Appointment::class);
 
-        $validation = $this->requestValidationOrchestrator->validate($request, 'appointments.store');
-        if (!($validation['ok'] ?? false)) {
-            return $validation['response'];
-        }
-
-        $data = $validation['data'] ?? $request->all();
-
         try {
-            $appointment = $this->appointmentService->create($data);
+            $appointment = $this->appointmentService->create($request->validated());
             return response()->json($appointment, 201);
         } catch (\DomainException $e) {
             $status = $this->resolveDomainExceptionStatus($e->getMessage());
@@ -179,14 +174,12 @@ class AppointmentController extends Controller
         ]);
     }
 
-    public function update(Request $request, Appointment $appointment)
+    public function update(UpdateAppointmentRequest $request, Appointment $appointment)
     {
         Gate::authorize('update', $appointment);
 
-        $data = $request->all();
-
         try {
-            return $this->appointmentService->update($appointment, $data);
+            return $this->appointmentService->update($appointment, $request->validated());
         } catch (\DomainException $e) {
             $status = $this->resolveDomainExceptionStatus($e->getMessage());
             return response()->json(['error' => $e->getMessage()], $status);

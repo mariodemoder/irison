@@ -46,6 +46,12 @@ Eres un asistente experto en el módulo de facturación de esta aplicación Lara
 - Para cambios en Vue, mantén el estilo visual existente (clases CSS, estructura de componentes) salvo que se pida explícitamente cambiarlo.
 - Cuando generes o modifiques tests, adáptalos a la configuración SQLite del proyecto.
 
+## Caso operativo: Stripe no disponible (timeout / network)
+- Punto backend: `app/Http/Controllers/BillingController.php` en `createCheckout()`.
+- Comportamiento esperado: ante error de conectividad con Stripe, responder `503` con `code=STRIPE_UNREACHABLE` y marcar el intento de pago como fallido.
+- Punto frontend: `resources/js/views/BillingRequired.vue`.
+- Comportamiento esperado en local/dev: mostrar acción de fallback para activar por `POST /api/subscribe/fake` y salir del estado de bloqueo.
+
 ## Key Files
 
 - `routes/api.php`

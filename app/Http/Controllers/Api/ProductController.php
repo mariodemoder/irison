@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Products\StoreProductRequest;
+use App\Http\Requests\Products\UpdateProductRequest;
 use App\Models\Product;
 use App\Services\Products\ProductService;
 use Illuminate\Http\JsonResponse;
@@ -23,12 +25,12 @@ class ProductController extends Controller
         return response()->json($this->productService->index($request->all()));
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreProductRequest $request): JsonResponse
     {
         Gate::authorize('create', Product::class);
 
         $clinicId = (int) Auth::user()->clinic_id;
-        $result = $this->productService->store($request->all(), $clinicId);
+        $result = $this->productService->store($request->validated(), $clinicId);
 
         return response()->json($result['payload'], $result['status']);
     }
@@ -40,12 +42,12 @@ class ProductController extends Controller
         return response()->json($this->productService->show($product));
     }
 
-    public function update(Request $request, Product $product): JsonResponse
+    public function update(UpdateProductRequest $request, Product $product): JsonResponse
     {
         Gate::authorize('update', $product);
 
         $clinicId = (int) Auth::user()->clinic_id;
-        $result = $this->productService->update($product, $request->all(), $clinicId);
+        $result = $this->productService->update($product, $request->validated(), $clinicId);
 
         return response()->json($result['payload'], $result['status']);
     }

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\PatientImages\StoreBatchPatientImageRequest;
+use App\Http\Requests\PatientImages\UpdatePatientImageRequest;
 use App\Models\Patient;
 use App\Models\PatientImage;
 use Illuminate\Http\JsonResponse;
@@ -32,7 +34,7 @@ class PatientImageController extends Controller
         return response()->json(['data' => $rows]);
     }
 
-    public function storeBatch(Request $request, Patient $patient): JsonResponse
+    public function storeBatch(StoreBatchPatientImageRequest $request, Patient $patient): JsonResponse
     {
         Gate::authorize('update', $patient);
 
@@ -41,11 +43,7 @@ class PatientImageController extends Controller
             ->where('patient_id', (int) $patient->id)
             ->count();
 
-        $validated = $request->validate([
-            'items' => ['required', 'array', 'min:1', 'max:' . self::MAX_FILES_PER_PATIENT],
-            'items.*.description' => ['required', 'string', 'max:255'],
-            'items.*.file' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,gif,pdf', 'max:' . self::MAX_FILE_SIZE_KB],
-        ]);
+        $validated = $request->validated();
 
         if ($existingCount + count($validated['items']) > self::MAX_FILES_PER_PATIENT) {
             return response()->json([
@@ -77,7 +75,7 @@ class PatientImageController extends Controller
         ], 201);
     }
 
-    public function update(Request $request, Patient $patient, PatientImage $image): JsonResponse
+    public function update(UpdatePatientImageRequest $request, Patient $patient, PatientImage $image): JsonResponse
     {
         Gate::authorize('update', $patient);
 
@@ -85,10 +83,7 @@ class PatientImageController extends Controller
             return response()->json(['message' => 'Imagen no encontrada para este paciente.'], 404);
         }
 
-        $validated = $request->validate([
-            'description' => ['required', 'string', 'max:255'],
-            'file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,gif,pdf', 'max:' . self::MAX_FILE_SIZE_KB],
-        ]);
+        $validated = $request->validated();
 
         $payload = [
             'description' => (string) $validated['description'],

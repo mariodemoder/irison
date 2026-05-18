@@ -78,6 +78,74 @@ body { background: var(--bg-app); color: var(--text-main); }
 	background: #eff6ff !important;
 }
 
+/* Popup forms for entity creation: same visual language as app forms */
+.swal-popup-card {
+	background: #fff;
+	border-radius: 12px;
+	box-shadow: 0 10px 30px rgba(2, 6, 23, 0.06);
+	padding: 18px 18px 16px;
+	max-width: 520px;
+}
+
+.swal-popup-card .swal2-title {
+	margin-bottom: 8px;
+}
+
+.swal-card {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	text-align: left;
+}
+
+.swal-card-scrollable {
+	max-height: 55vh;
+	overflow: auto;
+	padding-right: 4px;
+}
+
+.swal-card .create-row {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.swal-card .create-row label {
+	font-weight: 600;
+	text-align: left;
+	color: #111827;
+	font-size: 13px;
+}
+
+.swal-card .create-grid-2 {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 8px;
+}
+
+.swal-card .input {
+	width: 100%;
+	padding: 10px;
+	border-radius: 8px;
+	border: 1px solid #e5e7eb;
+	box-sizing: border-box;
+	background: #fff;
+	color: #111827;
+}
+
+.swal-popup-card .swal2-actions {
+	display: flex;
+	gap: 8px;
+	justify-content: flex-end;
+	margin-top: 12px;
+}
+
+@media (max-width: 640px) {
+	.swal-card .create-grid-2 {
+		grid-template-columns: 1fr;
+	}
+}
+
 /* Make default icon warning color consistent */
 .swal2-icon.swal2-warning .swal2-icon-content { color: #ffffff }
 .swal2-icon.swal2-warning { background-color: #f97316 !important }

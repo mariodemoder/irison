@@ -73,6 +73,11 @@
       </div>
 
       @php
+        $isAbono = ($document->type ?? '') === 'abono';
+        $formatAmount = static function (float $value) use ($isAbono): string {
+          $display = $isAbono ? -abs($value) : $value;
+          return '€ ' . number_format($display, 2, ',', '.');
+        };
         $typeLabel = match($document->typeinvoice ?? '') {
           'appointment' => 'Sesión',
           'package', 'bonus', 'bono', 'pack' => 'Bono con sesiones',
@@ -90,7 +95,7 @@
         $isBonus = in_array($document->typeinvoice ?? '', ['package', 'bonus', 'bono', 'pack']);
         $appointmentDate = optional($document->date)->format('d/m/Y') ?? optional($document->created_at)->format('d/m/Y');
         $bonusObj = $bonus ?? null;
-        $amountFormatted = '€ ' . number_format((float) $document->amount, 2, ',', '.');
+        $amountFormatted = $formatAmount((float) $document->amount);
       @endphp
       <div class="section" style="margin-top: 20px;">
         <h3>Detalle</h3>
@@ -198,10 +203,10 @@
             <tr>
               <td>{{ $item->description ?: '—' }}</td>
               <td style="text-align:center">{{ rtrim(rtrim(number_format((float)$item->quantity, 4, ',', '.'), '0'), ',') }}</td>
-              <td style="text-align:right">{{ '€ ' . number_format((float)$item->unit_price, 2, ',', '.') }}</td>
+              <td style="text-align:right">{{ $formatAmount((float) $item->unit_price) }}</td>
               <td style="text-align:center">{{ (float)$item->tax_rate > 0 ? number_format((float)$item->tax_rate, 0) . '%' : '—' }}</td>
-              <td style="text-align:right">{{ '€ ' . number_format($lineBase, 2, ',', '.') }}</td>
-              <td style="text-align:right; font-weight:600">{{ '€ ' . number_format($lineTotal, 2, ',', '.') }}</td>
+              <td style="text-align:right">{{ $formatAmount($lineBase) }}</td>
+              <td style="text-align:right; font-weight:600">{{ $formatAmount($lineTotal) }}</td>
             </tr>
             @endforeach
           </tbody>
@@ -209,19 +214,19 @@
             <tr>
               <td colspan="4" style="border:none; padding:4px 0;"></td>
               <td style="text-align:right; border-top:2px solid #cbd5e1; padding-top:6px; color:#64748b; font-size:11px">Base imponible</td>
-              <td style="text-align:right; border-top:2px solid #cbd5e1; padding-top:6px; color:#64748b; font-size:11px">{{ '€ ' . number_format($baseTotal, 2, ',', '.') }}</td>
+              <td style="text-align:right; border-top:2px solid #cbd5e1; padding-top:6px; color:#64748b; font-size:11px">{{ $formatAmount($baseTotal) }}</td>
             </tr>
             @foreach ($taxBreakdown as $row)
             <tr>
               <td colspan="4" style="border:none; padding:2px 0;"></td>
               <td style="text-align:right; border:none; color:#64748b; font-size:11px">IVA {{ number_format($row['rate'], 0) }}%</td>
-              <td style="text-align:right; border:none; color:#64748b; font-size:11px">{{ '€ ' . number_format($row['tax'], 2, ',', '.') }}</td>
+              <td style="text-align:right; border:none; color:#64748b; font-size:11px">{{ $formatAmount((float) $row['tax']) }}</td>
             </tr>
             @endforeach
             <tr>
               <td colspan="4" style="border:none; padding:2px 0;"></td>
               <td style="text-align:right; border-top:2px solid #0f172a; font-weight:700; padding-top:6px"><u>TOTAL</u></td>
-              <td class="amount" style="text-align:right; border-top:2px solid #0f172a; padding-top:6px">{{ '€ ' . number_format($grandTotal, 2, ',', '.') }}</td>
+              <td class="amount" style="text-align:right; border-top:2px solid #0f172a; padding-top:6px">{{ $formatAmount($grandTotal) }}</td>
             </tr>
           </tfoot>
         </table>

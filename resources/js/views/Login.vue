@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import AuthLayout from '../layouts/AuthLayout.vue'
 import BaseInput from '../components/BaseInput.vue'
 import BaseButton from '../components/BaseButton.vue'
+import ErrorAlert from '../components/ErrorAlert.vue'
 import axios from 'axios'
 
 const router = useRouter()
@@ -110,7 +111,7 @@ async function submit() {
         <router-link to="/register" class="text-accent">Registrarse</router-link>
       </p>
 
-      <p v-if="error" class="mt-3 text-sm error-text">{{ error }}</p>
+      <ErrorAlert v-if="error" class="mt-3" title="No se pudo iniciar sesión" :message="error" />
     </div>
   </AuthLayout>
 </template>

@@ -58,12 +58,12 @@
 
             <div class="action-plane">
               <div v-if="activeTab==='datos'" class="action-row">
-                <button class="btn btn-sm" type="button" :disabled="saving" @click.prevent="save">Guardar</button>
+                <button class="btn btn-sm save-button" type="button" :disabled="saving" @click.prevent="save">Guardar</button>
               </div>
 
               <div v-else-if="activeTab==='seguridad'" class="action-row">
-                <button class="btn btn-sm" type="button" :disabled="pwSaving" @click.prevent="changePassword">Cambiar contraseña</button>
-                <button class="btn btn-sm" type="button" @click.prevent="pwReset">Limpiar</button>
+                <button class="btn btn-sm save-button" type="button" :disabled="pwSaving" @click.prevent="changePassword">Cambiar contraseña</button>
+                <button class="btn btn-sm save-button" type="button" @click.prevent="pwReset">Limpiar</button>
               </div>
 
               <div v-else class="action-row action-row-empty"></div>

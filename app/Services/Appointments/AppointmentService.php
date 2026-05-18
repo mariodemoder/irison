@@ -61,6 +61,17 @@ class AppointmentService
         return DB::transaction(function () use ($data) {
             $clinicId = $this->resolveClinic($data);
 
+            // Combine date + H:i time fields into full datetime strings
+            if (!empty($data['date'])) {
+                if (!empty($data['start_time']) && preg_match('/^\d{2}:\d{2}$/', $data['start_time'])) {
+                    $data['start_time'] = $data['date'] . ' ' . $data['start_time'] . ':00';
+                }
+                if (!empty($data['end_time']) && preg_match('/^\d{2}:\d{2}$/', $data['end_time'])) {
+                    $data['end_time'] = $data['date'] . ' ' . $data['end_time'] . ':00';
+                }
+            }
+            unset($data['date']);
+
             $this->validateClinicScheduleConstraints((int) $clinicId, $data, null);
 
             $this->checkAvailability($clinicId, $data);

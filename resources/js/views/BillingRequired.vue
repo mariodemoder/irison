@@ -41,7 +41,13 @@
           </div>
 
           <p v-if="info" class="text-green-700">{{ info }}</p>
-          <p v-if="error" class="text-red-600">{{ error }}</p>
+          <ErrorAlert v-if="error" class="mt-1 text-left" title="No se pudo activar la suscripción" :message="error" />
+
+          <div v-if="showLocalFallbackAction" class="fallback-actions">
+            <button type="button" class="btn btn-primary" :disabled="activatingLocal" @click="activateLocalFallback">
+              {{ activatingLocal ? 'Activando...' : 'Activar en modo local' }}
+            </button>
+          </div>
         </form>
 
         <p class="note">No se perderá ningún dato.</p>
@@ -53,6 +59,7 @@
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Swal from 'sweetalert2'
+import ErrorAlert from '../components/ErrorAlert.vue'
 import api from '../services/api'
 import { ensureMeLoaded } from '../shared/meCache'
 
@@ -63,6 +70,8 @@ const error = ref(null)
 const loading = ref(false)
 const confirming = ref(false)
 const info = ref('')
+const showLocalFallbackAction = ref(false)
+const activatingLocal = ref(false)
 
 async function showSubscriberWelcomePopup() {
   await Swal.fire({
@@ -87,6 +96,7 @@ async function showSubscriberWelcomePopup() {
 async function startCheckout() {
   error.value = null
   info.value = ''
+  showLocalFallbackAction.value = false
   loading.value = true
   try {
     const res = await api.post('/billing/checkout', { method: method.value })
@@ -94,9 +104,33 @@ async function startCheckout() {
     if (!checkoutUrl) throw new Error('No se recibió URL de pago')
     window.location.href = checkoutUrl
   } catch (e) {
-    error.value = e.response?.data?.message || e.message
+    const code = String(e?.response?.data?.code || '')
+    const message = e.response?.data?.message || e.message
+    error.value = message
+
+    if (import.meta.env.DEV && (code === 'STRIPE_UNREACHABLE' || String(message).toLowerCase().includes('stripe'))) {
+      showLocalFallbackAction.value = true
+      info.value = 'Stripe no está disponible en este entorno. Puedes activar en modo local para continuar.'
+    }
   } finally {
     loading.value = false
+  }
+}
+
+async function activateLocalFallback() {
+  error.value = null
+  activatingLocal.value = true
+
+  try {
+    await api.post('/subscribe/fake', { amount: 2900 })
+    info.value = 'Suscripción activada en modo local.'
+    await ensureMeLoaded({ force: true })
+    await showSubscriberWelcomePopup()
+    await router.replace('/dashboard')
+  } catch (e) {
+    error.value = e.response?.data?.message || e.message || 'No se pudo activar en modo local.'
+  } finally {
+    activatingLocal.value = false
   }
 }
 
@@ -196,5 +230,9 @@ onMounted(async () => {
   margin-top: 16px;
   font-size: 13px;
   color: #64748b;
+}
+
+.fallback-actions {
+  margin-top: 10px;
 }
 </style>

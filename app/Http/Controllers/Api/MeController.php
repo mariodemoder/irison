@@ -104,7 +104,7 @@ class MeController
 
         if ($status === 'canceled') {
             $payload['code'] = 'SUBSCRIPTION_CANCELED';
-            $payload['message'] = 'Suscripción cancelada: tu cuenta y tus datos se guardarán durante 7 días desde la cancelación';
+            $payload['message'] = 'Suscripción cancelada: modo solo lectura durante 7 días. Si no reactivas, perderás tus datos al finalizar el plazo.';
         }
 
         if ($status === 'blocked') {

@@ -5,22 +5,55 @@ export async function openCreatePatientPopup({ api, Swal, toast } = {}) {
   const { value: formValues } = await Swal.fire({
     title: 'Crear paciente',
     html: `
-      <div class="swal-card" style="display:grid;gap:8px;text-align:left;max-height:55vh;overflow:auto;padding-right:4px;">
-        <input id="swal-name" class="input" placeholder="Nombre">
-        <input id="swal-nif" class="input" placeholder="NIF (opcional)">
-        <input id="swal-phone" class="input" placeholder="Telefono (opcional)">
-        <input id="swal-email" class="input" placeholder="Email (opcional)">
-        <input id="swal-birth-date" class="input" type="date" placeholder="Fecha de nacimiento">
-        <input id="swal-address" class="input" placeholder="Direccion (opcional)">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <input id="swal-zip" class="input" placeholder="ZIP (opcional)">
-          <input id="swal-city" class="input" placeholder="Ciudad (opcional)">
+      <div class="swal-card swal-card-scrollable">
+        <div class="create-row">
+          <label for="swal-name">Nombre</label>
+          <input id="swal-name" class="input" placeholder="Ej: Juan Perez">
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <input id="swal-province" class="input" placeholder="Provincia (opcional)">
-          <input id="swal-country" class="input" placeholder="Pais (opcional)">
+        <div class="create-row">
+          <label for="swal-nif">NIF (opcional)</label>
+          <input id="swal-nif" class="input" placeholder="Ej: 12345678A">
         </div>
-        <textarea id="swal-notes" class="input" rows="3" placeholder="Notas (opcional)" style="resize:vertical;"></textarea>
+        <div class="create-row">
+          <label for="swal-phone">Telefono (opcional)</label>
+          <input id="swal-phone" class="input" placeholder="Ej: +34 600 000 000">
+        </div>
+        <div class="create-row">
+          <label for="swal-email">Email (opcional)</label>
+          <input id="swal-email" class="input" placeholder="Ej: paciente@email.com">
+        </div>
+        <div class="create-row">
+          <label for="swal-birth-date">Fecha de nacimiento (opcional)</label>
+          <input id="swal-birth-date" class="input" type="date">
+        </div>
+        <div class="create-row">
+          <label for="swal-address">Direccion (opcional)</label>
+          <input id="swal-address" class="input" placeholder="Calle, numero, piso">
+        </div>
+        <div class="create-grid-2">
+          <div class="create-row">
+            <label for="swal-zip">ZIP (opcional)</label>
+            <input id="swal-zip" class="input" placeholder="Ej: 28001">
+          </div>
+          <div class="create-row">
+            <label for="swal-city">Ciudad (opcional)</label>
+            <input id="swal-city" class="input" placeholder="Ej: Madrid">
+          </div>
+        </div>
+        <div class="create-grid-2">
+          <div class="create-row">
+            <label for="swal-province">Provincia (opcional)</label>
+            <input id="swal-province" class="input" placeholder="Ej: Madrid">
+          </div>
+          <div class="create-row">
+            <label for="swal-country">Pais (opcional)</label>
+            <input id="swal-country" class="input" placeholder="Ej: Espana">
+          </div>
+        </div>
+        <div class="create-row">
+          <label for="swal-notes">Notas (opcional)</label>
+          <textarea id="swal-notes" class="input" rows="3" placeholder="Observaciones" style="resize:vertical;"></textarea>
+        </div>
       </div>
     `,
     focusConfirm: false,

@@ -5,15 +5,15 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\PatientHistoryPdf\DownloadPatientHistoryPdfRequest;
 use App\Models\Patient;
-use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 use Spatie\Browsershot\Browsershot;
 
 class PatientHistoryPdfController extends Controller
 {
-    public function pdf(Request $request, Patient $patient): Response
+    public function pdf(DownloadPatientHistoryPdfRequest $request, Patient $patient): Response
     {
         Gate::authorize('view', $patient);
 
@@ -40,7 +40,7 @@ class PatientHistoryPdfController extends Controller
 
         $pdfBinary = $browsershot->pdf();
         $filename = sprintf('historia-clinica-%d.pdf', (int) $patient->id);
-        $asDownload = (string) $request->query('download', '0') === '1';
+        $asDownload = (string) ($request->validated()['download'] ?? '0') === '1';
 
         return response($pdfBinary, 200, [
             'Content-Type' => 'application/pdf',

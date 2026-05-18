@@ -4,8 +4,10 @@ namespace Tests\Feature\Documents;
 
 use App\Http\Middleware\EnsureClinic;
 use App\Http\Middleware\EnsureClinicIsActive;
+use App\Http\Middleware\CheckSubscriptionAccess;
 use App\Models\Clinic;
 use App\Models\Document;
+use App\Models\DocumentItem;
 use App\Models\Patient;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -22,6 +24,7 @@ class IssueAbonoTest extends TestCase
 
         $this->withoutMiddleware(EnsureClinic::class);
         $this->withoutMiddleware(EnsureClinicIsActive::class);
+        $this->withoutMiddleware(CheckSubscriptionAccess::class);
     }
 
     public function test_it_creates_a_rectification_invoice_from_an_invoice_using_abono_counter(): void
@@ -75,6 +78,34 @@ class IssueAbonoTest extends TestCase
             'is_sended' => false,
         ]);
 
+        DocumentItem::create([
+            'document_id' => $invoice->id,
+            'type' => DocumentItem::TYPE_MANUAL,
+            'reference_id' => null,
+            'description' => 'Sesión 60 minutos',
+            'quantity' => 1,
+            'unit_price' => 50,
+            'tax_rate' => 21,
+            'buy_price' => 0,
+            'buy_tax' => 0,
+            'total' => 60.50,
+            'sort_order' => 0,
+        ]);
+
+        DocumentItem::create([
+            'document_id' => $invoice->id,
+            'type' => DocumentItem::TYPE_MANUAL,
+            'reference_id' => null,
+            'description' => 'Masaje descarga',
+            'quantity' => 2,
+            'unit_price' => 12,
+            'tax_rate' => 10,
+            'buy_price' => 0,
+            'buy_tax' => 0,
+            'total' => 26.40,
+            'sort_order' => 1,
+        ]);
+
         $this->actingAs($user, 'sanctum');
         app()->instance('activeClinic', null);
 
@@ -97,6 +128,33 @@ class IssueAbonoTest extends TestCase
         $this->assertSame($invoice->clinic_name, $abono->clinic_name);
         $this->assertSame($invoice->patient_full_name, $abono->patient_full_name);
         $this->assertMatchesRegularExpression('/^AB-\d{6}$/', (string) $abono->counter);
+
+        $invoiceItems = DocumentItem::query()
+            ->where('document_id', $invoice->id)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
+        $abonoItems = DocumentItem::query()
+            ->where('document_id', $abono->id)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
+        $this->assertCount($invoiceItems->count(), $abonoItems);
+
+        foreach ($invoiceItems as $index => $invoiceItem) {
+            $abonoItem = $abonoItems[$index];
+
+            $this->assertSame($invoiceItem->type, $abonoItem->type);
+            $this->assertSame($invoiceItem->reference_id, $abonoItem->reference_id);
+            $this->assertSame($invoiceItem->description, $abonoItem->description);
+            $this->assertSame((string) $invoiceItem->quantity, (string) $abonoItem->quantity);
+            $this->assertSame((string) $invoiceItem->unit_price, (string) $abonoItem->unit_price);
+            $this->assertSame((string) $invoiceItem->tax_rate, (string) $abonoItem->tax_rate);
+            $this->assertSame((string) $invoiceItem->total, (string) $abonoItem->total);
+            $this->assertSame((int) $invoiceItem->sort_order, (int) $abonoItem->sort_order);
+        }
 
         $secondResponse = $this->postJson('/api/documents/' . $invoice->id . '/abono');
 

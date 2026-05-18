@@ -80,13 +80,18 @@
 
       <div v-if="showCanceledBanner" class="subscription-canceled-banner">
         <strong>Suscripción cancelada.</strong>
-        Tu cuenta y tus datos se guardarán hasta siete días a partir de la cancelación.
+        Tu cuenta estará en modo solo lectura durante 7 días. Si no reactivas, tus datos se eliminarán al finalizar ese plazo.
         <span v-if="cancellationDaysLeftLabel" class="banner-days">Quedan {{ cancellationDaysLeftLabel }}.</span>
       </div>
 
-      <div v-if="showTrialReadOnlyBanner" class="subscription-canceled-banner">
-        <strong>Trial finalizado.</strong>
-        Dispones de una semana adicional en modo solo lectura. Puedes consultar datos, pero no crear ni editar transacciones.
+      <div v-if="showTrialReadOnlyBanner" class="subscription-canceled-banner subscription-canceled-banner--action">
+        <div class="subscription-banner-copy">
+          <strong>Trial finalizado.</strong>
+          Dispones de una semana adicional en modo solo lectura. Puedes consultar datos, pero no crear ni editar transacciones.
+        </div>
+        <button type="button" class="btn btn-primary allow-readonly-action subscription-banner-action" @click.prevent="beginPaidPlanFromBanner">
+          Activar cuenta de pago
+        </button>
       </div>
 
       <main class="p-6" :class="{ 'readonly-mode': isReadOnlyNoTransactions }">
@@ -314,6 +319,10 @@ function isActive(base) {
   return p === base || p.startsWith(base + '/')
 }
 
+function beginPaidPlanFromBanner() {
+  router.push('/billing/required')
+}
+
 async function openContactForm() {
   const { value: formValues, isConfirmed } = await Swal.fire({
     title: 'Contacto',
@@ -462,6 +471,21 @@ async function openContactForm() {
   line-height: 1.4;
 }
 
+.subscription-canceled-banner--action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.subscription-banner-copy {
+  min-width: 0;
+}
+
+.subscription-banner-action {
+  white-space: nowrap;
+}
+
 .banner-days {
   margin-left: 6px;
   font-weight: 700;
@@ -471,6 +495,9 @@ async function openContactForm() {
 .readonly-mode :deep(a.action-btn),
 .readonly-mode :deep(.action-btn),
 .readonly-mode :deep(.btn-primary),
+.readonly-mode :deep(.save-button),
+.readonly-mode :deep(.invoice-mini-btn),
+.readonly-mode :deep(.btn-trash),
 .readonly-mode :deep(.plus-btn),
 .readonly-mode :deep(a[href*='/edit']),
 .readonly-mode :deep(a[href*='/create']),
@@ -636,6 +663,16 @@ async function openContactForm() {
   .app-column.with-sidebar-compact,
   .app-column.with-sidebar-mobile {
     padding-left: 68px;
+  }
+
+  .subscription-canceled-banner--action {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .subscription-banner-action {
+    width: 100%;
+    text-align: center;
   }
 }
 </style>

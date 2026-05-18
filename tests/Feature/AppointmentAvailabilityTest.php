@@ -32,16 +32,25 @@ class AppointmentAvailabilityTest extends TestCase
         $this->actingAs($user, 'sanctum');
         $this->withoutMiddleware(\App\Http\Middleware\EnsureClinic::class);
         $this->withoutMiddleware(\App\Http\Middleware\EnsureClinicIsActive::class);
+        $this->withoutMiddleware(\App\Http\Middleware\CheckSubscriptionAccess::class);
 
-        $patient = Patient::create(['first_name' => 'Juan', 'last_name' => 'Perez']);
+        $patient = Patient::create([
+            'clinic_id' => $clinic->id,
+            'first_name' => 'Juan',
+            'last_name' => 'Perez',
+        ]);
 
-        $start = Carbon::now()->addDay()->startOfHour()->addHours(9); // mañana 9:00
+        $date = Carbon::now()->addDay();
+        $start = (clone $date)->startOfHour()->addHours(9); // mañana 9:00
         $end = (clone $start)->addHour(); // 10:00
 
         $payload = [
             'patient_id' => $patient->id,
-            'start_time' => $start->toDateTimeString(),
-            'end_time' => $end->toDateTimeString(),
+            'date' => $date->format('Y-m-d'),
+            'start_time' => $start->format('H:i'),
+            'end_time' => $end->format('H:i'),
+            'price' => 40,
+            'payment_type' => 'single',
         ];
 
         $response = $this->postJson('/api/appointments', $payload);
@@ -70,9 +79,10 @@ class AppointmentAvailabilityTest extends TestCase
         $this->actingAs($user, 'sanctum');
         $this->withoutMiddleware(\App\Http\Middleware\EnsureClinic::class);
         $this->withoutMiddleware(\App\Http\Middleware\EnsureClinicIsActive::class);
+        $this->withoutMiddleware(\App\Http\Middleware\CheckSubscriptionAccess::class);
 
-        $patient1 = Patient::create(['first_name' => 'Ana', 'last_name' => 'Gomez']);
-        $patient2 = Patient::create(['first_name' => 'Luis', 'last_name' => 'Martinez']);
+        $patient1 = Patient::create(['clinic_id' => $clinic->id, 'first_name' => 'Ana', 'last_name' => 'Gomez']);
+        $patient2 = Patient::create(['clinic_id' => $clinic->id, 'first_name' => 'Luis', 'last_name' => 'Martinez']);
 
         $start1 = Carbon::now()->addDay()->startOfHour()->addHours(10); // mañana 10:00
         $end1 = (clone $start1)->addHour(); // 11:00
@@ -90,14 +100,64 @@ class AppointmentAvailabilityTest extends TestCase
 
         $payload = [
             'patient_id' => $patient2->id,
-            'start_time' => $start2->toDateTimeString(),
-            'end_time' => $end2->toDateTimeString(),
+            'date' => $start2->format('Y-m-d'),
+            'start_time' => $start2->format('H:i'),
+            'end_time' => $end2->format('H:i'),
+            'price' => 50,
+            'payment_type' => 'single',
         ];
 
         $response = $this->postJson('/api/appointments', $payload);
 
         $response->assertStatus(422);
-        $response->assertJsonFragment(['La franja horaria se solapa con otra cita.']);
+        $response->assertJsonPath('error', 'La franja horaria se solapa con otra cita.');
+    }
+
+    public function test_create_appointment_accepts_datetime_local_payload_without_date_field()
+    {
+        $clinic = Clinic::create(['name' => 'Test Clinic']);
+        app()->instance('activeClinic', $clinic);
+
+        $user = User::create([
+            'name' => 'Test User 3',
+            'email' => 'testuser3@example.com',
+            'email_verified_at' => now(),
+            'password' => Hash::make('password'),
+            'clinic_id' => $clinic->id,
+        ]);
+
+        $this->actingAs($user, 'sanctum');
+        $this->withoutMiddleware(\App\Http\Middleware\EnsureClinic::class);
+        $this->withoutMiddleware(\App\Http\Middleware\EnsureClinicIsActive::class);
+        $this->withoutMiddleware(\App\Http\Middleware\CheckSubscriptionAccess::class);
+
+        $patient = Patient::create([
+            'clinic_id' => $clinic->id,
+            'first_name' => 'Carlos',
+            'last_name' => 'Ruiz',
+        ]);
+
+        $start = Carbon::now()->addDay()->setTime(9, 0);
+        $end = (clone $start)->addHour();
+
+        $payload = [
+            'patient_id' => $patient->id,
+            'start_time' => $start->format('Y-m-d\\TH:i'),
+            'end_time' => $end->format('Y-m-d\\TH:i'),
+            'price' => 40,
+            'payment_type' => 'single',
+        ];
+
+        $response = $this->postJson('/api/appointments', $payload);
+
+        $response->assertStatus(201);
+
+        $this->assertDatabaseHas('appointments', [
+            'patient_id' => $patient->id,
+            'clinic_id' => $clinic->id,
+            'start_time' => $start->format('Y-m-d H:i:s'),
+            'end_time' => $end->format('Y-m-d H:i:s'),
+        ]);
     }
 
 }

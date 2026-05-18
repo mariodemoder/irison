@@ -465,6 +465,7 @@ import {
 
 const router = useRouter()
 const route = useRoute()
+const APPOINTMENT_SLOT_MINUTES = 15
 const isEdit = ref(false)
 const mode = ref(route.query.mode || null)
 const form = reactive({ patient_id: '', status: 'scheduled', start_time: '', end_time: '', notes: '', price: '', app_type_id: '', custom_type: '', use_bonus_id: '', use_credit_payment_id: '', bonus_notes: '', bonus_name: '', payment_type: 'single', apply_credit: false, apply_credit_mode: 'auto', apply_credit_amount: '' })
@@ -1417,7 +1418,7 @@ function toDatetimeLocalString(date) {
 const timeOptions = computed(() => {
   const opts = []
   for (let h = 0; h < 24; h++) {
-    for (let m = 0; m < 60; m += 5) {
+    for (let m = 0; m < 60; m += APPOINTMENT_SLOT_MINUTES) {
       opts.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`)
     }
   }
@@ -1465,7 +1466,7 @@ const endTimeModel = computed({
   }
 })
 
-function roundDatetimeLocalToNearestMinutes(value, stepMinutes = 5) {
+function roundDatetimeLocalToNearestMinutes(value, stepMinutes = APPOINTMENT_SLOT_MINUTES) {
   if (!value) return value
   const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/)
   if (!match) return value
@@ -1481,7 +1482,7 @@ function roundDatetimeLocalToNearestMinutes(value, stepMinutes = 5) {
 
 function normalizeDateTimeField(fieldName) {
   const currentValue = form[fieldName]
-  const roundedValue = roundDatetimeLocalToNearestMinutes(currentValue, 5)
+  const roundedValue = roundDatetimeLocalToNearestMinutes(currentValue, APPOINTMENT_SLOT_MINUTES)
   if (roundedValue !== currentValue) {
     form[fieldName] = roundedValue
   }
@@ -2121,24 +2122,4 @@ async function submit(payNow = false) {
 @media (max-width: 768px) {
   .billing-preview-grid { grid-template-columns:1fr }
 }
-</style>
-
-/* Estilos globales para el popup de creación de paciente */
-<style>
-.swal-popup-card {
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(2,6,23,0.06);
-  padding: 18px 18px 16px;
-  max-width: 480px;
-}
-.swal-popup-card .swal2-title { margin-bottom:8px }
-.swal-card { display:flex; flex-direction:column; gap:10px }
-.swal-card .create-row { display:flex; flex-direction:column; gap:6px }
-.swal-card .create-row label { font-weight:600; text-align:left; color:#111827 }
-.swal-card .input { width:100%; padding:10px; border-radius:8px; border:1px solid #e5e7eb; box-sizing:border-box }
-.swal2-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:12px }
-.swal2-actions .primary, .primary { padding: 8px 16px; font-size: 14px; border-radius: 9999px; border: 2px solid #3b82f6; color: #3b82f6; background: #ffffff; font-weight: 600 }
-.swal2-actions .primary:hover, .primary:hover { background:#eff6ff }
-
 </style>

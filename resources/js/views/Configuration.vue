@@ -358,7 +358,6 @@
                       <col class="cesion-col-description">
                       <col class="cesion-col-time">
                       <col class="cesion-col-price">
-                      <col class="cesion-col-payment">
                       <col class="cesion-col-actions">
                     </colgroup>
                     <thead>
@@ -366,7 +365,6 @@
                         <th>Descripcion</th>
                         <th>Tiempo estimado</th>
                         <th>Precio</th>
-                        <th>Tipo de pago</th>
                         <th></th>
                       </tr>
                     </thead>
@@ -389,12 +387,6 @@
                         </td>
                         <td data-label="Precio">
                           <input class="input counter-input" type="number" min="0" step="0.01" v-model.number="item.price" />
-                        </td>
-                        <td data-label="Tipo de pago">
-                          <select class="input counter-input" v-model="item.payment_type">
-                            <option value="simple">Simple</option>
-                            <option value="abono">Bono</option>
-                          </select>
                         </td>
                         <td data-label="Acciones">
                           <BtnTrash @click.prevent="removeCesionType(item.id)">Eliminar</BtnTrash>
@@ -428,18 +420,16 @@
                 <div class="counter-table-wrap" style="margin-top:14px">
                   <table class="counter-table sesiones-table">
                     <colgroup>
-                      <col style="width:38%">
-                      <col style="width:14%">
-                      <col style="width:16%">
+                      <col style="width:46%">
                       <col style="width:18%">
-                      <col style="width:14%">
+                      <col style="width:20%">
+                      <col style="width:16%">
                     </colgroup>
                     <thead>
                       <tr>
                         <th>Descripción</th>
                         <th>Nº sesiones</th>
                         <th>Precio</th>
-                        <th>Expira</th>
                         <th></th>
                       </tr>
                     </thead>
@@ -453,9 +443,6 @@
                         </td>
                         <td data-label="Precio">
                           <input class="input counter-input" type="number" min="0" step="0.01" v-model.number="item.price" />
-                        </td>
-                        <td data-label="Expira">
-                          <input class="input counter-input" type="date" v-model="item.expires_at" />
                         </td>
                         <td data-label="Acciones">
                           <BtnTrash @click.prevent="removeBonusType(item)">Eliminar</BtnTrash>
@@ -797,13 +784,13 @@ async function save() {
         estimated_hours: item.estimated_hours,
         estimated_minutes: item.estimated_minutes,
         price: item.price,
-        payment_type: item.payment_type,
+        payment_type: 'simple',
       })),
       bonus_types: bonusTypes.value.map((item) => ({
         description: item.description,
         sessions: item.sessions,
         price: item.price,
-        expires_at: item.expires_at || null,
+        expires_at: null,
       })),
     }
 
@@ -844,7 +831,6 @@ function makeCesionType() {
     estimated_hours: 1,
     estimated_minutes: 0,
     price: 0,
-    payment_type: 'simple',
   }
 }
 
@@ -861,7 +847,6 @@ function sanitizeCesionType(item) {
     price: Number.isFinite(Number(item?.price))
       ? Math.max(Number(item.price), 0)
       : 0,
-    payment_type: item?.payment_type === 'abono' ? 'abono' : 'simple',
   }
 }
 
@@ -961,21 +946,15 @@ function addCesionType() {
 
 let _bonusKey = 0
 function makeBonusType() {
-  return { _key: ++_bonusKey, description: '', sessions: 1, price: 0, expires_at: '' }
+  return { _key: ++_bonusKey, description: '', sessions: 1, price: 0 }
 }
 
 function sanitizeBonusType(item) {
-  const expiresRaw = (item?.expires_at ?? '').toString().trim()
-  const expiresAt = /^\d{4}-\d{2}-\d{2}$/.test(expiresRaw)
-    ? expiresRaw
-    : (/^\d{4}-\d{2}-\d{2}T/.test(expiresRaw) ? expiresRaw.slice(0, 10) : '')
-
   return {
     id: item?.id,
     description: (item?.description ?? '').toString(),
     sessions: Number.isFinite(Number(item?.sessions)) ? Math.max(Number(item.sessions), 1) : 1,
     price: Number.isFinite(Number(item?.price)) ? Math.max(Number(item.price), 0) : 0,
-    expires_at: expiresAt,
   }
 }
 
@@ -1363,10 +1342,9 @@ onBeforeUnmount(() => {
   min-width: 120px;
 }
 .sesiones-table .cesion-col-description { width: 42%; }
-.sesiones-table .cesion-col-time { width: 16%; }
-.sesiones-table .cesion-col-price { width: 14%; }
-.sesiones-table .cesion-col-payment { width: 18%; }
-.sesiones-table .cesion-col-actions { width: 10%; }
+.sesiones-table .cesion-col-time { width: 22%; }
+.sesiones-table .cesion-col-price { width: 20%; }
+.sesiones-table .cesion-col-actions { width: 16%; }
 .section-head {
   display: flex;
   align-items: center;

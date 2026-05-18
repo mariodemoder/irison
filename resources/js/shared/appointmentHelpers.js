@@ -19,6 +19,8 @@ export function parseAppointmentDateTime(value) {
   return Number.isNaN(parsed.getTime()) ? null : parsed
 }
 
+const APPOINTMENT_SLOT_MINUTES = 15
+
 export function toDatetimeLocalValue(value) {
   const raw = value == null ? '' : String(value).trim()
   if (!raw) return ''
@@ -58,8 +60,8 @@ export function formatTime(dt) {
       if (!d) return dt
       let hh = d.getHours()
       let mm = d.getMinutes()
-      // truncar al múltiplo de 5 (no avanzar al siguiente intervalo)
-      mm = Math.floor(mm / 5) * 5
+      // Truncar al multiplo de 15 (no avanzar al siguiente intervalo)
+      mm = Math.floor(mm / APPOINTMENT_SLOT_MINUTES) * APPOINTMENT_SLOT_MINUTES
       const hhStr = String(hh).padStart(2, '0')
       const mmStr = String(mm).padStart(2, '0')
       return `${hhStr}:${mmStr}`

@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\SubscriptionCanceledInternalMail;
 use App\Http\Controllers\Controller;
 use App\Models\BillingPayment;
 use App\Services\PaymentProvider\Resolver;
+use App\Services\PaymentProvider\StripePaymentProvider;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Stripe\Stripe;
 use Stripe\StripeClient;
@@ -31,13 +34,31 @@ class BillingController extends Controller
         $payment = BillingPayment::create($paymentPayload);
 
         $provider = Resolver::resolve();
-        $checkout = $provider->createCheckout([
-            'payment_id' => $payment->id,
-            'amount'     => $amount,
-            'currency'   => 'EUR',
-            'clinic_id'  => $clinic->id,
-            'email'      => $request->user()->email,
-        ]);
+
+        try {
+            $checkout = $provider->createCheckout([
+                'payment_id' => $payment->id,
+                'amount'     => $amount,
+                'currency'   => 'EUR',
+                'clinic_id'  => $clinic->id,
+                'email'      => $request->user()->email,
+            ]);
+        } catch (\Throwable $e) {
+            $payment->status = 'failed';
+            $payment->save();
+
+            if ($this->isStripeConnectivityIssue($e)) {
+                return response()->json([
+                    'message' => 'No se pudo conectar con Stripe. Revisa internet/TLS o usa el modo local para continuar.',
+                    'code' => 'STRIPE_UNREACHABLE',
+                ], 503);
+            }
+
+            return response()->json([
+                'message' => 'No se pudo iniciar el checkout: ' . $e->getMessage(),
+                'code' => 'CHECKOUT_CREATE_FAILED',
+            ], 422);
+        }
 
         $payment->provider_ref = $checkout['provider_ref'] ?? null;
         $payment->save();
@@ -225,7 +246,7 @@ class BillingController extends Controller
             ], 422);
         }
 
-        $provider = Resolver::resolve();
+        $provider = $this->resolveCancellationProvider($clinic->subscription_provider, $subscription->stripe_subscription_id);
 
         try {
             $provider->cancelSubscription([
@@ -247,6 +268,8 @@ class BillingController extends Controller
         $clinic->subscription_status = 'canceled';
         $clinic->save();
 
+        $this->notifyCancellationMail($clinic, $subscription->stripe_subscription_id);
+
         return response()->json([
             'status' => 'canceled',
             'message' => 'Suscripcion cancelada correctamente',
@@ -260,7 +283,7 @@ class BillingController extends Controller
         if ($user && $clinic = $user->clinic) {
             // marcar ultimo payment pendiente como pagado
             try {
-                $pending = BillingPayment::where('clinic_id', $clinic->id)
+                $pending = BillingPayment::query()->where('clinic_id', $clinic->id)
                     ->where('status', 'pending')
                     ->orderByDesc('id')
                     ->first();
@@ -305,5 +328,49 @@ class BillingController extends Controller
     private function hasBillingMethodColumn(): bool
     {
         return Schema::hasColumn('billing_payments', 'method');
+    }
+
+    private function resolveCancellationProvider(?string $subscriptionProvider, ?string $stripeSubscriptionId)
+    {
+        $providerName = strtolower(trim((string) ($subscriptionProvider ?? '')));
+        $stripeSubscriptionId = trim((string) ($stripeSubscriptionId ?? ''));
+
+        $looksLikeStripeSubscription = $stripeSubscriptionId !== '' && str_starts_with($stripeSubscriptionId, 'sub_');
+        if ($providerName === 'stripe' || $looksLikeStripeSubscription) {
+            return new StripePaymentProvider();
+        }
+
+        return Resolver::resolve();
+    }
+
+    private function notifyCancellationMail($clinic, ?string $stripeSubscriptionId): void
+    {
+        $recipient = trim((string) config('billing.cancellation_notification_to', ''));
+        if (! filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
+            return;
+        }
+
+        try {
+            Mail::to($recipient)->send(new SubscriptionCanceledInternalMail(
+                clinicName: (string) ($clinic->name ?? '-'),
+                clinicId: (int) ($clinic->id ?? 0),
+                clinicEmail: (string) ($clinic->email ?? ''),
+                stripeCustomerId: (string) ($clinic->stripe_id ?? ''),
+                stripeSubscriptionId: (string) ($stripeSubscriptionId ?? ''),
+            ));
+        } catch (\Throwable $e) {
+            // La cancelación ya fue aplicada; el aviso por mail no debe revertirla.
+        }
+    }
+
+    private function isStripeConnectivityIssue(\Throwable $e): bool
+    {
+        $message = strtolower((string) $e->getMessage());
+
+        return str_contains($message, 'could not connect to stripe')
+            || str_contains($message, 'failed to connect')
+            || str_contains($message, 'timed out')
+            || str_contains($message, 'timeout was reached')
+            || str_contains($message, 'errno 28');
     }
 }

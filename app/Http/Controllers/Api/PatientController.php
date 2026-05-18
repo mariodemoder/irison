@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\Patient;
+use App\Http\Requests\Patients\StorePatientRequest;
+use App\Http\Requests\Patients\UpdatePatientRequest;
 use Illuminate\Routing\Controller as BaseController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -30,12 +32,12 @@ class PatientController extends BaseController
     /**
      * Crear un paciente
      */
-    public function store(Request $request)
+    public function store(StorePatientRequest $request)
     {
         Gate::authorize('create', Patient::class);
 
         $clinicId = (int) Auth::user()->clinic_id;
-        $result = $this->patientsServices->store($request->all(), $clinicId);
+        $result = $this->patientsServices->store($request->validated(), $clinicId);
 
         return response()->json($result['payload'], $result['status']);
     }
@@ -53,12 +55,12 @@ class PatientController extends BaseController
     /**
      * Actualizar paciente
      */
-    public function update(Request $request, Patient $patient)
+    public function update(UpdatePatientRequest $request, Patient $patient)
     {
         Gate::authorize('update', $patient);
 
         $clinicId = (int) Auth::user()->clinic_id;
-        $result = $this->patientsServices->update($patient, $request->all(), $clinicId);
+        $result = $this->patientsServices->update($patient, $request->validated(), $clinicId);
 
         return response()->json($result['payload'], $result['status']);
     }

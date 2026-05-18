@@ -35,6 +35,8 @@ function resetMeCache() {
   meRequestPromise = null
 }
 
+export { resetMeCache }
+
 export async function ensureMeLoaded(options = {}) {
   const force = Boolean(options?.force)
   const token = getCurrentToken()

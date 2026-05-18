@@ -1,0 +1,42 @@
+<?php
+
+namespace App\Http\Requests\Bonuses;
+
+use Illuminate\Foundation\Http\FormRequest;
+use App\Rules\ValidateDateAfterNow;
+use App\Rules\ValidatePaymentAmount;
+
+class StoreBonusRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true; // Autorización manejada por Policy
+    }
+
+    /**
+     * Reglas de validación para crear un bono (package).
+     */
+    public function rules(): array
+    {
+        return [
+            'name' => ['required', 'string', 'max:255'],
+            'total_sessions' => ['required', 'integer', 'min:1'],
+            'price' => ['nullable', 'numeric', new ValidatePaymentAmount()],
+            'expires_at' => ['nullable', 'date', new ValidateDateAfterNow()],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'name.required' => 'El nombre del bono es requerido.',
+            'name.string' => 'El nombre debe ser texto.',
+            'name.max' => 'El nombre no puede exceder 255 caracteres.',
+            'total_sessions.required' => 'El número total de sesiones es requerido.',
+            'total_sessions.integer' => 'El número de sesiones debe ser un número entero.',
+            'total_sessions.min' => 'El número de sesiones debe ser al menos 1.',
+            'price.numeric' => 'El precio debe ser un número.',
+            'expires_at.date' => 'La fecha de expiración debe ser una fecha válida.',
+        ];
+    }
+}

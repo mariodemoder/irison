@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import AuthLayout from '../layouts/AuthLayout.vue'
 import BaseInput from '../components/BaseInput.vue'
 import BaseButton from '../components/BaseButton.vue'
+import ErrorAlert from '../components/ErrorAlert.vue'
 import axios from 'axios'
 
 const router = useRouter()
@@ -49,7 +50,7 @@ async function submit() {
       <router-link to="/login" class="text-accent">Iniciar sesión</router-link>
     </p>
 
-    <p v-if="error" class="mt-3 text-sm text-red-600">{{ error }}</p>
+    <ErrorAlert v-if="error" class="mt-3" title="No se pudo crear la cuenta" :message="error" />
     <p v-if="success" class="mt-3 text-sm success-text">{{ success }}</p>
   </AuthLayout>
 </template>
