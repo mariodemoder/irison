@@ -97,7 +97,8 @@ class AppointmentService
                     }
 
                     if (!isset($data['payment_type']) || $data['payment_type'] === '' || $data['payment_type'] === null) {
-                        $data['payment_type'] = $appType->payment_type === 'abono' ? 'bonus' : 'single';
+                        $supportsBonus = $appType->bonusTypes()->exists();
+                        $data['payment_type'] = $supportsBonus ? 'bonus' : 'single';
                     }
 
                     // Si el tipo viene tipificado, limpiar cualquier texto libre

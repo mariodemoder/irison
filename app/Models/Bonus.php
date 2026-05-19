@@ -13,7 +13,7 @@ class Bonus extends Model
 {
     use BelongsToClinic;
     protected $fillable = [
-        'clinic_id', 'patient_id', 'name', 'total_sessions', 'remaining_sessions', 'price', 'invoice_id', 'counter', 'expires_at'
+        'clinic_id', 'patient_id', 'bonus_type_id', 'name', 'total_sessions', 'remaining_sessions', 'price', 'invoice_id', 'counter', 'expires_at'
     ];
 
     protected $casts = [
@@ -43,6 +43,11 @@ class Bonus extends Model
     public function patient(): BelongsTo
     {
         return $this->belongsTo(Patient::class);
+    }
+
+    public function bonusType(): BelongsTo
+    {
+        return $this->belongsTo(BonusType::class, 'bonus_type_id');
     }
 
     public function invoice(): BelongsTo

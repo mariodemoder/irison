@@ -5,6 +5,7 @@ namespace App\Http\Requests\Bonuses;
 use Illuminate\Foundation\Http\FormRequest;
 use App\Rules\ValidateDateAfterNow;
 use App\Rules\ValidatePaymentAmount;
+use Illuminate\Validation\Rule;
 
 class StoreBonusRequest extends FormRequest
 {
@@ -19,6 +20,13 @@ class StoreBonusRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'bonus_type_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('bonus_types', 'id')
+                    ->where('clinic_id', (int) (currentClinicId() ?? 0))
+                    ->whereNull('deleted_at'),
+            ],
             'name' => ['required', 'string', 'max:255'],
             'total_sessions' => ['required', 'integer', 'min:1'],
             'price' => ['nullable', 'numeric', new ValidatePaymentAmount()],

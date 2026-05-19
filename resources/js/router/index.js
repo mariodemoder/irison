@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import Landing from '../views/Landing.vue'
 import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
 import Dashboard from '../views/Dashboard.vue'
@@ -30,6 +31,7 @@ import Privacy from '../views/Privacy.vue'
 import Terms from '../views/Terms.vue'
 
 const routes = [
+  { path: '/', component: Landing, meta: { publicLanding: true } },
   { path: '/login', component: Login },
   { path: '/register', component: Register },
   { path: '/dashboard', component: Dashboard, meta: { auth: true } },

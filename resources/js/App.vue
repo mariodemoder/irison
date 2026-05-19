@@ -1,12 +1,19 @@
 <template>
-  <div class="w-full" style="padding: 0% 2% 0% 2%;" :style="{ '--theme-color': themeColor || '#e5e7eb', '--theme-color-light': themeLightColor }">
+  <div
+    class="w-full"
+    :class="{ 'app-shell--edge-to-edge': isEdgeToEdge }"
+    :style="{ '--theme-color': themeColor || '#e5e7eb', '--theme-color-light': themeLightColor }"
+  >
     <router-view />
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { meClinic } from './shared/meCache'
+
+const route = useRoute()
 
 const themeColor = computed(() => meClinic.value?.theme_color || '#e5e7eb')
 
@@ -21,4 +28,16 @@ const themeLightColor = computed(() => {
   const lb = Math.round(b * 0.15 + 255 * 0.85)
   return `rgb(${lr}, ${lg}, ${lb})`
 })
+
+const isEdgeToEdge = computed(() => route.meta?.publicLanding === true)
 </script>
+
+<style scoped>
+.w-full {
+  padding: 0 2%;
+}
+
+.app-shell--edge-to-edge {
+  padding: 0;
+}
+</style>

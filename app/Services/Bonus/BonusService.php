@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Services\Bonus;
 
 use App\Models\Bonus;
+use App\Models\BonusType;
 use App\Models\BonusUsage;
 use App\Models\Appointment;
 use App\Models\Payment;
@@ -174,13 +175,29 @@ class BonusService
             throw new DomainException('No se encontró clínica activa para crear el bono');
         }
 
+        $bonusTypeId = null;
+        if (!empty($data['bonus_type_id'])) {
+            $candidateBonusTypeId = (int) $data['bonus_type_id'];
+            $existsInClinic = BonusType::query()
+                ->where('clinic_id', $clinicId)
+                ->whereKey($candidateBonusTypeId)
+                ->exists();
+
+            if (! $existsInClinic) {
+                throw new DomainException('El tipo de bono no pertenece a la clínica activa');
+            }
+
+            $bonusTypeId = $candidateBonusTypeId;
+        }
+
         return $this->assignBonusToPatient(
             $clinicId,
             $patientId,
             $data['name'],
             (int) $data['total_sessions'],
             (float) ($data['price'] ?? 0),
-            isset($data['expires_at']) ? new \DateTime($data['expires_at']) : null
+            isset($data['expires_at']) ? new \DateTime($data['expires_at']) : null,
+            $bonusTypeId
         );
     }
 
@@ -235,11 +252,20 @@ class BonusService
      * Assign a bonus to a patient (create Bonus record).
      * Returns the created Bonus.
      */
-    public function assignBonusToPatient(int $clinicId, int $patientId, string $name, int $totalSessions, float $price = 0.0, ?\DateTime $expiresAt = null): Bonus
+    public function assignBonusToPatient(
+        int $clinicId,
+        int $patientId,
+        string $name,
+        int $totalSessions,
+        float $price = 0.0,
+        ?\DateTime $expiresAt = null,
+        ?int $bonusTypeId = null
+    ): Bonus
     {
         $data = [
             'clinic_id' => $clinicId,
             'patient_id' => $patientId,
+            'bonus_type_id' => $bonusTypeId,
             'name' => $name,
             'total_sessions' => $totalSessions,
             'remaining_sessions' => $totalSessions,

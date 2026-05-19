@@ -159,8 +159,20 @@ class AppointmentController extends Controller
         // Cargar tipos de citas
         $appointmentTypes = \App\Models\AppointmentType::query()
             ->where('clinic_id', $clinicId)
+            ->withCount('bonusTypes')
             ->orderBy('description')
-            ->get(['id', 'description', 'estimated_hours', 'estimated_minutes', 'price', 'payment_type'])
+            ->get(['id', 'description', 'estimated_hours', 'estimated_minutes', 'price'])
+            ->map(static function ($item) {
+                return [
+                    'id' => (int) $item->id,
+                    'description' => $item->description,
+                    'estimated_hours' => (int) $item->estimated_hours,
+                    'estimated_minutes' => (int) $item->estimated_minutes,
+                    'price' => (float) $item->price,
+                    'payment_type' => ((int) ($item->bonus_types_count ?? 0)) > 0 ? 'abono' : 'simple',
+                ];
+            })
+            ->values()
             ->toArray();
 
         return response()->json([

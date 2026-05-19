@@ -314,6 +314,12 @@ function cancelForm() {
 async function create() {
   try {
     const bonus = { ...form.value }
+    if (selectedTemplateId.value !== 'manual') {
+      const templateId = Number(selectedTemplateId.value)
+      if (Number.isFinite(templateId) && templateId > 0) {
+        bonus.bonus_type_id = templateId
+      }
+    }
     if (!bonus.expires_at) delete bonus.expires_at
     const res = await api.post(`/patients/${props.patientId}/bonuses`, bonus)
     const b = (res.data && res.data.data) ? res.data.data : res.data

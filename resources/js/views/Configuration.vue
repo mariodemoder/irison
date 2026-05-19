@@ -340,12 +340,9 @@
 
               <div class="tab-panel tab-card" v-show="activeTab==='sesiones'">
                 <div class="section-head">
-                  <h2>Tipos de sesiones</h2>
-                  <button class="btn btn-sm plus-btn" type="button" @click.prevent="addCesionType" title="Agregar tipo" aria-label="Agregar tipo">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <path d="M12 5v14"></path>
-                      <path d="M5 12h14"></path>
-                    </svg>
+                  <h2>Sesiones</h2>
+                  <button class="btn btn-sm session-create-btn" type="button" @click.prevent="addCesionType" title="Agregar tipo" aria-label="Agregar tipo">
+                    Nueva Sesión
                   </button>
                 </div>
                 <div style="margin-top:8px;color:#6b7280;font-size:13px">
@@ -389,7 +386,7 @@
                           <input class="input counter-input" type="number" min="0" step="0.01" v-model.number="item.price" />
                         </td>
                         <td data-label="Acciones">
-                          <BtnTrash @click.prevent="removeCesionType(item.id)">Eliminar</BtnTrash>
+                          <BtnTrash @click.prevent="removeCesionType(item.id)"></BtnTrash>
                         </td>
                       </tr>
                     </tbody>
@@ -405,51 +402,63 @@
 
               <div class="tab-panel tab-card" v-show="activeTab==='bonos'">
                 <div class="section-head">
-                  <h2>Tipos de bonos</h2>
-                  <button class="btn btn-sm plus-btn" type="button" @click.prevent="addBonusType" title="Agregar bono" aria-label="Agregar bono">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <path d="M12 5v14"></path>
-                      <path d="M5 12h14"></path>
-                    </svg>
+                  <h2>Bonos</h2>
+                  <button class="btn btn-sm session-create-btn" type="button" @click.prevent="addBonusType" title="Agregar bono" aria-label="Agregar bono">
+                    Nuevo Bono
                   </button>
                 </div>
                 <div style="margin-top:8px;color:#6b7280;font-size:13px">
-                  Crea las plantillas de bono que ofreces. Podrás asignarlas directamente a pacientes.
+                  Arma paquete combinando sesiones existentes. Define cantidad por tipo de sesión y el precio final.
                 </div>
 
-                <div class="counter-table-wrap" style="margin-top:14px">
-                  <table class="counter-table sesiones-table">
-                    <colgroup>
-                      <col style="width:46%">
-                      <col style="width:18%">
-                      <col style="width:20%">
-                      <col style="width:16%">
-                    </colgroup>
-                    <thead>
-                      <tr>
-                        <th>Descripción</th>
-                        <th>Nº sesiones</th>
-                        <th>Precio</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr v-for="item in bonusTypes" :key="item.id ?? item._key">
-                        <td data-label="Descripción">
-                          <input class="input counter-input" v-model="item.description" placeholder="Ej: Bono 10 sesiones" />
-                        </td>
-                        <td data-label="Nº sesiones">
-                          <input class="input counter-input" type="number" min="1" step="1" v-model.number="item.sessions" />
-                        </td>
-                        <td data-label="Precio">
-                          <input class="input counter-input" type="number" min="0" step="0.01" v-model.number="item.price" />
-                        </td>
-                        <td data-label="Acciones">
-                          <BtnTrash @click.prevent="removeBonusType(item)">Eliminar</BtnTrash>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                <div class="bonus-list" style="margin-top:14px">
+                  <div v-for="item in bonusTypes" :key="item.id ?? item._key" class="bonus-card">
+                    <div class="bonus-pack-top">
+                      <div class="bonus-top-actions">
+                        <button class="btn btn-sm bonus-top-btn" type="button" @click.prevent="addBonusLine(item)">+ Sesión</button>
+                        <BtnTrash class="bonus-top-btn" @click.prevent="removeBonusType(item)">Eliminar Bono</BtnTrash>
+                      </div>
+
+                      <div class="bonus-field-inline">
+                        <label class="label bonus-inline-label">Nombre</label>
+                        <input class="input counter-input" v-model="item.description" placeholder="Ej: Pack bienestar" />
+                      </div>
+                      <div class="bonus-field-inline bonus-field-inline-price">
+                        <label class="label bonus-inline-label">Precio final</label>
+                        <input class="input counter-input" type="number" min="0" step="0.01" v-model.number="item.price" />
+                      </div>
+                    </div>
+
+                    <div class="bonus-lines-wrap">
+                      <div class="bonus-lines-head">
+                        <span>Cantidad</span>
+                        <span>Sesión</span>
+                        <span>Precio</span>
+                        <span></span>
+                      </div>
+
+                      <div v-for="(line, lineIndex) in item.lines" :key="line._key" class="bonus-line-row">
+                        <input class="input counter-input" type="number" min="1" step="1" v-model.number="line.quantity" @input="syncBonusAmount(item)" />
+                        <select class="input counter-input" v-model="line.cesion_key" @change="applyLineSessionPrice(item, line)">
+                          <option value="">Seleccionar sesión</option>
+                          <option v-for="(cesion, cesionIndex) in cesionTypes" :key="`bonus-opt-${item.id ?? item._key}-${line._key}-${cesion.id ?? cesionIndex}`" :value="getCesionOptionValue(cesion, cesionIndex)">
+                            {{ cesion.description || `Sesión ${cesionIndex + 1}` }}
+                          </option>
+                        </select>
+                        <input class="input counter-input" type="number" min="0" step="0.01" v-model.number="line.unit_price" @input="syncBonusAmount(item)" />
+                        <BtnTrash @click.prevent="removeBonusLine(item, lineIndex)"></BtnTrash>
+                      </div>
+
+                    </div>
+
+                    <div class="bonus-summary">
+                      <span>Total de sesiones del pack:</span>
+                      <strong>{{ bonusTotalSessions(item) }}</strong>
+                      <span>·</span>
+                      <span>Total detalle:</span>
+                      <strong>{{ bonusDetailsTotal(item).toFixed(2) }}€</strong>
+                    </div>
+                  </div>
                 </div>
 
                 <div style="margin-top:12px">
@@ -780,17 +789,27 @@ async function save() {
         last_number: Number.isFinite(Number(item.last_number)) ? Math.max(Number(item.last_number), 0) : 0,
       })),
       cesiones: cesionTypes.value.map((item) => ({
+        id: item.id != null ? String(item.id) : null,
         description: item.description,
         estimated_hours: item.estimated_hours,
         estimated_minutes: item.estimated_minutes,
         price: item.price,
-        payment_type: 'simple',
       })),
       bonus_types: bonusTypes.value.map((item) => ({
+        id: item.id != null ? String(item.id) : null,
         description: item.description,
-        sessions: item.sessions,
+        sessions: Math.max(bonusTotalSessions(item), 1),
         price: item.price,
         expires_at: null,
+        lines: (Array.isArray(item.lines) ? item.lines : []).map((line) => {
+          const parsed = parseCesionOptionValue(line?.cesion_key)
+          return {
+            appointment_type_id: parsed?.id ?? null,
+            appointment_type_index: parsed?.index ?? null,
+            quantity: Number.isFinite(Number(line?.quantity)) ? Math.max(Number(line.quantity), 1) : 1,
+            unit_price: Number.isFinite(Number(line?.unit_price)) ? Math.max(Number(line.unit_price), 0) : 0,
+          }
+        }),
       })),
     }
 
@@ -946,16 +965,145 @@ function addCesionType() {
 
 let _bonusKey = 0
 function makeBonusType() {
-  return { _key: ++_bonusKey, description: '', sessions: 1, price: 0 }
+  return {
+    _key: ++_bonusKey,
+    description: '',
+    sessions: 1,
+    price: 0,
+    lines: [makeBonusLine(1)],
+  }
+}
+
+let _bonusLineKey = 0
+function makeBonusLine(quantity = 1, cesionKey = '') {
+  return {
+    _key: ++_bonusLineKey,
+    quantity: Number.isFinite(Number(quantity)) ? Math.max(Number(quantity), 1) : 1,
+    cesion_key: String(cesionKey || ''),
+    unit_price: 0,
+  }
 }
 
 function sanitizeBonusType(item) {
+  const normalizedSessions = Number.isFinite(Number(item?.sessions)) ? Math.max(Number(item.sessions), 1) : 1
+  const incomingLines = Array.isArray(item?.lines) ? item.lines : []
+  const lines = incomingLines.length > 0
+    ? incomingLines.map((line) => {
+      const optionValue = Number.isFinite(Number(line?.appointment_type_id))
+        ? `id:${Number(line.appointment_type_id)}`
+        : String(line?.cesion_key || '')
+      const nextLine = makeBonusLine(line?.quantity, optionValue)
+      nextLine.unit_price = Number.isFinite(Number(line?.unit_price)) ? Math.max(Number(line.unit_price), 0) : 0
+      return nextLine
+    })
+    : [makeBonusLine(normalizedSessions)]
+
   return {
     id: item?.id,
     description: (item?.description ?? '').toString(),
-    sessions: Number.isFinite(Number(item?.sessions)) ? Math.max(Number(item.sessions), 1) : 1,
+    sessions: normalizedSessions,
     price: Number.isFinite(Number(item?.price)) ? Math.max(Number(item.price), 0) : 0,
+    lines,
   }
+}
+
+function getCesionOptionValue(cesion, index) {
+  if (cesion?.id != null) return `id:${cesion.id}`
+  return `draft:${index}`
+}
+
+function getCesionFromOptionValue(optionValue) {
+  const value = String(optionValue || '')
+  if (!value) return null
+
+  if (value.startsWith('id:')) {
+    const id = Number(value.slice(3))
+    if (!Number.isFinite(id)) return null
+    return cesionTypes.value.find((item) => Number(item?.id) === id) || null
+  }
+
+  if (value.startsWith('draft:')) {
+    const index = Number(value.slice(6))
+    if (!Number.isInteger(index) || index < 0) return null
+    return cesionTypes.value[index] || null
+  }
+
+  return null
+}
+
+function parseCesionOptionValue(optionValue) {
+  const value = String(optionValue || '')
+  if (!value) return null
+
+  if (value.startsWith('id:')) {
+    const id = Number(value.slice(3))
+    if (!Number.isFinite(id)) return null
+    return { id: Math.trunc(id), index: null }
+  }
+
+  if (value.startsWith('draft:')) {
+    const index = Number(value.slice(6))
+    if (!Number.isInteger(index) || index < 0) return null
+    return { id: null, index }
+  }
+
+  return null
+}
+
+function applyLineSessionPrice(item, line) {
+  const selected = getCesionFromOptionValue(line?.cesion_key)
+  if (!selected) {
+    syncBonusAmount(item)
+    return
+  }
+  const nextPrice = Number(selected?.price)
+  if (!Number.isFinite(nextPrice)) {
+    syncBonusAmount(item)
+    return
+  }
+  line.unit_price = Math.max(nextPrice, 0)
+  syncBonusAmount(item)
+}
+
+function syncBonusAmount(item) {
+  item.price = Number(bonusDetailsTotal(item).toFixed(2))
+}
+
+function bonusTotalSessions(item) {
+  const lines = Array.isArray(item?.lines) ? item.lines : []
+  return lines.reduce((total, line) => {
+    const qty = Number.isFinite(Number(line?.quantity)) ? Math.max(Number(line.quantity), 0) : 0
+    return total + qty
+  }, 0)
+}
+
+function bonusDetailsTotal(item) {
+  const lines = Array.isArray(item?.lines) ? item.lines : []
+  return lines.reduce((total, line) => {
+    const qty = Number.isFinite(Number(line?.quantity)) ? Math.max(Number(line.quantity), 0) : 0
+    const unitPrice = Number.isFinite(Number(line?.unit_price)) ? Math.max(Number(line.unit_price), 0) : 0
+    return total + (qty * unitPrice)
+  }, 0)
+}
+
+function addBonusLine(item) {
+  if (!Array.isArray(item.lines)) {
+    item.lines = [makeBonusLine(1)]
+    syncBonusAmount(item)
+    return
+  }
+  item.lines.push(makeBonusLine(1))
+  syncBonusAmount(item)
+}
+
+function removeBonusLine(item, lineIndex) {
+  if (!Array.isArray(item?.lines) || item.lines.length <= 1) {
+    item.lines = [makeBonusLine(1)]
+    syncBonusAmount(item)
+    return
+  }
+  item.lines.splice(lineIndex, 1)
+  syncBonusAmount(item)
 }
 
 function addBonusType() {
@@ -1508,6 +1656,85 @@ onBeforeUnmount(() => {
   display: grid;
   gap: 12px;
 }
+.bonus-list {
+  display: grid;
+  gap: 12px;
+}
+.bonus-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 12px;
+  display: grid;
+  gap: 12px;
+  background: #fff;
+}
+.bonus-top-actions {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-self: end;
+  order: 3;
+}
+.bonus-pack-top {
+  display: grid;
+  grid-template-columns: minmax(380px, 1.5fr) minmax(140px, 0.45fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+.bonus-field-inline {
+  display: grid;
+  gap: 4px;
+  order: 1;
+}
+.bonus-inline-label {
+  margin-bottom: 0;
+  font-size: 12px;
+}
+.bonus-field-inline-price {
+  max-width: 220px;
+  order: 2;
+}
+.bonus-top-btn {
+  padding: 3px 6px;
+  min-height: 24px;
+  font-size: 10px;
+  line-height: 1;
+  white-space: nowrap;
+}
+.session-create-btn {
+  width: 33.333%;
+  margin-left: auto;
+  justify-content: center;
+  text-align: center;
+}
+.bonus-grid-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+  gap: 10px;
+}
+.bonus-lines-wrap {
+  display: grid;
+  gap: 8px;
+}
+.bonus-lines-head,
+.bonus-line-row {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr) 140px auto;
+  gap: 8px;
+  align-items: center;
+}
+.bonus-lines-head {
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 600;
+}
+.bonus-summary {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  font-size: 13px;
+  color: #374151;
+}
 .invoice-bg-help {
   margin-top: 8px;
   color: #4b5563;
@@ -1655,6 +1882,29 @@ onBeforeUnmount(() => {
   }
   .closed-card-actions {
     grid-template-columns: 1fr 1fr;
+  }
+  .bonus-grid-top {
+    grid-template-columns: 1fr;
+  }
+  .bonus-pack-top {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+  .bonus-top-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .bonus-field-inline-price {
+    max-width: none;
+  }
+  .bonus-lines-head {
+    display: none;
+  }
+  .bonus-line-row {
+    grid-template-columns: 1fr;
+  }
+  .bonus-summary {
+    justify-content: flex-start;
   }
 }
 
