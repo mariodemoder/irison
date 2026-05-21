@@ -56,8 +56,8 @@
                 <div
                   v-for="h in hours"
                   :key="h"
-                  :class="['hr-row', { 'hr-row-closed': day.isClosed }]"
-                  :title="`Nueva cita ${String(h).padStart(2,'0')}:00`"
+                  :class="['hr-row', { 'hr-row-closed': day.isClosed, 'hr-row-disabled': !canCreateAppointment }]"
+                  :title="canCreateAppointment ? `Nueva cita ${String(h).padStart(2,'0')}:00` : 'Activa tu suscripcion para crear citas'"
                   @click="goToNewSlot(day.iso, h)"
                 ></div>
 
@@ -127,7 +127,12 @@ const calBodyRef = ref(null)
 const appointments = ref([])
 const loading = ref(false)
 const closedDays = ref([])
+const subscriptionStatus = ref('blocked')
 let   timerId    = null
+
+const canCreateAppointment = computed(() => {
+  return subscriptionStatus.value === 'active' || subscriptionStatus.value === 'trial'
+})
 
 // ── Utilidades ────────────────────────────────────────
 function getMonday(date) {
@@ -199,8 +204,10 @@ async function loadClinicCalendarConfig() {
   try {
     const res = await api.get('/me')
     closedDays.value = normalizeClosedDays(res?.data?.clinic?.closed_days)
+    subscriptionStatus.value = String(res?.data?.status || 'blocked').trim().toLowerCase()
   } catch (e) {
     closedDays.value = []
+    subscriptionStatus.value = 'blocked'
   }
 }
 
@@ -251,6 +258,11 @@ function goToAppointment(id) {
 }
 
 function goToNewSlot(iso, hour) {
+  if (!canCreateAppointment.value) {
+    toast.info('Activa tu suscripcion para crear nuevas citas')
+    return
+  }
+
   if (isDateClosed(iso, closedDays.value)) {
     toast.info('La clínica está cerrada en esa fecha')
     return
@@ -514,6 +526,11 @@ onUnmounted(() => {
 }
 .hr-row-closed {
   cursor: not-allowed;
+}
+.hr-row-disabled {
+  cursor: not-allowed;
+  pointer-events: auto;
+  opacity: 0.7;
 }
 .day-closed-overlay {
   position: absolute;

@@ -160,4 +160,121 @@ class AppointmentAvailabilityTest extends TestCase
         ]);
     }
 
+    public function test_update_appointment_accepts_date_and_hhmm_payload()
+    {
+        $clinic = Clinic::create(['name' => 'Test Clinic']);
+        app()->instance('activeClinic', $clinic);
+
+        $user = User::create([
+            'name' => 'Test User 4',
+            'email' => 'testuser4@example.com',
+            'email_verified_at' => now(),
+            'password' => Hash::make('password'),
+            'clinic_id' => $clinic->id,
+        ]);
+
+        $this->actingAs($user, 'sanctum');
+        $this->withoutMiddleware(\App\Http\Middleware\EnsureClinic::class);
+        $this->withoutMiddleware(\App\Http\Middleware\EnsureClinicIsActive::class);
+        $this->withoutMiddleware(\App\Http\Middleware\CheckSubscriptionAccess::class);
+
+        $patient = Patient::create([
+            'clinic_id' => $clinic->id,
+            'first_name' => 'Mario',
+            'last_name' => 'Lopez',
+        ]);
+
+        $originalStart = Carbon::now()->addDay()->setTime(8, 0);
+        $originalEnd = (clone $originalStart)->addHour();
+
+        $appointment = Appointment::create([
+            'patient_id' => $patient->id,
+            'clinic_id' => $clinic->id,
+            'start_time' => $originalStart,
+            'end_time' => $originalEnd,
+            'price' => 40,
+            'payment_type' => 'single',
+            'status' => 'scheduled',
+            'payment_status' => 'pending',
+        ]);
+
+        $newDate = $originalStart->copy()->toDateString();
+        $payload = [
+            'date' => $newDate,
+            'start_time' => '09:00',
+            'end_time' => '10:30',
+            'price' => 40,
+            'payment_type' => 'single',
+        ];
+
+        $response = $this->putJson('/api/appointments/' . $appointment->id, $payload);
+
+        $response->assertOk();
+
+        $this->assertDatabaseHas('appointments', [
+            'id' => $appointment->id,
+            'start_time' => $newDate . ' 09:00:00',
+            'end_time' => $newDate . ' 10:30:00',
+        ]);
+    }
+
+    public function test_reprogram_can_move_status_from_canceled_to_rescheduled()
+    {
+        $clinic = Clinic::create(['name' => 'Test Clinic']);
+        app()->instance('activeClinic', $clinic);
+
+        $user = User::create([
+            'name' => 'Test User 5',
+            'email' => 'testuser5@example.com',
+            'email_verified_at' => now(),
+            'password' => Hash::make('password'),
+            'clinic_id' => $clinic->id,
+        ]);
+
+        $this->actingAs($user, 'sanctum');
+        $this->withoutMiddleware(\App\Http\Middleware\EnsureClinic::class);
+        $this->withoutMiddleware(\App\Http\Middleware\EnsureClinicIsActive::class);
+        $this->withoutMiddleware(\App\Http\Middleware\CheckSubscriptionAccess::class);
+
+        $patient = Patient::create([
+            'clinic_id' => $clinic->id,
+            'first_name' => 'Lucia',
+            'last_name' => 'Perez',
+        ]);
+
+        $start = Carbon::now()->addDay()->setTime(9, 0);
+        $end = (clone $start)->addHour();
+
+        $appointment = Appointment::create([
+            'patient_id' => $patient->id,
+            'clinic_id' => $clinic->id,
+            'start_time' => $start,
+            'end_time' => $end,
+            'status' => 'canceled',
+            'payment_status' => 'pending',
+            'price' => 50,
+            'payment_type' => 'single',
+        ]);
+
+        $payload = [
+            'date' => $start->toDateString(),
+            'start_time' => '10:00',
+            'end_time' => '11:00',
+            'status' => 'rescheduled',
+            'price' => 50,
+            'payment_type' => 'single',
+        ];
+
+        $response = $this->patchJson('/api/appointments/' . $appointment->id, $payload);
+
+        $response->assertOk();
+
+        $this->assertDatabaseHas('appointments', [
+            'id' => $appointment->id,
+            'status' => 'rescheduled',
+            'start_time' => $start->toDateString() . ' 10:00:00',
+            'end_time' => $start->toDateString() . ' 11:00:00',
+        ]);
+    }
+
 }

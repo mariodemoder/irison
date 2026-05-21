@@ -159,6 +159,7 @@ async function deletePatient(p) {
     width: '420px',
     buttonsStyling: false,
     customClass: {
+      popup: 'swal-popup-warning-card',
       confirmButton: 'app-btn app-btn-warning',
       cancelButton: 'app-btn app-btn-muted',
       actions: 'swal-actions'

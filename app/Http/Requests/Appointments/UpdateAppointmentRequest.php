@@ -68,6 +68,16 @@ class UpdateAppointmentRequest extends FormRequest
             ],
             'custom_type' => ['sometimes', 'nullable', 'string', 'max:255'],
             'notes' => ['sometimes', 'nullable', 'string', 'max:1000'],
+            'price' => ['sometimes', 'numeric', 'min:0'],
+            'payment_type' => ['sometimes', 'string', 'in:single,bonus,credit'],
+            'status' => ['sometimes', 'string', 'in:scheduled,rescheduled,completed,canceled,cancelled'],
+            'use_bonus_id' => ['sometimes', 'nullable', 'integer'],
+            'bonus_notes' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'apply_credit' => ['sometimes', 'boolean'],
+            'apply_credit_mode' => ['sometimes', 'nullable', 'string'],
+            'apply_credit_amount' => ['sometimes', 'nullable', 'numeric', 'min:0'],
+            'use_credit_payment_id' => ['sometimes', 'nullable', 'integer'],
+            'use_credit_amount' => ['sometimes', 'nullable', 'numeric', 'min:0'],
         ];
     }
 

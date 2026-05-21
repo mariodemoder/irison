@@ -339,7 +339,10 @@ async function deleteBonus(id) {
   try {
     await api.delete(`/bonuses/${id}`)
     bonuses.value = bonuses.value.filter(b => b.id !== id)
-    toast.success('Bono eliminado')
+    toast.success('Bono eliminado', {
+      toastClassName: 'toast-delete',
+      progressClassName: 'toast-delete-progress',
+    })
   } catch (e) {
     toast.error('Error eliminando bono')
   }
@@ -357,7 +360,8 @@ async function confirmDeleteBonus(bonus) {
     icon: 'warning',
     showCancelButton: true,
     confirmButtonText: 'Sí, eliminar',
-    cancelButtonText: 'Cancelar'
+    cancelButtonText: 'Cancelar',
+    customClass: { popup: 'swal-popup-warning-card' },
   })
 
   if (!res.isConfirmed) return

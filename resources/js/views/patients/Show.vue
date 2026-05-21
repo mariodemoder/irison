@@ -601,6 +601,7 @@ async function deleteExistingImage(image) {
       showCancelButton: true,
       confirmButtonText: 'Sí, eliminar',
       cancelButtonText: 'Cancelar',
+      customClass: { popup: 'swal-popup-warning-card' },
     })
 
     if (!confirm.isConfirmed) return
@@ -608,7 +609,10 @@ async function deleteExistingImage(image) {
     await api.delete(`/patients/${patient.value.id}/images/${image.id}`)
 
     const toast = useToast()
-    toast.success('Archivo eliminado correctamente')
+    toast.success('Archivo eliminado correctamente', {
+      toastClassName: 'toast-delete',
+      progressClassName: 'toast-delete-progress',
+    })
 
     await loadPatientImages()
   } catch (e) {
@@ -779,7 +783,8 @@ async function confirmDelete() {
     icon: 'warning',
     showCancelButton: true,
     confirmButtonText: 'Sí, eliminar',
-    cancelButtonText: 'Cancelar'
+    cancelButtonText: 'Cancelar',
+    customClass: { popup: 'swal-popup-warning-card' },
   })
 
   if (!res.isConfirmed) return
@@ -787,7 +792,10 @@ async function confirmDelete() {
   try {
     await api.delete(`/patients/${patient.value.id}`)
     const toast = useToast()
-    toast.success('Paciente eliminado')
+    toast.success('Paciente eliminado', {
+      toastClassName: 'toast-delete',
+      progressClassName: 'toast-delete-progress',
+    })
     // ir al listado
     router.push('/patients')
   } catch (e) {

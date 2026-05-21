@@ -90,6 +90,7 @@ async function showSubscriberWelcomePopup() {
     showConfirmButton: false,
     timer: 1900,
     timerProgressBar: true,
+    customClass: { popup: 'swal-popup-card' },
   })
 }
 

@@ -129,11 +129,22 @@ export async function confirmAndCancel(id, { api, toast, onSuccess } = {}) {
     showCancelButton: true,
     confirmButtonText: 'Sí, cancelar',
     cancelButtonText: 'No, mantener',
+    buttonsStyling: false,
+    customClass: {
+      popup: 'swal-popup-card',
+      confirmButton: 'primary',
+      cancelButton: 'muted',
+    },
   })
   if (!isConfirmed) return false
   try {
     await api.post(`/appointments/${id}/cancel`)
-    if (toast && typeof toast.success === 'function') toast.success('Cita cancelada')
+    if (toast && typeof toast.success === 'function') {
+      toast.success('Cita cancelada', {
+        toastClassName: 'toast-delete',
+        progressClassName: 'toast-delete-progress',
+      })
+    }
     if (typeof onSuccess === 'function') await onSuccess()
     return true
   } catch (e) {

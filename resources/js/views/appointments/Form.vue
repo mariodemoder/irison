@@ -761,7 +761,7 @@ const canSaveAppointment = computed(() => {
   const hasPatient = !!form.patient_id && form.patient_id !== '__create'
   const hasStart = !!form.start_time
   const hasEnd = !!form.end_time
-  const hasPrice = Number(effectiveSessionPrice.value || 0) > 0
+  const hasPrice = Number(form.price || effectiveSessionPrice.value || 0) > 0
 
   return hasPatient && hasStart && hasEnd && hasPrice
 })
@@ -1512,12 +1512,6 @@ function applyAppointmentTypeDefaults() {
     form.price = Number(typePrice.toFixed(2))
   }
 
-  if (selectedAppointmentType.value.payment_type === 'abono' && hasAvailableBonuses.value) {
-    form.payment_type = 'bonus'
-  } else {
-    form.payment_type = 'single'
-  }
-
   if (!form.start_time || totalMinutes <= 0) return
 
   const startIso = toIsoFromLocal(form.start_time)
@@ -1537,6 +1531,7 @@ async function confirmAndApplyTypeDefaultsOnEdit() {
     showCancelButton: true,
     confirmButtonText: 'Sí, recalcular',
     cancelButtonText: 'No, mantener actual',
+    customClass: { popup: 'swal-popup-card' },
   })
 
   if (!result.isConfirmed) return
@@ -1549,10 +1544,6 @@ async function confirmAndApplyTypeDefaultsOnEdit() {
   if (Number.isFinite(typePrice) && typePrice >= 0) {
     form.price = Number(typePrice.toFixed(2))
   }
-
-  form.payment_type = (selectedAppointmentType.value.payment_type === 'abono' && hasAvailableBonuses.value)
-    ? 'bonus'
-    : 'single'
 
   if (!form.start_time || totalMinutes <= 0) return
 
@@ -1902,7 +1893,9 @@ async function submit(payNow = false) {
       app_type_id: (!isCustomAppointmentType.value && form.app_type_id) ? form.app_type_id : undefined,
       custom_type: isCustomAppointmentType.value ? (form.custom_type || undefined) : undefined,
       notes: form.notes,
-      price: effectiveSessionPrice.value > 0 ? Number(effectiveSessionPrice.value) : undefined,
+      price: Number(form.price || effectiveSessionPrice.value || 0) > 0
+        ? Number(form.price || effectiveSessionPrice.value)
+        : undefined,
       payment_type: form.payment_type === 'credit' ? 'single' : form.payment_type,
       use_bonus_id: form.use_bonus_id || undefined,
       bonus_id: form.use_bonus_id || undefined,
@@ -1977,7 +1970,12 @@ async function submit(payNow = false) {
           // Backend may return structured validation errors or a simple error message
           // Show SweetAlert if it's a concurrency error about exhausted bonus
           if (shouldShowBonusExhaustedAlert && typeof serverError === 'string' && serverError.indexOf('Bono agotado') !== -1) {
-            Swal.fire({ icon: 'error', title: 'Bono agotado', text: 'Bono agotado' })
+            Swal.fire({
+              icon: 'error',
+              title: 'Bono agotado',
+              text: 'Bono agotado',
+              customClass: { popup: 'swal-popup-card' },
+            })
             errors.general = [serverError]
           }
           const eobj = data.errors || {}

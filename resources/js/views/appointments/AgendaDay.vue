@@ -73,7 +73,8 @@
           <button
             type="button"
             class="btn btn-sm small compact header-create-btn"
-            :disabled="isSelectedDateClosed && !isAllMode"
+            :disabled="(isSelectedDateClosed && !isAllMode) || !canCreateAppointment"
+            :title="canCreateAppointment ? 'Nueva cita' : 'Activa tu suscripción para crear citas'"
             @click.prevent="createAppointmentFromHeader"
           >
             Nueva cita
@@ -207,8 +208,12 @@ const appointments = ref([])
 const loading = ref(false)
 const date = ref(localIsoDate())
 const closedDays = ref([])
+const subscriptionStatus = ref('blocked')
 const isAllMode = computed(() => String(route.query.all || '') === '1')
 const isTodayMode = computed(() => !isAllMode.value && date.value === localIsoDate())
+const canCreateAppointment = computed(() => {
+  return subscriptionStatus.value === 'active' || subscriptionStatus.value === 'trial'
+})
 const appointmentScope = ref('scheduled')
 const query = ref('')
 const paymentFilter = ref('')
@@ -355,8 +360,10 @@ async function loadClinicCalendarConfig() {
   try {
     const res = await api.get('/me')
     closedDays.value = normalizeClosedDays(res?.data?.clinic?.closed_days)
+    subscriptionStatus.value = String(res?.data?.status || 'blocked').trim().toLowerCase()
   } catch (e) {
     closedDays.value = []
+    subscriptionStatus.value = 'blocked'
   }
 }
 
@@ -625,6 +632,11 @@ function hhmm(totalMin) {
 }
 
 function goToNewWithGap(item) {
+  if (!canCreateAppointment.value) {
+    toast.info('Activa tu suscripción para crear nuevas citas')
+    return
+  }
+
   if (isSelectedDateClosed.value) {
     toast.info('La clínica está cerrada en esta fecha')
     return
@@ -635,6 +647,11 @@ function goToNewWithGap(item) {
 }
 
 function createAppointmentFromHeader() {
+  if (!canCreateAppointment.value) {
+    toast.info('Activa tu suscripción para crear nuevas citas')
+    return
+  }
+
   if (isSelectedDateClosed.value && !isAllMode.value) {
     toast.info('La clínica está cerrada en esta fecha')
     return

@@ -144,7 +144,7 @@ export async function checkOverlapShared({ start, end, currentId = null, api, Sw
       text: 'Hay una cita ya programada en ese intervalo de tiempo (mismo día).',
       confirmButtonText: 'Entendido',
       buttonsStyling: false,
-      customClass: { confirmButton: 'primary' }
+      customClass: { popup: 'swal-popup-card', confirmButton: 'primary' }
     })
   }
   return cleaned

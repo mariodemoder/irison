@@ -61,16 +61,7 @@ class AppointmentService
         return DB::transaction(function () use ($data) {
             $clinicId = $this->resolveClinic($data);
 
-            // Combine date + H:i time fields into full datetime strings
-            if (!empty($data['date'])) {
-                if (!empty($data['start_time']) && preg_match('/^\d{2}:\d{2}$/', $data['start_time'])) {
-                    $data['start_time'] = $data['date'] . ' ' . $data['start_time'] . ':00';
-                }
-                if (!empty($data['end_time']) && preg_match('/^\d{2}:\d{2}$/', $data['end_time'])) {
-                    $data['end_time'] = $data['date'] . ' ' . $data['end_time'] . ':00';
-                }
-            }
-            unset($data['date']);
+            $data = $this->normalizeDateTimePayload($data);
 
             $this->validateClinicScheduleConstraints((int) $clinicId, $data, null);
 
@@ -173,6 +164,8 @@ class AppointmentService
     public function update(Appointment $appointment, array $data)
     {
         return DB::transaction(function () use ($appointment, $data) {
+            $data = $this->normalizeDateTimePayload($data, $appointment);
+
             $oldPaymentType = $appointment->payment_type;
             $newPaymentType = $data['payment_type'] ?? $oldPaymentType;
 
@@ -547,10 +540,10 @@ private function resolveClinic(array $data)
         }
 
         CreditUsage::query()
-            ->where('appointment_id', $appointment->id)
+            ->where('appointment_id', '=', $appointment->id)
             ->whereNotNull('payment_id')
             ->whereNull('reversed_at')
-            ->where('reason', 'usage_pending_credit_payment')
+            ->where('reason', '=', 'usage_pending_credit_payment')
             ->update([
                 'reversed_at' => now(),
                 'reversed_reason' => 'appointment_pending_credit_reset',
@@ -573,6 +566,29 @@ private function resolveClinic(array $data)
     private function needsAvailabilityCheck(array $data): bool
     {
         return isset($data['start_time']) || isset($data['end_time']);
+    }
+
+    private function normalizeDateTimePayload(array $data, ?Appointment $appointment = null): array
+    {
+        $date = isset($data['date']) && $data['date'] !== ''
+            ? (string) $data['date']
+            : null;
+
+        if (!$date && $appointment?->start_time) {
+            $date = Carbon::parse($appointment->start_time)->toDateString();
+        }
+
+        if ($date && !empty($data['start_time']) && is_string($data['start_time']) && preg_match('/^\d{2}:\d{2}$/', $data['start_time'])) {
+            $data['start_time'] = $date . ' ' . $data['start_time'] . ':00';
+        }
+
+        if ($date && !empty($data['end_time']) && is_string($data['end_time']) && preg_match('/^\d{2}:\d{2}$/', $data['end_time'])) {
+            $data['end_time'] = $date . ' ' . $data['end_time'] . ':00';
+        }
+
+        unset($data['date']);
+
+        return $data;
     }
 
     private function validateClinicScheduleConstraints(int $clinicId, array $data, ?Appointment $currentAppointment = null): void

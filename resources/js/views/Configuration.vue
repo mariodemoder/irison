@@ -150,7 +150,7 @@
                       <div class="closed-controls-row closed-controls-row-single">
                         <input v-model="newClosedDay" class="input closed-day-input" type="date" />
                         <div class="closed-card-actions">
-                          <button class="btn btn-sm" type="button" @click.prevent="addClosedDay">+</button>
+                          <button v-if="canCreateWithSubscription" class="btn btn-sm" type="button" @click.prevent="addClosedDay">+</button>
                           <BtnTrash :disabled="individualClosedDays.length === 0" @click="clearIndividualClosedDays" />
                         </div>
                       </div>
@@ -173,7 +173,7 @@
                         <input v-model="closedRangeStart" class="input closed-day-input" type="date" />
                         <input v-model="closedRangeEnd" class="input closed-day-input" type="date" />
                         <div class="closed-card-actions">
-                          <button class="btn btn-sm" type="button" @click.prevent="addClosedDayRange">+</button>
+                          <button v-if="canCreateWithSubscription" class="btn btn-sm" type="button" @click.prevent="addClosedDayRange">+</button>
                           <BtnTrash :disabled="rangeClosedDays.length === 0" @click="clearRangeClosedDays" />
                         </div>
                       </div>
@@ -341,7 +341,7 @@
               <div class="tab-panel tab-card" v-show="activeTab==='sesiones'">
                 <div class="section-head">
                   <h2>Sesiones</h2>
-                  <button class="btn btn-sm session-create-btn" type="button" @click.prevent="addCesionType" title="Agregar tipo" aria-label="Agregar tipo">
+                  <button v-if="canCreateWithSubscription" class="btn btn-sm session-create-btn" type="button" @click.prevent="addCesionType" title="Agregar tipo" aria-label="Agregar tipo">
                     Nueva Sesión
                   </button>
                 </div>
@@ -403,7 +403,7 @@
               <div class="tab-panel tab-card" v-show="activeTab==='bonos'">
                 <div class="section-head">
                   <h2>Bonos</h2>
-                  <button class="btn btn-sm session-create-btn" type="button" @click.prevent="addBonusType" title="Agregar bono" aria-label="Agregar bono">
+                  <button v-if="canCreateWithSubscription" class="btn btn-sm session-create-btn" type="button" @click.prevent="addBonusType" title="Agregar bono" aria-label="Agregar bono">
                     Nuevo Bono
                   </button>
                 </div>
@@ -596,6 +596,7 @@ const form = ref({
 
 const themeColors = [
   { name: 'Irison', value: IRISON_COLOR },
+  { name: 'Negro', value: '#111827' },
   { name: 'Rosa pastel', value: '#FFE7EC' },
   { name: 'Durazno pastel', value: '#FFF0E6' },
   { name: 'Amarillo pastel', value: '#FFFBE8' },
@@ -678,6 +679,10 @@ const subscriptionStatusDot = computed(() => {
   if (status.value === 'active' || status.value === 'activa') return '🟢'
   if (status.value === 'canceled' || status.value === 'cancelled' || status.value === 'blocked') return '🔴'
   return '🔴'
+})
+
+const canCreateWithSubscription = computed(() => {
+  return status.value === 'active' || status.value === 'trial'
 })
 
     const paymentModeLabel = computed(() => {
@@ -1167,7 +1172,10 @@ async function removeInvoiceBackground() {
     invoiceBackgroundUrl.value = null
     invoiceBackgroundFile.value = null
     await refreshPreview()
-    toast.success('Fondo de factura eliminado')
+    toast.success('Fondo de factura eliminado', {
+      toastClassName: 'toast-delete',
+      progressClassName: 'toast-delete-progress',
+    })
   } catch (e) {
     console.error('Error eliminando fondo de factura', e)
     const msg = e.response?.data?.message || 'No se pudo eliminar el fondo'
@@ -1266,7 +1274,10 @@ async function confirmCancelSubscription() {
   cancellingSubscription.value = true
   try {
     await api.post('/billing/cancel')
-    toast.success('Suscripción cancelada correctamente')
+    toast.success('Suscripción cancelada correctamente', {
+      toastClassName: 'toast-delete',
+      progressClassName: 'toast-delete-progress',
+    })
     showCancelSubscriptionModal.value = false
     await load()
   } catch (e) {

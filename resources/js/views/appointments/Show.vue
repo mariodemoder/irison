@@ -286,7 +286,10 @@ async function cancel() {
   try {
     const toast = useToast()
     await api.post(`/appointments/${route.params.id}/cancel`)
-    toast.success('Cita cancelada')
+    toast.success('Cita cancelada', {
+      toastClassName: 'toast-delete',
+      progressClassName: 'toast-delete-progress',
+    })
     await load()
   } catch (e) {
     console.error('Error cancelando cita', e)
