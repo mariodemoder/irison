@@ -117,6 +117,7 @@ import MainLayout from '../../layouts/MainLayout.vue'
 import AppLoading from '../../components/AppLoading.vue'
 import EmptyIndexState from '../../components/EmptyIndexState.vue'
 import { useToast } from 'vue-toastification'
+import { getLoadErrorMessage } from '../../shared/httpErrors'
 
 const toast = useToast()
 const router = useRouter()
@@ -196,9 +197,7 @@ async function load(page = 1) {
     reminders.value = []
     meta.value = null
     summary.value = { count: 0, sent_count: 0, failed_count: 0 }
-    const status = e?.response?.status
-    const message = e?.response?.data?.message
-    toast.error((status === 402 || status === 403) && message ? `Error cargando notificaciones - ${message}` : 'Error cargando notificaciones')
+    toast.error(getLoadErrorMessage(e, 'notificaciones'))
   } finally {
     loading.value = false
   }

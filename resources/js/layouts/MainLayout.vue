@@ -382,6 +382,10 @@ async function openContactForm() {
   transition: width 0.2s ease;
 }
 
+:global(.theme--dark-menus) .sidebar {
+  background: #cbd5e1;
+}
+
 .sidebar.compact {
   width: 72px;
 }
@@ -535,6 +539,10 @@ async function openContactForm() {
   font-size: 13px;
 }
 
+:global(.theme--dark-menus) .app-footer {
+  background: #cbd5e1;
+}
+
 .app-footer-inner {
   display: flex;
   align-items: center;
@@ -628,6 +636,10 @@ async function openContactForm() {
 .header-default {
   background: #ffffff;
   border-bottom-color: var(--theme-color);
+}
+
+:global(.theme--dark-menus) .header-default {
+  background: #cbd5e1;
 }
 
 .header-trial-warning {

@@ -166,6 +166,7 @@ import MainLayout from '../../layouts/MainLayout.vue'
 import AppLoading from '../../components/AppLoading.vue'
 import PatientSelect from '../../components/PatientSelect.vue'
 import api from '../../services/api'
+import { getLoadErrorMessage } from '../../shared/httpErrors'
 import {
   openCreatePatientPopup as sharedOpenCreatePatientPopup,
   loadPatients as loadPatientsShared,
@@ -370,9 +371,7 @@ async function loadForEdit(id) {
       syncAppointmentDisplayFromId()
     }
   } catch (e) {
-    const status = e?.response?.status
-    const message = e?.response?.data?.message
-    toast.error((status === 402 || status === 403) && message ? `Error cargando pago - ${message}` : 'Error cargando pago')
+    toast.error(getLoadErrorMessage(e, 'pago'))
     router.push('/payments')
   } finally {
     loadingEditData.value = false

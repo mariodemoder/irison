@@ -73,9 +73,12 @@ Build and tests:
 
 ## Frontend Error Handling
 
-- Use `resources/js/services/api.js` for authenticated SPA requests. It centralizes 401 logout, `SUBSCRIPTION_REQUIRED` billing redirects, and fallback messages for 403/500 responses.
-- Keep field-level validation in the form component. Use `resources/js/components/ErrorAlert.vue` for page-level or banner-level errors.
+- Use `resources/js/services/api.js` for authenticated SPA requests. It centralizes 401 logout, 402 subscription-required redirects, 403 forbidden/read-only messaging, 422 validation payload handling, and fallback messages for 500 responses.
+- Keep field-level validation in the form component. Use `resources/js/components/ErrorAlert.vue` for page-level/banner-level errors through global state in `resources/js/shared/globalHttpError.js`, rendered from `resources/js/App.vue`.
 - Login and registration intentionally stay on plain `axios` so invalid credentials do not trigger the authenticated-session interceptor.
+- Keep repeated load-error copy unified via `resources/js/shared/httpErrors.js` (for example `getLoadErrorMessage`) instead of duplicating per-view message logic.
+- Keep toast plugin configuration centralized in `resources/js/services/toastConfig.js` and registered once in `resources/js/app.js`.
+- Keep toast visual language centralized in `resources/css/app.css` using the Irison classes (`.irison-toast`, variant colors, progress bar, close button).
 - Billing lifecycle coverage lives in `tests/Feature/BillingLifecycleTest.php`; keep trial, canceled, read-only, and reactivation paths aligned with `/api/me`.
 
 ## Billing Error Handling (Stripe)

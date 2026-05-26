@@ -44,6 +44,7 @@ import { useToast } from 'vue-toastification'
 import MainLayout from '../../layouts/MainLayout.vue'
 import AppLoading from '../../components/AppLoading.vue'
 import api from '../../services/api'
+import { getLoadErrorMessage } from '../../shared/httpErrors'
 import { goBackWithPriority } from '../../shared/navigationHelpers'
 
 const route = useRoute()
@@ -75,9 +76,7 @@ async function load() {
     product.value = res.data || null
   } catch (e) {
     product.value = null
-    const status = e?.response?.status
-    const message = e?.response?.data?.message
-    toast.error((status === 402 || status === 403) && message ? `Error cargando producto - ${message}` : 'Error cargando producto')
+      toast.error(getLoadErrorMessage(e, 'producto'))
   } finally {
     loading.value = false
   }

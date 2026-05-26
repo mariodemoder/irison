@@ -32,3 +32,15 @@ export function isSubscriptionRequiredError(error) {
 
   return code === 'SUBSCRIPTION_REQUIRED' && (status === 402 || status === 403)
 }
+
+export function getLoadErrorMessage(error, entityLabel = 'datos') {
+  const status = getHttpStatus(error)
+  const message = getApiErrorMessage(error, '')
+  const base = `Error cargando ${String(entityLabel || 'datos').trim() || 'datos'}`
+
+  if ((status === 402 || status === 403) && message) {
+    return `${base} - ${message}`
+  }
+
+  return base
+}

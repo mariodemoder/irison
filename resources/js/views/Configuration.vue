@@ -539,6 +539,7 @@ import BtnTrash from '../components/BtnTrash.vue'
 import api from '../services/api'
 import { useToast } from 'vue-toastification'
 import { meClinic } from '../shared/meCache'
+import { getLoadErrorMessage } from '../shared/httpErrors'
 
 const router = useRouter()
 const toast = useToast()
@@ -753,9 +754,7 @@ async function load() {
     }
   } catch (e) {
     console.error('Error cargando /me', e)
-    const status = e?.response?.status
-    const message = e?.response?.data?.message
-    toast.error((status === 402 || status === 403) && message ? `Error cargando configuración - ${message}` : 'Error cargando configuración')
+    toast.error(getLoadErrorMessage(e, 'configuración'))
   } finally {
     loading.value = false
   }
@@ -1325,6 +1324,12 @@ onBeforeUnmount(() => {
 .profile-container {
   width: 100%;
   max-width: none;
+  margin-top: 14px;
+  padding: 18px;
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 16px 40px rgba(2, 6, 23, 0.08);
 }
 .profile-shell { display:grid; gap:14px }
 .card-stage { min-height:560px }

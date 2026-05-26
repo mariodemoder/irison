@@ -76,6 +76,7 @@ import EmptyIndexState from '../../components/EmptyIndexState.vue'
 import EntityTable from '../../components/EntityTable.vue'
 import api from '../../services/api'
 import { useToast } from 'vue-toastification'
+import { getLoadErrorMessage } from '../../shared/httpErrors'
 
 const toast = useToast()
 const router = useRouter()
@@ -122,9 +123,7 @@ async function load(page = 1) {
   } catch (e) {
     products.value = []
     meta.value = null
-    const status = e?.response?.status
-    const message = e?.response?.data?.message
-    toast.error((status === 402 || status === 403) && message ? `Error cargando productos - ${message}` : 'Error cargando productos')
+    toast.error(getLoadErrorMessage(e, 'productos'))
   } finally {
     loading.value = false
   }

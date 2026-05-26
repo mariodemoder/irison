@@ -6,19 +6,93 @@
 html,body,#app { height: 100%; }
 body { background: var(--bg-app); color: var(--text-main); }
 
-/* Vue Toastification: success/guardado in Irison blue */
-.Vue-Toastification__toast--success {
-	background: #2563eb !important;
+/* Vue Toastification: Irison unified visual language */
+.Vue-Toastification__container {
+	padding: 10px;
+}
+
+.irison-toast {
+	border-radius: 14px !important;
+	box-shadow: 0 14px 36px rgba(15, 23, 42, 0.2) !important;
+	border: 1px solid transparent !important;
+	font-weight: 600;
+	letter-spacing: 0.01em;
+	padding: 12px 14px !important;
+	backdrop-filter: blur(4px);
+	min-height: 54px !important;
+}
+
+.irison-toast__body {
+	font-size: 13px;
+	line-height: 1.4;
+	padding: 0 !important;
+	margin: 0 !important;
+}
+
+.irison-toast__close {
+	opacity: 0.9 !important;
+	color: inherit !important;
+	font-weight: 700 !important;
+}
+
+.irison-toast__progress {
+	height: 8px !important;
+	border-radius: 999px !important;
+	opacity: 0.95 !important;
+	position: relative;
+	overflow: hidden;
+}
+
+.irison-toast__progress::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background-image: url('../js/assets/logoini.svg');
+	background-repeat: repeat-x;
+	background-size: 16px 16px;
+	background-position: center;
+	opacity: 0.55;
+	pointer-events: none;
+}
+
+.Vue-Toastification__toast--success.irison-toast {
+	background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+	border-color: #1e40af !important;
 	color: #ffffff !important;
 }
 
-.Vue-Toastification__toast--success .Vue-Toastification__progress-bar {
+.Vue-Toastification__toast--success.irison-toast .irison-toast__progress {
 	background: rgba(255, 255, 255, 0.9) !important;
 }
 
-.Vue-Toastification__toast--success .Vue-Toastification__close-button {
+.Vue-Toastification__toast--info.irison-toast {
+	background: linear-gradient(135deg, #0f766e 0%, #0f766e 40%, #115e59 100%) !important;
+	border-color: #134e4a !important;
+	color: #ecfeff !important;
+}
+
+.Vue-Toastification__toast--info.irison-toast .irison-toast__progress {
+	background: rgba(236, 254, 255, 0.88) !important;
+}
+
+.Vue-Toastification__toast--warning.irison-toast {
+	background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+	border-color: #b45309 !important;
 	color: #ffffff !important;
-	opacity: 0.9;
+}
+
+.Vue-Toastification__toast--warning.irison-toast .irison-toast__progress {
+	background: rgba(255, 255, 255, 0.86) !important;
+}
+
+.Vue-Toastification__toast--error.irison-toast {
+	background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+	border-color: #991b1b !important;
+	color: #ffffff !important;
+}
+
+.Vue-Toastification__toast--error.irison-toast .irison-toast__progress {
+	background: rgba(255, 255, 255, 0.9) !important;
 }
 
 .Vue-Toastification__toast.toast-delete {

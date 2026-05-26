@@ -97,6 +97,7 @@ import EmptyIndexState from '../../components/EmptyIndexState.vue'
 import EntityTable from '../../components/EntityTable.vue'
 import { useToast } from 'vue-toastification'
 import { formatDateOnlyDay } from '../../shared/dateHelpers'
+import { getLoadErrorMessage } from '../../shared/httpErrors'
 
 const toast = useToast()
 const route = useRoute()
@@ -215,9 +216,7 @@ async function load(page = 1) {
     payments.value = []
     meta.value = null
     summary.value = { count: 0, total_amount: 0 }
-    const status = e?.response?.status
-    const message = e?.response?.data?.message
-    toast.error((status === 402 || status === 403) && message ? `Error cargando pagos - ${message}` : 'Error cargando pagos')
+    toast.error(getLoadErrorMessage(e, 'pagos'))
   } finally {
     loading.value = false
   }

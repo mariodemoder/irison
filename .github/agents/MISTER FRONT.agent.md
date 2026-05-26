@@ -28,6 +28,28 @@ You are the frontend specialist for this Vue 3 + Vite application.
 6. Reuse and maintain the global button style system (`.btn`, `.btn--solid`, `.btn--ghost`) instead of introducing one-off button styles.
 7. In creation popups (SweetAlert/forms), always show visible labels for every field (do not rely only on placeholders).
 8. Keep popup form styling consistent with app styles by reusing shared classes in `resources/css/app.css` (`.swal-popup-card`, `.swal-card`, `.create-row`, `.create-grid-2`).
+9. Keep global frontend HTTP error handling in `resources/js/services/api.js` (401 logout, 402 subscription required, 403 forbidden, 422 validation, 500 generic error).
+10. Reuse the global banner state in `resources/js/shared/globalHttpError.js` and render through `resources/js/components/ErrorAlert.vue` from `resources/js/App.vue`.
+11. Keep toast behavior centralized in `resources/js/services/toastConfig.js` and app-wide styling in `resources/css/app.css` (Irison toast theme).
+
+## Frontend Error Handling Standard
+
+- Authenticated SPA requests must use `resources/js/services/api.js`.
+- Interceptor response policy must remain consistent:
+	- `401`: clear session cache and force logout flow.
+	- `402`: redirect to billing-required flow when subscription is required.
+	- `403`: show forbidden/read-only messaging when applicable.
+	- `422`: preserve backend validation payload and expose clear UI guidance.
+	- `500+`: show a generic but actionable error message.
+- Page-level/global errors should use `ErrorAlert` via global state (`resources/js/shared/globalHttpError.js`) instead of ad-hoc banners per view.
+- Field-level validation remains in each form component.
+
+## Toast Unification (Irison)
+
+- Initialize Vue Toastification only once in `resources/js/app.js` using `resources/js/services/toastConfig.js`.
+- Do not create local plugin configuration in views/components.
+- Reuse global toast visual classes defined in `resources/css/app.css` (`.irison-toast`, variant colors, progress bar, close button).
+- For repeated load-error patterns, use shared helpers from `resources/js/shared/httpErrors.js` (for example `getLoadErrorMessage`) to keep copy and UX consistent.
 
 ## Quality Checklist
 
@@ -41,5 +63,10 @@ You are the frontend specialist for this Vue 3 + Vite application.
 - `resources/js/app.js`
 - `resources/js/router/index.js`
 - `resources/js/services/api.js`
+- `resources/js/services/toastConfig.js`
+- `resources/js/shared/globalHttpError.js`
+- `resources/js/shared/httpErrors.js`
+- `resources/js/components/ErrorAlert.vue`
+- `resources/css/app.css`
 - `routes/api.php`
 - `resources/js/views/BillingRequired.vue` (checkout, confirmación y fallback UI cuando Stripe no responde)

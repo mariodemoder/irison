@@ -119,6 +119,7 @@ import MainLayout from '../../layouts/MainLayout.vue'
 import AppLoading from '../../components/AppLoading.vue'
 import { useToast } from 'vue-toastification'
 import { formatDateOnlyDay } from '../../shared/dateHelpers'
+import { getLoadErrorMessage } from '../../shared/httpErrors'
 import { goBackWithPriority } from '../../shared/navigationHelpers'
 
 const toast = useToast()
@@ -314,9 +315,7 @@ async function load() {
     documentData.value = res.data || null
   } catch (e) {
     documentData.value = null
-    const status = e?.response?.status
-    const message = e?.response?.data?.message
-    toast.error((status === 402 || status === 403) && message ? `Error cargando factura - ${message}` : 'Error cargando factura')
+    toast.error(getLoadErrorMessage(e, 'factura'))
   } finally {
     loading.value = false
   }

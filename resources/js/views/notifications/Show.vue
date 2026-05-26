@@ -59,6 +59,7 @@ import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
 import AppLoading from '../../components/AppLoading.vue'
 import { useToast } from 'vue-toastification'
+import { getLoadErrorMessage } from '../../shared/httpErrors'
 import { goBackWithPriority } from '../../shared/navigationHelpers'
 
 const route = useRoute()
@@ -118,9 +119,7 @@ async function load() {
     notificationData.value = res.data || null
   } catch (e) {
     notificationData.value = null
-    const status = e?.response?.status
-    const message = e?.response?.data?.message
-    toast.error((status === 402 || status === 403) && message ? `Error cargando notificación - ${message}` : 'Error cargando notificación')
+    toast.error(getLoadErrorMessage(e, 'notificación'))
   } finally {
     loading.value = false
   }
