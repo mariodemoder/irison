@@ -11,6 +11,7 @@ use App\Services\Bonus\BonusService;
 use App\Services\Appointments\AppointmentPendingPaymentService;
 use DomainException;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Validator as ValidationValidator;
 
@@ -217,6 +218,21 @@ class PaymentService
             'status' => $data['status'],
             'notes' => $data['notes'] ?? null,
             'paid_at' => $data['paid_at'] ?? now(),
+        ]);
+
+        Log::info('payment.created', [
+            'event' => 'payment.created',
+            'result' => 'created',
+            'payment_id' => $payment->id,
+            'counter' => $payment->counter,
+            'clinic_id' => (int) $clinicId,
+            'patient_id' => (int) $payment->patient_id,
+            'concept' => (string) $payment->concept,
+            'appointment_id' => $payment->appointment_id,
+            'package_id' => $payment->package_id,
+            'amount' => (float) $payment->amount,
+            'method' => (string) $payment->method,
+            'status' => (string) $payment->status,
         ]);
 
         if ($appointment) {

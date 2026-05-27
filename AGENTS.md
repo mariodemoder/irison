@@ -63,6 +63,7 @@ Build and tests:
 - Backend specialist: [.github/agents/php-laravel-backend.agent.md](.github/agents/php-laravel-backend.agent.md)
 - Frontend specialist: [.github/agents/MISTER FRONT.agent.md](.github/agents/MISTER%20FRONT.agent.md)
 - QA specialist: [.github/agents/irison-qa.agent.md](.github/agents/irison-qa.agent.md)
+- Deploy specialist: [.github/agents/Mr. DEPLOY.agent.md](.github/agents/Mr.%20DEPLOY.agent.md)
 
 ## Known Pitfalls
 
@@ -86,6 +87,29 @@ Build and tests:
 - If Stripe is unreachable while creating checkout, backend returns `503` with `code=STRIPE_UNREACHABLE` from `app/Http/Controllers/BillingController.php`.
 - Billing UI fallback for this case lives in `resources/js/views/BillingRequired.vue` and shows a local activation action only in dev.
 - Local fallback uses `POST /api/subscribe/fake` (`app/Http/Controllers/Api/FakeSubscribeController.php`) to avoid leaving trial/canceled clinics blocked in read-only mode during local outages.
+
+## Backend Business Logging
+
+- Keep business logs structured with stable event names and context keys (`event`, `result`, `clinic_id`, `user_id`, resource IDs, `error_code`).
+- Required diagnostic events: `auth.login.success|failed`, `subscription.failed`, `reminder.sent|failed`, `payment.created`.
+- Use `info` for successful business events, `warning` for expected failures, and `error` for exceptions.
+- Never log sensitive data: passwords, tokens, card data, Stripe secrets, or full credential payloads.
+- If email context is required, log only safe derivatives (for example domain), never full email addresses.
+
+## Soft Deletes (Core Entities)
+
+- Use soft deletes for critical clinical records to prevent accidental data loss and preserve history.
+- Core scope:
+   - `patients`
+   - `appointments`
+   - `documents` (invoices/abonos)
+- Visibility after deletion:
+   - Daily operational views: do not show soft-deleted records.
+   - Historical/audit flows: include soft-deleted records only through explicit `withTrashed` paths.
+   - Billing/history consistency: keep invoice history readable even if linked patient/appointment was soft-deleted.
+- Public API behavior:
+   - `destroy` means soft delete.
+   - `forceDelete` is not part of normal product flows.
 
 ## Frontend Button Styling
 

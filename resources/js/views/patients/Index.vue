@@ -52,14 +52,6 @@
                   <td class="wide-mid">{{ p.email ?? '—' }}</td>
                   <td class="row-action patients-action-col">
                     <router-link :to="{ path: `/patients/${p.id}/edit`, query: { from: 'list' } }" class="action-btn datos" aria-label="Datos" @click.stop>✎ Editar</router-link>
-                    <button
-                      class="action-btn danger"
-                      @click.prevent="deletePatient(p)"
-                      :disabled="deletingId === p.id"
-                      style="margin-left:6px"
-                    >
-                      {{ deletingId === p.id ? 'Eliminando...' : '🗑️ Eliminar' }}
-                    </button>
                   </td>
                 </tr>
               </tbody>

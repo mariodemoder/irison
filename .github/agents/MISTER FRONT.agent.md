@@ -51,6 +51,25 @@ You are the frontend specialist for this Vue 3 + Vite application.
 - Reuse global toast visual classes defined in `resources/css/app.css` (`.irison-toast`, variant colors, progress bar, close button).
 - For repeated load-error patterns, use shared helpers from `resources/js/shared/httpErrors.js` (for example `getLoadErrorMessage`) to keep copy and UX consistent.
 
+## CRUD UX Baseline
+
+- Enforce explicit UX states in CRUD screens:
+	- loading states (`AppLoading` or equivalent)
+	- disabled primary/destructive buttons during async actions
+	- delete confirmation dialogs before destructive actions
+	- empty states with business copy (not only generic placeholders)
+- Required baseline copy:
+	- Patients empty: `No hay pacientes todavía`.
+	- Day agenda empty: `No hay citas hoy`.
+- Prevent double submit on save/cancel/delete handlers:
+	- add guard clauses at handler start (`if (submitting) return` pattern)
+	- reset state in `finally` blocks
+	- keep button disabled while action is in-flight
+- Prefer reusing shared primitives before adding new ones:
+	- `resources/js/components/AppLoading.vue`
+	- `resources/js/components/EmptyIndexState.vue`
+	- existing SweetAlert app styles/classes
+
 ## Quality Checklist
 
 - Works on desktop and mobile breakpoints.

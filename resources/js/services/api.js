@@ -2,7 +2,6 @@ import axios from 'axios'
 import router from '../router'
 import logout from '../utils/logout'
 import { resetMeCache } from '../shared/meCache'
-import { getValidationMessages } from '../shared/httpErrors'
 import { clearGlobalHttpError, showGlobalHttpError } from '../shared/globalHttpError'
 
 function ensureErrorPayload(error, fallbackMessage) {
@@ -95,16 +94,7 @@ api.interceptors.response.use(
     }
 
     if (status === 422) {
-      const validationMessages = getValidationMessages(error)
-      showGlobalHttpError({
-        variant: 'warning',
-        status,
-        title: 'Revisa los datos del formulario',
-        message: validationMessages.length
-          ? 'Corrige los campos marcados para continuar.'
-          : 'Hay campos con errores de validacion.',
-        details: validationMessages,
-      })
+      clearGlobalHttpError()
 
       return Promise.reject(ensureErrorPayload(error, 'Hay campos con errores de validacion.'))
     }

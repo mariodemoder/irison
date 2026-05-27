@@ -132,9 +132,13 @@ class ReminderService
             $message = 'Paciente sin email para enviar recordatorio.';
             $failedReminder = $this->createReminderRecord($appointment, $reminderType, $email, 'failed', null, $message);
 
-            Log::warning('Reminder skipped: patient without email', [
+            Log::warning('reminder.failed', [
+                'event' => 'reminder.sent',
+                'result' => 'failed',
                 'appointment_id' => $appointment->id,
+                'clinic_id' => (int) $appointment->clinic_id,
                 'reminder_type' => $reminderType,
+                'reason' => 'missing_email',
             ]);
 
             if ($throwOnFailure) {
@@ -153,20 +157,29 @@ class ReminderService
 
             $sentReminder = $this->createReminderRecord($appointment, $reminderType, $email, 'sent', now(), null);
 
-            Log::info('Reminder sent', [
+            Log::info('reminder.sent', [
+                'event' => 'reminder.sent',
+                'result' => 'sent',
+                'reminder_id' => $sentReminder->id,
                 'appointment_id' => $appointment->id,
+                'clinic_id' => (int) $appointment->clinic_id,
                 'reminder_type' => $reminderType,
-                'patient_email' => $email,
+                'recipient_domain' => $this->extractEmailDomain($email),
             ]);
 
             return $sentReminder;
         } catch (Throwable $e) {
             $failedReminder = $this->createReminderRecord($appointment, $reminderType, $email, 'failed', null, $e->getMessage());
 
-            Log::error('Reminder failed', [
+            Log::error('reminder.failed', [
+                'event' => 'reminder.sent',
+                'result' => 'failed',
+                'reminder_id' => $failedReminder->id,
                 'appointment_id' => $appointment->id,
+                'clinic_id' => (int) $appointment->clinic_id,
                 'reminder_type' => $reminderType,
-                'error' => $e->getMessage(),
+                'recipient_domain' => $this->extractEmailDomain($email),
+                'error_code' => class_basename($e),
             ]);
 
             if ($throwOnFailure) {
@@ -267,5 +280,15 @@ class ReminderService
                 'phone' => $patient->phone,
             ] : null,
         ];
+    }
+
+    private function extractEmailDomain(string $email): ?string
+    {
+        $normalized = trim(strtolower($email));
+        if ($normalized === '' || ! str_contains($normalized, '@')) {
+            return null;
+        }
+
+        return substr($normalized, strpos($normalized, '@') + 1) ?: null;
     }
 }

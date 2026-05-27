@@ -234,8 +234,16 @@ class PatientsServices
 
     public function destroy(Patient $patient): void
     {
-        if ($patient->appointments()->exists() || $patient->payments()->exists()) {
-            throw new DomainException('No se puede eliminar el paciente porque tiene citas o pagos asociados');
+        $hasNonCanceledAppointments = $patient->appointments()
+            ->whereNotIn('status', ['canceled', 'cancelled'])
+            ->exists();
+
+        $hasBlockingPayments = $patient->payments()
+            ->whereIn('status', ['pending', 'completed'])
+            ->exists();
+
+        if ($hasNonCanceledAppointments || $hasBlockingPayments) {
+            throw new DomainException('No se puede eliminar el paciente porque tiene citas no canceladas o pagos pendientes/realizados');
         }
 
         $patient->delete();

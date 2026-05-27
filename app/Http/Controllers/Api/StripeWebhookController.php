@@ -27,7 +27,12 @@ class StripeWebhookController extends Controller
                 config('services.stripe.webhook_secret')
             );
         } catch (\Exception $e) {
-            Log::warning('Stripe webhook verification failed: ' . $e->getMessage());
+            Log::warning('stripe.webhook.verification_failed', [
+                'event' => 'stripe.webhook.verification_failed',
+                'result' => 'failed',
+                'error_code' => 'INVALID_SIGNATURE',
+                'error_category' => 'validation',
+            ]);
             return response()->json(['error' => 'Invalid signature'], 400);
         }
 
@@ -117,10 +122,15 @@ class StripeWebhookController extends Controller
                             $subscription->save();
                         }
 
-                        Log::info('Stripe invoice.payment_failed processed', [
+                        Log::warning('subscription.failed', [
+                            'event' => 'subscription.failed',
+                            'result' => 'failed',
+                            'stage' => 'invoice_payment_failed',
                             'clinic_id' => $clinic->id,
-                            'customer_id' => $customerId,
                             'invoice_id' => (string) ($invoice->id ?? ''),
+                            'provider' => 'stripe',
+                            'error_code' => 'INVOICE_PAYMENT_FAILED',
+                            'error_category' => 'payment',
                         ]);
 
                         $this->sendInvoicePaymentFailedMailIfEnabled($clinic, $invoice);

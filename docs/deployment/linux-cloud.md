@@ -8,6 +8,11 @@ Esta guía es la referencia oficial para desplegar irison en servidores Linux/Cl
 - Reducir errores manuales.
 - Dejar trazabilidad de cambios operativos.
 
+## Checklist de producción
+
+- Usar siempre esta guía junto con [production-checklist.md](production-checklist.md) antes de liberar a producción.
+- La checklist define los mínimos obligatorios de hardening, validación y rollback.
+
 ## Alcance
 
 Incluye:
@@ -195,3 +200,13 @@ Formato sugerido:
   - `php artisan storage:link`
 - Resultado: OK (exit code 0)
 - Rollback: `php artisan storage:unlink` (si se requiere recrear enlace)
+
+### 2026-05-28 00:00 (Europe/Madrid)
+- Autor: Equipo
+- Entorno: Documentacion
+- Cambio: Se agrega checklist operativa de producción y referencia oficial desde esta guía.
+- Archivos/config tocados: `docs/deployment/production-checklist.md`, `docs/deployment/linux-cloud.md`
+- Comandos ejecutados:
+  - `N/A`
+- Resultado: OK
+- Rollback: No aplica

@@ -5,12 +5,14 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToClinic;
 use App\Services\Counters\CounterService;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Document extends Model
 {
     use BelongsToClinic;
+    use SoftDeletes;
 
     public const TYPE_INVOICE = 'invoice';
     public const TYPE_ABONO = 'abono';

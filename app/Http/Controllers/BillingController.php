@@ -8,6 +8,7 @@ use App\Models\BillingPayment;
 use App\Services\PaymentProvider\Resolver;
 use App\Services\PaymentProvider\StripePaymentProvider;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Stripe\Stripe;
@@ -33,6 +34,19 @@ class BillingController extends Controller
 
         $payment = BillingPayment::create($paymentPayload);
 
+        Log::info('payment.created', [
+            'event' => 'payment.created',
+            'domain' => 'billing',
+            'result' => 'created',
+            'billing_payment_id' => $payment->id,
+            'clinic_id' => $clinic->id,
+            'amount' => (int) $amount,
+            'currency' => 'EUR',
+            'provider' => (string) ($payment->provider ?? config('billing.provider', 'fake')),
+            'status' => (string) ($payment->status ?? 'pending'),
+            'user_id' => (int) $request->user()->id,
+        ]);
+
         $provider = Resolver::resolve();
 
         try {
@@ -46,6 +60,18 @@ class BillingController extends Controller
         } catch (\Throwable $e) {
             $payment->status = 'failed';
             $payment->save();
+
+            Log::warning('subscription.failed', [
+                'event' => 'subscription.failed',
+                'result' => 'failed',
+                'stage' => 'checkout_create',
+                'clinic_id' => $clinic->id,
+                'user_id' => (int) $request->user()->id,
+                'billing_payment_id' => $payment->id,
+                'provider' => (string) ($payment->provider ?? config('billing.provider', 'fake')),
+                'error_code' => $this->extractBillingErrorCode($e),
+                'error_category' => $this->extractBillingErrorCategory($e),
+            ]);
 
             if ($this->isStripeConnectivityIssue($e)) {
                 return response()->json([
@@ -158,6 +184,17 @@ class BillingController extends Controller
         try {
             $session = $stripe->checkout->sessions->retrieve($sessionId, []);
         } catch (\Throwable $e) {
+            Log::warning('subscription.failed', [
+                'event' => 'subscription.failed',
+                'result' => 'failed',
+                'stage' => 'checkout_confirm',
+                'clinic_id' => $clinic->id,
+                'user_id' => (int) $user->id,
+                'session_id_hash' => substr(sha1($sessionId), 0, 12),
+                'error_code' => $this->extractBillingErrorCode($e),
+                'error_category' => $this->extractBillingErrorCategory($e),
+            ]);
+
             return response()->json([
                 'message' => 'No se pudo validar la sesion de Stripe: ' . $e->getMessage(),
             ], 422);
@@ -255,6 +292,18 @@ class BillingController extends Controller
                 'subscription_reference' => $clinic->subscription_reference,
             ]);
         } catch (\Throwable $e) {
+            Log::warning('subscription.failed', [
+                'event' => 'subscription.failed',
+                'result' => 'failed',
+                'stage' => 'cancel_subscription',
+                'clinic_id' => (int) $clinic->id,
+                'user_id' => (int) $user->id,
+                'subscription_id' => (string) ($subscription->stripe_subscription_id ?? ''),
+                'provider' => (string) ($clinic->subscription_provider ?? ''),
+                'error_code' => $this->extractBillingErrorCode($e),
+                'error_category' => $this->extractBillingErrorCategory($e),
+            ]);
+
             return response()->json([
                 'message' => 'No se pudo cancelar la suscripcion: ' . $e->getMessage(),
             ], 422);
@@ -372,5 +421,43 @@ class BillingController extends Controller
             || str_contains($message, 'timed out')
             || str_contains($message, 'timeout was reached')
             || str_contains($message, 'errno 28');
+    }
+
+    private function extractBillingErrorCode(\Throwable $e): string
+    {
+        $message = strtolower((string) $e->getMessage());
+
+        if ($this->isStripeConnectivityIssue($e)) {
+            return 'STRIPE_UNREACHABLE';
+        }
+
+        if (str_contains($message, 'rate limit')) {
+            return 'STRIPE_RATE_LIMITED';
+        }
+
+        if (str_contains($message, 'authentication') || str_contains($message, 'invalid api key')) {
+            return 'STRIPE_AUTH_ERROR';
+        }
+
+        return 'BILLING_PROVIDER_ERROR';
+    }
+
+    private function extractBillingErrorCategory(\Throwable $e): string
+    {
+        $message = strtolower((string) $e->getMessage());
+
+        if ($this->isStripeConnectivityIssue($e)) {
+            return 'network';
+        }
+
+        if (str_contains($message, 'rate limit')) {
+            return 'rate_limit';
+        }
+
+        if (str_contains($message, 'authentication') || str_contains($message, 'invalid api key')) {
+            return 'authentication';
+        }
+
+        return 'provider';
     }
 }

@@ -86,6 +86,28 @@ You are the backend specialist for this project.
 - Add metrics hooks where relevant.
 - Keep webhook processing traceable.
 
+## Backend Business Logging Standard
+
+- Keep business logs structured with stable keys: `event`, `result`, `clinic_id`, `user_id`, resource IDs, `error_code`, `error_category`.
+- Required diagnostic events:
+  - `auth.login.success`
+  - `auth.login.failed`
+  - `subscription.failed`
+  - `reminder.sent`
+  - `reminder.failed`
+  - `payment.created`
+- Severity policy:
+  - `info` for successful business events.
+  - `warning` for expected failures.
+  - `error` for exceptions or unexpected failures.
+- Never log sensitive data:
+  - passwords
+  - tokens
+  - card data
+  - Stripe/API secrets
+  - full credential payloads
+- If email context is needed, log only safe derivatives (e.g. domain), never full addresses.
+
 ## Security Rules
 
 - Never expose tenant-sensitive data.
@@ -93,6 +115,20 @@ You are the backend specialist for this project.
 - Sanitize uploads and user-generated content.
 - Use signed URLs where applicable.
 - Protect against mass assignment and overfetching.
+
+## Soft Delete Policy
+
+- Treat `destroy` operations as soft deletes for core clinical entities.
+- Required soft-deleted entities:
+  - `patients`
+  - `appointments`
+  - `documents` (invoices/abonos)
+- Visibility rules:
+  - Operational views (lists/detail used day-to-day): hide soft-deleted rows by default.
+  - Historical/audit contexts: use explicit `withTrashed()` only where needed.
+  - Keep invoices/history resilient when related patient or appointment is soft-deleted.
+- Never expose `forceDelete` in normal product flows.
+- If restore endpoints are implemented, keep them policy-protected and tenant-scoped.
 
 ## Testing Responsibilities
 

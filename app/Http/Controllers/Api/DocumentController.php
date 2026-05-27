@@ -86,7 +86,7 @@ class DocumentController extends Controller
 
         $appointmentPaymentStatuses = $appointmentIds->isEmpty()
             ? collect()
-            : Appointment::query()
+            : Appointment::withTrashed()
                 ->whereIn('id', $appointmentIds)
                 ->pluck('payment_status', 'id');
 
@@ -465,7 +465,7 @@ class DocumentController extends Controller
             $appointmentId = (int) $document->from_id;
             $resolved = $appointmentPaymentStatuses instanceof \Illuminate\Support\Collection
                 ? $appointmentPaymentStatuses->get($appointmentId)
-                : Appointment::query()->where('id', $appointmentId)->value('payment_status');
+                : Appointment::withTrashed()->where('id', $appointmentId)->value('payment_status');
 
             return $resolved ? (string) $resolved : $document->status;
         }
