@@ -320,8 +320,41 @@ button[disabled],
 }
 
 /* Muted pill button — used for "Volver" and secondary actions across all views */
-.muted { padding:8px 14px; border-radius:9999px; border:1px solid var(--theme-color); background:#fff; cursor:pointer }
+.muted,
+.edit-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 40px;
+	padding: 8px 14px;
+	border-radius: 9999px;
+	border: 1px solid var(--theme-color);
+	background: #fff;
+	cursor: pointer;
+	line-height: 1.1;
+	font-weight: 600;
+	white-space: nowrap;
+}
 .muted:hover { background:#f9fafb }
+.edit-btn {
+	border-color: #bfdbfe;
+	background: #eff6ff;
+	color: #1d4ed8;
+}
+.edit-btn:hover { background: #dbeafe }
+
+/* Quick actions trigger — same pill height as "Volver" but icon-only */
+.quick-trigger {
+	min-width: 40px;
+	padding: 8px 10px;
+	gap: 0;
+}
+
+.quick-trigger-icon {
+	width: 16px;
+	height: 16px;
+	display: block;
+}
 
 /* Back buttons: rounded on the left, squared on the right */
 .muted.back-btn {

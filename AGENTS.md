@@ -91,6 +91,9 @@ Build and tests:
 
 - Global button styles are part of frontend responsibilities and should be centralized in `resources/css/`.
 - Reuse existing shared classes (`.btn`, `.btn--solid`, `.btn--ghost`) before introducing new button variants.
+- Use `.muted` for "Volver" and secondary pills, and `.edit-btn` for all edit actions so both keep the same pill height across the app.
+- Use `.quick-trigger` for the actions menu button that appears next to "Volver" so it keeps the same pill height and icon sizing everywhere.
+- Avoid inline padding/font-size overrides on edit/back buttons; keep those dimensions in the shared CSS layer.
 
 ## Frontend Popup Form Styling
 

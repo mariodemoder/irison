@@ -171,7 +171,11 @@
 
           </template>
           <template v-if="!loading">
-            <EmptyIndexState v-if="filteredAppointments.length === 0 && !hasActiveFilters" />
+            <EmptyIndexState
+              v-if="filteredAppointments.length === 0 && !hasActiveFilters"
+              :title="emptyStateTitle"
+              :subtitle="emptyStateSubtitle"
+            />
             <div v-else-if="filteredAppointments.length === 0" class="empty">No hay resultados para los filtros aplicados.</div>
           </template>
         </div>
@@ -603,9 +607,21 @@ const filteredAppointments = computed(() => {
 
 const hasActiveFilters = computed(() => {
   return Boolean(String(query.value || '').trim())
-    || showScheduledOnly.value
+    || appointmentScope.value === 'all'
     || Boolean(statusFilter.value)
     || Boolean(paymentFilter.value)
+})
+
+const emptyStateTitle = computed(() => {
+  if (isTodayMode.value) return 'No hay citas hoy'
+  if (!isAllMode.value) return 'No hay citas para este día'
+  return 'No hay citas todavía'
+})
+
+const emptyStateSubtitle = computed(() => {
+  if (isTodayMode.value) return 'Puedes crear una cita nueva desde esta misma pantalla.'
+  if (!isAllMode.value) return 'Prueba con otra fecha o crea una nueva cita.'
+  return 'Empieza creando tu primera cita para ver actividad en agenda.'
 })
 
 const totalPages = computed(() => {

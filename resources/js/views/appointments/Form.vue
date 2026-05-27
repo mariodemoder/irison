@@ -420,7 +420,7 @@
 
           <div class="actions full action-row">
             <div class="left-actions">
-              <button class="primary" type="submit" :disabled="submitting || !canSaveAppointment">Guardar</button>
+              <button class="primary" type="submit" :disabled="submitting || !canSaveAppointment" :is-loading="submitting">{{ submitting ? 'Guardando...' : 'Guardar' }}</button>
               <button v-if="isEdit && isFutureAppointment" type="button" class="muted" @click.prevent="startReprogram" :disabled="submitting">Reprogramar</button>
             </div>
 
@@ -1777,6 +1777,8 @@ watch(() => form.end_time, () => {
 })
 
 async function submit(payNow = false) {
+  if (submitting.value) return
+
   submitting.value = true
   calendarInfoMessage.value = ''
   Object.keys(errors).forEach(k => delete errors[k])

@@ -7,7 +7,7 @@
             <h1>Paciente e Historial</h1>
           </div>
           <div class="header-actions">
-            <button class="primary" @click.prevent="goEdit" style="padding:6px 12px;font-size:13px">Editar</button>
+            <button class="edit-btn" @click.prevent="goEdit">Editar</button>
             <div class="back-menu-group">
               <button class="muted back-btn" @click.prevent="goBack">Volver</button>
               <div class="quick-actions" ref="quickActionsRef">
@@ -39,7 +39,7 @@
                   >
                     Imagenes
                   </button>
-                  <BtnTrash class="quick-item danger" @click.prevent="runDelete">Eliminar</BtnTrash>
+                  <BtnTrash class="quick-item danger" :disabled="deletingPatient" @click.prevent="runDelete">{{ deletingPatient ? 'Eliminando...' : 'Eliminar' }}</BtnTrash>
                 </div>
               </div>
             </div>
@@ -334,6 +334,7 @@ const appointments = ref([])
 const packs = ref([])
 const payments = ref([])
 const loading = ref(false)
+const deletingPatient = ref(false)
 const showCanceledAppointments = ref(false)
 const showCompletedPayments = ref(false)
 const quickActionsOpen = ref(false)
@@ -708,6 +709,7 @@ function runAttachImages() {
 }
 
 function runDelete() {
+  if (deletingPatient.value) return
   closeQuickActions()
   confirmDelete()
 }
@@ -776,7 +778,8 @@ function formatPaymentDate(value) {
 }
 
 async function confirmDelete() {
-  if (!patient.value) return
+  if (!patient.value || deletingPatient.value) return
+
   const res = await Swal.fire({
     title: `Eliminar paciente`,
     text: `¿Eliminar al paciente "${patient.value.name}"?`,
@@ -789,6 +792,7 @@ async function confirmDelete() {
 
   if (!res.isConfirmed) return
 
+  deletingPatient.value = true
   try {
     await api.delete(`/patients/${patient.value.id}`)
     const toast = useToast()
@@ -802,6 +806,8 @@ async function confirmDelete() {
     const msg = e.response?.data?.message || 'Error eliminando paciente'
     const toast = useToast()
     toast.error(msg)
+  } finally {
+    deletingPatient.value = false
   }
 }
 </script>

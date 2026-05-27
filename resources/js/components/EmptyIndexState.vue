@@ -1,12 +1,28 @@
 <template>
   <div class="empty-state" role="status" aria-live="polite">
     <img :src="desertImage" alt="Sin datos" class="empty-illustration" />
-    <p class="empty-title">Ups! sin datos por ahora.</p>
+    <p class="empty-title">{{ safeTitle }}</p>
+    <p v-if="safeSubtitle" class="empty-subtitle">{{ safeSubtitle }}</p>
   </div>
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import desertImage from '../assets/desert2.png'
+
+const props = defineProps({
+  title: {
+    type: String,
+    default: 'Ups! sin datos por ahora.',
+  },
+  subtitle: {
+    type: String,
+    default: '',
+  },
+})
+
+const safeTitle = computed(() => String(props.title || 'Ups! sin datos por ahora.').trim() || 'Ups! sin datos por ahora.')
+const safeSubtitle = computed(() => String(props.subtitle || '').trim())
 </script>
 
 <style scoped>
@@ -35,6 +51,14 @@ import desertImage from '../assets/desert2.png'
   color: #6b7280;
   font-size: 14px;
   font-weight: 600;
+  text-align: center;
+}
+
+.empty-subtitle {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 500;
   text-align: center;
 }
 

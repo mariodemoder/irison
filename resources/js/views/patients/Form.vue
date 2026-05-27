@@ -11,6 +11,8 @@
           <button type="button" class="muted back-btn" @click.prevent="cancel">Volver</button>
         </div>
 
+        <AppLoading v-if="loading" compact :message="isEdit ? 'Cargando paciente...' : 'Cargando...'" />
+
         <form class="grid-form" @submit.prevent="submit">
           <div v-if="errors.general" class="field full">
             <div class="field-error">{{ errors.general[0] }}</div>
@@ -96,7 +98,7 @@
           </div>
 
           <div class="actions full">
-            <button class="primary" type="submit" :disabled="submitting">Guardar</button>
+            <button class="primary" type="submit" :disabled="submitting || loading" :is-loading="submitting">{{ submitting ? 'Guardando...' : 'Guardar' }}</button>
           </div>
         </form>
       </div>
@@ -109,6 +111,7 @@ import { reactive, ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
+import AppLoading from '../../components/AppLoading.vue'
 import { useToast } from 'vue-toastification'
 
 const router = useRouter()
@@ -257,6 +260,8 @@ watch(() => route.params.id, (id) => {
 })
 
 async function submit() {
+  if (submitting.value || loading.value) return
+
   submitting.value = true
   Object.keys(errors).forEach(k => delete errors[k])
   form.email = String(form.email || '').trim()

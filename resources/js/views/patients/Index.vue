@@ -52,14 +52,25 @@
                   <td class="wide-mid">{{ p.email ?? '—' }}</td>
                   <td class="row-action patients-action-col">
                     <router-link :to="{ path: `/patients/${p.id}/edit`, query: { from: 'list' } }" class="action-btn datos" aria-label="Datos" @click.stop>✎ Editar</router-link>
-                    <!-- <button class="action-btn" @click.prevent="deletePatient(p)" :disabled="deletingId===p.id" style="margin-left:6px">🗑️ Eliminar</button> -->
+                    <button
+                      class="action-btn danger"
+                      @click.prevent="deletePatient(p)"
+                      :disabled="deletingId === p.id"
+                      style="margin-left:6px"
+                    >
+                      {{ deletingId === p.id ? 'Eliminando...' : '🗑️ Eliminar' }}
+                    </button>
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
 
-          <EmptyIndexState v-else-if="!hasActiveFilters" />
+          <EmptyIndexState
+            v-else-if="!hasActiveFilters"
+            title="No hay pacientes todavía"
+            subtitle="Empieza creando tu primer paciente para gestionar citas y pagos."
+          />
           <div v-else class="empty">No hay resultados para los filtros aplicados.</div>
 
           <div v-if="meta" class="pagination">
@@ -151,6 +162,8 @@ onMounted(() => {
 })
 
 async function deletePatient(p) {
+  if (deletingId.value) return
+
   const res = await Swal.fire({
     title: `Eliminar paciente`,
     text: `¿Eliminar al paciente "${p.counter ? `${p.counter} · ` : ''}${p.name}"? Esta acción es reversible (soft delete).`,
@@ -206,6 +219,7 @@ function goToPatient(id) {
 .action-btn { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:8px; text-decoration:none; color:#374151; font-size:13px; border:1px solid transparent }
 .action-btn.history { background:#eef2ff; border-color: #dbeafe; color:#1e3a8a }
 .action-btn.datos { background:#fff; border-color:#e5e7eb; color:#374151 }
+.action-btn.danger { background:#fff1f2; border-color:#fecdd3; color:#be123c }
 .action-btn:hover { transform:translateY(-1px) }
 
 .pagination { margin-top:12px; display:flex; justify-content:flex-end; gap:12px; align-items:center }
