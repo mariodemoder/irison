@@ -18,10 +18,13 @@ use Illuminate\Support\Facades\Schema;
 class ClinicManagementService
 {
     private ?bool $hasClinicActivitiesTable = null;
+    private array $clinicColumnExists = [];
 
     public function listClinics(array $filters): LengthAwarePaginator
     {
         $query = Clinic::query()->orderByDesc('id');
+        $hasPlanColumn = $this->hasClinicColumn('plan');
+        $hasSuspendedAtColumn = $this->hasClinicColumn('suspended_at');
 
         $q = trim((string) ($filters['q'] ?? ''));
         $status = trim((string) ($filters['status'] ?? ''));
@@ -35,14 +38,18 @@ class ClinicManagementService
             });
         }
 
-        if ($plan !== '') {
+        if ($plan !== '' && $hasPlanColumn) {
             $query->where('plan', $plan);
         }
 
         if ($status !== '') {
-            $query->where(function ($statusQuery) use ($status): void {
+            $query->where(function ($statusQuery) use ($status, $hasSuspendedAtColumn): void {
                 if ($status === 'suspended') {
-                    $statusQuery->whereNotNull('suspended_at');
+                    if ($hasSuspendedAtColumn) {
+                        $statusQuery->whereNotNull('suspended_at');
+                    } else {
+                        $statusQuery->whereRaw('1 = 0');
+                    }
 
                     return;
                 }
@@ -56,14 +63,19 @@ class ClinicManagementService
                 if ($status === 'expired') {
                     $statusQuery->whereNotNull('trial_ends_at')
                         ->where('trial_ends_at', '<', now())
-                        ->whereNull('suspended_at')
+                        ->when($hasSuspendedAtColumn, static function ($query): void {
+                            $query->whereNull('suspended_at');
+                        })
                         ->whereNotIn('subscription_status', ['active', 'past_due']);
 
                     return;
                 }
 
-                $statusQuery->where('subscription_status', $status)
-                    ->whereNull('suspended_at');
+                $statusQuery->where('subscription_status', $status);
+
+                if ($hasSuspendedAtColumn) {
+                    $statusQuery->whereNull('suspended_at');
+                }
             });
         }
 
@@ -110,9 +122,19 @@ class ClinicManagementService
 
     public function suspend(AdminUser $admin, Clinic $clinic, ?string $reason = null): Clinic
     {
-        $clinic->suspended_at = now();
-        $clinic->status = 'suspended';
-        $clinic->save();
+        $updates = [];
+        if ($this->hasClinicColumn('suspended_at')) {
+            $updates['suspended_at'] = now();
+        }
+
+        if ($this->hasClinicColumn('status')) {
+            $updates['status'] = 'suspended';
+        }
+
+        if ($updates !== []) {
+            $clinic->fill($updates);
+            $clinic->save();
+        }
 
         $this->recordActivity($admin, $clinic, 'clinic.suspended', [
             'reason' => $reason,
@@ -123,9 +145,39 @@ class ClinicManagementService
 
     public function reactivate(AdminUser $admin, Clinic $clinic, ?string $reason = null): Clinic
     {
-        $clinic->suspended_at = null;
-        $clinic->status = 'active';
-        $clinic->save();
+        $updates = [];
+        if ($this->hasClinicColumn('suspended_at')) {
+            $updates['suspended_at'] = null;
+        }
+
+        if ($this->hasClinicColumn('status')) {
+            $updates['status'] = 'active';
+        }
+
+        if (in_array((string) $clinic->subscription_status, ['canceled', 'cancelled', 'inactive'], true)) {
+            $updates['subscription_status'] = 'active';
+            $updates['subscribed_at'] = now();
+
+            $subscription = $clinic->saasSubscriptions()->orderByDesc('id')->first();
+            if (! $subscription) {
+                Subscription::query()->create([
+                    'clinic_id' => $clinic->id,
+                    'status' => 'active',
+                    'trial_ends_at' => null,
+                    'current_period_end' => now()->addMonth(),
+                ]);
+            } else {
+                $subscription->status = 'active';
+                $subscription->trial_ends_at = null;
+                $subscription->current_period_end = now()->addMonth();
+                $subscription->save();
+            }
+        }
+
+        if ($updates !== []) {
+            $clinic->fill($updates);
+            $clinic->save();
+        }
 
         $this->recordActivity($admin, $clinic, 'clinic.reactivated', [
             'reason' => $reason,
@@ -290,5 +342,14 @@ class ClinicManagementService
         }
 
         return $this->hasClinicActivitiesTable;
+    }
+
+    private function hasClinicColumn(string $column): bool
+    {
+        if (! array_key_exists($column, $this->clinicColumnExists)) {
+            $this->clinicColumnExists[$column] = Schema::hasColumn('clinics', $column);
+        }
+
+        return $this->clinicColumnExists[$column];
     }
 }
