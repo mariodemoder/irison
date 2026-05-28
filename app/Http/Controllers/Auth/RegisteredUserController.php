@@ -40,9 +40,12 @@ class RegisteredUserController extends Controller
         
         $clinic = Clinic::create([
             'name' => $request->name . ' - Clinica',
+            'slug' => null,
             'legal_name' => $request->name . ' - Clinica',
             'email' => $request->email,
             'trial_ends_at' => Carbon::now()->addDays(30),
+            'subscription_status' => 'trial',
+            'status' => 'trial',
             'subscribed_at' => null,
         ]);
 

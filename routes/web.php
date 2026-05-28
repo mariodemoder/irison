@@ -26,6 +26,10 @@ Route::get('/hash-test', function () { return Hash::make('HOLISholis123'); });
 */
 
 use App\Http\Controllers\BillingController;
+use App\Http\Controllers\Backoffice\AdminUserController;
+use App\Http\Controllers\Backoffice\ClinicController;
+use App\Http\Controllers\Backoffice\Auth\LoginController as BackofficeLoginController;
+use App\Http\Controllers\Backoffice\DashboardController as BackofficeDashboardController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -101,6 +105,60 @@ Route::get('/sandbox/invoice-blade', function (Request $request) {
         ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
         ->header('Pragma', 'no-cache');
 })->name('sandbox.invoice-blade');
+
+$backofficeDomain = trim((string) env('BACKOFFICE_DOMAIN', ''));
+$backofficeRoutes = Route::middleware('web');
+
+if ($backofficeDomain !== '' && ! app()->environment('testing')) {
+    $backofficeRoutes = $backofficeRoutes->domain($backofficeDomain);
+} else {
+    $backofficeRoutes = $backofficeRoutes->prefix('backoffice');
+}
+
+$backofficeRoutes->as('backoffice.')->group(function () {
+    Route::middleware('guest:admin')->group(function () {
+        Route::get('/login', [BackofficeLoginController::class, 'create'])->name('login');
+        Route::post('/login', [BackofficeLoginController::class, 'store'])->name('login.store');
+    });
+
+    Route::middleware(['auth:admin', 'admin.active'])->group(function () {
+        Route::get('/', BackofficeDashboardController::class)->name('dashboard');
+        Route::get('/dashboard', BackofficeDashboardController::class);
+        Route::post('/logout', [BackofficeLoginController::class, 'destroy'])->name('logout');
+
+        Route::middleware('admin.role:super_admin,support,billing,readonly')->group(function () {
+            Route::get('/clinics', [ClinicController::class, 'index'])->name('clinics.index');
+            Route::get('/clinics/{clinic}', [ClinicController::class, 'show'])->name('clinics.show');
+        });
+
+        Route::middleware('admin.role:super_admin,support')->group(function () {
+            Route::get('/clinics/{clinic}/edit', [ClinicController::class, 'edit'])->name('clinics.edit');
+            Route::put('/clinics/{clinic}', [ClinicController::class, 'update'])->name('clinics.update');
+            Route::patch('/clinics/{clinic}/extend-trial', [ClinicController::class, 'extendTrial'])->name('clinics.extend-trial');
+            Route::patch('/clinics/{clinic}/suspend', [ClinicController::class, 'suspend'])->name('clinics.suspend');
+            Route::patch('/clinics/{clinic}/reactivate', [ClinicController::class, 'reactivate'])->name('clinics.reactivate');
+        });
+
+        Route::middleware('admin.role:super_admin,billing')->group(function () {
+            Route::post('/clinics/{clinic}/cancel-subscription', [ClinicController::class, 'cancelSubscription'])->name('clinics.cancel-subscription');
+            Route::patch('/clinics/{clinic}/change-plan', [ClinicController::class, 'changePlan'])->name('clinics.change-plan');
+        });
+
+        Route::middleware('admin.role:super_admin')->group(function () {
+            Route::post('/clinics/{clinic}/impersonate', [ClinicController::class, 'impersonate'])->name('clinics.impersonate');
+            Route::post('/impersonate/stop', [ClinicController::class, 'stopImpersonation'])->name('impersonate.stop');
+        });
+
+        Route::middleware('admin.role:super_admin')->group(function () {
+            Route::get('/admin-users', [AdminUserController::class, 'index'])->name('admin-users.index');
+            Route::get('/admin-users/create', [AdminUserController::class, 'create'])->name('admin-users.create');
+            Route::post('/admin-users', [AdminUserController::class, 'store'])->name('admin-users.store');
+            Route::get('/admin-users/{adminUser}/edit', [AdminUserController::class, 'edit'])->name('admin-users.edit');
+            Route::put('/admin-users/{adminUser}', [AdminUserController::class, 'update'])->name('admin-users.update');
+            Route::patch('/admin-users/{adminUser}/toggle', [AdminUserController::class, 'toggleActive'])->name('admin-users.toggle');
+        });
+    });
+});
 
 Route::get('/{any}', function () {
     return view('app');

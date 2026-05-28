@@ -3,7 +3,10 @@
 use App\Http\Middleware\EnsureClinic;
 use App\Http\Middleware\EnsureClinicIsActive;
 use App\Http\Middleware\CheckSubscriptionAccess;
+use App\Http\Middleware\EnsureAdminIsActive;
+use App\Http\Middleware\EnsureAdminRole;
 use App\Http\Middleware\SetActiveClinic;
+use App\Console\Commands\ProcessTrialLifecycle;
 use App\Console\Commands\PurgeExpiredClinics;
 use App\Jobs\SendAppointmentReminder24h;
 use App\Jobs\SendAppointmentReminder2h;
@@ -27,6 +30,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'clinic' => EnsureClinic::class,
             'clinic.active' => EnsureClinicIsActive::class,
             'check.subscription' => CheckSubscriptionAccess::class,
+            'admin.active' => EnsureAdminIsActive::class,
+            'admin.role' => EnsureAdminRole::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
@@ -50,6 +55,11 @@ return Application::configure(basePath: dirname(__DIR__))
             ->dailyAt('03:00')
             ->withoutOverlapping()
             ->runInBackground();
+
+        $schedule
+            ->command(ProcessTrialLifecycle::class)
+            ->everyThirtyMinutes()
+            ->withoutOverlapping();
     })
     ->withProviders([
         App\Providers\AuthServiceProvider::class,

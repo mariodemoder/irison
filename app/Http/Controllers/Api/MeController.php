@@ -33,18 +33,27 @@ class MeController
             $status = 'blocked';
             $readOnlyNoTransactions = false;
             if ($clinic) {
+                $tenantStatus = strtolower(trim((string) ($clinic->status ?? '')));
                 $readOnlyNoTransactions = $clinic->isInReadOnlyNoTransactionsWindow();
                 $clinicStatus = strtolower(trim((string) ($clinic->subscription_status ?? 'inactive')));
 
-                $status = match ($clinicStatus) {
-                    'active' => 'active',
-                    'past_due' => 'blocked',
-                    'canceled', 'cancelled' => $readOnlyNoTransactions ? 'canceled' : 'blocked',
-                    'trial' => $clinic->isTrialActive()
-                        ? 'trial'
-                        : ($readOnlyNoTransactions ? 'trial_read_only' : 'blocked'),
-                    default => 'blocked',
-                };
+                if ($tenantStatus === 'trial_read_only') {
+                    $readOnlyNoTransactions = true;
+                    $status = 'trial_read_only';
+                } elseif ($tenantStatus === 'churned') {
+                    $readOnlyNoTransactions = false;
+                    $status = 'blocked';
+                } else {
+                    $status = match ($clinicStatus) {
+                        'active' => 'active',
+                        'past_due' => 'blocked',
+                        'canceled', 'cancelled' => $readOnlyNoTransactions ? 'canceled' : 'blocked',
+                        'trial', 'trial_warning' => $clinic->isTrialActive()
+                            ? 'trial'
+                            : ($readOnlyNoTransactions ? 'trial_read_only' : 'blocked'),
+                        default => 'blocked',
+                    };
+                }
             }
 
         $trialEnds = null;
@@ -113,6 +122,11 @@ class MeController
         if ($status === 'blocked') {
             $payload['code'] = 'SUBSCRIPTION_REQUIRED';
             $payload['message'] = 'Tu periodo de prueba ha finalizado';
+
+            if ($clinic && strtolower(trim((string) ($clinic->status ?? ''))) === 'churned') {
+                $payload['code'] = 'TRIAL_CHURNED';
+                $payload['message'] = 'Tu trial finalizó sin conversión. Contacta soporte para reactivar tu cuenta.';
+            }
         }
 
         if ($status === 'trial_read_only') {

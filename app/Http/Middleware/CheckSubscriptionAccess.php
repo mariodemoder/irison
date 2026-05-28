@@ -10,6 +10,7 @@ class CheckSubscriptionAccess
     public function handle(Request $request, Closure $next)
     {
         $clinic = currentClinic();
+        $tenantStatus = strtolower(trim((string) ($clinic?->status ?? '')));
 
         // 1. Sin clínica
         if (! $clinic) {
@@ -21,8 +22,15 @@ class CheckSubscriptionAccess
             return $next($request);
         }
 
+        if ($tenantStatus === 'churned') {
+            return response()->json([
+                'message' => 'El trial finalizó sin conversión y la clínica fue marcada como churned',
+                'code' => 'TRIAL_CHURNED',
+            ], 403);
+        }
+
         // 3. Semana de gracia en solo lectura -> permitir consultar datos existentes
-        if ($clinic->isInReadOnlyNoTransactionsWindow()) {
+        if ($clinic->isInReadOnlyNoTransactionsWindow() || $tenantStatus === 'trial_read_only') {
             if ($request->isMethodSafe() || $this->canStartPaidPlanWhileReadOnly($request)) {
                 return $next($request);
             }

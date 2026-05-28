@@ -32,6 +32,7 @@ class RegisterController extends Controller
             'email' => $data['email'],
             'trial_ends_at' => now()->addDays(30),
             'subscription_status' => 'trial',
+            'status' => 'trial',
         ]);
 
         $user = User::create([

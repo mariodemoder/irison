@@ -64,6 +64,11 @@ Build and tests:
 - Frontend specialist: [.github/agents/MISTER FRONT.agent.md](.github/agents/MISTER%20FRONT.agent.md)
 - QA specialist: [.github/agents/irison-qa.agent.md](.github/agents/irison-qa.agent.md)
 - Deploy specialist: [.github/agents/Mr. DEPLOY.agent.md](.github/agents/Mr.%20DEPLOY.agent.md)
+- Backoffice specialist: [.github/agents/Mr. BackOffice.agent.md](.github/agents/Mr.%20BackOffice.agent.md)
+
+### QA Delegation Rule
+
+- Si se requieren pruebas específicas (feature focalizadas, regresión de módulos concretos, validaciones de contratos HTTP o hardening de escenarios de riesgo), delegar la ejecución y criterio de cobertura al agente `IRISON QA` (`.github/agents/irison-qa.agent.md`).
 
 ## Known Pitfalls
 

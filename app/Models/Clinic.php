@@ -14,13 +14,14 @@ class Clinic extends Model
     use Billable, SoftDeletes;
 
     protected $fillable = [
-        'name', 'legal_name', 'email', 'phone', 'address', 'nif', 'locality', 'province', 'country', 'zip', 'timezone', 'business_hours', 'closed_days', 'trial_ends_at', 'subscription_status', 'subscribed_at', 'invoice_background_path', 'theme_color', 'stripe_id', 'pm_type', 'pm_last_four'
+        'name', 'slug', 'legal_name', 'email', 'phone', 'address', 'nif', 'locality', 'province', 'country', 'zip', 'timezone', 'business_hours', 'closed_days', 'trial_ends_at', 'subscription_status', 'status', 'plan', 'stripe_customer_id', 'suspended_at', 'subscribed_at', 'invoice_background_path', 'theme_color', 'stripe_id', 'pm_type', 'pm_last_four'
     ];
 
     protected $casts = [
         'business_hours' => 'array',
         'closed_days' => 'array',
         'trial_ends_at' => 'datetime',
+        'suspended_at' => 'datetime',
         'subscribed_at' => 'datetime',
     ];
 
@@ -74,6 +75,16 @@ class Clinic extends Model
         return $this->hasMany(BonusType::class, 'clinic_id');
     }
 
+    public function backofficeActivities(): HasMany
+    {
+        return $this->hasMany(BackofficeClinicActivity::class, 'clinic_id');
+    }
+
+    public function ownerUser()
+    {
+        return $this->hasOne(User::class)->where('role', 'owner')->orderBy('id');
+    }
+
     public function currentSubscription()
     {
         // Preferir suscripción activa; si no existe, devolver la más reciente
@@ -87,7 +98,7 @@ class Clinic extends Model
 
     public function isTrialActive(): bool
     {
-        if ($this->normalizedSubscriptionStatus() !== 'trial') {
+        if (! in_array($this->normalizedSubscriptionStatus(), ['trial', 'trial_warning'], true)) {
             return false;
         }
 
@@ -125,7 +136,7 @@ class Clinic extends Model
             return $this->isInCancellationGracePeriod($currentDate);
         }
 
-        if ($status !== 'trial') {
+        if (! in_array($status, ['trial', 'trial_warning'], true)) {
             return false;
         }
 
@@ -203,5 +214,40 @@ class Clinic extends Model
     private function normalizedSubscriptionStatus(): string
     {
         return strtolower(trim((string) ($this->subscription_status ?? 'inactive')));
+    }
+
+    public function isSuspended(): bool
+    {
+        return $this->suspended_at !== null;
+    }
+
+    public function tenantStatus(): string
+    {
+        if ($this->isSuspended()) {
+            return 'suspended';
+        }
+
+        $status = $this->normalizedSubscriptionStatus();
+        if (in_array($status, ['canceled', 'cancelled'], true)) {
+            if ($this->isInCancellationGracePeriod()) {
+                return 'cancelled';
+            }
+
+            return 'expired';
+        }
+
+        if (in_array($status, ['trial', 'trial_warning'], true)) {
+            if ($this->isTrialActive() || $this->isInReadOnlyNoTransactionsWindow()) {
+                return 'trial';
+            }
+
+            return 'expired';
+        }
+
+        return match ($status) {
+            'active' => 'active',
+            'past_due' => 'past_due',
+            default => 'expired',
+        };
     }
 }
