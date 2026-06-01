@@ -157,6 +157,12 @@ class ClinicManagementService
         if (in_array((string) $clinic->subscription_status, ['canceled', 'cancelled', 'inactive'], true)) {
             $updates['subscription_status'] = 'active';
             $updates['subscribed_at'] = now();
+            
+            // Si la reactivamos desde backoffice y estaba cancelada, la marcamos como provider 'fake'
+            // para evitar que si el cliente intenta cancelarla de nuevo (sin haber pagado), 
+            // falle intentando llamar a un ID de Stripe ya inexistente.
+            $updates['subscription_provider'] = 'fake';
+            $updates['subscription_reference'] = 'backoffice-reactivation-' . (string) $admin->id;
 
             $subscription = $clinic->saasSubscriptions()->orderByDesc('id')->first();
             if (! $subscription) {
@@ -165,11 +171,13 @@ class ClinicManagementService
                     'status' => 'active',
                     'trial_ends_at' => null,
                     'current_period_end' => now()->addMonth(),
+                    'stripe_subscription_id' => null,
                 ]);
             } else {
                 $subscription->status = 'active';
                 $subscription->trial_ends_at = null;
                 $subscription->current_period_end = now()->addMonth();
+                $subscription->stripe_subscription_id = null; // Limpiar para evitar discrepancias
                 $subscription->save();
             }
         }
@@ -188,16 +196,23 @@ class ClinicManagementService
 
     public function cancelSubscription(AdminUser $admin, Clinic $clinic, ?string $reason = null): Clinic
     {
+        $now = now();
         $subscription = $clinic->currentSubscription();
+
+        $graceEndsAt = $now->copy()->addDays(7);
+        if ($subscription && $subscription->current_period_end && $subscription->current_period_end->isFuture()) {
+            $graceEndsAt = $subscription->current_period_end->copy();
+        }
+
         if (! $subscription) {
             $subscription = Subscription::query()->create([
                 'clinic_id' => $clinic->id,
                 'status' => 'canceled',
-                'current_period_end' => now()->addDays(7),
+                'current_period_end' => $graceEndsAt,
             ]);
         } else {
             $subscription->status = 'canceled';
-            $subscription->current_period_end = now()->addDays(7);
+            $subscription->current_period_end = $graceEndsAt;
             $subscription->save();
         }
 
@@ -208,6 +223,8 @@ class ClinicManagementService
         $this->recordActivity($admin, $clinic, 'clinic.subscription.canceled', [
             'reason' => $reason,
             'subscription_id' => $subscription->id,
+            'grace_ends_at' => $graceEndsAt->toDateTimeString(),
+            'paid_days_left' => (int) max(ceil($now->diffInSeconds($graceEndsAt, false) / 86400), 0),
         ]);
 
         return $clinic->fresh();

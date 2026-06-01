@@ -294,3 +294,17 @@ Regla de seguridad de pruebas:
 
 Delegación QA:
 - Para regresión amplia, contratos HTTP y validación de escenarios de riesgo, delegar ejecución especializada a `IRISON QA` (`.github/agents/irison-qa.agent.md`).
+
+## Última modificación (2026-06-02): ETAPA 3 Fase 1 (Hardening)
+
+- Se parametrizó la gracia de trial en `config/billing.php` (`trial_grace_days`, default 7).
+- Se añadió columna `clinics.churned_at` para trazabilidad operativa del churn.
+- `TrialLifecycleService` ahora:
+  - actualiza `status=trial_warning` junto a `subscription_status` en hitos d20/d27,
+  - marca `churned_at` al pasar a `churned`,
+  - usa gracia configurable (sin hardcode de 7 días),
+  - registra warning estructurado si no hay email válido para un hito.
+- `Clinic` usa gracia configurable para ventana de read-only de trial.
+- Cobertura actualizada en `tests/Feature/Trials/TrialLifecycleTest.php` para validar:
+  - transición de `status` a `trial_warning`,
+  - presencia de `churned_at` al marcar churn.

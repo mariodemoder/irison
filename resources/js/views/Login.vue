@@ -100,7 +100,7 @@ async function submit() {
         <BaseInput v-model="password" label="Contraseña" type="password" autocomplete="current-password" />
 
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;margin-bottom:6px;">
-          <a class="link text-sm text-gray-600">¿Has olvidado la contraseña?</a>
+          <router-link to="/forgot-password" class="link text-sm text-gray-600">¿Has olvidado la contraseña?</router-link>
         </div>
 
         <BaseButton :type="'submit'">{{ loading ? 'Entrando...' : 'Iniciar sesión' }}</BaseButton>

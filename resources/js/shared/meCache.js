@@ -7,6 +7,7 @@ export const meStatus = ref('blocked')
 export const meTrialEndsAt = ref(null)
 export const meCancellationGraceEndsAt = ref(null)
 export const meCancellationDaysLeft = ref(null)
+export const meCancellationReadOnlyDaysLeft = ref(null)
 export const meReadOnlyNoTransactions = ref(false)
 export const meCanTransact = ref(false)
 
@@ -29,6 +30,7 @@ function resetMeCache() {
   meTrialEndsAt.value = null
   meCancellationGraceEndsAt.value = null
   meCancellationDaysLeft.value = null
+  meCancellationReadOnlyDaysLeft.value = null
   meReadOnlyNoTransactions.value = false
   meCanTransact.value = false
   meLoaded = false
@@ -63,6 +65,7 @@ export async function ensureMeLoaded(options = {}) {
     meTrialEndsAt.value = res.data?.trial_ends_at || null
     meCancellationGraceEndsAt.value = res.data?.cancellation_grace_ends_at || null
     meCancellationDaysLeft.value = res.data?.cancellation_days_left ?? null
+    meCancellationReadOnlyDaysLeft.value = res.data?.cancellation_read_only_days_left ?? null
     meReadOnlyNoTransactions.value = Boolean(res.data?.read_only_no_transactions)
     meCanTransact.value = Boolean(res.data?.can_transact)
     meLoaded = true

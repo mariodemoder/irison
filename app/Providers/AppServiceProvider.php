@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\CashierSubscription;
 use App\Models\Clinic;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
@@ -28,6 +29,15 @@ class AppServiceProvider extends ServiceProvider
         Cashier::useCustomerModel(Clinic::class);
         Cashier::useSubscriptionModel(CashierSubscription::class);
         Schema::defaultStringLength(191);
+
+        ResetPassword::createUrlUsing(function (object $user, string $token): string {
+            $frontendUrl = rtrim((string) config('app.frontend_url', config('app.url')), '/');
+
+            return $frontendUrl
+                . '/reset-password?token=' . urlencode($token)
+                . '&email=' . urlencode((string) ($user->email ?? ''));
+        });
+
         // Ensure route-model binding for Patient is scoped to the authenticated user's clinic
         Route::bind('patient', function ($value) {
             $user = Auth::user();

@@ -14,7 +14,7 @@ class Clinic extends Model
     use Billable, SoftDeletes;
 
     protected $fillable = [
-        'name', 'slug', 'legal_name', 'email', 'phone', 'address', 'nif', 'locality', 'province', 'country', 'zip', 'timezone', 'business_hours', 'closed_days', 'trial_ends_at', 'subscription_status', 'status', 'plan', 'stripe_customer_id', 'suspended_at', 'subscribed_at', 'invoice_background_path', 'theme_color', 'stripe_id', 'pm_type', 'pm_last_four'
+        'name', 'slug', 'legal_name', 'email', 'phone', 'address', 'nif', 'locality', 'province', 'country', 'zip', 'timezone', 'business_hours', 'closed_days', 'trial_ends_at', 'subscription_status', 'status', 'plan', 'stripe_customer_id', 'suspended_at', 'churned_at', 'subscribed_at', 'subscription_provider', 'subscription_reference', 'invoice_background_path', 'theme_color', 'stripe_id', 'pm_type', 'pm_last_four'
     ];
 
     protected $casts = [
@@ -22,6 +22,7 @@ class Clinic extends Model
         'closed_days' => 'array',
         'trial_ends_at' => 'datetime',
         'suspended_at' => 'datetime',
+        'churned_at' => 'datetime',
         'subscribed_at' => 'datetime',
     ];
 
@@ -133,7 +134,7 @@ class Clinic extends Model
     {
         $status = $this->normalizedSubscriptionStatus();
         if (in_array($status, ['canceled', 'cancelled'], true)) {
-            return $this->isInCancellationGracePeriod($currentDate);
+            return $this->isInCancellationReadOnlyWindow($currentDate);
         }
 
         if (! in_array($status, ['trial', 'trial_warning'], true)) {
@@ -154,44 +155,89 @@ class Clinic extends Model
             return false;
         }
 
-        return $now->lessThanOrEqualTo($trialEndsAt->addDays(7));
+        $graceDays = max((int) config('billing.trial_grace_days', 7), 0);
+
+        return $now->lessThanOrEqualTo($trialEndsAt->addDays($graceDays));
     }
 
     public function isInCancellationGracePeriod(?Carbon $currentDate = null): bool
+    {
+        return $this->isInCancellationPaidWindow($currentDate);
+    }
+
+    public function isInCancellationPaidWindow(?Carbon $currentDate = null): bool
     {
         if (! in_array($this->normalizedSubscriptionStatus(), ['canceled', 'cancelled'], true)) {
             return false;
         }
 
-        $graceEndsAt = $this->cancellationGraceEndsAt();
-        if (! $graceEndsAt) {
+        $paidEndsAt = $this->cancellationGraceEndsAt();
+        if (! $paidEndsAt) {
             return false;
         }
 
         $now = ($currentDate ?? now())->copy();
 
-        return $now->lessThanOrEqualTo($graceEndsAt);
+        return $now->lessThanOrEqualTo($paidEndsAt);
+    }
+
+    public function isInCancellationReadOnlyWindow(?Carbon $currentDate = null): bool
+    {
+        if (! in_array($this->normalizedSubscriptionStatus(), ['canceled', 'cancelled'], true)) {
+            return false;
+        }
+
+        $paidEndsAt = $this->cancellationGraceEndsAt();
+        if (! $paidEndsAt) {
+            return false;
+        }
+
+        $now = ($currentDate ?? now())->copy();
+        if ($now->lessThanOrEqualTo($paidEndsAt)) {
+            return false;
+        }
+
+        $readOnlyDays = max((int) config('billing.cancellation_read_only_days', 7), 0);
+
+        return $now->lessThanOrEqualTo($paidEndsAt->addDays($readOnlyDays));
     }
 
     public function cancellationGraceDaysLeft(?Carbon $currentDate = null): ?int
     {
-        if (! $this->isInCancellationGracePeriod($currentDate)) {
-            return null;
-        }
-
-        $graceEndsAt = $this->cancellationGraceEndsAt();
-        if (! $graceEndsAt) {
+        $paidEndsAt = $this->cancellationGraceEndsAt();
+        if (! $paidEndsAt) {
             return null;
         }
 
         $now = ($currentDate ?? now())->copy();
-        $secondsLeft = $now->diffInSeconds($graceEndsAt, false);
+        
+        // Si aún estamos en el periodo pagado
+        if ($now->lessThanOrEqualTo($paidEndsAt)) {
+            $secondsLeft = $now->diffInSeconds($paidEndsAt, false);
+            return (int) max(ceil($secondsLeft / 86400), 0);
+        }
 
-        if ($secondsLeft < 0) {
+        return null;
+    }
+
+    public function cancellationReadOnlyDaysLeft(?Carbon $currentDate = null): ?int
+    {
+        if (! $this->isInCancellationReadOnlyWindow($currentDate)) {
             return null;
         }
 
-        return (int) ceil($secondsLeft / 86400);
+        $paidEndsAt = $this->cancellationGraceEndsAt();
+        if (! $paidEndsAt) {
+            return null;
+        }
+
+        $readOnlyDays = max((int) config('billing.cancellation_read_only_days', 7), 0);
+        $readOnlyEndsAt = $paidEndsAt->copy()->addDays($readOnlyDays);
+
+        $now = ($currentDate ?? now())->copy();
+        $secondsLeft = $now->diffInSeconds($readOnlyEndsAt, false);
+
+        return (int) max(ceil($secondsLeft / 86400), 0);
     }
 
     private function cancellationGraceEndsAt(): ?Carbon

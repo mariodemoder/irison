@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\PatientController;
 use App\Http\Controllers\API\ActivateAccountController;
 use App\Http\Controllers\API\RegisterController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\Auth\PasswordRecoveryController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\DashboardSummaryController;
 
@@ -41,6 +42,10 @@ Route::get('/register/activate/{user}', ActivateAccountController::class)
 
 // Login para clientes SPA — valida credenciales y devuelve token
 Route::post('/login', [AuthController::class, 'login']);
+
+// Recuperacion de contrasena para SPA
+Route::post('/password/forgot', [PasswordRecoveryController::class, 'sendResetLink']);
+Route::post('/password/reset', [PasswordRecoveryController::class, 'reset']);
 
 // Webhooks (Stripe, billing) deben ser públicos y verificarse por firma
 // Stripe webhook (recibe eventos desde Stripe)

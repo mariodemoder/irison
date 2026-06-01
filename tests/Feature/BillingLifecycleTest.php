@@ -117,10 +117,9 @@ class BillingLifecycleTest extends TestCase
             ->assertJsonPath('code', 'SUBSCRIPTION_REQUIRED');
     }
 
-    public function test_canceled_clinic_in_read_only_can_reactivate_via_fake_checkout(): void
+    public function test_canceled_clinic_keeps_full_access_while_paid_period_is_active(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-05-18 10:00:00'));
-        config()->set('billing.provider', 'fake');
 
         [$clinic, $user] = $this->createClinicAndOwner([
             'subscription_status' => 'canceled',
@@ -133,11 +132,20 @@ class BillingLifecycleTest extends TestCase
             'clinic_id' => $clinic->id,
             'status' => 'canceled',
             'trial_ends_at' => null,
-            'current_period_end' => now()->addDays(5),
+            'current_period_end' => now()->addDays(30),
             'stripe_subscription_id' => 'sub_canceled_001',
         ]);
 
         Sanctum::actingAs($user);
+
+        $meResponse = $this->getJson('/api/me');
+
+        $meResponse
+            ->assertOk()
+            ->assertJsonPath('status', 'canceled')
+            ->assertJsonPath('read_only_no_transactions', false)
+            ->assertJsonPath('can_transact', true)
+            ->assertJsonPath('code', 'SUBSCRIPTION_CANCELED');
 
         $checkoutResponse = $this->postJson('/api/billing/checkout');
 
@@ -146,13 +154,44 @@ class BillingLifecycleTest extends TestCase
             ->assertJsonPath('checkout.checkout_url', route('billing.fake.success'))
             ->assertJsonPath('payment.status', 'paid');
 
-        $meResponse = $this->getJson('/api/me');
+        $meAfterReactivation = $this->getJson('/api/me');
 
-        $meResponse
+        $meAfterReactivation
             ->assertOk()
             ->assertJsonPath('status', 'active')
             ->assertJsonPath('read_only_no_transactions', false)
             ->assertJsonPath('can_transact', true);
+    }
+
+    public function test_canceled_clinic_enters_read_only_after_paid_period_ends(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-05-18 10:00:00'));
+
+        [$clinic, $user] = $this->createClinicAndOwner([
+            'subscription_status' => 'canceled',
+            'trial_ends_at' => null,
+            'subscribed_at' => null,
+            'subscription_provider' => 'fake',
+        ]);
+
+        Subscription::create([
+            'clinic_id' => $clinic->id,
+            'status' => 'canceled',
+            'trial_ends_at' => null,
+            'current_period_end' => now()->subDays(2),
+            'stripe_subscription_id' => 'sub_canceled_002',
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $meResponse = $this->getJson('/api/me');
+
+        $meResponse
+            ->assertOk()
+            ->assertJsonPath('status', 'canceled')
+            ->assertJsonPath('read_only_no_transactions', true)
+            ->assertJsonPath('can_transact', false)
+            ->assertJsonPath('code', 'SUBSCRIPTION_CANCELED');
     }
 
     private function createClinicAndOwner(array $clinicOverrides = []): array

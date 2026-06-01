@@ -2,6 +2,8 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Landing from '../views/Landing.vue'
 import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
+import ForgotPassword from '../views/ForgotPassword.vue'
+import ResetPassword from '../views/ResetPassword.vue'
 import Dashboard from '../views/Dashboard.vue'
 import BillingRequired from '../views/BillingRequired.vue'
 import PatientsIndex from '../views/patients/Index.vue'
@@ -34,6 +36,8 @@ import ImpersonateEntry from '../views/ImpersonateEntry.vue'
 const routes = [
   { path: '/', component: Landing, meta: { publicLanding: true } },
   { path: '/login', component: Login },
+  { path: '/forgot-password', component: ForgotPassword },
+  { path: '/reset-password', component: ResetPassword },
   { path: '/impersonate', component: ImpersonateEntry },
   { path: '/register', component: Register },
   { path: '/dashboard', component: Dashboard, meta: { auth: true } },

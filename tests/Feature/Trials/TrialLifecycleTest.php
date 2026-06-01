@@ -70,6 +70,7 @@ class TrialLifecycleTest extends TestCase
 
         $clinic->refresh();
         $this->assertSame('trial_warning', $clinic->subscription_status);
+        $this->assertSame('trial_warning', $clinic->status);
         $this->assertDatabaseHas('trial_journey_events', [
             'clinic_id' => $clinic->id,
             'event_key' => 'trial_day_20',
@@ -105,6 +106,7 @@ class TrialLifecycleTest extends TestCase
         $clinic->refresh();
         $this->assertSame('churned', $clinic->status);
         $this->assertSame('inactive', $clinic->subscription_status);
+        $this->assertNotNull($clinic->churned_at);
     }
 
     public function test_skips_milestones_for_active_clinic(): void

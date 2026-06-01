@@ -46,7 +46,7 @@ Configurar al menos:
 1. Actualizar código
 
 ```bash
-cd /var/www/dueleahi
+cd /var/www/Irison
 git pull origin main
 ```
 
@@ -92,7 +92,7 @@ sudo systemctl reload nginx
 server {
     listen 80;
     server_name tu-dominio.com;
-    root /var/www/dueleahi/public;
+    root /var/www/Irison/public;
 
     index index.php index.html;
 
@@ -116,7 +116,7 @@ server {
 ### Cron (Scheduler)
 
 ```bash
-* * * * * cd /var/www/dueleahi && php artisan schedule:run >> /dev/null 2>&1
+* * * * * cd /var/www/Irison && php artisan schedule:run >> /dev/null 2>&1
 ```
 
 ### Supervisor (queue worker)
@@ -124,13 +124,13 @@ server {
 ```ini
 [program:irison-worker]
 process_name=%(program_name)s_%(process_num)02d
-command=php /var/www/dueleahi/artisan queue:work --sleep=3 --tries=3 --timeout=90
+command=php /var/www/Irison/artisan queue:work --sleep=3 --tries=3 --timeout=90
 autostart=true
 autorestart=true
 user=www-data
 numprocs=1
 redirect_stderr=true
-stdout_logfile=/var/www/dueleahi/storage/logs/worker.log
+stdout_logfile=/var/www/Irison/storage/logs/worker.log
 ```
 
 ## Storage y miniaturas

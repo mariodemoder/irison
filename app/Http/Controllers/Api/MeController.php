@@ -47,7 +47,9 @@ class MeController
                     $status = match ($clinicStatus) {
                         'active' => 'active',
                         'past_due' => 'blocked',
-                        'canceled', 'cancelled' => $readOnlyNoTransactions ? 'canceled' : 'blocked',
+                        'canceled', 'cancelled' => ($clinic->isInCancellationPaidWindow() || $readOnlyNoTransactions)
+                            ? 'canceled'
+                            : 'blocked',
                         'trial', 'trial_warning' => $clinic->isTrialActive()
                             ? 'trial'
                             : ($readOnlyNoTransactions ? 'trial_read_only' : 'blocked'),
@@ -59,12 +61,14 @@ class MeController
         $trialEnds = null;
         $cancellationGraceEndsAt = null;
         $cancellationDaysLeft = null;
+        $cancellationReadOnlyDaysLeft = null;
             if ($clinic) {
                 $trialEnds = $clinic->trial_ends_at;
                 $cancellationGraceEndsAt = $clinic->isInCancellationGracePeriod()
                     ? $clinic->currentSubscription()?->current_period_end
                     : null;
                 $cancellationDaysLeft = $clinic->cancellationGraceDaysLeft();
+                $cancellationReadOnlyDaysLeft = $clinic->cancellationReadOnlyDaysLeft();
             }
 
         $subscriptionPayments = [];
@@ -107,16 +111,21 @@ class MeController
             'status' => $status,
             'read_only_no_transactions' => $readOnlyNoTransactions,
                 'can_transact' => $clinic
-                    ? ($status === 'active' || $status === 'trial')
+                    ? ($status === 'active'
+                        || $status === 'trial'
+                        || ($status === 'canceled' && $clinic->isInCancellationPaidWindow()))
                     : false,
             'trial_ends_at' => $trialEnds,
             'cancellation_grace_ends_at' => $cancellationGraceEndsAt,
             'cancellation_days_left' => $cancellationDaysLeft,
+            'cancellation_read_only_days_left' => $cancellationReadOnlyDaysLeft,
         ];
 
         if ($status === 'canceled') {
             $payload['code'] = 'SUBSCRIPTION_CANCELED';
-            $payload['message'] = 'Suscripción cancelada: modo solo lectura durante 7 días. Si no reactivas, perderás tus datos al finalizar el plazo.';
+            $payload['message'] = $clinic && $clinic->isInCancellationPaidWindow()
+                ? 'Suscripción cancelada. Mantienes acceso completo hasta el fin de tu periodo pagado.'
+                : 'Suscripción cancelada: modo solo lectura durante el periodo de gracia. Si no reactivas, perderás tus datos al finalizar el plazo.';
         }
 
         if ($status === 'blocked') {

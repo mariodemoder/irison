@@ -283,30 +283,51 @@ class BillingController extends Controller
             ], 422);
         }
 
-        $provider = $this->resolveCancellationProvider($clinic->subscription_provider, $subscription->stripe_subscription_id);
+        $stripeSubId = trim((string) ($subscription->stripe_subscription_id ?? ''));
+        $providerName = strtolower(trim((string) ($clinic->subscription_provider ?? '')));
 
-        try {
-            $provider->cancelSubscription([
-                'clinic_id' => (int) $clinic->id,
-                'stripe_subscription_id' => $subscription->stripe_subscription_id,
-                'subscription_reference' => $clinic->subscription_reference,
-            ]);
-        } catch (\Throwable $e) {
-            Log::warning('subscription.failed', [
-                'event' => 'subscription.failed',
-                'result' => 'failed',
-                'stage' => 'cancel_subscription',
-                'clinic_id' => (int) $clinic->id,
-                'user_id' => (int) $user->id,
-                'subscription_id' => (string) ($subscription->stripe_subscription_id ?? ''),
-                'provider' => (string) ($clinic->subscription_provider ?? ''),
-                'error_code' => $this->extractBillingErrorCode($e),
-                'error_category' => $this->extractBillingErrorCategory($e),
-            ]);
+        // Solo intentamos cancelar en el proveedor externo si parece ser una suscripción real (Stripe)
+        // y no una reactivación manual o fake.
+        $isStripe = ($providerName === 'stripe' || str_starts_with($stripeSubId, 'sub_')) && $stripeSubId !== '';
 
-            return response()->json([
-                'message' => 'No se pudo cancelar la suscripcion: ' . $e->getMessage(),
-            ], 422);
+        if ($isStripe) {
+            $provider = $this->resolveCancellationProvider($providerName, $stripeSubId);
+
+            try {
+                $provider->cancelSubscription([
+                    'clinic_id' => (int) $clinic->id,
+                    'stripe_subscription_id' => $stripeSubId,
+                    'subscription_reference' => $clinic->subscription_reference,
+                ]);
+            } catch (\Throwable $e) {
+                // Si el error es que ya está cancelada o no existe en Stripe, ignoramos y procedemos con la local
+                $msg = strtolower($e->getMessage());
+                $isAlreadyDone = str_contains($msg, 'already canceled') || str_contains($msg, 'no such subscription');
+
+                if (! $isAlreadyDone) {
+                    Log::warning('subscription.failed', [
+                        'event' => 'subscription.failed',
+                        'result' => 'failed',
+                        'stage' => 'cancel_subscription',
+                        'clinic_id' => (int) $clinic->id,
+                        'user_id' => (int) $user->id,
+                        'subscription_id' => $stripeSubId,
+                        'provider' => $providerName,
+                        'error_code' => $this->extractBillingErrorCode($e),
+                        'error_category' => $this->extractBillingErrorCategory($e),
+                        'exception' => $e->getMessage(),
+                    ]);
+
+                    return response()->json([
+                        'message' => 'No se pudo cancelar la suscripcion en el proveedor: ' . $e->getMessage(),
+                    ], 422);
+                }
+
+                Log::info('subscription.cancel.stripe_already_done', [
+                    'clinic_id' => $clinic->id,
+                    'stripe_subscription_id' => $stripeSubId,
+                ]);
+            }
         }
 
         $subscription->status = 'canceled';

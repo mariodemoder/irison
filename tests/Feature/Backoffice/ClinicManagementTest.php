@@ -70,10 +70,12 @@ class ClinicManagementTest extends TestCase
         $admin = $this->createAdmin(AdminUser::ROLE_BILLING);
         [$clinic] = $this->createClinicWithOwner('Clinic Billing', 'billing@test.local');
 
-        Subscription::query()->create([
+        $paidUntil = now()->addMonth();
+
+        $subscription = Subscription::query()->create([
             'clinic_id' => $clinic->id,
             'status' => 'active',
-            'current_period_end' => now()->addMonth(),
+            'current_period_end' => $paidUntil,
         ]);
 
         $this->actingAs($admin, 'admin')
@@ -81,13 +83,43 @@ class ClinicManagementTest extends TestCase
             ->assertRedirect();
 
         $clinic->refresh();
+        $subscription->refresh();
         $this->assertSame('canceled', $clinic->subscription_status);
-
-        $this->actingAs($admin, 'admin')
-            ->patch('/backoffice/clinics/' . $clinic->id . '/change-plan', ['plan' => 'enterprise', 'reason' => 'upgrade'])
-            ->assertRedirect();
+        $this->assertSame($paidUntil->toDateString(), $subscription->current_period_end?->toDateString());
 
         $this->assertSame('enterprise', (string) $clinic->fresh()->plan);
+    }
+
+    public function test_reactivating_canceled_clinic_marks_as_fake_provider_to_avoid_stripe_conflicts(): void
+    {
+        $admin = $this->createAdmin(AdminUser::ROLE_SUPER_ADMIN);
+        [$clinic] = $this->createClinicWithOwner('Reactivate Fix', 'rev@test.local');
+        
+        // Simular que era Stripe y fue cancelada
+        $clinic->update([
+            'subscription_status' => 'canceled',
+            'subscription_provider' => 'stripe',
+            'subscription_reference' => 'sub_old_stripe_id'
+        ]);
+
+        Subscription::query()->create([
+            'clinic_id' => $clinic->id,
+            'status' => 'canceled',
+            'stripe_subscription_id' => 'sub_old_stripe_id'
+        ]);
+
+        // Reactivar desde backoffice
+        $this->actingAs($admin, 'admin')
+            ->patch('/backoffice/clinics/' . $clinic->id . '/reactivate', ['reason' => 'test fix'])
+            ->assertRedirect();
+
+        $clinic->refresh();
+        $this->assertEquals('active', $clinic->subscription_status);
+        $this->assertEquals('fake', $clinic->subscription_provider);
+        $this->assertStringContainsString('backoffice-reactivation', $clinic->subscription_reference);
+        
+        $subscription = $clinic->currentSubscription();
+        $this->assertNull($subscription->stripe_subscription_id);
     }
 
     public function test_super_admin_can_start_impersonation_and_store_context(): void

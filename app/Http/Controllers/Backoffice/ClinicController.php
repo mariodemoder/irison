@@ -93,10 +93,15 @@ class ClinicController extends Controller
     {
         $reason = $request->validated()['reason'] ?? null;
 
-        $this->clinicManagementService->cancelSubscription($request->user('admin'), $clinic, $reason);
+        $clinic = $this->clinicManagementService->cancelSubscription($request->user('admin'), $clinic, $reason);
+
+        $daysLeft = $clinic->cancellationGraceDaysLeft();
+        $daysText = $daysLeft === null
+            ? 'sin periodo pagado pendiente'
+            : ($daysLeft === 1 ? '1 día' : $daysLeft . ' días');
 
         return redirect()->route('backoffice.clinics.show', $clinic)
-            ->with('status', 'Suscripción cancelada en período de gracia.');
+            ->with('status', 'Suscripción cancelada. Quedan ' . $daysText . ' de uso pagado; luego entrará en modo solo lectura.');
     }
 
     public function changePlan(ClinicActionRequest $request, Clinic $clinic): RedirectResponse

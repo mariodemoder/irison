@@ -1,10 +1,24 @@
 @extends('backoffice.layout')
 
 @section('content')
+    @php
+        $subscriptionStatus = strtolower((string) ($clinic->subscription_status ?? 'inactive'));
+        $operationalStatus = strtolower((string) ($clinic->status ?? ''));
+        $isGreenStatus = in_array($subscriptionStatus, ['trial', 'trial_warning', 'active'], true);
+        $isRedStatus = in_array($subscriptionStatus, ['canceled', 'cancelled'], true)
+            || in_array($operationalStatus, ['trial_read_only', 'churned'], true)
+            || ! $isGreenStatus;
+        $paidDaysLeft = $clinic->cancellationGraceDaysLeft();
+    @endphp
+
     <div class="mb-4 flex items-center justify-between">
         <div>
-            <h2 class="text-2xl font-semibold">{{ $clinic->name }}</h2>
-            <p class="text-sm text-slate-600">Tenant #{{ $clinic->id }} · Estado: {{ $clinic->tenantStatus() }}</p>
+            <h2 class="text-3xl font-semibold leading-tight">{{ $clinic->name }}</h2>
+            <p class="mt-1 text-lg text-slate-700">{{ $clinic->email ?: 'Sin email de contacto' }}</p>
+            <p class="text-base text-slate-600">
+                Tenant #{{ $clinic->id }} · Estado:
+                <span class="font-semibold {{ $isRedStatus ? 'text-rose-700' : 'text-emerald-700' }}">{{ $clinic->tenantStatus() }}</span>
+            </p>
         </div>
         <div class="flex gap-2">
             @if (in_array(auth('admin')->user()?->role, ['super_admin', 'support'], true))
@@ -18,9 +32,19 @@
         <article class="rounded bg-white p-4 shadow-sm">
             <h3 class="text-lg font-medium">Datos</h3>
             <dl class="mt-3 space-y-2 text-sm">
+                <div><dt class="text-slate-500">Nombre clínica</dt><dd class="text-lg font-semibold text-slate-900">{{ $clinic->name }}</dd></div>
+                <div><dt class="text-slate-500">Email de contacto</dt><dd class="text-base text-slate-800">{{ $clinic->email ?: 'Sin email de contacto' }}</dd></div>
                 <div><dt class="text-slate-500">Slug</dt><dd>{{ $clinic->slug ?: '-' }}</dd></div>
                 <div><dt class="text-slate-500">Plan</dt><dd>{{ $clinic->plan ?: 'basic' }}</dd></div>
                 <div><dt class="text-slate-500">Subscription status</dt><dd>{{ $clinic->subscription_status ?: '-' }}</dd></div>
+                @if (in_array($subscriptionStatus, ['canceled', 'cancelled'], true))
+                    <div>
+                        <dt class="text-slate-500">Días pagos restantes</dt>
+                        <dd class="font-semibold {{ ($paidDaysLeft ?? 0) > 0 ? 'text-emerald-700' : 'text-rose-700' }}">
+                            {{ $paidDaysLeft === null ? '0 días' : ($paidDaysLeft === 1 ? '1 día' : $paidDaysLeft . ' días') }}
+                        </dd>
+                    </div>
+                @endif
                 <div><dt class="text-slate-500">Trial ends at</dt><dd>{{ $clinic->trial_ends_at?->format('Y-m-d H:i') ?: '-' }}</dd></div>
                 <div><dt class="text-slate-500">Suspended at</dt><dd>{{ $clinic->suspended_at?->format('Y-m-d H:i') ?: '-' }}</dd></div>
                 <div><dt class="text-slate-500">Stripe customer</dt><dd>{{ $clinic->stripe_customer_id ?: $clinic->stripe_id ?: '-' }}</dd></div>

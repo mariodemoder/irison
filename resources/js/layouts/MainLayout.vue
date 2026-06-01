@@ -78,10 +78,17 @@
         </div>
       </header>
 
-      <div v-if="showCanceledBanner" class="subscription-canceled-banner">
+      <div v-if="showCanceledPaidBanner" class="subscription-canceled-banner">
         <strong>Suscripción cancelada.</strong>
-        Tu cuenta estará en modo solo lectura durante 7 días. Si no reactivas, tus datos se eliminarán al finalizar ese plazo.
-        <span v-if="cancellationDaysLeftLabel" class="banner-days">Quedan {{ cancellationDaysLeftLabel }}.</span>
+        Tu cuenta está activa hasta completar el periodo ya pagado.
+        <span v-if="cancellationDaysLeftLabel" class="banner-days">Quedan {{ cancellationDaysLeftLabel }} de acceso total.</span>
+        Luego pasará a modo solo lectura durante 7 días extra.
+      </div>
+
+      <div v-if="showCanceledReadOnlyBanner" class="subscription-canceled-banner">
+        <strong>Suscripción finalizada.</strong>
+        Tu cuenta está en modo solo lectura. Si no reactivas, tus datos se eliminarán próximamente.
+        <span v-if="cancellationReadOnlyDaysLeftLabel" class="banner-days">Quedan {{ cancellationReadOnlyDaysLeftLabel }} de gracia.</span>
       </div>
 
       <div v-if="showTrialReadOnlyBanner" class="subscription-canceled-banner subscription-canceled-banner--action">
@@ -133,6 +140,7 @@ import {
   meStatus,
   meTrialEndsAt,
   meCancellationDaysLeft,
+  meCancellationReadOnlyDaysLeft,
   meReadOnlyNoTransactions,
   meCanTransact,
   ensureMeLoaded,
@@ -168,6 +176,7 @@ const clinic = meClinic
 const status = meStatus
 const trial_ends_at = meTrialEndsAt
 const cancellationDaysLeft = meCancellationDaysLeft
+const cancellationReadOnlyDaysLeft = meCancellationReadOnlyDaysLeft
 const readOnlyNoTransactions = meReadOnlyNoTransactions
 const canTransact = meCanTransact
 
@@ -220,16 +229,26 @@ const isReadOnlyNoTransactions = computed(() => {
   return false
 })
 
-const showCanceledBanner = computed(() => {
-  return (status.value === 'canceled' || status.value === 'cancelled') && isReadOnlyNoTransactions.value
+const showCanceledPaidBanner = computed(() => {
+  return (status.value === 'canceled' || status.value === 'cancelled') && canTransact.value
+})
+
+const showCanceledReadOnlyBanner = computed(() => {
+  return (status.value === 'canceled' || status.value === 'cancelled') && !canTransact.value && readOnlyNoTransactions.value
 })
 
 const showTrialReadOnlyBanner = computed(() => {
-  return status.value === 'trial_read_only' && isReadOnlyNoTransactions.value
+  return status.value === 'trial_read_only' && readOnlyNoTransactions.value
 })
 
 const cancellationDaysLeftLabel = computed(() => {
   const days = Number(cancellationDaysLeft.value ?? 0)
+  if (!Number.isFinite(days) || days <= 0) return ''
+  return days === 1 ? '1 día' : `${days} días`
+})
+
+const cancellationReadOnlyDaysLeftLabel = computed(() => {
+  const days = Number(cancellationReadOnlyDaysLeft.value ?? 0)
   if (!Number.isFinite(days) || days <= 0) return ''
   return days === 1 ? '1 día' : `${days} días`
 })

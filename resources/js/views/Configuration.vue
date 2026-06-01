@@ -1278,7 +1278,7 @@ async function confirmCancelSubscription() {
       progressClassName: 'toast-delete-progress',
     })
     showCancelSubscriptionModal.value = false
-    await load()
+    window.location.reload()
   } catch (e) {
     const message = e?.response?.data?.message || 'No se pudo cancelar la suscripción'
     toast.error(message)

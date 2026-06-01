@@ -17,8 +17,8 @@ class CheckSubscriptionAccess
             return response()->json(['message' => 'No clinic'], 403);
         }
 
-        // 2. Suscripción activa o trial vigente -> OK
-        if ($clinic->isSubscribed() || $clinic->isTrialActive()) {
+        // 2. Suscripción activa, trial vigente o cancelada con periodo pagado vigente -> OK
+        if ($clinic->isSubscribed() || $clinic->isTrialActive() || $clinic->isInCancellationPaidWindow()) {
             return $next($request);
         }
 

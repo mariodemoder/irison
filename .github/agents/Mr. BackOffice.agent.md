@@ -62,6 +62,44 @@ Estados observables por clínica:
 
 El backoffice consume y monitorea esta lógica; no la duplica de forma divergente.
 
+## Teoria operativa de suscripcion (producto + backoffice)
+
+### Ciclo principal
+
+1. Alta de clinica
+- La clinica nace en `trial` con `trial_ends_at`.
+- Backoffice puede monitorear onboarding, extender trial o intervenir por soporte.
+
+2. Paso a pago recurrente
+- Cuando se confirma pago (checkout/webhook/fake local), la clinica pasa a `active`.
+- Operativamente: acceso completo y continuidad sin hitos de trial pendientes.
+- Backoffice monitorea conversiones, plan y salud de cobro.
+
+3. Cancelacion de suscripcion
+- La clinica pasa a `canceled` (o `cancelled`) y entra en ventana de gracia de solo lectura.
+- Durante esta ventana puede reactivar y volver a `active`.
+- Backoffice gestiona cancelaciones, reactivaciones y comunicaciones operativas.
+
+4. Fin de trial sin conversion
+- Al vencer trial se activa `trial_read_only` (bloqueo de transacciones, lectura permitida).
+- Si no convierte dentro de la gracia configurable (`trial_grace_days`), pasa a `churned`.
+- `churned` significa perdida de conversion del trial y salida del flujo activo.
+
+### Como trabaja backoffice con este lifecycle
+
+- Observa estado real de cada clinica (`subscription_status` + `status` operativo).
+- No rompe ni duplica reglas de billing del producto; las orquesta y audita.
+- Ejecuta intervenciones seguras por rol:
+  - `support`: soporte de lifecycle (trial, suspension/reactivacion, diagnostico).
+  - `billing`: cancelacion, cambio de plan y seguimiento de cobros.
+  - `super_admin`: control total + impersonate.
+- Mantiene trazabilidad de acciones sensibles (quien, sobre que clinica, resultado, contexto).
+- Usa scheduler para automatizacion de lifecycle:
+  - deteccion de vencimientos,
+  - hitos email,
+  - paso a read-only,
+  - marcado de churn.
+
 ## Implementación base actual
 
 - Modelo: `App\Models\AdminUser`
@@ -162,6 +200,18 @@ Duración objetivo: 3-4 días.
   - revocacion de token al detener impersonacion y en logout admin
 - Impacto operativo esperado:
   - menor soporte manual al poder reproducir incidencias dentro del tenant real sin pedir credenciales del cliente.
+
+## Ultima modificacion documentada (2026-06-02)
+
+- ETAPA 3 Fase 1 (hardening de lifecycle) implementada:
+  - `trial_grace_days` configurable en `config/billing.php`.
+  - columna `clinics.churned_at` agregada para auditoria de churn.
+  - `TrialLifecycleService` alineado para:
+    - setear `status=trial_warning` en d20/d27,
+    - marcar `churned_at` al pasar a `churned`,
+    - usar gracia configurable,
+    - loguear warning si no hay recipient valido para email de hito.
+- Pruebas ajustadas y verdes en `tests/Feature/Trials/TrialLifecycleTest.php`.
 
 ## Estructura de documentacion (backend)
 

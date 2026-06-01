@@ -1,4 +1,4 @@
-# AI Agent Guide for dueleahi
+# AI Agent Guide for Irison
 
 This file gives coding agents the minimum project context to be productive quickly.
 
@@ -86,6 +86,19 @@ Build and tests:
 - Keep toast plugin configuration centralized in `resources/js/services/toastConfig.js` and registered once in `resources/js/app.js`.
 - Keep toast visual language centralized in `resources/css/app.css` using the Irison classes (`.irison-toast`, variant colors, progress bar, close button).
 - Billing lifecycle coverage lives in `tests/Feature/BillingLifecycleTest.php`; keep trial, canceled, read-only, and reactivation paths aligned with `/api/me`.
+
+## Auth Recovery Shortcut (Agent)
+
+- Endpoints SPA públicas para recuperación de contraseña:
+   - `POST /api/password/forgot` con `{ email }`.
+   - `POST /api/password/reset` con `{ token, email, password, password_confirmation }`.
+- Enlace desde login SPA: `resources/js/views/Login.vue` -> ruta `/forgot-password`.
+- Vistas SPA del flujo:
+   - `resources/js/views/ForgotPassword.vue`
+   - `resources/js/views/ResetPassword.vue`
+- URL del correo de reset está redirigida a frontend en `AppServiceProvider` usando `ResetPassword::createUrlUsing(...)` con `/reset-password?token=...&email=...`.
+- Atajo de validación rápida para agentes:
+   - Ejecutar `php artisan test tests/Feature/Api/Auth/PasswordRecoveryApiTest.php`
 
 ## Billing Error Handling (Stripe)
 

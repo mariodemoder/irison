@@ -1,6 +1,6 @@
 # Production Checklist (MVP Seguro)
 
-Checklist operativo para preparar y desplegar Dueleahi en producción con riesgo controlado.
+Checklist operativo para preparar y desplegar Irison en producción con riesgo controlado.
 
 ## 1) Pre-Deploy
 
@@ -43,7 +43,7 @@ Checklist operativo para preparar y desplegar Dueleahi en producción con riesgo
 ## 2) Deploy
 
 ```bash
-cd /var/www/dueleahi
+cd /var/www/Irison
 git pull origin main
 composer install --no-dev --optimize-autoloader
 npm ci

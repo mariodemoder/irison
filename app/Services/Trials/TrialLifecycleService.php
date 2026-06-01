@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\Schema;
 
 class TrialLifecycleService
 {
+    private const DEFAULT_TRIAL_GRACE_DAYS = 7;
+
     public function process(?Carbon $now = null): array
     {
         $now = ($now ?? now())->copy();
@@ -101,6 +103,13 @@ class TrialLifecycleService
 
         if ($recipient !== null) {
             Mail::to($recipient)->send(new TrialLifecycleMail($clinic, $eventKey, $subject, $headline, $message));
+        } else {
+            Log::warning('trial.milestone.recipient_invalid', [
+                'event' => 'trial.milestone.recipient_invalid',
+                'result' => 'skipped',
+                'clinic_id' => $clinic->id,
+                'milestone' => $eventKey,
+            ]);
         }
 
         $this->markEventAsSent($clinic, $eventKey, [
@@ -110,6 +119,7 @@ class TrialLifecycleService
 
         if (in_array($days, [20, 27], true) && $clinic->subscription_status === 'trial') {
             $clinic->subscription_status = 'trial_warning';
+            $clinic->status = 'trial_warning';
             $clinic->save();
         }
 
@@ -162,13 +172,14 @@ class TrialLifecycleService
             return false;
         }
 
-        $churnAt = $clinic->trial_ends_at->copy()->addDays(7);
+        $churnAt = $clinic->trial_ends_at->copy()->addDays($this->trialGraceDays());
         if ($now->lessThan($churnAt)) {
             return false;
         }
 
         $clinic->status = 'churned';
         $clinic->subscription_status = 'inactive';
+        $clinic->churned_at = $now->copy();
         $clinic->save();
 
         Log::info('trial.churned', [
@@ -254,5 +265,10 @@ class TrialLifecycleService
         }
 
         return substr($normalized, strpos($normalized, '@') + 1) ?: null;
+    }
+
+    private function trialGraceDays(): int
+    {
+        return max((int) config('billing.trial_grace_days', self::DEFAULT_TRIAL_GRACE_DAYS), 0);
     }
 }

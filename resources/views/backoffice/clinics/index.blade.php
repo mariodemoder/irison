@@ -38,7 +38,7 @@
             <thead class="bg-slate-100 text-left">
                 <tr>
                     <th class="px-3 py-2">ID</th>
-                    <th class="px-3 py-2">Nombre</th>
+                    <th class="px-3 py-2">Clínica / Contacto</th>
                     <th class="px-3 py-2">Slug</th>
                     <th class="px-3 py-2">Plan</th>
                     <th class="px-3 py-2">Estado SaaS</th>
@@ -48,12 +48,27 @@
             </thead>
             <tbody>
                 @forelse ($clinics as $clinic)
+                    @php
+                        $subscriptionStatus = strtolower((string) ($clinic->subscription_status ?? 'inactive'));
+                        $operationalStatus = strtolower((string) ($clinic->status ?? ''));
+                        $isGreenStatus = in_array($subscriptionStatus, ['trial', 'trial_warning', 'active'], true);
+                        $isRedStatus = in_array($subscriptionStatus, ['canceled', 'cancelled'], true)
+                            || in_array($operationalStatus, ['trial_read_only', 'churned'], true)
+                            || ! $isGreenStatus;
+                    @endphp
                     <tr class="border-t border-slate-100">
                         <td class="px-3 py-2">{{ $clinic->id }}</td>
-                        <td class="px-3 py-2">{{ $clinic->name }}</td>
+                        <td class="px-3 py-2">
+                            <div class="text-lg font-semibold leading-tight">{{ $clinic->name }}</div>
+                            <div class="mt-1 text-base text-slate-600">{{ $clinic->email ?: 'Sin email de contacto' }}</div>
+                        </td>
                         <td class="px-3 py-2">{{ $clinic->slug ?: '-' }}</td>
                         <td class="px-3 py-2">{{ $clinic->plan ?: 'basic' }}</td>
-                        <td class="px-3 py-2">{{ $clinic->tenantStatus() }}</td>
+                        <td class="px-3 py-2">
+                            <span class="text-base font-semibold {{ $isRedStatus ? 'text-rose-700' : 'text-emerald-700' }}">
+                                {{ $clinic->tenantStatus() }}
+                            </span>
+                        </td>
                         <td class="px-3 py-2">{{ $clinic->trial_ends_at?->format('Y-m-d H:i') ?: '-' }}</td>
                         <td class="px-3 py-2">
                             <a class="rounded border border-slate-300 px-2 py-1 hover:bg-slate-50" href="{{ route('backoffice.clinics.show', $clinic) }}">Ver</a>
