@@ -29,10 +29,12 @@ import NotificationsIndex from '../views/notifications/Index.vue'
 import NotificationsShow from '../views/notifications/Show.vue'
 import Privacy from '../views/Privacy.vue'
 import Terms from '../views/Terms.vue'
+import ImpersonateEntry from '../views/ImpersonateEntry.vue'
 
 const routes = [
   { path: '/', component: Landing, meta: { publicLanding: true } },
   { path: '/login', component: Login },
+  { path: '/impersonate', component: ImpersonateEntry },
   { path: '/register', component: Register },
   { path: '/dashboard', component: Dashboard, meta: { auth: true } },
   { path: '/profile', component: Profile, meta: { auth: true } },

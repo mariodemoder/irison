@@ -1,0 +1,23 @@
+# Documentacion Irison (Indice)
+
+Este directorio centraliza la documentacion oficial del backend y operaciones.
+
+## Mapa principal
+
+- `backoffice/`: arquitectura y operacion del panel interno.
+- `backoffice/usuario/`: manuales para usuarios internos de backoffice.
+- `cliente/`: guias para cliente final (clinicas de Irison).
+- `deployment/`: despliegue e infraestructura.
+- `documentation-plan.md`: plan de informacion, ownership y roadmap de docs.
+
+## Reglas de mantenimiento
+
+- Cada modulo nuevo debe incluir una seccion de uso operativo.
+- Toda accion sensible debe documentar permisos, precondiciones y rollback.
+- Si una ruta o flujo cambia, actualizar docs en el mismo PR.
+- Evitar duplicacion de contenido: usar enlaces entre documentos.
+
+## Audiencias
+
+- Backoffice interno: soporte, billing, super_admin.
+- Cliente Irison: owner de clinica y equipo operativo de la clinica.

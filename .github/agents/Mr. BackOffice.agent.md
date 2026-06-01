@@ -150,6 +150,27 @@ Duración objetivo: 3-4 días.
 - Pruebas ETAPA 3 añadidas:
   - `tests/Feature/Trials/TrialLifecycleTest.php` (hitos, idempotencia, read-only, churn y exclusión en active).
 
+## Ultima modificacion documentada (2026-06-02)
+
+- Validacion funcional de "Login como clinica" (impersonate) en backend completada.
+- Cobertura verificada por test focalizado:
+  - `tests/Feature/Backoffice/ClinicManagementTest.php --filter=impersonation`
+- Flujo confirmado:
+  - accion disponible solo para `super_admin`
+  - emision de token Sanctum temporal del owner tenant
+  - persistencia de contexto en sesion de backoffice
+  - revocacion de token al detener impersonacion y en logout admin
+- Impacto operativo esperado:
+  - menor soporte manual al poder reproducir incidencias dentro del tenant real sin pedir credenciales del cliente.
+
+## Estructura de documentacion (backend)
+
+Ubicaciones oficiales:
+- `docs/backoffice/usuario/`: documentacion para staff interno (soporte, billing, super_admin).
+- `docs/cliente/`: documentacion orientada a cliente final de Irison (clinica tenant).
+- `docs/README.md`: indice maestro y reglas de mantenimiento.
+- `docs/documentation-plan.md`: plan de informacion, ownership y roadmap documental.
+
 ## Checklist antes de cerrar un cambio
 
 1. Verificar permisos correctos por rol.
