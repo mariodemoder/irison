@@ -14,6 +14,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\ValidationException;
 
 class ClinicManagementService
 {
@@ -99,6 +100,12 @@ class ClinicManagementService
 
     public function extendTrial(AdminUser $admin, Clinic $clinic, int $days, ?string $reason = null): Clinic
     {
+        if (! in_array(strtolower(trim((string) $clinic->subscription_status)), ['trial', 'trial_warning'], true)) {
+            throw ValidationException::withMessages([
+                'action' => 'Solo se puede extender el trial cuando la clínica está en trial.',
+            ]);
+        }
+
         $base = $clinic->trial_ends_at && $clinic->trial_ends_at->isFuture()
             ? $clinic->trial_ends_at->copy()
             : now();
@@ -122,6 +129,12 @@ class ClinicManagementService
 
     public function suspend(AdminUser $admin, Clinic $clinic, ?string $reason = null): Clinic
     {
+        if ($clinic->isSuspended()) {
+            throw ValidationException::withMessages([
+                'action' => 'La clínica ya está suspendida.',
+            ]);
+        }
+
         $updates = [];
         if ($this->hasClinicColumn('suspended_at')) {
             $updates['suspended_at'] = now();
@@ -145,6 +158,15 @@ class ClinicManagementService
 
     public function reactivate(AdminUser $admin, Clinic $clinic, ?string $reason = null): Clinic
     {
+        $subscriptionStatus = strtolower(trim((string) $clinic->subscription_status));
+        $canReactivate = $clinic->isSuspended() || in_array($subscriptionStatus, ['canceled', 'cancelled', 'inactive'], true);
+
+        if (! $canReactivate) {
+            throw ValidationException::withMessages([
+                'action' => 'La clínica ya está activa; no se puede reactivar.',
+            ]);
+        }
+
         $updates = [];
         if ($this->hasClinicColumn('suspended_at')) {
             $updates['suspended_at'] = null;
@@ -196,6 +218,12 @@ class ClinicManagementService
 
     public function cancelSubscription(AdminUser $admin, Clinic $clinic, ?string $reason = null): Clinic
     {
+        if (in_array(strtolower(trim((string) $clinic->subscription_status)), ['canceled', 'cancelled'], true)) {
+            throw ValidationException::withMessages([
+                'action' => 'La clínica ya tiene la suscripción cancelada.',
+            ]);
+        }
+
         $now = now();
         $subscription = $clinic->currentSubscription();
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\Auth\PasswordRecoveryLimiter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -11,6 +12,10 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    public function __construct(private readonly PasswordRecoveryLimiter $passwordRecoveryLimiter)
+    {
+    }
+
     public function login(Request $request)
     {
         $data = $request->validate([
@@ -52,6 +57,8 @@ class AuthController extends Controller
                 'message' => 'Debes activar tu cuenta desde el correo antes de iniciar sesión.',
             ], 403);
         }
+
+        $this->passwordRecoveryLimiter->reset((string) $user->email);
 
         $token = $user->createToken('spa')->plainTextToken;
 

@@ -1,11 +1,10 @@
 <template>
   <div class="billing-wrapper">
     <div class="billing-card">
-        <h1 class="title">Tu periodo de prueba ha finalizado</h1>
+        <h1 class="title">{{ headlineText }}</h1>
 
         <p class="subtitle">
-          Para seguir usando la plataforma y no perder tus datos,
-          necesitas activar tu suscripción.
+          {{ subtitleText }}
         </p>
 
         <form @submit.prevent="startCheckout" class="space-y-4">
@@ -56,7 +55,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Swal from 'sweetalert2'
 import ErrorAlert from '../components/ErrorAlert.vue'
@@ -72,6 +71,43 @@ const confirming = ref(false)
 const info = ref('')
 const showLocalFallbackAction = ref(false)
 const activatingLocal = ref(false)
+const status = ref('blocked')
+const trialEndsAt = ref(null)
+
+const trialDaysLeft = computed(() => {
+  if (!trialEndsAt.value) return null
+  const end = new Date(trialEndsAt.value)
+  const now = new Date()
+  const diff = end.getTime() - now.getTime()
+  return Math.ceil(diff / (1000 * 60 * 60 * 24))
+})
+
+const trialExpired = computed(() => {
+  if (status.value === 'trial_read_only' || status.value === 'blocked') return true
+  if (status.value === 'trial') {
+    return Number(trialDaysLeft.value ?? 0) <= 0
+  }
+  return false
+})
+
+const headlineText = computed(() => {
+  if (trialExpired.value) return 'Tu periodo de prueba ha finalizado'
+  return 'Nos alegra que quieras seguir con Irison'
+})
+
+const subtitleText = computed(() => {
+  if (trialExpired.value) {
+    return 'Para seguir usando la plataforma y no perder tus datos, necesitas activar tu suscripción.'
+  }
+
+  const days = Number(trialDaysLeft.value ?? 0)
+  if (Number.isFinite(days) && days > 0) {
+    const label = days === 1 ? '1 día' : `${days} días`
+    return `Tu prueba sigue activa (${label} restantes). Puedes activar tu suscripción ahora y continuar con total tranquilidad.`
+  }
+
+  return 'Tu prueba sigue activa. Puedes activar tu suscripción ahora y continuar con total tranquilidad.'
+})
 
 async function showSubscriberWelcomePopup() {
   await Swal.fire({
@@ -84,7 +120,7 @@ async function showSubscriberWelcomePopup() {
           <path d="M8 14c1 1.3 2.4 2 4 2s3-.7 4-2" stroke="#111827" stroke-width="1.6" stroke-linecap="round" />
         </svg>
         <div style="font-weight:700;color:#0f172a;">Enhorabuena</div>
-        <div style="color:#334155;">Ya eres un suscriptor activo en Irisis</div>
+        <div style="color:#334155;">Ya eres un suscriptor activo en Irisos</div>
       </div>
     `,
     showConfirmButton: false,
@@ -161,6 +197,14 @@ async function confirmCheckoutReturn() {
 }
 
 onMounted(async () => {
+  try {
+    const me = await api.get('/me')
+    status.value = String(me.data?.status || 'blocked')
+    trialEndsAt.value = me.data?.trial_ends_at || null
+  } catch (_) {
+    // Si falla /me mantenemos el texto por defecto conservador (trial vencido).
+  }
+
   if (route.query.checkout === 'success' || route.query.session_id) {
     await confirmCheckoutReturn()
   }

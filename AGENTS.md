@@ -92,19 +92,59 @@ Build and tests:
 - Endpoints SPA públicas para recuperación de contraseña:
    - `POST /api/password/forgot` con `{ email }`.
    - `POST /api/password/reset` con `{ token, email, password, password_confirmation }`.
+- Límite operativo: máximo 4 correos de recuperación por cuenta. Desde el intento 5 no se envía correo y la API devuelve `code=PASSWORD_RESET_LIMIT_REACHED` con el mensaje de contacto técnico.
+- El contador se reinicia cuando el usuario inicia sesión correctamente (`AuthController@login`).
 - Enlace desde login SPA: `resources/js/views/Login.vue` -> ruta `/forgot-password`.
 - Vistas SPA del flujo:
    - `resources/js/views/ForgotPassword.vue`
    - `resources/js/views/ResetPassword.vue`
 - URL del correo de reset está redirigida a frontend en `AppServiceProvider` usando `ResetPassword::createUrlUsing(...)` con `/reset-password?token=...&email=...`.
 - Atajo de validación rápida para agentes:
-   - Ejecutar `php artisan test tests/Feature/Api/Auth/PasswordRecoveryApiTest.php`
+  - Prueba manual local en Mailpit: abrir `http://127.0.0.1:8025/`, solicitar recuperación 4 veces con el mismo email y verificar que solo llegan 4 correos; en el intento 5 validar que no llega correo y se muestra el mensaje técnico en la UI.
 
 ## Billing Error Handling (Stripe)
 
 - If Stripe is unreachable while creating checkout, backend returns `503` with `code=STRIPE_UNREACHABLE` from `app/Http/Controllers/BillingController.php`.
 - Billing UI fallback for this case lives in `resources/js/views/BillingRequired.vue` and shows a local activation action only in dev.
 - Local fallback uses `POST /api/subscribe/fake` (`app/Http/Controllers/Api/FakeSubscribeController.php`) to avoid leaving trial/canceled clinics blocked in read-only mode during local outages.
+
+## Billing / Backoffice Shortcuts (Agent)
+
+**Stripe customer sync is mandatory for visibility in Backoffice**
+- Backoffice invoice listing depends on clinic Stripe customer IDs.
+- Keep Stripe customer persisted on clinic in both fields:
+   - `clinics.stripe_id`
+   - `clinics.stripe_customer_id`
+- Required write points:
+   - `app/Http/Controllers/BillingController.php` (`confirmCheckout`)
+   - `app/Http/Controllers/Api/StripeWebhookController.php` (`checkout.session.completed`)
+
+**Backoffice invoices must use resilient customer resolution**
+- In `app/Http/Controllers/Backoffice/ClinicController.php` (`loadStripeInvoices`), resolve customer IDs in this order:
+   1. `clinic.stripe_id`
+   2. `clinic.stripe_customer_id`
+   3. latest `subscriptions.stripe_customer_id`
+   4. fallback lookup in Stripe by clinic email
+- Merge invoices across all resolved customer IDs and dedupe by Stripe invoice ID.
+
+**`clinic.subscribed_at` must be set on subscription activation**
+- Ensure activation paths set `clinic.subscribed_at` to now:
+   - `POST /api/subscribe` (`app/Http/Controllers/Api/SubscribeController.php`)
+   - `POST /api/subscribe/fake` (`app/Http/Controllers/Api/FakeSubscribeController.php`)
+   - `POST /api/billing/confirm` (`app/Http/Controllers/BillingController.php`)
+   - Stripe webhook `checkout.session.completed` (`app/Http/Controllers/Api/StripeWebhookController.php`)
+- Webhook hardening: do not rely only on `customer_email`; support fallback by `metadata.clinic_id` and by Stripe customer ID.
+
+**Pre-payment data gate (Clinic tab)**
+- Before activating paid plan from configuration, require:
+   - valid Spanish tax ID (DNI/NIE/CIF)
+   - non-empty clinic address
+- Frontend guard is in `resources/js/views/Configuration.vue` (buttons disabled + toast + redirect to Clinic tab).
+- Keep backend checks aligned when adding new activation entry points.
+
+**BillingRequired copy should be state-aware**
+- In `resources/js/views/BillingRequired.vue`, show urgency copy only when trial is expired (`blocked` / `trial_read_only`).
+- If trial is still active, show positive onboarding copy and include days left when available.
 
 ## Backend Business Logging
 

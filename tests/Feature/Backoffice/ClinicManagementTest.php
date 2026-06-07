@@ -65,6 +65,79 @@ class ClinicManagementTest extends TestCase
         $this->assertNull($clinic->fresh()->suspended_at);
     }
 
+    public function test_active_clinic_cannot_be_reactivated(): void
+    {
+        $admin = $this->createAdmin(AdminUser::ROLE_SUPPORT);
+        [$clinic] = $this->createClinicWithOwner('Clinic Active', 'active@test.local');
+
+        $clinic->update([
+            'subscription_status' => 'active',
+            'status' => 'active',
+            'suspended_at' => null,
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->from('/backoffice/clinics/' . $clinic->id)
+            ->patch('/backoffice/clinics/' . $clinic->id . '/reactivate', ['reason' => 'noop'])
+            ->assertRedirect('/backoffice/clinics/' . $clinic->id)
+            ->assertSessionHasErrors(['action']);
+    }
+
+    public function test_canceled_clinic_cannot_be_canceled_again(): void
+    {
+        $admin = $this->createAdmin(AdminUser::ROLE_BILLING);
+        [$clinic] = $this->createClinicWithOwner('Clinic Canceled', 'canceled@test.local');
+
+        $clinic->update(['subscription_status' => 'canceled']);
+
+        Subscription::query()->create([
+            'clinic_id' => $clinic->id,
+            'status' => 'canceled',
+            'current_period_end' => now()->addDays(5),
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->from('/backoffice/clinics/' . $clinic->id)
+            ->post('/backoffice/clinics/' . $clinic->id . '/cancel-subscription', ['reason' => 'noop'])
+            ->assertRedirect('/backoffice/clinics/' . $clinic->id)
+            ->assertSessionHasErrors(['action']);
+    }
+
+    public function test_non_trial_clinic_cannot_extend_trial(): void
+    {
+        $admin = $this->createAdmin(AdminUser::ROLE_SUPPORT);
+        [$clinic] = $this->createClinicWithOwner('Clinic Paid', 'paid@test.local');
+
+        $clinic->update([
+            'subscription_status' => 'active',
+            'status' => 'active',
+            'trial_ends_at' => null,
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->from('/backoffice/clinics/' . $clinic->id)
+            ->patch('/backoffice/clinics/' . $clinic->id . '/extend-trial', ['days' => 7, 'reason' => 'noop'])
+            ->assertRedirect('/backoffice/clinics/' . $clinic->id)
+            ->assertSessionHasErrors(['action']);
+    }
+
+    public function test_suspended_clinic_cannot_be_suspended_again(): void
+    {
+        $admin = $this->createAdmin(AdminUser::ROLE_SUPPORT);
+        [$clinic] = $this->createClinicWithOwner('Clinic Already Suspended', 'already-suspended@test.local');
+
+        $clinic->update([
+            'status' => 'suspended',
+            'suspended_at' => now(),
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->from('/backoffice/clinics/' . $clinic->id)
+            ->patch('/backoffice/clinics/' . $clinic->id . '/suspend', ['reason' => 'noop'])
+            ->assertRedirect('/backoffice/clinics/' . $clinic->id)
+            ->assertSessionHasErrors(['action']);
+    }
+
     public function test_billing_can_cancel_subscription_and_change_plan(): void
     {
         $admin = $this->createAdmin(AdminUser::ROLE_BILLING);
@@ -86,6 +159,10 @@ class ClinicManagementTest extends TestCase
         $subscription->refresh();
         $this->assertSame('canceled', $clinic->subscription_status);
         $this->assertSame($paidUntil->toDateString(), $subscription->current_period_end?->toDateString());
+
+        $this->actingAs($admin, 'admin')
+            ->patch('/backoffice/clinics/' . $clinic->id . '/change-plan', ['plan' => 'enterprise', 'reason' => 'upgrade'])
+            ->assertRedirect();
 
         $this->assertSame('enterprise', (string) $clinic->fresh()->plan);
     }

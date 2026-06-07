@@ -258,6 +258,8 @@ class BillingController extends Controller
         $clinic->subscription_status = 'active';
         $clinic->subscription_provider = 'stripe';
         $clinic->subscription_reference = $sessionId;
+        $clinic->stripe_id = $session->customer ?? $clinic->stripe_id;
+        $clinic->stripe_customer_id = $session->customer ?? $clinic->stripe_customer_id;
         $clinic->save();
 
         return response()->json([

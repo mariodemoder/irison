@@ -14,6 +14,88 @@ class StripeWebhookControllerTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_checkout_session_completed_persists_customer_id_on_clinic(): void
+    {
+        config()->set('services.stripe.webhook_secret', 'whsec_test_secret');
+
+        $clinic = Clinic::create([
+            'name' => 'Clinica Checkout',
+            'email' => 'checkout-clinic@test.com',
+            'subscription_status' => 'trial',
+        ]);
+
+        User::create([
+            'clinic_id' => $clinic->id,
+            'name' => 'Owner Checkout',
+            'email' => 'owner-checkout@test.com',
+            'password' => 'password',
+            'role' => 'owner',
+        ]);
+
+        $payload = json_encode([
+            'id' => 'evt_checkout_1',
+            'object' => 'event',
+            'type' => 'checkout.session.completed',
+            'data' => [
+                'object' => [
+                    'id' => 'cs_test_123',
+                    'customer' => 'cus_checkout_123',
+                    'subscription' => 'sub_checkout_123',
+                    'customer_email' => 'owner-checkout@test.com',
+                    'metadata' => (object) [],
+                ],
+            ],
+        ], JSON_THROW_ON_ERROR);
+
+        $response = $this->postStripeWebhook($payload, 'whsec_test_secret');
+
+        $response->assertOk();
+
+        $clinic->refresh();
+        $this->assertSame('cus_checkout_123', $clinic->stripe_id);
+        $this->assertSame('cus_checkout_123', $clinic->stripe_customer_id);
+        $this->assertSame('active', $clinic->subscription_status);
+    }
+
+    public function test_checkout_session_completed_without_email_sets_subscribed_at_using_metadata_clinic_id(): void
+    {
+        config()->set('services.stripe.webhook_secret', 'whsec_test_secret');
+
+        $clinic = Clinic::create([
+            'name' => 'Clinica Metadata',
+            'email' => 'metadata-clinic@test.com',
+            'subscription_status' => 'trial',
+            'subscribed_at' => null,
+        ]);
+
+        $payload = json_encode([
+            'id' => 'evt_checkout_metadata_1',
+            'object' => 'event',
+            'type' => 'checkout.session.completed',
+            'data' => [
+                'object' => [
+                    'id' => 'cs_test_metadata_123',
+                    'customer' => 'cus_checkout_metadata_123',
+                    'subscription' => 'sub_checkout_metadata_123',
+                    'customer_email' => null,
+                    'metadata' => [
+                        'clinic_id' => (string) $clinic->id,
+                    ],
+                ],
+            ],
+        ], JSON_THROW_ON_ERROR);
+
+        $response = $this->postStripeWebhook($payload, 'whsec_test_secret');
+
+        $response->assertOk();
+
+        $clinic->refresh();
+        $this->assertNotNull($clinic->subscribed_at);
+        $this->assertSame('active', $clinic->subscription_status);
+        $this->assertSame('cus_checkout_metadata_123', $clinic->stripe_id);
+        $this->assertSame('cus_checkout_metadata_123', $clinic->stripe_customer_id);
+    }
+
     public function test_invoice_payment_failed_sets_subscription_status_to_past_due_without_canceling(): void
     {
         config()->set('services.stripe.webhook_secret', 'whsec_test_secret');

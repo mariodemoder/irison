@@ -23,6 +23,11 @@ async function submit() {
 
     success.value = res.data?.message || 'Si el email existe, te hemos enviado instrucciones para recuperar tu contrasena.'
   } catch (err) {
+    if (err?.response?.status === 429 && err?.response?.data?.code === 'PASSWORD_RESET_LIMIT_REACHED') {
+      error.value = err.response.data?.message || 'Pongase en contacto con el equipo tecnico de Irison.'
+      return
+    }
+
     if (err?.response?.status === 422) {
       const errs = err.response.data?.errors || {}
       const first = Object.values(errs)[0]

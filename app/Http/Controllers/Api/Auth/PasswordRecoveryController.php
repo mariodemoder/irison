@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\Auth\PasswordRecoveryLimiter;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,15 +18,32 @@ use Illuminate\Validation\Rules;
 
 class PasswordRecoveryController extends Controller
 {
+    public function __construct(private readonly PasswordRecoveryLimiter $passwordRecoveryLimiter)
+    {
+    }
+
     public function sendResetLink(Request $request): JsonResponse
     {
         $data = $request->validate([
             'email' => ['required', 'email'],
         ]);
 
-        Password::sendResetLink([
-            'email' => $data['email'],
+        $email = $this->passwordRecoveryLimiter->normalizeEmail((string) $data['email']);
+
+        if (! $this->passwordRecoveryLimiter->canSend($email)) {
+            return response()->json([
+                'code' => 'PASSWORD_RESET_LIMIT_REACHED',
+                'message' => 'Pongase en contacto con el equipo tecnico de Irison.',
+            ], 429);
+        }
+
+        $status = Password::sendResetLink([
+            'email' => $email,
         ]);
+
+        if ($status === Password::RESET_LINK_SENT) {
+            $this->passwordRecoveryLimiter->markSent($email);
+        }
 
         // Respuesta neutral para no exponer si el email existe en el sistema.
         return response()->json([

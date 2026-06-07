@@ -47,6 +47,7 @@
                     <div>
                       <label class="label">NIF</label>
                       <input class="input" v-model="form.clinic_nif" />
+                      <div v-if="form.clinic_nif && !isValidNif" class="field-error">Introduce un NIF válido (DNI, NIE o CIF).</div>
                     </div>
                     <div>
                       <label class="label">Código postal</label>
@@ -198,8 +199,8 @@
                 <div class="subscription-header">
                   <div>{{ subscriptionStatusDot }} {{ subscriptionState.label }}</div>
                   <div class="subscription-actions">
-                    <button v-if="status !== 'active'" class="btn btn-primary allow-readonly-action" @click.prevent="beginPaidPlanFake">Activar cuenta de pago</button>
-                    <button v-if="status==='blocked'" class="btn" @click.prevent="subscribe">Activar plan (Stripe)</button>
+                    <button v-if="status !== 'active'" class="btn btn-primary allow-readonly-action" :disabled="!canActivatePaidPlan" @click.prevent="beginPaidPlanFake">Activar cuenta de pago</button>
+                    <button v-if="status==='blocked'" class="btn" :disabled="!canActivatePaidPlan" @click.prevent="subscribe">Activar plan (Stripe)</button>
                     <div v-if="status==='active'" class="sub-menu-wrap">
                       <button class="btn sub-menu-trigger" @click.stop="showSubscriptionMenu = !showSubscriptionMenu" title="Opciones de suscripción">
                         &#8942;
@@ -218,36 +219,55 @@
                     </div>
                   </div>
                 </div>
+
+                <div v-if="status !== 'active' && !canActivatePaidPlan" class="subscription-requirements-note">
+                  Para activar tu cuenta de pago debes completar en la solapa Clínica: NIF válido y dirección.
+                </div>
                 
                   <div class="subscription-meta">
                     <div><strong>Modo de pago:</strong> {{ paymentModeLabel }}</div>
                   </div>
                 <div style="margin-top:12px">
                   <div v-if="status==='trial'">
-                    <div>Quedan <strong>{{ daysLeft ?? '—' }}</strong> días de demo.</div>
-                    <div class="subscription-warning">
-                      <div class="warning-header">
-                        ⚠️ Tu suscripción está por vencer
+                    <div class="max-w-2xl mx-auto my-6 p-6 bg-amber-50 border-l-4 border-amber-500 rounded-r-xl shadow-sm font-sans text-slate-800">
+                      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-amber-200 pb-4 mb-4">
+                        <div class="flex items-center gap-3">
+                          <span class="text-2xl" role="img" aria-label="Alerta">⚠️</span>
+                          <div>
+                            <h3 class="text-lg font-bold text-amber-900 leading-tight">
+                              Tu suscripción está por vencer
+                            </h3>
+                            <p class="text-sm text-amber-700">Quedan {{ diasRestantes }} días de demo.</p>
+                          </div>
+                        </div>
+
+                        <div class="bg-amber-500 text-white font-extrabold px-4 py-2 rounded-lg text-center shadow-sm text-sm tracking-wide uppercase">
+                          {{ diasRestantes }} Días restantes
+                        </div>
                       </div>
 
-                      <div class="warning-body">
-                        <p>
-                          Una vez finalizado el período de prueba, si no se registra el pago,
-                          no podrás realizar transacciones.
+                      <div class="space-y-3 text-sm text-slate-600 leading-relaxed">
+                        <p class="font-medium text-slate-700">
+                          Una vez finalizado el período de prueba, si no se registra el pago, <span class="text-amber-950 font-semibold">no podrás realizar transacciones</span>.
                         </p>
 
-                        <p>
-                          Tus datos y tu cuenta se conservarán durante <strong>7 días adicionales</strong>.
-                        </p>
+                        <div class="bg-white/60 p-3 rounded-lg border border-amber-100 text-xs text-slate-500 space-y-1">
+                          <p>• Tus datos y tu cuenta se conservarán durante <strong>7 días adicionales</strong>.</p>
+                          <p>• Transcurrido ese plazo sin activación, la cuenta y toda la información serán <strong>eliminadas de forma definitiva</strong>.</p>
+                        </div>
 
-                        <p>
-                          Transcurrido ese plazo sin activación, la cuenta y toda la información
-                          serán eliminadas de forma definitiva.
+                        <p class="font-medium text-amber-900 pt-1">
+                          No pierdas tu información. Activa tu plan para seguir operando.
                         </p>
                       </div>
 
-                      <div class="warning-footer">
-                        No pierdas tu información. Activa tu plan para seguir operando.
+                      <div class="mt-5 flex justify-end">
+                        <button
+                          @click="activarPlan"
+                          class="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white font-semibold px-6 py-2.5 rounded-lg transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] shadow-md shadow-amber-600/20"
+                        >
+                          Activar mi plan ahora
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -667,6 +687,12 @@ const daysLeft = computed(() => {
   return Math.ceil(diff / (1000 * 60 * 60 * 24))
 })
 
+const diasRestantes = computed(() => {
+  const days = Number(daysLeft.value)
+  if (!Number.isFinite(days)) return '—'
+  return Math.max(days, 0)
+})
+
 const subscriptionState = computed(() => {
   if (status.value === 'active') return { color: 'green', label: 'Suscripción activa' }
   if (status.value === 'trial') return { color: 'yellow', label: `Prueba — quedan ${daysLeft.value ?? '—'} días` }
@@ -685,6 +711,11 @@ const subscriptionStatusDot = computed(() => {
 const canCreateWithSubscription = computed(() => {
   return status.value === 'active' || status.value === 'trial'
 })
+
+const normalizedClinicNif = computed(() => normalizeNif(form.value.clinic_nif))
+const isValidNif = computed(() => isValidSpanishTaxId(normalizedClinicNif.value))
+const hasClinicAddress = computed(() => String(form.value.clinic_address || '').trim().length >= 5)
+const canActivatePaidPlan = computed(() => isValidNif.value && hasClinicAddress.value)
 
     const paymentModeLabel = computed(() => {
       const provider = String(clinic.value?.subscription_provider || '').trim().toLowerCase()
@@ -1244,6 +1275,12 @@ async function previewAndOpen() {
 }
 
 async function subscribe() {
+  if (!canActivatePaidPlan.value) {
+    activeTab.value = 'clinica'
+    toast.error('Necesitas NIF válido y dirección en Clínica antes de activar el pago.')
+    return
+  }
+
   try {
     const res = await api.post('/stripe/checkout')
     window.location.href = res.data.url
@@ -1254,7 +1291,73 @@ async function subscribe() {
 }
 
 function beginPaidPlanFake() {
+  if (!canActivatePaidPlan.value) {
+    activeTab.value = 'clinica'
+    toast.error('Necesitas NIF válido y dirección en Clínica antes de activar el pago.')
+    return
+  }
+
   router.push('/billing/required')
+}
+
+function activarPlan() {
+  beginPaidPlanFake()
+}
+
+function normalizeNif(value) {
+  return String(value || '').trim().toUpperCase().replace(/\s+/g, '').replace(/-/g, '')
+}
+
+function isValidSpanishTaxId(nif) {
+  if (!nif) return false
+  return isValidDni(nif) || isValidNie(nif) || isValidCif(nif)
+}
+
+function isValidDni(nif) {
+  if (!/^\d{8}[A-Z]$/.test(nif)) return false
+  const letters = 'TRWAGMYFPDXBNJZSQVHLCKE'
+  const number = Number(nif.slice(0, 8))
+  const control = nif.slice(-1)
+  return letters[number % 23] === control
+}
+
+function isValidNie(nif) {
+  if (!/^[XYZ]\d{7}[A-Z]$/.test(nif)) return false
+  const prefixMap = { X: '0', Y: '1', Z: '2' }
+  const transformed = `${prefixMap[nif[0]]}${nif.slice(1)}`
+  return isValidDni(transformed)
+}
+
+function isValidCif(nif) {
+  if (!/^[ABCDEFGHJNPQRSUVW]\d{7}[0-9A-J]$/.test(nif)) return false
+
+  const controlChar = nif.slice(-1)
+  const body = nif.slice(1, 8)
+  let evenSum = 0
+  let oddSum = 0
+
+  for (let i = 0; i < body.length; i += 1) {
+    const digit = Number(body[i])
+    if ((i + 1) % 2 === 0) {
+      evenSum += digit
+    } else {
+      const doubled = digit * 2
+      oddSum += Math.floor(doubled / 10) + (doubled % 10)
+    }
+  }
+
+  const total = evenSum + oddSum
+  const unit = total % 10
+  const controlDigit = unit === 0 ? 0 : 10 - unit
+  const controlLetterMap = 'JABCDEFGHI'
+  const controlLetter = controlLetterMap[controlDigit]
+
+  const mustBeLetter = /^[KPQRSNW]/.test(nif)
+  const mustBeDigit = /^[ABEH]/.test(nif)
+
+  if (mustBeLetter) return controlChar === controlLetter
+  if (mustBeDigit) return controlChar === String(controlDigit)
+  return controlChar === String(controlDigit) || controlChar === controlLetter
 }
 
 function openCancelSubscriptionModal() {
@@ -1380,6 +1483,20 @@ onBeforeUnmount(() => {
   background:#fff7ed;
   color:#9a3412;
   font-size:13px;
+}
+.field-error {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #b91c1c;
+}
+.subscription-requirements-note {
+  margin-top: 10px;
+  border: 1px solid #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
 }
 .subscription-header { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-top:4px }
 .subscription-actions { display:flex; gap:8px; margin-top:0; margin-left:auto; flex-wrap:wrap }

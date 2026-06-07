@@ -7,11 +7,20 @@ namespace App\Http\Controllers\Backoffice;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Backoffice\ClinicActionRequest;
 use App\Http\Requests\Backoffice\UpdateClinicRequest;
+use App\Models\Appointment;
+use App\Models\BillingPayment;
 use App\Models\Clinic;
+use App\Models\Document;
+use App\Models\Payment;
+use App\Models\Reminder;
 use App\Services\Backoffice\ClinicManagementService;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Stripe\Stripe;
+use Stripe\StripeClient;
+use Throwable;
 
 class ClinicController extends Controller
 {
@@ -33,9 +42,67 @@ class ClinicController extends Controller
 
     public function show(Clinic $clinic): View
     {
+        $lastStripePayment = BillingPayment::query()
+            ->where('clinic_id', $clinic->id)
+            ->where('provider', 'stripe')
+            ->whereIn('status', ['paid', 'completed'])
+            ->latest('created_at')
+            ->first(['created_at']);
+
+        $lastActivityCandidates = collect([
+            Appointment::query()->where('clinic_id', $clinic->id)->max('created_at'),
+            Payment::query()->where('clinic_id', $clinic->id)->max('paid_at'),
+            Document::query()->where('clinic_id', $clinic->id)->max('date'),
+        ])->filter();
+
+        $lastClinicActivityAt = $lastActivityCandidates
+            ->map(static fn ($value) => $value instanceof \DateTimeInterface
+                ? Carbon::instance($value)
+                : Carbon::parse((string) $value)
+            )
+            ->sortDesc()
+            ->first();
+
+        $stripeBilling = $this->loadStripeInvoices($clinic);
+
+        $notifications = Reminder::query()
+            ->where('clinic_id', $clinic->id)
+            ->with([
+                'appointment:id,patient_id,start_time',
+                'appointment.patient:id,first_name,last_name,phone,email',
+            ])
+            ->orderByDesc('sent_at')
+            ->orderByDesc('id')
+            ->limit(100)
+            ->get()
+            ->map(function (Reminder $reminder): array {
+                $patient = $reminder->appointment?->patient;
+                $contactName = trim((string) (($patient?->first_name ?? '') . ' ' . ($patient?->last_name ?? '')));
+                $appointmentDate = $reminder->appointment?->start_time?->format('Y-m-d H:i');
+                $reminderType = trim((string) ($reminder->reminder_type ?? 'recordatorio'));
+
+                return [
+                    'date_time' => $reminder->sent_at ?? $reminder->created_at,
+                    'contact_name' => $contactName !== '' ? $contactName : '-',
+                    'contact_phone' => trim((string) ($patient?->phone ?? '')) ?: '-',
+                    'contact_email' => trim((string) ($reminder->recipient_email ?? $patient?->email ?? '')) ?: '-',
+                    'subject' => 'Recordatorio ' . ($reminderType !== '' ? $reminderType : '-'),
+                    'body' => $appointmentDate
+                        ? 'Recordatorio asociado a cita del ' . $appointmentDate
+                        : (trim((string) ($reminder->error_message ?? '')) ?: 'Sin cuerpo registrado'),
+                    'method' => strtolower(trim((string) ($reminder->channel ?? 'email'))),
+                ];
+            })
+            ->values();
+
         return view('backoffice.clinics.show', [
             'clinic' => $clinic,
             'activity' => $this->clinicManagementService->recentActivity($clinic),
+            'lastStripePaymentAt' => $lastStripePayment?->created_at,
+            'lastClinicActivityAt' => $lastClinicActivityAt,
+            'stripeInvoices' => $stripeBilling['invoices'],
+            'stripeInvoicesError' => $stripeBilling['error'],
+            'notifications' => $notifications,
         ]);
     }
 
@@ -132,5 +199,117 @@ class ClinicController extends Controller
 
         return redirect()->route('backoffice.clinics.index')
             ->with('status', 'Impersonación finalizada y token revocado.');
+    }
+
+    private function loadStripeInvoices(Clinic $clinic): array
+    {
+        try {
+            $caBundlePath = config('services.stripe.ca_bundle')
+                ?: ini_get('curl.cainfo')
+                ?: base_path('vendor/stripe/stripe-php/data/ca-certificates.crt');
+
+            if (is_string($caBundlePath) && $caBundlePath !== '' && is_file($caBundlePath)) {
+                $normalizedPath = str_replace('\\', '/', $caBundlePath);
+                Stripe::setCABundlePath($normalizedPath);
+                putenv('SSL_CERT_FILE=' . $normalizedPath);
+                putenv('CURL_CA_BUNDLE=' . $normalizedPath);
+            }
+
+            if (! config('services.stripe.verify_ssl', true)) {
+                Stripe::setVerifySslCerts(false);
+            }
+
+            $stripe = new StripeClient((string) config('services.stripe.secret'));
+
+            $customerIds = collect([
+                trim((string) ($clinic->stripe_id ?? '')),
+                trim((string) ($clinic->stripe_customer_id ?? '')),
+            ])->filter()->values();
+
+            $subscriptionCustomerIds = $clinic->saasSubscriptions()
+                ->whereNotNull('stripe_customer_id')
+                ->orderByDesc('id')
+                ->pluck('stripe_customer_id')
+                ->map(static fn ($id) => trim((string) $id))
+                ->filter();
+
+            $customerIds = $customerIds->merge($subscriptionCustomerIds)->unique()->values();
+
+            // Fallback: si no hay customer sincronizado en DB, intentamos resolver por email en Stripe.
+            if ($customerIds->isEmpty()) {
+                $clinicEmail = trim((string) ($clinic->email ?? ''));
+                if ($clinicEmail !== '') {
+                    $customersByEmail = $stripe->customers->all([
+                        'email' => $clinicEmail,
+                        'limit' => 10,
+                    ]);
+
+                    $resolvedByEmail = collect($customersByEmail->data ?? [])
+                        ->map(static fn ($customer) => trim((string) ($customer->id ?? '')))
+                        ->filter()
+                        ->values();
+
+                    $customerIds = $customerIds->merge($resolvedByEmail)->unique()->values();
+                }
+            }
+
+            if ($customerIds->isEmpty()) {
+                return [
+                    'invoices' => [],
+                    'error' => 'La clínica no tiene customer de Stripe sincronizado (stripe_id/stripe_customer_id).',
+                ];
+            }
+
+            $allInvoices = collect();
+            foreach ($customerIds as $customerId) {
+                $response = $stripe->invoices->all([
+                    'customer' => (string) $customerId,
+                    'limit' => 100,
+                ]);
+
+                $mapped = collect($response->data ?? [])->map(static function ($invoice): array {
+                    return [
+                        'id' => (string) ($invoice->id ?? ''),
+                        'number' => (string) ($invoice->number ?? ''),
+                        'status' => (string) ($invoice->status ?? ''),
+                        'currency' => strtoupper((string) ($invoice->currency ?? 'EUR')),
+                        'total' => (int) ($invoice->total ?? 0),
+                        'amount_paid' => (int) ($invoice->amount_paid ?? 0),
+                        'created_at' => isset($invoice->created)
+                            ? Carbon::createFromTimestamp((int) $invoice->created)
+                            : null,
+                        'hosted_invoice_url' => (string) ($invoice->hosted_invoice_url ?? ''),
+                        'invoice_pdf' => (string) ($invoice->invoice_pdf ?? ''),
+                    ];
+                });
+
+                $allInvoices = $allInvoices->concat($mapped);
+            }
+
+            $invoices = $allInvoices
+                ->unique('id')
+                ->sortByDesc(static fn (array $invoice) => $invoice['created_at']?->getTimestamp() ?? 0)
+                ->values()
+                ->all();
+
+            // Si logramos resolver por fallback, sincronizamos el primer customer para futuras consultas.
+            if (empty($clinic->stripe_id) && empty($clinic->stripe_customer_id) && $customerIds->isNotEmpty()) {
+                $firstCustomerId = (string) $customerIds->first();
+                $clinic->forceFill([
+                    'stripe_id' => $firstCustomerId,
+                    'stripe_customer_id' => $firstCustomerId,
+                ])->save();
+            }
+
+            return [
+                'invoices' => $invoices,
+                'error' => null,
+            ];
+        } catch (Throwable $exception) {
+            return [
+                'invoices' => [],
+                'error' => 'No se pudieron cargar las facturas de Stripe para esta clínica.',
+            ];
+        }
     }
 }

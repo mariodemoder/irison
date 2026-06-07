@@ -45,6 +45,8 @@ class StripeWebhookController extends Controller
         if ($event->type === 'checkout.session.completed') {
             $session = $event->data->object;
             $email   = $session->customer_email ?? null;
+            $customerId = (string) ($session->customer ?? '');
+            $metadataClinicId = (int) ($session->metadata->clinic_id ?? 0);
 
             // Marcar BillingPayment como pagado si viene en metadata
             $paymentId = $session->metadata->payment_id ?? null;
@@ -54,43 +56,58 @@ class StripeWebhookController extends Controller
                     ->update(['status' => 'paid']);
             }
 
+            $clinic = null;
+
             if ($email) {
                 $user = User::where('email', $email)->first();
-                if ($user && $user->clinic) {
-                    $clinic = $user->clinic;
+                $clinic = $user?->clinic;
+            }
 
-                    // Crear o actualizar suscripción activa
-                        $existing = Subscription::where('clinic_id', $clinic->id)
-                        ->where('status', 'active')
-                        ->orderByDesc('id')
-                        ->first();
+            if (! $clinic && $metadataClinicId > 0) {
+                $clinic = Clinic::query()->find($metadataClinicId);
+            }
 
-                    if ($existing) {
-                        $existing->current_period_end    = Carbon::now()->addMonth();
-                        $existing->stripe_customer_id    = $session->customer ?? $existing->stripe_customer_id;
-                        $existing->stripe_subscription_id = $session->subscription ?? $existing->stripe_subscription_id;
-                        $existing->save();
-                    } else {
-                            Subscription::create([
-                            'clinic_id'              => $clinic->id,
-                            'status'                 => 'active',
-                            'trial_ends_at'          => null,
-                            'current_period_end'     => Carbon::now()->addMonth(),
-                            'stripe_customer_id'     => $session->customer ?? null,
-                            'stripe_subscription_id' => $session->subscription ?? null,
-                        ]);
-                    }
+            if (! $clinic && $customerId !== '') {
+                $clinic = Clinic::query()
+                    ->where('stripe_id', $customerId)
+                    ->orWhere('stripe_customer_id', $customerId)
+                    ->first();
+            }
 
-                    // Eliminar registros de trial previos
-                        Subscription::where('clinic_id', $clinic->id)
-                        ->where('status', 'trial')
-                        ->delete();
+            if ($clinic) {
+                // Crear o actualizar suscripción activa
+                $existing = Subscription::where('clinic_id', $clinic->id)
+                    ->where('status', 'active')
+                    ->orderByDesc('id')
+                    ->first();
 
-                    $clinic->subscribed_at         = Carbon::now();
-                    $clinic->subscription_status   = 'active';
-                    $clinic->subscription_provider = 'stripe';
-                    $clinic->save();
+                if ($existing) {
+                    $existing->current_period_end = Carbon::now()->addMonth();
+                    $existing->stripe_customer_id = $customerId !== '' ? $customerId : $existing->stripe_customer_id;
+                    $existing->stripe_subscription_id = $session->subscription ?? $existing->stripe_subscription_id;
+                    $existing->save();
+                } else {
+                    Subscription::create([
+                        'clinic_id' => $clinic->id,
+                        'status' => 'active',
+                        'trial_ends_at' => null,
+                        'current_period_end' => Carbon::now()->addMonth(),
+                        'stripe_customer_id' => $customerId !== '' ? $customerId : null,
+                        'stripe_subscription_id' => $session->subscription ?? null,
+                    ]);
                 }
+
+                // Eliminar registros de trial previos
+                Subscription::where('clinic_id', $clinic->id)
+                    ->where('status', 'trial')
+                    ->delete();
+
+                $clinic->subscribed_at = Carbon::now();
+                $clinic->subscription_status = 'active';
+                $clinic->subscription_provider = 'stripe';
+                $clinic->stripe_id = $customerId !== '' ? $customerId : $clinic->stripe_id;
+                $clinic->stripe_customer_id = $customerId !== '' ? $customerId : $clinic->stripe_customer_id;
+                $clinic->save();
             }
             } elseif ($event->type === 'invoice.payment_succeeded') {
                 $invoice = $event->data->object;

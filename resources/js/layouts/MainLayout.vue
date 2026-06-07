@@ -68,7 +68,7 @@
         <div class="flex items-center gap-4">
           <div class="header-card">
             <div class="header-card-meta">
-              <div class="header-card-label">{{ clinic?.name ?? '—' }} — <router-link to="/profile" class="user-link">MI CUENTA</router-link></div>
+              <div class="header-card-label">{{ clinic?.name ?? '—' }} — <router-link to="/profile" class="user-link">Perfil de Usuario</router-link></div>
               <div class="header-card-sub">
                 <span class="sub-label">{{ subscriptionStatusDot }} {{ subscriptionState.label }}</span>
               </div>
@@ -78,16 +78,16 @@
         </div>
       </header>
 
-      <div v-if="showCanceledPaidBanner" class="subscription-canceled-banner">
+      <div v-if="showCanceledPaidBanner" class="subscription-warning-banner">
         <strong>Suscripción cancelada.</strong>
         Tu cuenta está activa hasta completar el periodo ya pagado.
         <span v-if="cancellationDaysLeftLabel" class="banner-days">Quedan {{ cancellationDaysLeftLabel }} de acceso total.</span>
-        Luego pasará a modo solo lectura durante 7 días extra.
+        Luego pasará a modo solo lectura durante 7 días extra. Al finalizar este periodo tus datos seran eliminados de forma permanente.
       </div>
 
       <div v-if="showCanceledReadOnlyBanner" class="subscription-canceled-banner">
         <strong>Suscripción finalizada.</strong>
-        Tu cuenta está en modo solo lectura. Si no reactivas, tus datos se eliminarán próximamente.
+        Tu cuenta está en modo solo lectura. Si no reactivas, tus datos se eliminarán próximamente de forma permanente.
         <span v-if="cancellationReadOnlyDaysLeftLabel" class="banner-days">Quedan {{ cancellationReadOnlyDaysLeftLabel }} de gracia.</span>
       </div>
 
@@ -493,7 +493,16 @@ async function openContactForm() {
   font-size: 14px;
   line-height: 1.4;
 }
-
+.subscription-warning-banner {
+  margin: 12px 24px 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid #faf060;
+  background: #fffdf1;
+  color: #cfad13;
+  font-size: 14px;
+  line-height: 1.4;
+}
 .subscription-canceled-banner--action {
   display: flex;
   align-items: center;
