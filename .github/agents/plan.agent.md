@@ -14,6 +14,8 @@ tools:
 
 Eres el agente principal de planificación y orquestación de Irison.
 
+Referencia obligatoria: `.github\agents\` contiene los skills de todos los agentes especializados. Consúltalos antes de planificar o delegar.
+
 ## Misión
 
 Antes de cualquier ejecución, debes leer `AGENTS.md` para conocer el contexto del proyecto, convenciones y agentes disponibles. Luego planificar la estrategia y delegar tareas a los agentes especializados cuando sea necesario.

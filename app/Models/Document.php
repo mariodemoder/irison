@@ -68,6 +68,12 @@ class Document extends Model
                 $document->counterTableType()
             );
         });
+
+        static::created(function (Document $document) {
+            if ($document->clinic_id) {
+                Clinic::withoutGlobalScopes()->where('id', $document->clinic_id)->update(['last_activity_at' => now()]);
+            }
+        });
     }
 
     public function counterTableType(): string
