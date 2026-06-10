@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Clinic;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Support\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -75,6 +76,7 @@ class StripeWebhookController extends Controller
             }
 
             if ($clinic) {
+                $previousSubscriptionStatus = strtolower(trim((string) ($clinic->subscription_status ?? 'inactive')));
                 // Crear o actualizar suscripción activa
                 $existing = Subscription::where('clinic_id', $clinic->id)
                     ->where('status', 'active')
@@ -108,6 +110,20 @@ class StripeWebhookController extends Controller
                 $clinic->stripe_id = $customerId !== '' ? $customerId : $clinic->stripe_id;
                 $clinic->stripe_customer_id = $customerId !== '' ? $customerId : $clinic->stripe_customer_id;
                 $clinic->save();
+
+                ActivityLogger::log(
+                    tenantId: (int) $clinic->id,
+                    userId: null,
+                    event: $previousSubscriptionStatus === 'active' ? 'subscription_renewed' : 'subscription_created',
+                    description: $previousSubscriptionStatus === 'active'
+                        ? 'Suscripcion renovada por webhook checkout.session.completed'
+                        : 'Suscripcion creada por webhook checkout.session.completed',
+                    metadata: [
+                        'provider' => 'stripe',
+                        'webhook_event' => 'checkout.session.completed',
+                        'session_id' => (string) ($session->id ?? ''),
+                    ],
+                );
             }
             } elseif ($event->type === 'invoice.payment_succeeded') {
                 $invoice = $event->data->object;
@@ -118,6 +134,18 @@ class StripeWebhookController extends Controller
                         $clinic->subscription_status = 'active';
                         $clinic->subscribed_at = $clinic->subscribed_at ?? Carbon::now();
                         $clinic->save();
+
+                        ActivityLogger::log(
+                            tenantId: (int) $clinic->id,
+                            userId: null,
+                            event: 'subscription_renewed',
+                            description: 'Suscripcion renovada por webhook invoice.payment_succeeded',
+                            metadata: [
+                                'provider' => 'stripe',
+                                'webhook_event' => 'invoice.payment_succeeded',
+                                'invoice_id' => (string) ($invoice->id ?? ''),
+                            ],
+                        );
                     }
                 }
             } elseif ($event->type === 'invoice.payment_failed') {
@@ -162,6 +190,18 @@ class StripeWebhookController extends Controller
                         $clinic->subscription_status = 'canceled';
                         $clinic->subscribed_at = null;
                         $clinic->save();
+
+                        ActivityLogger::log(
+                            tenantId: (int) $clinic->id,
+                            userId: null,
+                            event: 'subscription_cancelled',
+                            description: 'Suscripcion cancelada por webhook customer.subscription.deleted',
+                            metadata: [
+                                'provider' => 'stripe',
+                                'webhook_event' => 'customer.subscription.deleted',
+                                'stripe_customer_id' => $customerId,
+                            ],
+                        );
                     }
                 }
             } elseif ($event->type === 'customer.subscription.updated') {

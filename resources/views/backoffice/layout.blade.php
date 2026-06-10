@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Irison Backoffice</title>
+    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon-backoffice.svg') }}">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body class="bg-slate-100 text-slate-900 min-h-screen">
     <header class="bg-slate-900 text-white">

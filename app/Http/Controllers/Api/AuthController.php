@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Clinic;
 use App\Models\User;
+use App\Support\ActivityLogger;
 use App\Services\Auth\PasswordRecoveryLimiter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -58,9 +60,39 @@ class AuthController extends Controller
             ], 403);
         }
 
+        if ($user->clinic && $user->clinic->isSuspended()) {
+            Log::warning('auth.login.failed', [
+                'event' => 'auth.login',
+                'result' => 'failed',
+                'reason' => 'clinic_suspended',
+                'user_id' => $user->id,
+                'clinic_id' => $user->clinic_id,
+                'ip' => $request->ip(),
+                'user_agent' => $this->trimUserAgent((string) $request->userAgent()),
+            ]);
+
+            return response()->json([
+                'message' => 'Por el momento tu cuenta está suspendida. Contacta con Irison para más información.',
+                'code' => 'CLINIC_SUSPENDED',
+            ], 403);
+        }
+
         $this->passwordRecoveryLimiter->reset((string) $user->email);
 
         $token = $user->createToken('spa')->plainTextToken;
+        $user->forceFill(['last_login_at' => now()])->save();
+        Clinic::withoutGlobalScopes()->where('id', $user->clinic_id)->update(['last_activity_at' => now()]);
+
+        ActivityLogger::log(
+            tenantId: (int) $user->clinic_id,
+            userId: (int) $user->id,
+            event: 'login',
+            description: 'Inicio de sesion exitoso',
+            metadata: [
+                'channel' => 'spa',
+            ],
+            ip: $request->ip(),
+        );
 
         Log::info('auth.login.success', [
             'event' => 'auth.login',

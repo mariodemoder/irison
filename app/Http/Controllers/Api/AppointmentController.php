@@ -11,6 +11,7 @@ use App\Models\Patient;
 use App\Models\Payment;
 use Illuminate\Http\Request;
 use App\Services\Appointments\AppointmentService;
+use App\Support\ActivityLogger;
 use App\Services\Validation\RequestValidationOrchestrator;
 use App\Services\Documents\InvoicingService;
 use Illuminate\Http\JsonResponse;
@@ -242,6 +243,21 @@ class AppointmentController extends Controller
         $result = $this->invoicingService->issueForAppointment($appointment, $user, $notes);
         $document = $result['document'];
         $created = (bool) $result['created'];
+
+        if ($created) {
+            ActivityLogger::log(
+                tenantId: (int) ($user?->clinic_id ?? 0),
+                userId: (int) ($user?->id ?? 0),
+                event: 'document_created',
+                description: 'Documento creado desde una cita',
+                metadata: [
+                    'document_id' => (int) $document->id,
+                    'appointment_id' => (int) $appointment->id,
+                    'source' => 'appointments.issue_invoice',
+                ],
+                ip: $request->ip(),
+            );
+        }
 
         return response()->json([
             'message' => $created ? 'Factura emitida correctamente.' : 'La cita ya tenía una factura emitida.',

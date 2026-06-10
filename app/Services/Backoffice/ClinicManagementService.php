@@ -9,6 +9,7 @@ use App\Models\BackofficeClinicActivity;
 use App\Models\Clinic;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Support\ActivityLogger;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -123,6 +124,18 @@ class ClinicManagementService
             'reason' => $reason,
             'trial_ends_at' => optional($clinic->trial_ends_at)->toDateTimeString(),
         ]);
+
+        ActivityLogger::log(
+            tenantId: (int) $clinic->id,
+            userId: null,
+            event: 'trial_extended',
+            description: 'Trial extendido desde backoffice',
+            metadata: [
+                'days' => $days,
+                'reason' => $reason,
+                'admin_user_id' => (int) $admin->id,
+            ],
+        );
 
         return $clinic->fresh();
     }
@@ -254,6 +267,18 @@ class ClinicManagementService
             'grace_ends_at' => $graceEndsAt->toDateTimeString(),
             'paid_days_left' => (int) max(ceil($now->diffInSeconds($graceEndsAt, false) / 86400), 0),
         ]);
+
+        ActivityLogger::log(
+            tenantId: (int) $clinic->id,
+            userId: null,
+            event: 'subscription_cancelled',
+            description: 'Suscripcion cancelada desde backoffice',
+            metadata: [
+                'reason' => $reason,
+                'subscription_id' => (int) $subscription->id,
+                'admin_user_id' => (int) $admin->id,
+            ],
+        );
 
         return $clinic->fresh();
     }

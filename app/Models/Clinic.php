@@ -14,7 +14,7 @@ class Clinic extends Model
     use Billable, SoftDeletes;
 
     protected $fillable = [
-        'name', 'slug', 'legal_name', 'email', 'phone', 'address', 'nif', 'locality', 'province', 'country', 'zip', 'timezone', 'business_hours', 'closed_days', 'trial_ends_at', 'subscription_status', 'status', 'plan', 'stripe_customer_id', 'suspended_at', 'churned_at', 'subscribed_at', 'subscription_provider', 'subscription_reference', 'invoice_background_path', 'theme_color', 'stripe_id', 'pm_type', 'pm_last_four'
+        'name', 'slug', 'legal_name', 'email', 'phone', 'address', 'nif', 'locality', 'province', 'country', 'zip', 'timezone', 'business_hours', 'closed_days', 'trial_ends_at', 'subscription_status', 'status', 'plan', 'stripe_customer_id', 'suspended_at', 'churned_at', 'last_activity_at', 'subscribed_at', 'subscription_provider', 'subscription_reference', 'invoice_background_path', 'theme_color', 'stripe_id', 'pm_type', 'pm_last_four'
     ];
 
     protected $casts = [
@@ -23,6 +23,7 @@ class Clinic extends Model
         'trial_ends_at' => 'datetime',
         'suspended_at' => 'datetime',
         'churned_at' => 'datetime',
+        'last_activity_at' => 'datetime',
         'subscribed_at' => 'datetime',
     ];
 

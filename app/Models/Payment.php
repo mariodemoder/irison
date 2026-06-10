@@ -31,6 +31,12 @@ class Payment extends Model
 
             $payment->counter = app(CounterService::class)->nextFormatted((int) $payment->clinic_id, 'payments');
         });
+
+        static::created(function (Payment $payment) {
+            if ($payment->clinic_id) {
+                Clinic::withoutGlobalScopes()->where('id', $payment->clinic_id)->update(['last_activity_at' => now()]);
+            }
+        });
     }
 
     public function clinic(): BelongsTo

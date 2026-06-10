@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\ActivityLogger;
 use Illuminate\Http\Request;
 
 class SubscribeController extends Controller
@@ -14,6 +15,7 @@ class SubscribeController extends Controller
         ]);
 
         $clinic = $request->user()->clinic;
+        $previousSubscriptionStatus = strtolower(trim((string) ($clinic->subscription_status ?? 'inactive')));
         $priceId = config('services.stripe.price_id');
 
         if (! $priceId || str_contains($priceId, 'xxx')) {
@@ -43,6 +45,20 @@ class SubscribeController extends Controller
         $clinic->subscription_status = 'active';
         $clinic->subscribed_at = now();
         $clinic->save();
+
+        ActivityLogger::log(
+            tenantId: (int) $clinic->id,
+            userId: (int) $request->user()->id,
+            event: $previousSubscriptionStatus === 'active' ? 'subscription_renewed' : 'subscription_created',
+            description: $previousSubscriptionStatus === 'active'
+                ? 'Suscripcion renovada desde endpoint subscribe'
+                : 'Suscripcion creada desde endpoint subscribe',
+            metadata: [
+                'provider' => 'stripe',
+                'stripe_id' => (string) ($subscription->stripe_id ?? ''),
+            ],
+            ip: $request->ip(),
+        );
 
         return response()->json([
             'status'    => $subscription->stripe_status,

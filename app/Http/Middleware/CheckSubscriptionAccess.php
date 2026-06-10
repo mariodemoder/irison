@@ -17,7 +17,15 @@ class CheckSubscriptionAccess
             return response()->json(['message' => 'No clinic'], 403);
         }
 
-        // 2. Suscripción activa, trial vigente o cancelada con periodo pagado vigente -> OK
+        // 2. Clínica suspendida
+        if ($clinic->isSuspended()) {
+            return response()->json([
+                'message' => 'Por el momento tu cuenta está suspendida. Contacta con Irison para más información.',
+                'code' => 'CLINIC_SUSPENDED',
+            ], 403);
+        }
+
+        // 3. Suscripción activa, trial vigente o cancelada con periodo pagado vigente -> OK
         if ($clinic->isSubscribed() || $clinic->isTrialActive() || $clinic->isInCancellationPaidWindow()) {
             return $next($request);
         }
@@ -29,7 +37,7 @@ class CheckSubscriptionAccess
             ], 403);
         }
 
-        // 3. Semana de gracia en solo lectura -> permitir consultar datos existentes
+        // 5. Semana de gracia en solo lectura -> permitir consultar datos existentes
         if ($clinic->isInReadOnlyNoTransactionsWindow() || $tenantStatus === 'trial_read_only') {
             if ($request->isMethodSafe() || $this->canStartPaidPlanWhileReadOnly($request)) {
                 return $next($request);
@@ -41,7 +49,7 @@ class CheckSubscriptionAccess
             ], 403);
         }
 
-        // 4. Pago fallido
+        // 6. Pago fallido
         $status = strtolower(trim((string) ($clinic->subscription_status ?? 'inactive')));
         if ($status === 'past_due') {
             return response()->json([
@@ -50,7 +58,7 @@ class CheckSubscriptionAccess
             ], 402);
         }
 
-        // 5. Trial expirado, cancelada o inactiva fuera de gracia
+        // 7. Trial expirado, cancelada o inactiva fuera de gracia
         return response()->json([
             'message' => 'Tu periodo de prueba ha finalizado',
             'code' => 'SUBSCRIPTION_REQUIRED',

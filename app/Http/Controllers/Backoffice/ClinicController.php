@@ -7,12 +7,14 @@ namespace App\Http\Controllers\Backoffice;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Backoffice\ClinicActionRequest;
 use App\Http\Requests\Backoffice\UpdateClinicRequest;
+use App\Models\ActivityLog;
 use App\Models\Appointment;
 use App\Models\BillingPayment;
 use App\Models\Clinic;
 use App\Models\Document;
 use App\Models\Payment;
 use App\Models\Reminder;
+use App\Models\User;
 use App\Services\Backoffice\ClinicManagementService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -63,6 +65,35 @@ class ClinicController extends Controller
             ->sortDesc()
             ->first();
 
+        $lastTenantLoginAt = User::query()
+            ->where('clinic_id', $clinic->id)
+            ->whereNotNull('last_login_at')
+            ->max('last_login_at');
+
+        $lastDocumentCreatedAt = Document::query()
+            ->where('clinic_id', $clinic->id)
+            ->max('created_at');
+
+        $last500ErrorAt = ActivityLog::query()
+            ->where('tenant_id', $clinic->id)
+            ->where('event', 'system_error_500')
+            ->max('created_at');
+
+        $activityLog = ActivityLog::query()
+            ->where('tenant_id', $clinic->id)
+            ->whereIn('event', [
+                'login',
+                'document_created',
+                'system_error_500',
+                'subscription_created',
+                'subscription_renewed',
+                'subscription_cancelled',
+                'trial_extended',
+            ])
+            ->orderByDesc('created_at')
+            ->limit(100)
+            ->get();
+
         $stripeBilling = $this->loadStripeInvoices($clinic);
 
         $notifications = Reminder::query()
@@ -98,8 +129,12 @@ class ClinicController extends Controller
         return view('backoffice.clinics.show', [
             'clinic' => $clinic,
             'activity' => $this->clinicManagementService->recentActivity($clinic),
+            'activityLog' => $activityLog,
             'lastStripePaymentAt' => $lastStripePayment?->created_at,
             'lastClinicActivityAt' => $lastClinicActivityAt,
+            'lastTenantLoginAt' => $lastTenantLoginAt ? Carbon::parse((string) $lastTenantLoginAt) : null,
+            'lastDocumentCreatedAt' => $lastDocumentCreatedAt ? Carbon::parse((string) $lastDocumentCreatedAt) : null,
+            'last500ErrorAt' => $last500ErrorAt ? Carbon::parse((string) $last500ErrorAt) : null,
             'stripeInvoices' => $stripeBilling['invoices'],
             'stripeInvoicesError' => $stripeBilling['error'],
             'notifications' => $notifications,

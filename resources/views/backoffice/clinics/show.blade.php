@@ -38,8 +38,40 @@
         </div>
     </div>
 
-    <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
-        <div class="space-y-4">
+    <div class="mb-4 rounded bg-white p-4 shadow-sm"
+         x-data="{ open: false }">
+        <div class="flex flex-wrap items-center gap-3">
+            <div class="flex items-center gap-2">
+                <span class="text-sm font-semibold uppercase tracking-wide text-slate-600">Plan:</span>
+                <span class="rounded bg-slate-100 px-2 py-0.5 text-sm font-medium">{{ $clinic->plan ?: 'basic' }}</span>
+                <span class="rounded px-2 py-0.5 text-sm font-semibold {{ $isRedStatus ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700' }}">
+                    {{ $clinic->subscription_status ?: 'inactive' }}
+                </span>
+                @if (in_array($subscriptionStatus, ['canceled', 'cancelled'], true) && ($paidDaysLeft ?? 0) > 0)
+                    <span class="text-xs text-slate-500">{{ $paidDaysLeft }} día(s) restantes</span>
+                @endif
+            </div>
+            <div class="relative ml-auto">
+                <button @click="open = !open"
+                        class="flex items-center gap-1 rounded border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50">
+                    Ir a sección
+                    <svg x-bind:class="open ? 'rotate-180' : ''" class="h-4 w-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </button>
+                <div x-show="open" @click.outside="open = false"
+                     class="absolute right-0 z-10 mt-1 w-48 rounded border border-slate-200 bg-white py-1 shadow-lg">
+                    <a @click="open = false" href="#datos" class="block px-4 py-2 text-sm hover:bg-slate-50">Datos</a>
+                    <a @click="open = false" href="#administrativas" class="block px-4 py-2 text-sm hover:bg-slate-50">Administrativas</a>
+                    <a @click="open = false" href="#desde-aqui" class="block px-4 py-2 text-sm hover:bg-slate-50">Desde aquí</a>
+                    <a @click="open = false" href="#facturacion" class="block px-4 py-2 text-sm hover:bg-slate-50">Facturación</a>
+                    <a @click="open = false" href="#notificaciones" class="block px-4 py-2 text-sm hover:bg-slate-50">Notificaciones</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="space-y-4">
             <div class="grid gap-4 md:grid-cols-2">
         <article id="datos" class="rounded bg-white p-4 shadow-sm">
             <h3 class="text-lg font-medium">Datos</h3>
@@ -62,6 +94,9 @@
                 <div><dt class="text-slate-500">Stripe customer</dt><dd>{{ $clinic->stripe_customer_id ?: $clinic->stripe_id ?: '-' }}</dd></div>
                 <div><dt class="text-slate-500">Fecha de último pago Stripe</dt><dd>{{ $lastStripePaymentAt?->format('Y-m-d H:i') ?: '-' }}</dd></div>
                 <div><dt class="text-slate-500">Fecha última actividad</dt><dd>{{ $lastClinicActivityAt?->format('Y-m-d H:i') ?: '-' }}</dd></div>
+                <div><dt class="text-slate-500">Último login tenant</dt><dd>{{ $lastTenantLoginAt?->format('Y-m-d H:i') ?: '-' }}</dd></div>
+                <div><dt class="text-slate-500">Último documento creado</dt><dd>{{ $lastDocumentCreatedAt?->format('Y-m-d H:i') ?: '-' }}</dd></div>
+                <div><dt class="text-slate-500">Último error 500</dt><dd>{{ $last500ErrorAt?->format('Y-m-d H:i') ?: '-' }}</dd></div>
             </dl>
         </article>
 
@@ -167,19 +202,21 @@
                     <tr>
                         <th class="px-3 py-2 font-medium">Evento</th>
                         <th class="px-3 py-2 font-medium">Fecha</th>
+                        <th class="px-3 py-2 font-medium">Descripción</th>
                         <th class="px-3 py-2 font-medium">Detalle</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse ($activity as $row)
+                    @forelse ($activityLog as $row)
                         <tr class="border-b border-slate-100 align-top last:border-b-0">
                             <td class="px-3 py-2 font-semibold text-slate-900">{{ $row->event }}</td>
                             <td class="px-3 py-2 text-slate-600">{{ $row->created_at?->format('Y-m-d H:i:s') }}</td>
-                            <td class="px-3 py-2 text-slate-600">Admin: {{ $row->adminUser?->email ?: '-' }} · Resultado: {{ $row->result }}</td>
+                            <td class="px-3 py-2 text-slate-700">{{ $row->description }}</td>
+                            <td class="px-3 py-2 text-slate-600">{{ !empty($row->metadata) ? json_encode($row->metadata, JSON_UNESCAPED_UNICODE) : '-' }}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td class="px-3 py-4 text-slate-500" colspan="3">Sin actividad registrada.</td>
+                            <td class="px-3 py-4 text-slate-500" colspan="4">Sin actividad registrada.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -272,18 +309,5 @@
         </div>
     </article>
         </div>
-
-        <aside class="self-start lg:sticky lg:top-6">
-            <div class="rounded bg-white p-4 shadow-sm">
-                <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-600">Acciones rápidas</h3>
-                <nav class="mt-3 space-y-2 text-sm">
-                    <a class="block rounded border border-slate-200 px-3 py-2 hover:bg-slate-50" href="#datos">Datos</a>
-                    <a class="block rounded border border-slate-200 px-3 py-2 hover:bg-slate-50" href="#administrativas">Administrativas</a>
-                    <a class="block rounded border border-slate-200 px-3 py-2 hover:bg-slate-50" href="#desde-aqui">Desde aquí</a>
-                    <a class="block rounded border border-slate-200 px-3 py-2 hover:bg-slate-50" href="#facturacion">Facturación</a>
-                    <a class="block rounded border border-slate-200 px-3 py-2 hover:bg-slate-50" href="#notificaciones">Notificaciones</a>
-                </nav>
-            </div>
-        </aside>
     </div>
 @endsection

@@ -10,6 +10,7 @@ use App\Console\Commands\ProcessTrialLifecycle;
 use App\Console\Commands\PurgeExpiredClinics;
 use App\Jobs\SendAppointmentReminder24h;
 use App\Jobs\SendAppointmentReminder2h;
+use App\Support\ActivityLogger;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -35,7 +36,40 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        $exceptions->report(function (Throwable $exception): void {
+            $statusCode = method_exists($exception, 'getStatusCode')
+                ? (int) $exception->getStatusCode()
+                : 500;
+
+            if ($statusCode < 500) {
+                return;
+            }
+
+            try {
+                $tenantId = (int) (currentClinicId() ?? 0);
+                if ($tenantId <= 0) {
+                    return;
+                }
+
+                $request = request();
+                $path = $request ? (string) $request->path() : '';
+
+                ActivityLogger::log(
+                    tenantId: $tenantId,
+                    userId: $request?->user()?->id,
+                    event: 'system_error_500',
+                    description: 'Error interno 500 en la aplicacion',
+                    metadata: [
+                        'status_code' => $statusCode,
+                        'exception' => class_basename($exception),
+                        'path' => $path,
+                    ],
+                    ip: $request?->ip(),
+                );
+            } catch (Throwable) {
+                // Nunca romper el manejo de excepciones por auditoria.
+            }
+        });
     })
     ->withSchedule(function (Schedule $schedule): void {
         $schedule

@@ -43,6 +43,7 @@
                     <th class="px-3 py-2">Plan</th>
                     <th class="px-3 py-2">Estado SaaS</th>
                     <th class="px-3 py-2">Trial ends</th>
+                    <th class="px-3 py-2">Última actividad</th>
                     <th class="px-3 py-2">Acciones</th>
                 </tr>
             </thead>
@@ -70,13 +71,16 @@
                             </span>
                         </td>
                         <td class="px-3 py-2">{{ $clinic->trial_ends_at?->format('Y-m-d H:i') ?: '-' }}</td>
+                        <td class="px-3 py-2 text-sm text-slate-600" title="{{ $clinic->last_activity_at?->format('Y-m-d H:i') ?: '' }}">
+                            {{ $clinic->last_activity_at?->diffForHumans() ?? '—' }}
+                        </td>
                         <td class="px-3 py-2">
                             <a class="rounded border border-slate-300 px-2 py-1 hover:bg-slate-50" href="{{ route('backoffice.clinics.show', $clinic) }}">Ver</a>
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td class="px-3 py-4 text-slate-500" colspan="7">No hay clínicas para mostrar.</td>
+                        <td class="px-3 py-4 text-slate-500" colspan="8">No hay clínicas para mostrar.</td>
                     </tr>
                 @endforelse
             </tbody>

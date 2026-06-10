@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Mail\SubscriptionCanceledInternalMail;
 use App\Http\Controllers\Controller;
 use App\Models\BillingPayment;
+use App\Support\ActivityLogger;
 use App\Services\PaymentProvider\Resolver;
 use App\Services\PaymentProvider\StripePaymentProvider;
 use Illuminate\Http\Request;
@@ -19,6 +20,7 @@ class BillingController extends Controller
     public function createCheckout(Request $request)
     {
         $clinic = $request->user()->clinic;
+        $previousSubscriptionStatus = strtolower(trim((string) ($clinic->subscription_status ?? 'inactive')));
         $amount = (int) ($request->input('amount', 2900)); // cents default 29.00
 
         $paymentPayload = [
@@ -120,6 +122,20 @@ class BillingController extends Controller
                 $clinic->subscription_provider = 'fake';
                 $clinic->subscription_reference = $fakeSubId;
                 $clinic->save();
+
+                ActivityLogger::log(
+                    tenantId: (int) $clinic->id,
+                    userId: (int) $request->user()->id,
+                    event: $previousSubscriptionStatus === 'active' ? 'subscription_renewed' : 'subscription_created',
+                    description: $previousSubscriptionStatus === 'active'
+                        ? 'Suscripcion renovada en checkout fake'
+                        : 'Suscripcion creada en checkout fake',
+                    metadata: [
+                        'provider' => 'fake',
+                        'payment_id' => (int) $payment->id,
+                    ],
+                    ip: $request->ip(),
+                );
             }
         } catch (\Exception $e) {
             // ignore failures here; payment created but subscription update non-fatal
@@ -143,6 +159,7 @@ class BillingController extends Controller
     {
         $user = $request->user();
         $clinic = $user ? $user->clinic : null;
+        $previousSubscriptionStatus = strtolower(trim((string) ($clinic?->subscription_status ?? 'inactive')));
 
         if (! $clinic) {
             return response()->json(['message' => 'Clinica no disponible'], 403);
@@ -262,6 +279,20 @@ class BillingController extends Controller
         $clinic->stripe_customer_id = $session->customer ?? $clinic->stripe_customer_id;
         $clinic->save();
 
+        ActivityLogger::log(
+            tenantId: (int) $clinic->id,
+            userId: (int) ($user?->id ?? 0),
+            event: $previousSubscriptionStatus === 'active' ? 'subscription_renewed' : 'subscription_created',
+            description: $previousSubscriptionStatus === 'active'
+                ? 'Suscripcion renovada tras confirmacion de checkout'
+                : 'Suscripcion creada tras confirmacion de checkout',
+            metadata: [
+                'provider' => 'stripe',
+                'session_id' => (string) $sessionId,
+            ],
+            ip: $request->ip(),
+        );
+
         return response()->json([
             'status' => 'active',
             'session_id' => $sessionId,
@@ -340,6 +371,18 @@ class BillingController extends Controller
         $clinic->subscription_status = 'canceled';
         $clinic->save();
 
+        ActivityLogger::log(
+            tenantId: (int) $clinic->id,
+            userId: (int) ($user?->id ?? 0),
+            event: 'subscription_cancelled',
+            description: 'Suscripcion cancelada desde la app',
+            metadata: [
+                'provider' => $providerName,
+                'stripe_subscription_id' => $stripeSubId !== '' ? $stripeSubId : null,
+            ],
+            ip: $request->ip(),
+        );
+
         $this->notifyCancellationMail($clinic, $subscription->stripe_subscription_id);
 
         return response()->json([
@@ -353,6 +396,7 @@ class BillingController extends Controller
     {
         $user = $request->user();
         if ($user && $clinic = $user->clinic) {
+            $previousSubscriptionStatus = strtolower(trim((string) ($clinic->subscription_status ?? 'inactive')));
             // marcar ultimo payment pendiente como pagado
             try {
                 $pending = BillingPayment::query()->where('clinic_id', $clinic->id)
@@ -386,6 +430,20 @@ class BillingController extends Controller
             $clinic->trial_ends_at = null;
             $clinic->subscription_status = 'active';
             $clinic->save();
+
+            ActivityLogger::log(
+                tenantId: (int) $clinic->id,
+                userId: (int) $user->id,
+                event: $previousSubscriptionStatus === 'active' ? 'subscription_renewed' : 'subscription_created',
+                description: $previousSubscriptionStatus === 'active'
+                    ? 'Suscripcion renovada por fake success local'
+                    : 'Suscripcion creada por fake success local',
+                metadata: [
+                    'provider' => 'fake',
+                    'source' => 'billing.fake_success',
+                ],
+                ip: $request->ip(),
+            );
         }
 
         // Redirigir al dashboard de la SPA - la SPA debe consultar /api/me

@@ -26,6 +26,15 @@ class BackofficeClinicActivity extends Model
         'created_at' => 'datetime',
     ];
 
+    protected static function booted(): void
+    {
+        static::created(function (BackofficeClinicActivity $activity) {
+            if ($activity->clinic_id) {
+                Clinic::withoutGlobalScopes()->where('id', $activity->clinic_id)->update(['last_activity_at' => now()]);
+            }
+        });
+    }
+
     public function clinic(): BelongsTo
     {
         return $this->belongsTo(Clinic::class);

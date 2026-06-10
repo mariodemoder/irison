@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\BillingPayment;
+use App\Support\ActivityLogger;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +19,7 @@ class FakeSubscribeController extends Controller
         }
 
         $clinic = $user->clinic;
+        $previousSubscriptionStatus = strtolower(trim((string) ($clinic->subscription_status ?? 'inactive')));
         $amount = (int) $request->input('amount', 2900);
 
         $result = DB::transaction(function () use ($clinic, $amount) {
@@ -89,6 +91,20 @@ class FakeSubscribeController extends Controller
         $subscription = $result['subscription'];
         $clinic = $result['clinic'];
         $status = $result['status'];
+
+        ActivityLogger::log(
+            tenantId: (int) $clinic->id,
+            userId: (int) $user->id,
+            event: $previousSubscriptionStatus === 'active' ? 'subscription_renewed' : 'subscription_created',
+            description: $previousSubscriptionStatus === 'active'
+                ? 'Suscripcion renovada por subscribe fake'
+                : 'Suscripcion creada por subscribe fake',
+            metadata: [
+                'provider' => 'fake',
+                'subscription_id' => (int) $subscription->id,
+            ],
+            ip: $request->ip(),
+        );
 
         return response()->json([
             'status' => 'ok',

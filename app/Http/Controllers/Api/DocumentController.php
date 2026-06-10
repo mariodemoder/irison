@@ -9,6 +9,7 @@ use App\Models\Document;
 use App\Models\Patient;
 use App\Models\Payment;
 use App\Models\Product;
+use App\Support\ActivityLogger;
 use App\Services\Documents\InvoicingService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
@@ -250,6 +251,22 @@ class DocumentController extends Controller
         }
 
         $document = $result['document'];
+        $created = (bool) ($result['created'] ?? true);
+
+        if ($created) {
+            ActivityLogger::log(
+                tenantId: $clinicId,
+                userId: (int) ($user?->id ?? 0),
+                event: 'document_created',
+                description: 'Documento creado desde facturacion varios',
+                metadata: [
+                    'document_id' => (int) $document->id,
+                    'source' => 'documents.varios',
+                    'type' => (string) ($document->type ?? ''),
+                ],
+                ip: $request->ip(),
+            );
+        }
 
         return response()->json([
             'message' => 'Factura creada correctamente.',
@@ -389,6 +406,22 @@ class DocumentController extends Controller
 
         $abono = $result['document'];
         $created = (bool) $result['created'];
+
+        if ($created) {
+            $user = $request->user();
+            ActivityLogger::log(
+                tenantId: (int) ($user?->clinic_id ?? 0),
+                userId: (int) ($user?->id ?? 0),
+                event: 'document_created',
+                description: 'Documento abono creado',
+                metadata: [
+                    'document_id' => (int) $abono->id,
+                    'source' => 'documents.abono',
+                    'type' => (string) ($abono->type ?? ''),
+                ],
+                ip: $request->ip(),
+            );
+        }
 
         return response()->json([
             'message' => $created ? 'Factura rectificativa emitida correctamente.' : 'La factura ya tiene un abono emitido.',

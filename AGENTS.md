@@ -2,6 +2,10 @@
 
 This file gives coding agents the minimum project context to be productive quickly.
 
+## ⚠️ Mandatory — Read this file first
+
+All agents MUST read this file at the start of every session before planning or executing any work.
+
 ## Quick Start
 
 1. Install dependencies:
@@ -59,6 +63,7 @@ Build and tests:
 
 ## Existing Specialized Agents
 
+- **Plan orchestrator** (lee `AGENTS.md` → planifica → delega): [.github/agents/plan.agent.md](.github/agents/plan.agent.md)
 - Billing specialist: [.github/agents/facturacion.agent.md](.github/agents/facturacion.agent.md)
 - Backend specialist: [.github/agents/php-laravel-backend.agent.md](.github/agents/php-laravel-backend.agent.md)
 - Frontend specialist: [.github/agents/MISTER FRONT.agent.md](.github/agents/MISTER%20FRONT.agent.md)

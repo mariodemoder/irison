@@ -45,6 +45,15 @@ class Appointment extends Model
         'price' => 'decimal:2',
     ];
 
+    protected static function booted(): void
+    {
+        static::created(function (Appointment $appointment) {
+            if ($appointment->clinic_id) {
+                Clinic::withoutGlobalScopes()->where('id', $appointment->clinic_id)->update(['last_activity_at' => now()]);
+            }
+        });
+    }
+
     public function clinic(): BelongsTo
     {
         return $this->belongsTo(Clinic::class);

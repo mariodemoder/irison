@@ -75,6 +75,15 @@ class Document extends Model
         return $this->type === self::TYPE_ABONO ? 'payout' : 'documents';
     }
 
+    protected static function booted(): void
+    {
+        static::created(function (Document $document) {
+            if ($document->clinic_id) {
+                Clinic::withoutGlobalScopes()->where('id', $document->clinic_id)->update(['last_activity_at' => now()]);
+            }
+        });
+    }
+
     public function clinic(): BelongsTo
     {
         return $this->belongsTo(Clinic::class);
