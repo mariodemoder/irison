@@ -227,3 +227,38 @@ Build and tests:
 - `CheckAvailability::validate()` returns `['valid' => bool, 'errors' => []]`.
 - `CheckAvailability::check()` returns `'disponible'` or `'ocupado'` (simpler, no patient check).
 - Both use full Carbon datetimes; always pass combined `date+time` Carbon objects, never bare `H:i` strings.
+
+## Reserva Online — Notas de Arquitectura
+
+### Modelos
+- `Booking/BookingPage` — Página pública de reserva por clínica. Slug único.
+- `Booking/BookingService` — Servicios ofrecidos online (duración, precio, activo).
+- `Booking/BookingProfessional` — Pivot User ↔ online booking. `allow_online_booking` determina visibilidad.
+- `Booking/ProfessionalSchedule` — Horario semanal por profesional (day_of_week 1-7, ISO).
+- `Booking/ScheduleException` — Bloqueos puntuales por profesional (día completo o rango horario).
+
+### Availability Engine (`app/Services/Booking/AvailabilityEngine.php`)
+- `getAvailableDates()` — devuelve días con disponibilidad potencial para un mes.
+- `getAvailableSlots()` — genera slots de `duration_minutes` en intervalos de 15 min dentro del horario del profesional, restando citas existentes y excepciones.
+- Respeta `max_horizon_days` de `BookingPage`.
+
+### Notificaciones
+- `Booking/BookingConfirmation` — Email al paciente con resumen + enlace de cancelación.
+- `Booking/NewOnlineBooking` — Email a los owners de la clínica con datos del paciente.
+
+### Rutas públicas vs admin
+- Las rutas admin (`/api/booking/settings`, `/api/booking/services/*`, etc.) deben ir ANTES de la ruta pública `GET /api/booking/{slug}` para evitar que `{slug}` capture rutas fijas.
+- Ver `routes/api.php` para el orden exacto.
+- Las rutas admin de booking usan middleware `['auth:sanctum', 'clinic']` (sin `check.subscription`) para que la configuración sea accesible incluso durante trial expirado o bloqueo — es configuración, no transacciones.
+
+### Tests
+- `tests/Feature/Booking/` — 19 tests que cubren engine, flujo público y CRUD admin.
+- Ejecutar con: `php artisan test --filter=Booking`
+
+### Despliegue (para Mr. DEPLOY.agent)
+- Migraciones: `php artisan migrate` (6 nuevas tablas + alter appointments).
+- Colas: Las notificaciones de booking usan el mismo driver `database`. Asegurar worker activo.
+- Sin nuevas tareas scheduler.
+- Rate limiting: `throttle:30,1` en rutas públicas de booking.
+- Logging: evento `booking.created` con `event`, `clinic_id`, `result`.
+- Check post-deploy: acceder a `/booking/test-slug`, crear cita online, verificar email.

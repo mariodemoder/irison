@@ -216,3 +216,72 @@ Testing:
 - PestPHP
 - Vitest
 - Playwright
+
+## Online Booking System
+
+### Configuración (admin)
+
+1. Ir a Configuración > Reserva Online en el frontend.
+2. Pestaña "Configuración": definir slug, título, activo, horizonte máximo, política de cancelación.
+3. Pestaña "Servicios": crear servicios ofrecidos online (nombre, duración, precio, activo).
+4. Pestaña "Profesionales": habilitar profesionales con `allow_online_booking = true`, configurar horario semanal (`day_of_week` ISO 1-7, `start_time`, `end_time`) y excepciones puntuales.
+
+### Endpoints admin (auth:sanctum + clinic, sin check.subscription)
+
+| Método | Ruta | Propósito |
+|--------|------|-----------|
+| GET | `/api/booking/settings` | Obtener configuración (devuelve defaults si no existe) |
+| PUT | `/api/booking/settings` | Crear/actualizar configuración |
+| GET | `/api/booking/services` | Listar servicios |
+| POST | `/api/booking/services` | Crear servicio |
+| PUT | `/api/booking/services/{id}` | Actualizar servicio |
+| DELETE | `/api/booking/services/{id}` | Eliminar servicio |
+| GET | `/api/booking/professionals` | Listar profesionales de la clínica |
+| PUT | `/api/booking/professionals/{id}` | Actualizar profesional (allow_online_booking) |
+| GET | `/api/booking/professionals/{id}/schedules` | Horarios de un profesional |
+| POST | `/api/booking/professionals/{id}/schedules` | Crear horario |
+| PUT | `/api/booking/professionals/{id}/schedules/{sid}` | Actualizar horario |
+| DELETE | `/api/booking/professionals/{id}/schedules/{sid}` | Eliminar horario |
+| GET | `/api/booking/professionals/{id}/exceptions` | Excepciones de un profesional |
+| POST | `/api/booking/professionals/{id}/exceptions` | Crear excepción |
+| PUT | `/api/booking/professionals/{id}/exceptions/{eid}` | Actualizar excepción |
+| DELETE | `/api/booking/professionals/{id}/exceptions/{eid}` | Eliminar excepción |
+
+### Endpoints públicos (throttle:30,1, sin auth)
+
+| Método | Ruta | Propósito |
+|--------|------|-----------|
+| GET | `/api/booking/{slug}` | Obtener página pública (slug, servicios, profesionales) |
+| GET | `/api/booking/{slug}/availability/dates?year=&month=&service_id=&professional_id=` | Días disponibles para un mes |
+| GET | `/api/booking/{slug}/availability/slots?date=&service_id=&professional_id=` | Slots disponibles para un día |
+| POST | `/api/booking/{slug}/appointments` | Crear cita online (name, email, phone, service_id, professional_id, date, start_time) |
+| GET | `/api/booking/appointments/{token}/cancel` | Cancelar cita por token |
+
+### Flujo completo de obtención de turno online
+
+1. El paciente accede a `/booking/{slug}`.
+2. Selecciona servicio → profesional → fecha → horario → datos personales.
+3. Confirma y se crea la cita vía `POST /api/booking/{slug}/appointments`.
+   - Backend: `PublicBookingService::create()` con `DB::transaction` + `lockForUpdate` para evitar doble reserva.
+   - Se notifica al paciente (`BookingConfirmation`) y a los owners de la clínica (`NewOnlineBooking`).
+4. El paciente recibe email con resumen y enlace para cancelar.
+5. Las citas online se crean con `booking_source = 'online'` en la tabla `appointments`.
+
+### Availability Engine (app/Services/Booking/AvailabilityEngine.php)
+
+- `getAvailableSlots(service, professional, date)`: genera slots de `duration_minutes` en intervalos de 15 min dentro del horario del profesional, restando citas existentes y excepciones.
+- `getAvailableDates(service, professional, year, month)`: días con disponibilidad potencial.
+- Respeta `max_horizon_days` de `BookingPage`.
+
+### Tests
+
+```
+php artisan test --filter=Booking
+```
+
+### Notas importantes
+
+- Las rutas admin de booking deben ir ANTES de `GET /api/booking/{slug}` en `routes/api.php` para evitar que `{slug}` capture rutas fijas.
+- Cuando no existe `BookingPage`, `GET /api/booking/settings` devuelve defaults (slug=null, title="Reserva tu cita", etc.). El frontend siempre recibe un objeto, nunca null.
+- `lockForUpdate` requiere `DB::transaction` wrapping el insert + slot check.
+- `day_of_week` en `ProfessionalSchedule` usa ISO-8601 (1=lunes, 7=domingo).

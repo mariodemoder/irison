@@ -20,6 +20,7 @@
             <button :class="['tab', { active: activeTab==='factura_pdf' }]" @click="activeTab='factura_pdf'">Factura PDF</button>
             <button :class="['tab', { active: activeTab==='sesiones' }]" @click="activeTab='sesiones'">Sesiones</button>
             <button :class="['tab', { active: activeTab==='bonos' }]" @click="activeTab='bonos'">Bonos</button>
+            <button :class="['tab', { active: activeTab==='booking' }]" @click="activeTab='booking'">Reserva Online</button>
             <button :class="['tab', { active: activeTab==='subscripcion' }]" @click="activeTab='subscripcion'">Subscripción</button>
           </div>
 
@@ -192,6 +193,10 @@
                     </div>
                   </div>
                 </div>
+              </div>
+
+              <div class="tab-panel tab-card" v-show="activeTab==='booking'">
+                <BookingSettings />
               </div>
 
               <div class="tab-panel tab-card" v-show="activeTab==='subscripcion'">
@@ -538,7 +543,7 @@
 
             <div class="action-plane">
               <div v-if="activeTab==='clinica' || activeTab==='horarios' || activeTab==='contadores' || activeTab==='sesiones' || activeTab==='bonos' || activeTab==='factura_pdf'" class="action-row action-row-save">
-                <button class="btn btn-sm save-button" type="button" :disabled="saving" @click.prevent="save">Guardar</button>
+                <SaveButton class="save-button" :saving="saving" @click.prevent="save" />
               </div>
 
               <div v-else class="action-row action-row-empty"></div>
@@ -560,6 +565,8 @@ import api from '../services/api'
 import { useToast } from 'vue-toastification'
 import { meClinic } from '../shared/meCache'
 import { getLoadErrorMessage } from '../shared/httpErrors'
+import BookingSettings from './settings/BookingSettings.vue'
+import SaveButton from '../components/SaveButton.vue'
 
 const router = useRouter()
 const toast = useToast()

@@ -178,6 +178,54 @@ php artisan test tests/Feature/GenerateClinicErrorTest.php
 - Falla por conteos globales (billing_payments):
   - Validar por clinic_id del escenario y no por total de tabla.
 
+## Runbook: Online Booking (Reserva Online)
+
+### Cómo configurar (prueba manual)
+
+1. Ir a Configuración > pestaña "Reserva Online".
+2. Pestaña **Configuración**: definir slug (ej: `mi-clinica`), título, activar, horizonte 60 días, cancelación 24h. Guardar.
+3. Pestaña **Servicios**: crear al menos 1 servicio (nombre, duración 60 min, precio).
+4. Pestaña **Profesionales**: hacer clic en un profesional para expandir. Activar toggle "Online". Añadir horario semanal (ej: Lunes 09:00-17:00).
+
+### Cómo obtener un turno online (prueba manual)
+
+1. Abrir en navegador: `http://localhost:8000/booking/{slug}` (slug configurado arriba).
+2. Debe mostrar landing con gradiente violeta/glassmorphism sin sidebar ni auth.
+3. Seguir pasos: seleccionar servicio → seleccionar profesional → seleccionar fecha → seleccionar slot horario → datos personales → confirmar.
+4. Verificar que la cita se crea (aparece en Calendario y Lista de citas con "origen: online").
+5. Verificar email de confirmación al paciente (mailtrap/log).
+6. Verificar email de notificación a owners de la clínica.
+
+### Tests automatizados
+
+```bash
+php artisan test --filter=Booking
+```
+
+18 tests cubren:
+- `AvailabilityEngine`: generación de slots, días disponibles, respeta horarios/excepciones/existentes.
+- `PublicFlow`: crear cita online, cancelar por token, doble reserva bloqueada.
+- `Admin`: CRUD de settings, servicios, profesionales, horarios, excepciones.
+
+### Endpoints públicos clave para validación
+
+| Acción | Endpoint |
+|--------|----------|
+| Obtener página | `GET /api/booking/{slug}` |
+| Días disponibles | `GET /api/booking/{slug}/availability/dates?year=&month=&service_id=&professional_id=` |
+| Slots disponibles | `GET /api/booking/{slug}/availability/slots?date=&service_id=&professional_id=` |
+| Crear cita | `POST /api/booking/{slug}/appointments` |
+| Cancelar | `GET /api/booking/appointments/{token}/cancel` |
+
+### Qué validar en regresión
+
+- Doble reserva: crear 2 citas en el mismo slot debe fallar con error controlado.
+- Slots correctos: si profesional trabaja 09:00-17:00 con servicio de 60 min, deben generarse slots 09:00, 09:15, ..., 16:00.
+- Excepciones: si se bloquea un día completo, no deben aparecer slots ese día.
+- Cancelación: al cancelar por token, el slot debe liberarse y la cita marcarse como cancelada.
+- Sin sidebar: la ruta `/booking/{slug}` no debe mostrar el layout auth.
+- Rutas admin funcionan en trial/read-only: settings, servicios, profesionales deben cargarse incluso si la suscripción está bloqueada.
+
 ## Criterios de salida
 
 - Debe quedar claro que se probo, que paso y que riesgo queda.

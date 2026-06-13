@@ -35,6 +35,10 @@ class Appointment extends Model
         'bonus_id',
         'app_type_id',
         'custom_type',
+        'booking_source',
+        'booking_notes',
+        'confirmation_token',
+        'professional_id',
     ];
 
     protected $casts = [
@@ -109,6 +113,11 @@ class Appointment extends Model
     public function appointmentType(): BelongsTo
     {
         return $this->belongsTo(AppointmentType::class, 'app_type_id');
+    }
+
+    public function professional(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'professional_id');
     }
     /**
      * Convenience: apply a bonus to this appointment by id using BonusService.

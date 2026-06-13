@@ -69,6 +69,7 @@ const routes = [
   { path: '/appointments/create', component: AppointmentsForm, meta: { auth: true } },
   { path: '/appointments/:id', component: AppointmentsShow, meta: { auth: true } },
   { path: '/appointments/:id/edit', component: AppointmentsForm, meta: { auth: true } },
+  { path: '/booking/:slug', component: () => import('../views/booking/BookingPage.vue'), meta: { publicLanding: true } },
   { path: '/privacy', component: Privacy },
   { path: '/terms', component: Terms },
 ]
