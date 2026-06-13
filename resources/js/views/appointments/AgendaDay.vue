@@ -1019,7 +1019,8 @@ watch(totalPages, (pages) => {
 .scope-btn { padding:6px 16px; font-size:13px; font-weight:600; color:#6b7280; background:#fff; border:none; cursor:pointer; transition:background .12s, color .12s }
 .scope-btn:not(:last-child) { border-right:1px solid #e5e7eb }
 .scope-btn:hover:not(.scope-active) { background:#f1f5f9 }
-.scope-active { background:#2563eb; color:#fff }
+.scope-active { background:#eff6ff; color:#2563eb; border-color:#3b82f6 }
+.scope-btn.scope-active:hover { background:#dbeafe }
 
 /* Mini-cal deshabilitado en modo Ver Todo */
 .cal-dimmed { opacity:.4 }

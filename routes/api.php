@@ -96,7 +96,7 @@ Route::middleware(['auth:sanctum', 'clinic', 'check.subscription'])->group(funct
 
     // Productos: CRUD para gestión de inventario/facturación
     Route::apiResource('products', \App\Http\Controllers\Api\ProductController::class)
-        ->only(['index', 'store', 'show', 'update']);
+        ->only(['index', 'store', 'show', 'update', 'destroy']);
 
     Route::get('reminders', [\App\Http\Controllers\Api\ReminderController::class, 'index']);
     Route::get('reminders/{reminder}', [\App\Http\Controllers\Api\ReminderController::class, 'show']);

@@ -72,6 +72,6 @@ watch(month, (m) => {
 .cal-cell { padding:8px; text-align:center; border-radius:8px; cursor:pointer }
 .cal-cell.muted { color:#9ca3af }
 .cal-cell.today { border:1px solid #3b82f6 }
-.cal-cell.selected { background:#3b82f6; color:#fff }
+.cal-cell.selected { background:#eff6ff; color:#2563eb; border:1px solid #3b82f6 }
 .icon-btn { display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:8px; border:1px solid #e5e7eb; background:#fff; cursor:pointer }
 </style>
