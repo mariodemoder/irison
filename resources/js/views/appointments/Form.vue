@@ -58,9 +58,10 @@
             <div class="tab-content-grid">
           <div class="field" v-if="activeTab === 'session'">
             <label class="label">Tipo</label>
-            <select v-model="form.app_type_id" class="input" :disabled="isCanceled && mode !== 'reprogram'">
+            <select v-model="form.app_type_id" class="input" :disabled="isCanceled && mode !== 'reprogram'" @change="onAppTypeChange">
               <option value="">Selecciona un tipo</option>
               <option value="__custom">Otro (escribir)</option>
+              <option value="__create">+ Crear tipo...</option>
               <option v-for="type in appointmentTypes" :key="type.id" :value="String(type.id)">
                 {{ type.description || `Tipo #${type.id}` }}
               </option>
@@ -455,6 +456,7 @@ import { formatDate, toDatetimeLocalValue } from '../../shared/appointmentHelper
 import { formatDMY } from '../../shared/dateHelpers'
 import {
   openCreatePatientPopup as sharedOpenCreatePatientPopup,
+  openCreateAppointmentTypePopup as sharedOpenCreateAppointmentTypePopup,
   checkOverlapShared,
   goBack as sharedGoBack,
   startReprogramShared,
@@ -949,6 +951,21 @@ async function onPatientChange() {
     selectBonus.value = false
     form.use_bonus_id = ''
     form.use_credit_payment_id = ''
+  }
+}
+
+async function onAppTypeChange() {
+  if (form.app_type_id === '__create') {
+    const toast = useToast()
+    const newType = await sharedOpenCreateAppointmentTypePopup({ api, Swal, toast })
+    if (newType) {
+      appointmentTypes.value.unshift(newType)
+      suppressTypeChangePrompt.value = true
+      form.app_type_id = String(newType.id)
+      nextTick(() => { suppressTypeChangePrompt.value = false })
+    } else {
+      form.app_type_id = ''
+    }
   }
 }
 

@@ -1,0 +1,17 @@
+{
+    "The :attribute field must not be greater than :max.": "El campo :attribute no debe ser mayor que :max.",
+    "The :attribute field must not be greater than :max kilobytes.": "El campo :attribute no debe ser mayor que :max kilobytes.",
+    "The :attribute field must not be greater than :max characters.": "El campo :attribute no debe tener más de :max caracteres.",
+    "The :attribute field is required.": "El campo :attribute es obligatorio.",
+    "The selected :attribute is invalid.": "El :attribute seleccionado no es válido.",
+    "The :attribute has already been taken.": "El :attribute ya ha sido registrado.",
+    "These credentials do not match our records.": "Estas credenciales no coinciden con nuestros registros.",
+    "The provided password is incorrect.": "La contraseña proporcionada es incorrecta.",
+    "Too many login attempts. Please try again in :seconds seconds.": "Demasiados intentos de inicio de sesión. Por favor intente de nuevo en :seconds segundos.",
+    "Your password has been reset.": "Su contraseña ha sido restablecida.",
+    "We have emailed your password reset link.": "Le hemos enviado el enlace de restablecimiento de contraseña por correo.",
+    "Please wait before retrying.": "Por favor espere antes de intentar de nuevo.",
+    "This password reset token is invalid.": "Este token de restablecimiento de contraseña no es válido.",
+    "We can't find a user with that email address.": "No encontramos un usuario con esa dirección de correo.",
+    "The :attribute field must not be greater than :max digits.": "El campo :attribute no debe tener más de :max dígitos."
+}

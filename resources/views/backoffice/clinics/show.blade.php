@@ -186,7 +186,7 @@
     </div>
 
     <article id="desde-aqui" class="rounded bg-white p-4 shadow-sm">
-        <h3 class="text-lg font-medium">Desde aquí</h3>
+        <h3 class="text-lg font-medium">Logs</h3>
 
         @if (auth('admin')->user()?->role === 'super_admin')
             <form class="mt-3 border-t border-slate-100 pt-3" method="POST" action="{{ route('backoffice.clinics.impersonate', $clinic) }}">

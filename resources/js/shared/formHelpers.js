@@ -177,8 +177,81 @@ export function appointmentCancelShared(id, { api, toast, router, onSuccess } = 
   return confirmAndCancel(id, { api, toast, onSuccess: handler })
 }
 
+export async function openCreateAppointmentTypePopup({ api, Swal, toast } = {}) {
+  const { value: formValues } = await Swal.fire({
+    title: 'Crear tipo de sesión',
+    html: `
+      <div class="swal-card swal-card-scrollable">
+        <div class="create-row">
+          <label for="swal-type-description">Descripción</label>
+          <input id="swal-type-description" class="input" placeholder="Ej: Sesión estándar">
+        </div>
+        <div class="create-grid-2">
+          <div class="create-row">
+            <label for="swal-type-hours">Horas estimadas</label>
+            <input id="swal-type-hours" class="input" type="number" min="0" max="23" value="0" step="1">
+          </div>
+          <div class="create-row">
+            <label for="swal-type-minutes">Minutos estimados</label>
+            <input id="swal-type-minutes" class="input" type="number" min="0" max="59" value="60" step="5">
+          </div>
+        </div>
+        <div class="create-row">
+          <label for="swal-type-price">Precio (€)</label>
+          <input id="swal-type-price" class="input" type="number" min="0" step="0.01" value="0">
+        </div>
+      </div>
+    `,
+    focusConfirm: false,
+    showCancelButton: true,
+    confirmButtonText: 'Crear',
+    cancelButtonText: 'Cancelar',
+    buttonsStyling: false,
+    customClass: {
+      popup: 'swal-popup-card',
+      confirmButton: 'primary',
+      cancelButton: 'muted'
+    },
+    preConfirm: async () => {
+      const description = document.getElementById('swal-type-description')?.value?.trim()
+      const hours = document.getElementById('swal-type-hours')?.value?.trim()
+      const minutes = document.getElementById('swal-type-minutes')?.value?.trim()
+      const price = document.getElementById('swal-type-price')?.value?.trim()
+
+      if (!description) {
+        Swal.showValidationMessage('La descripción es requerida')
+        return false
+      }
+
+      try {
+        const res = await api.post('/appointment-types', {
+          description,
+          estimated_hours: hours ? Number(hours) : 0,
+          estimated_minutes: minutes ? Number(minutes) : 60,
+          price: price ? Number(price) : 0,
+        })
+        return res.data || res.data?.data || res
+      } catch (e) {
+        const validationErrors = e.response?.data?.errors
+        const firstFieldError = validationErrors && Object.values(validationErrors)[0]?.[0]
+        const msg = firstFieldError || e.response?.data?.message || 'Error creando tipo de sesión'
+        Swal.showValidationMessage(msg)
+        return false
+      }
+    }
+  })
+
+  if (formValues) {
+    const newType = formValues.data ? formValues.data : formValues
+    if (toast && typeof toast.success === 'function') toast.success('Tipo de sesión creado')
+    return newType
+  }
+  return null
+}
+
 export default {
   openCreatePatientPopup,
+  openCreateAppointmentTypePopup,
   loadPatients,
   checkOverlapShared,
   goBack,

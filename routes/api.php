@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AppointmentController;
+use App\Http\Controllers\Api\AppointmentTypeController;
 use App\Http\Controllers\Api\PatientController;
 use App\Http\Controllers\API\ActivateAccountController;
 use App\Http\Controllers\API\RegisterController;
@@ -80,6 +81,9 @@ Route::middleware(['auth:sanctum', 'clinic', 'check.subscription'])->group(funct
     // Citas: CRUD multitenant
     Route::get('appointments/form-bootstrap', [AppointmentController::class, 'formBootstrap']);
     Route::apiResource('appointments', AppointmentController::class);
+
+    // Tipo de cita: creación rápida desde formulario de cita
+    Route::post('appointment-types', [AppointmentTypeController::class, 'store']);
 
     // Dashboard: resumen agregado para minimizar llamadas del frontend
     Route::get('dashboard/summary', DashboardSummaryController::class);

@@ -72,6 +72,56 @@ Eres el agente de QA de Irison. Tu objetivo es asegurar calidad funcional, regre
 - Si una prueba necesita limpieza, limitarla exclusivamente a los registros creados por la propia prueba.
 - Ejecutar pruebas con entorno forzado de testing aislado (`APP_ENV=testing`, `DB_CONNECTION=sqlite`, `DB_DATABASE=:memory:`).
 
+## Generar errores visibles en Backoffice (`GenerateClinicErrorTest`)
+
+El test `tests/Feature/GenerateClinicErrorTest.php` crea una clínica de prueba con:
+- Un `system_error_500` en `activity_logs` (visible en "Logs de la clínica" y "Último error 500")
+- 3 pagos fallidos consecutivos en `billing_payments` (visible como "Alertas Criticas" en el dashboard)
+
+### Variables de entorno
+
+| Variable | Obligatoria | Defecto | Descripción |
+|---|---|---|---|
+| `CLINIC_ERROR_PERSIST` | No | `false` | `true` para escribir en DB local (salta SQLite in-memory) |
+| `CLINIC_ERROR_DB` | No | `pgsql` | Nombre de conexión en `config/database.php` |
+| `CLINIC_ERROR_DB_NAME` | No | `dueleahi` | Nombre de la base de datos en tu DB local |
+
+### Uso normal (test aislado en memoria)
+
+```bash
+php artisan test tests/Feature/GenerateClinicErrorTest.php
+```
+
+SQLite in-memory — verifica la lógica pero **no persiste datos** para verlos en el backoffice.
+
+### Uso para depuración visual (ver datos en backoffice local)
+
+```bash
+CLINIC_ERROR_PERSIST=true CLINIC_ERROR_DB=pgsql CLINIC_ERROR_DB_NAME=dueleahi php artisan test tests/Feature/GenerateClinicErrorTest.php
+```
+
+Esto:
+- Salta SQLite in-memory y escribe directo en tu DB local (`pgsql`/`dueleahi`)
+- Ejecuta `php artisan migrate --force` si faltan tablas (no borra datos existentes)
+- No necesita modificar `phpunit.xml`
+
+Después, ve al backoffice (`/backoffice`) y busca la clínica **"ERROR TEST CLINIC - Demo Backoffice"**.
+
+### Verificación esperada
+
+- **Dashboard**: la clínica aparece en "Alertas Criticas" (3 pagos fallidos).
+- **Vista de clínica > Datos**: "Último error 500" con fecha/hora.
+- **Vista de clínica > Logs de la clínica**: evento `system_error_500` con metadata.
+
+### Limpieza
+
+Busca y elimina la clínica `"ERROR TEST CLINIC - Demo Backoffice"` desde el panel de administración del backoffice o directo en BD.
+
+### Advertencia
+
+- No ejecutar contra producción.
+- El test crea datos nuevos; no modifica ni borra datos existentes.
+
 ## Criterios de salida
 
 - Debe quedar claro qué se probó, qué pasó y qué riesgo queda.

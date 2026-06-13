@@ -12,6 +12,8 @@ trait CreatesApplication
     {
         $forced = [
             'APP_ENV' => 'testing',
+            'APP_LOCALE' => 'es',
+            'APP_FALLBACK_LOCALE' => 'es',
             'DB_CONNECTION' => 'sqlite',
             'DB_DATABASE' => ':memory:',
             'CACHE_STORE' => 'array',
