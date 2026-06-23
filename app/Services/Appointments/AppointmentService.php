@@ -32,7 +32,7 @@ class AppointmentService
             ->where('end_time', '<', Carbon::now())
             ->update(['status' => 'completed']);
 
-        $query = Appointment::with(['patient', 'payments', 'creditUsages', 'appointmentType']);
+        $query = Appointment::with(['patient', 'payments', 'creditUsages', 'appointmentType', 'professional']);
 
         if (!empty($filters['date'])) {
             $date = Carbon::parse($filters['date']);
@@ -47,6 +47,10 @@ class AppointmentService
             if (!empty($filters['to'])) {
                 $query->where('end_time', '<=', $filters['to']);
             }
+        }
+
+        if (!empty($filters['professional_id'])) {
+            $query->where('professional_id', $filters['professional_id']);
         }
 
         $appointments = $query->orderBy('start_time')->get();

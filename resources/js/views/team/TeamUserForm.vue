@@ -65,6 +65,15 @@
             </label>
           </div>
 
+          <!-- Gestionar Agenda -->
+          <div class="form-section">
+            <h2 class="form-section-title">Gestionar Agenda</h2>
+            <label class="toggle-row">
+              <input v-model="form.allow_manage_agenda" type="checkbox" />
+              <span>Habilitar gestion de agenda para este usuario</span>
+            </label>
+          </div>
+
           <!-- Horarios laborales -->
           <div class="form-section">
             <h2 class="form-section-title">Horarios laborales</h2>
@@ -194,6 +203,7 @@ const form = reactive({
   profile_id: null,
   profession_id: null,
   allow_online_booking: false,
+  allow_manage_agenda: false,
 })
 
 const schedules = ref(defaultSchedules())
@@ -230,6 +240,7 @@ async function loadForEdit(id) {
     form.profile_id = data.profile?.id ?? null
     form.profession_id = data.profession?.id ?? null
     form.allow_online_booking = !!data.allow_online_booking
+    form.allow_manage_agenda = !!data.allow_manage_agenda
     isOwner.value = data.role === 'owner'
 
     if (Array.isArray(data.schedules) && data.schedules.length > 0) {
@@ -301,6 +312,7 @@ function normalizePayload() {
     profile_id: form.profile_id || undefined,
     profession_id: form.profession_id || null,
     allow_online_booking: !!form.allow_online_booking,
+    allow_manage_agenda: !!form.allow_manage_agenda,
     schedules: schedules.value.map(s => ({
       day_of_week: s.day_of_week,
       enabled: !!s.enabled,

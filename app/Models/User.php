@@ -28,7 +28,7 @@ class User extends Authenticatable
 
     protected $fillable = [
         'clinic_id', 'name', 'email', 'password', 'role',
-        'profile_id', 'profession_id', 'allow_online_booking',
+        'profile_id', 'profession_id', 'allow_online_booking', 'allow_manage_agenda',
     ];
 
     protected $hidden = [
@@ -42,6 +42,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'allow_online_booking' => 'boolean',
+            'allow_manage_agenda' => 'boolean',
         ];
     }
 

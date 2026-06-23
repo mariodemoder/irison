@@ -30,6 +30,7 @@ class UpdateUserRequest extends FormRequest
             'profile_id' => ['sometimes', 'required', 'integer', 'exists:profiles,id'],
             'profession_id' => ['nullable', 'integer', 'exists:professions,id'],
             'allow_online_booking' => ['nullable', 'boolean'],
+            'allow_manage_agenda' => ['nullable', 'boolean'],
             'schedules' => ['nullable', 'array'],
             'schedules.*.day_of_week' => ['required', 'integer', 'between:0,6'],
             'schedules.*.enabled' => ['required', 'boolean'],

@@ -11,6 +11,7 @@ use App\Models\Patient;
 use App\Models\Payment;
 use Illuminate\Http\Request;
 use App\Services\Appointments\AppointmentService;
+use App\Models\User;
 use App\Support\ActivityLogger;
 use App\Services\Validation\RequestValidationOrchestrator;
 use App\Services\Documents\InvoicingService;
@@ -220,6 +221,16 @@ class AppointmentController extends Controller
         }
 
         return 422;
+    }
+
+    public function agendaProfessionals(): JsonResponse
+    {
+        $users = User::where('clinic_id', currentClinicId())
+            ->where('allow_manage_agenda', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return response()->json(['data' => $users]);
     }
 
     public function destroy(Appointment $appointment)

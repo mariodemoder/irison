@@ -52,6 +52,11 @@
                       {{ u.allow_online_booking ? 'Sí' : 'No' }}
                     </span>
                   </td>
+                  <td class="col-min">
+                    <span :class="u.allow_manage_agenda ? 'badge badge-on' : 'badge badge-off'">
+                      {{ u.allow_manage_agenda ? 'Sí' : 'No' }}
+                    </span>
+                  </td>
                   <td class="row-action users-action-col">
                     <BtnTrash v-if="u.role !== 'owner'" @click.stop="deleteUser(u)" />
                   </td>
@@ -149,6 +154,7 @@ const userColumns = [
   { key: 'profile', label: 'Perfil', thClass: 'col-min' },
   { key: 'profession', label: 'Profesión', thClass: 'col-min' },
   { key: 'booking', label: 'Reserva Online', thClass: 'col-min' },
+  { key: 'manage_agenda', label: 'Gest. Agenda', thClass: 'col-min' },
   { key: 'actions', label: '', thClass: 'users-action-col' },
 ]
 

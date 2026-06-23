@@ -117,6 +117,7 @@ Route::middleware(['auth:sanctum', 'clinic', 'check.subscription'])->group(funct
 
     // Citas: CRUD multitenant
     Route::get('appointments/form-bootstrap', [AppointmentController::class, 'formBootstrap']);
+    Route::get('agenda/professionals', [AppointmentController::class, 'agendaProfessionals']);
     Route::apiResource('appointments', AppointmentController::class);
 
     // Tipo de cita: creación rápida desde formulario de cita

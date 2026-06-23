@@ -16,6 +16,15 @@
         @today="goToToday"
       />
 
+      <div v-if="agendaProfessionals.length > 0" style="margin-bottom:10px">
+        <select v-model="professionalFilter" class="professional-select" @change="load">
+          <option value="">Todos los profesionales</option>
+          <option v-for="prof in agendaProfessionals" :key="prof.id" :value="String(prof.id)">
+            {{ prof.name }}
+          </option>
+        </select>
+      </div>
+
       <!-- ── Cuadrícula semanal ──────────────────────────── -->
       <div class="week-cal">
 
@@ -128,6 +137,8 @@ const appointments = ref([])
 const loading = ref(false)
 const closedDays = ref([])
 const subscriptionStatus = ref('blocked')
+const agendaProfessionals = ref([])
+const professionalFilter = ref('')
 let   timerId    = null
 
 const canCreateAppointment = computed(() => {
@@ -184,12 +195,14 @@ async function load() {
     const weekEnd = new Date(weekStart.value)
     weekEnd.setDate(weekEnd.getDate() + 6)
 
-    const res = await api.get('/appointments', {
-      params: {
-        from: toSqlDateTime(weekStart.value),
-        to: toSqlDateTime(weekEnd, true),
-      },
-    })
+    const params = {
+      from: toSqlDateTime(weekStart.value),
+      to: toSqlDateTime(weekEnd, true),
+    }
+    if (professionalFilter.value) {
+      params.professional_id = professionalFilter.value
+    }
+    const res = await api.get('/appointments', { params })
 
     appointments.value = Array.isArray(res.data) ? res.data : (res.data.data || [])
   } catch (error) {
@@ -197,6 +210,15 @@ async function load() {
     appointments.value = []
   } finally {
     loading.value = false
+  }
+}
+
+async function loadAgendaProfessionals() {
+  try {
+    const res = await api.get('/agenda/professionals')
+    agendaProfessionals.value = Array.isArray(res.data?.data) ? res.data.data : []
+  } catch (e) {
+    agendaProfessionals.value = []
   }
 }
 
@@ -330,12 +352,17 @@ function apptCountForDay(iso) {
 function apptStyle(a) {
   const top  = Math.max((a._sm - HOUR_START * 60) / 60 * SLOT_H, 0)
   const pct  = 100 / a._total
-  return {
+  const style = {
     top:    top + 'px',
     height: a._h + 'px',
     left:   `calc(${a._col * pct}% + 2px)`,
     width:  `calc(${pct}% - 4px)`,
   }
+  const color = a.appointment_type?.color
+  if (color) {
+    style.backgroundColor = color
+  }
+  return style
 }
 
 // ── Indicador de hora actual ──────────────────────────
@@ -351,6 +378,7 @@ onMounted(async () => {
   updateNow()
   timerId = setInterval(updateNow, 60_000)
   await loadClinicCalendarConfig()
+  await loadAgendaProfessionals()
   await load()
   await nextTick()
   if (calBodyRef.value) {
@@ -632,6 +660,17 @@ onUnmounted(() => {
 .appt-completed   { background: #dcfce7; color: #166534; border-left: 3px solid #22c55e }
 .appt-rescheduled { background: #fef3c7; color: #92400e; border-left: 3px solid #f59e0b }
 .appt-canceled    { background: #fee2e2; color: #991b1b; border-left: 3px solid #ef4444; opacity: .65 }
+
+.professional-select {
+  padding: 6px 10px;
+  font-size: 13px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+  max-width: 200px;
+}
 
 /* ── Responsive ───────────────────────────────────────── */
 @media (max-width: 900px) {

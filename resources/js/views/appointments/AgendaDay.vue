@@ -38,6 +38,16 @@
             <button :class="['scope-btn', showScheduledOnly && 'scope-active']" @click="setAppointmentScope('scheduled')">Citas programadas</button>
             <button :class="['scope-btn', !showScheduledOnly && 'scope-active']" @click="setAppointmentScope('all')">Todas las citas</button>
           </div>
+
+          <div v-if="agendaProfessionals.length > 0" class="scope-bar">
+            <select v-model="professionalFilter" class="professional-select" @change="onProfessionalChange">
+              <option value="">Todos los profesionales</option>
+              <option v-for="prof in agendaProfessionals" :key="prof.id" :value="String(prof.id)">
+                {{ prof.name }}
+              </option>
+            </select>
+          </div>
+
           <button
             type="button"
             :class="['filter-trigger', detailedFiltersCount > 0 && 'filter-trigger-active']"
@@ -152,7 +162,7 @@
             </div>
 
             <!-- Cita -->
-            <div v-else class="appointment-row" role="button" tabindex="0" @click="goToAppointment(item.id)" @keydown.enter="goToAppointment(item.id)">
+            <div v-else class="appointment-row" role="button" tabindex="0" @click="goToAppointment(item.id)" @keydown.enter="goToAppointment(item.id)" :style="appointmentRowStyle(item)">
               <div :class="['row-col','time', timeClass(item.status)]">
                 <span v-if="isAllMode" class="row-date">{{ formatDateShort(item.start_time) }} · </span>{{ formatTimeCalendar(item.start_time) }} - {{ formatTimeCalendar(item.end_time) }}
               </div>
@@ -223,6 +233,8 @@ const query = ref('')
 const paymentFilter = ref('')
 const statusFilter = ref('')
 const detailedFiltersOpen = ref(false)
+const agendaProfessionals = ref([])
+const professionalFilter = ref('')
 const draftStatusFilter = ref('')
 const draftPaymentFilter = ref('')
 const pageSize = 10
@@ -349,6 +361,9 @@ async function load() {
   loading.value = true
   try {
     const params = isAllMode.value ? {} : { date: date.value }
+    if (professionalFilter.value) {
+      params.professional_id = professionalFilter.value
+    }
     const res = await api.get('/appointments', { params })
     // si la API devuelve paginación cambia según sea necesario
     appointments.value = Array.isArray(res.data) ? res.data : (res.data.data || [])
@@ -358,6 +373,19 @@ async function load() {
   } finally {
     loading.value = false
   }
+}
+
+async function loadAgendaProfessionals() {
+  try {
+    const res = await api.get('/agenda/professionals')
+    agendaProfessionals.value = Array.isArray(res.data?.data) ? res.data.data : []
+  } catch (e) {
+    agendaProfessionals.value = []
+  }
+}
+
+function onProfessionalChange() {
+  load()
 }
 
 async function loadClinicCalendarConfig() {
@@ -494,6 +522,7 @@ function goToToday() {
 }
 
 onMounted(() => load())
+onMounted(() => loadAgendaProfessionals())
 
 onMounted(() => {
   loadClinicCalendarConfig()
@@ -660,6 +689,12 @@ function goToNewWithGap(item) {
   const pad = n => String(n).padStart(2, '0')
   const toISO = min => `${date.value}T${pad(Math.floor(min / 60))}:${pad(min % 60)}`
   router.push({ path: '/appointments/create', query: { start: toISO(item.from), end: toISO(item.to) } })
+}
+
+function appointmentRowStyle(item) {
+  const color = item.appointment_type?.color
+  if (!color) return {}
+  return { backgroundColor: color, borderLeft: '4px solid ' + color }
 }
 
 function createAppointmentFromHeader() {
@@ -962,7 +997,7 @@ watch(totalPages, (pages) => {
 
 .list { display:flex; flex-direction:column; gap:8px; overflow-x:auto }
 .list-header { display:grid; grid-template-columns: 140px 1.25fr 2.6fr 110px 120px 110px; gap:12px; align-items:center; padding:8px 14px; color:#6b7280; font-weight:600; font-size:13px }
-.appointment-row { display:grid; grid-template-columns: 140px 1.25fr 2.6fr 110px 120px 110px; gap:12px; align-items:center; background:#f8fbfe; padding:12px 14px; border-radius:10px; text-decoration:none; color:inherit; border:1px solid #eef2ff22; min-width:820px }
+.appointment-row { display:grid; grid-template-columns: 140px 1.25fr 2.6fr 110px 120px 110px; gap:12px; align-items:center; background:#f8fbfe; padding:12px 14px; border-radius:10px; text-decoration:none; color:inherit; border:1px solid #eef2ff22; border-left-width:4px; min-width:820px }
 .appointment-row:hover { box-shadow: 0 10px 24px rgba(2,6,23,0.06); transform: translateY(-2px) }
 .row-left { display:flex; flex-direction:column }
 .row-name { font-weight:600; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
@@ -1021,6 +1056,17 @@ watch(totalPages, (pages) => {
 .scope-btn:hover:not(.scope-active) { background:#f1f5f9 }
 .scope-active { background:#eff6ff; color:#2563eb; border-color:#3b82f6 }
 .scope-btn.scope-active:hover { background:#dbeafe }
+
+.professional-select {
+  padding: 6px 10px;
+  font-size: 13px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+  max-width: 200px;
+}
 
 /* Mini-cal deshabilitado en modo Ver Todo */
 .cal-dimmed { opacity:.4 }

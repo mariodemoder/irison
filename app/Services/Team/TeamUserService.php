@@ -71,6 +71,7 @@ class TeamUserService
             'profile_id' => 'required|integer|exists:profiles,id',
             'profession_id' => 'nullable|integer|exists:professions,id',
             'allow_online_booking' => 'nullable|boolean',
+            'allow_manage_agenda' => 'nullable|boolean',
             'schedules' => 'nullable|array',
             'schedules.*.day_of_week' => 'required|integer|between:0,6',
             'schedules.*.enabled' => 'required|boolean',
@@ -96,6 +97,7 @@ class TeamUserService
             'profile_id' => $data['profile_id'],
             'profession_id' => $data['profession_id'] ?? null,
             'allow_online_booking' => $data['allow_online_booking'] ?? false,
+            'allow_manage_agenda' => $data['allow_manage_agenda'] ?? false,
             'role' => 'user',
         ]);
 
@@ -122,6 +124,7 @@ class TeamUserService
             'profile_id' => 'sometimes|required|integer|exists:profiles,id',
             'profession_id' => 'nullable|integer|exists:professions,id',
             'allow_online_booking' => 'nullable|boolean',
+            'allow_manage_agenda' => 'nullable|boolean',
             'schedules' => 'nullable|array',
             'schedules.*.day_of_week' => 'required|integer|between:0,6',
             'schedules.*.enabled' => 'required|boolean',
@@ -136,7 +139,7 @@ class TeamUserService
 
         $payload = [];
 
-        foreach (['name', 'email', 'profile_id', 'profession_id', 'allow_online_booking'] as $field) {
+        foreach (['name', 'email', 'profile_id', 'profession_id', 'allow_online_booking', 'allow_manage_agenda'] as $field) {
             if (array_key_exists($field, $data)) {
                 $payload[$field] = $data[$field];
             }
@@ -260,6 +263,7 @@ class TeamUserService
             'email' => $u->email,
             'role' => $u->role,
             'allow_online_booking' => (bool) $u->allow_online_booking,
+            'allow_manage_agenda' => (bool) $u->allow_manage_agenda,
             'profile' => $u->profile ? ['id' => $u->profile->id, 'name' => $u->profile->name, 'slug' => $u->profile->slug] : null,
             'profession' => $u->profession ? ['id' => $u->profession->id, 'name' => $u->profession->name] : null,
             'schedules' => $u->schedules ? $u->schedules->map(fn ($s) => [
