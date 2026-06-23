@@ -171,8 +171,20 @@ Route::middleware(['auth:sanctum', 'clinic', 'check.subscription'])->group(funct
     // payment subscribe
     Route::post('/subscribe', \App\Http\Controllers\Api\SubscribeController::class);
 
+    // Equipo: gestión de usuarios, perfiles, profesiones y horarios
+    Route::prefix('team')->group(function () {
+        Route::get('profiles', [\App\Http\Controllers\Api\Team\ProfileController::class, 'index']);
+        Route::apiResource('users', \App\Http\Controllers\Api\Team\UserController::class);
+        Route::apiResource('professions', \App\Http\Controllers\Api\Team\ProfessionController::class)
+            ->except(['show']);
+    });
+
     // Formulario de contacto: envía email al equipo de Irison
     Route::post('/contact', [ContactController::class, 'send']);
+
+    // Servicios de la clínica (sesiones + bonos): solo owner/admin/manager
+    Route::get('/company-services', [\App\Http\Controllers\Api\CompanyServicesController::class, 'index']);
+    Route::put('/company-services', [\App\Http\Controllers\Api\CompanyServicesController::class, 'update']);
 });
 
 // Información del usuario autenticado (`/me`): debe estar disponible

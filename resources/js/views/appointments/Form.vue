@@ -58,14 +58,17 @@
             <div class="tab-content-grid">
           <div class="field" v-if="activeTab === 'session'">
             <label class="label">Tipo</label>
-            <select v-model="form.app_type_id" class="input" :disabled="isCanceled && mode !== 'reprogram'" @change="onAppTypeChange">
-              <option value="">Selecciona un tipo</option>
-              <option value="__custom">Otro (escribir)</option>
-              <option value="__create">+ Crear tipo...</option>
-              <option v-for="type in appointmentTypes" :key="type.id" :value="String(type.id)">
-                {{ type.description || `Tipo #${type.id}` }}
-              </option>
-            </select>
+            <div style="display:flex;align-items:center;gap:8px">
+              <select v-model="form.app_type_id" class="input" :disabled="isCanceled && mode !== 'reprogram'" @change="onAppTypeChange" style="flex:1">
+                <option value="">Selecciona un tipo</option>
+                <option value="__custom">Otro (escribir)</option>
+                <option value="__create">+ Crear tipo...</option>
+                <option v-for="type in appointmentTypes" :key="type.id" :value="String(type.id)">
+                  {{ type.description || `Tipo #${type.id}` }}
+                </option>
+              </select>
+              <span v-if="selectedAppointmentType?.color" :style="{ display:'inline-block', width:'28px', height:'28px', borderRadius:'6px', backgroundColor: selectedAppointmentType.color, border:'2px solid #e5e7eb', flexShrink:0 }"></span>
+            </div>
             <div v-if="errors.app_type_id" class="field-error">{{ errors.app_type_id[0] }}</div>
           </div>
           <div class="field" v-if="isCustomAppointmentType">

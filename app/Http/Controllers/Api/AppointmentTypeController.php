@@ -31,6 +31,7 @@ class AppointmentTypeController extends BaseController
             'estimated_hours' => 'nullable|integer|min:0|max:23',
             'estimated_minutes' => 'nullable|integer|min:0|max:59',
             'price' => 'nullable|numeric|min:0',
+            'color' => 'nullable|string|max:7',
         ]);
 
         $type = AppointmentType::create([
@@ -39,6 +40,7 @@ class AppointmentTypeController extends BaseController
             'estimated_hours' => (int) ($validated['estimated_hours'] ?? 0),
             'estimated_minutes' => (int) ($validated['estimated_minutes'] ?? 60),
             'price' => (float) ($validated['price'] ?? 0),
+            'color' => $validated['color'] ?? null,
         ]);
 
         return response()->json([
@@ -48,6 +50,7 @@ class AppointmentTypeController extends BaseController
                 'estimated_hours' => $type->estimated_hours,
                 'estimated_minutes' => $type->estimated_minutes,
                 'price' => $type->price,
+                'color' => $type->color,
             ]
         ], 201);
     }

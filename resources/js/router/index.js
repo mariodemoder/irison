@@ -32,6 +32,9 @@ import NotificationsShow from '../views/notifications/Show.vue'
 import Privacy from '../views/Privacy.vue'
 import Terms from '../views/Terms.vue'
 import ImpersonateEntry from '../views/ImpersonateEntry.vue'
+import Team from '../views/team/Team.vue'
+import TeamUserForm from '../views/team/TeamUserForm.vue'
+import CompanyServices from '../views/company-services/Index.vue'
 
 const routes = [
   { path: '/', component: Landing, meta: { publicLanding: true } },
@@ -43,6 +46,7 @@ const routes = [
   { path: '/dashboard', component: Dashboard, meta: { auth: true } },
   { path: '/profile', component: Profile, meta: { auth: true } },
   { path: '/settings', component: Configuration, meta: { auth: true } },
+  { path: '/company-services', component: CompanyServices, meta: { auth: true } },
   { path: '/payments', component: PaymentsIndex, meta: { auth: true } },
   { path: '/payments/create', component: PaymentsForm, meta: { auth: true } },
   { path: '/payments/:id', component: PaymentsShow, meta: { auth: true } },
@@ -63,6 +67,11 @@ const routes = [
   { path: '/patients/:id/history', component: ClinicalHistory, meta: { auth: true } },
   { path: '/patients/:id/edit', component: PatientsForm, meta: { auth: true } },
   { path: '/billing/required', component: BillingRequired, meta: { auth: true } },
+  { path: '/team', redirect: '/team/users', meta: { auth: true } },
+  { path: '/team/users', component: Team, meta: { auth: true } },
+  { path: '/team/users/create', component: TeamUserForm, meta: { auth: true } },
+  { path: '/team/users/:id/edit', component: TeamUserForm, meta: { auth: true } },
+  { path: '/team/professions', component: Team, meta: { auth: true } },
   { path: '/appointments', redirect: '/appointments/day', meta: { auth: true } },
   { path: '/appointments/day', component: AgendaDay, meta: { auth: true } },
   { path: '/appointments/week', component: AgendaWeek, meta: { auth: true } },

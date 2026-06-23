@@ -2,11 +2,14 @@
 import { ref, onMounted } from 'vue'
 import api from '../../services/api'
 import { useToast } from 'vue-toastification'
-import SaveButton from '../../components/SaveButton.vue'
+import BtnTrash from '../../components/BtnTrash.vue'
+
+const props = defineProps({
+  cesionTypes: { type: Array, default: () => [] },
+})
 
 const toast = useToast()
 const localLoading = ref(false)
-const saving = ref(false)
 const activeSubTab = ref('settings')
 
 const settings = ref({
@@ -22,8 +25,44 @@ const professionals = ref([])
 const schedules = ref({})
 const exceptions = ref({})
 
-const editingService = ref(null)
 const editingProfessional = ref(null)
+
+let _serviceKey = 0
+
+function makeService() {
+  return {
+    _key: ++_serviceKey,
+    name: '',
+    description: '',
+    duration_minutes: 60,
+    price: null,
+    is_active: true,
+    appointment_type_id: null,
+  }
+}
+
+const removedServiceIds = ref([])
+
+function addServiceView() {
+  services.value.push(makeService())
+}
+
+function removeService(index) {
+  const svc = services.value[index]
+  if (svc.id) {
+    removedServiceIds.value.push(svc.id)
+  }
+  services.value.splice(index, 1)
+}
+
+function fillFromAppointmentType(svc) {
+  if (!svc.appointment_type_id) return
+  const ct = props.cesionTypes.find(c => c.id === svc.appointment_type_id)
+  if (ct) {
+    svc.duration_minutes = (ct.estimated_hours ?? 0) * 60 + (ct.estimated_minutes ?? 60)
+    svc.price = ct.price ?? 0
+  }
+}
 
 async function loadSettings() {
   localLoading.value = true
@@ -45,68 +84,30 @@ async function loadSettings() {
   }
 }
 
-async function saveSettings() {
-  saving.value = true
+async function saveBookingSettings() {
   try {
     await api.put('/booking/settings', settings.value)
-    toast.success('Configuración guardada.')
-  } catch (e) {
-    toast.error('Error al guardar.')
-  } finally {
-    saving.value = false
-  }
-}
 
-async function toggleService(service) {
-  try {
-    const res = await api.put(`/booking/services/${service.id}`, {
-      is_active: !service.is_active,
-    })
-    Object.assign(service, res.data.data)
-  } catch {
-    toast.error('Error al actualizar servicio.')
-  }
-}
-
-async function deleteService(service) {
-  if (!confirm('¿Eliminar este servicio?')) return
-  try {
-    await api.delete(`/booking/services/${service.id}`)
-    services.value = services.value.filter(s => s.id !== service.id)
-    toast.success('Servicio eliminado.')
-  } catch {
-    toast.error('Error al eliminar.')
-  }
-}
-
-async function saveService() {
-  try {
-    if (editingService.value.id) {
-      const res = await api.put(`/booking/services/${editingService.value.id}`, editingService.value)
-      const idx = services.value.findIndex(s => s.id === editingService.value.id)
-      if (idx >= 0) services.value[idx] = res.data.data
-    } else {
-      const res = await api.post('/booking/services', editingService.value)
-      services.value.push(res.data.data)
+    for (const svc of services.value) {
+      if (svc._key) {
+        const res = await api.post('/booking/services', svc)
+        Object.assign(svc, res.data.data)
+      } else {
+        const res = await api.put(`/booking/services/${svc.id}`, svc)
+        Object.assign(svc, res.data.data)
+      }
     }
-    editingService.value = null
-    toast.success('Servicio guardado.')
+
+    for (const id of removedServiceIds.value) {
+      await api.delete(`/booking/services/${id}`)
+    }
+    removedServiceIds.value = []
   } catch (e) {
-    toast.error('Error al guardar servicio.')
+    // parent handles error toast
   }
 }
 
-function openNewService() {
-  editingService.value = { name: '', description: '', duration_minutes: 60, price: null, is_active: true }
-}
-
-function openEditService(service) {
-  editingService.value = { ...service }
-}
-
-function cancelEditService() {
-  editingService.value = null
-}
+defineExpose({ saveBookingSettings })
 
 async function toggleProfessional(bp) {
   try {
@@ -249,75 +250,85 @@ onMounted(loadSettings)
           </select>
         </div>
       </div>
-      <SaveButton style="margin-top:12px" label="Guardar configuración" :saving="saving" @click="saveSettings" />
     </div>
 
     <!-- Services -->
     <div v-show="activeSubTab==='services'">
-      <div class="service-actions" style="display:flex;justify-content:flex-end;margin-bottom:12px;">
-        <button class="btn btn-sm small" @click="openNewService">+ Nuevo servicio</button>
+      <div class="section-head">
+        <span class="section-head-title">Servicios</span>
+        <button class="btn btn-sm session-create-btn" type="button" @click="addServiceView">+ Nuevo servicio</button>
       </div>
 
-      <table class="entity-table" style="min-width:auto;">
-        <thead>
-          <tr>
-            <th>Nombre</th>
-            <th>Duración</th>
-            <th>Precio</th>
-            <th>Activo</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="svc in services" :key="svc.id" class="entity-table-row">
-            <td>{{ svc.name }}</td>
-            <td>{{ svc.duration_minutes }} min</td>
-            <td>{{ svc.price ? Number(svc.price).toFixed(2) + '€' : '—' }}</td>
-            <td>
-              <button class="toggle-btn" :class="{ active: svc.is_active }" @click="toggleService(svc)">
-                {{ svc.is_active ? 'Sí' : 'No' }}
-              </button>
-            </td>
-            <td>
-              <button class="btn btn-sm small" @click="openEditService(svc)">Editar</button>
-              <button class="btn btn-sm small warning" @click="deleteService(svc)">Eliminar</button>
-            </td>
-          </tr>
-          <tr v-if="services.length === 0">
-            <td colspan="5" style="text-align:center;color:#6b7280;padding:24px;">No hay servicios configurados.</td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="counter-table-wrap" style="margin-top:14px">
+        <table class="counter-table sesiones-table">
+          <colgroup>
+            <col class="svc-col-name">
+            <col class="svc-col-type">
+            <col class="svc-col-duration">
+            <col class="svc-col-price">
+            <col class="svc-col-active">
+            <col class="svc-col-actions">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Tipo de cita</th>
+              <th>Duración</th>
+              <th>Precio</th>
+              <th>Activo</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(svc, index) in services" :key="svc.id ?? svc._key">
+              <td data-label="Nombre">
+                <input class="input counter-input" v-model="svc.name" placeholder="Ej: Sesión de fisioterapia" />
+              </td>
+              <td data-label="Tipo de cita">
+                <select class="input counter-input" v-model="svc.appointment_type_id" @change="fillFromAppointmentType(svc)">
+                  <option :value="null">Sin tipo</option>
+                  <option v-for="ct in cesionTypes" :key="ct.id" :value="ct.id">{{ ct.description }}</option>
+                </select>
+              </td>
+              <td data-label="Duración">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+                  <div>
+                    <label style="display:block;font-size:11px;color:#6b7280;margin-bottom:2px">Horas</label>
+                    <input class="input counter-input" type="number" min="0" step="1"
+                      :value="Math.floor((svc.duration_minutes ?? 60) / 60)"
+                      @input="svc.duration_minutes = (parseInt($event.target.value) || 0) * 60 + ((svc.duration_minutes ?? 60) % 60)"
+                      :disabled="!!svc.appointment_type_id"
+                      style="font-size:13px;padding:6px" />
+                  </div>
+                  <div>
+                    <label style="display:block;font-size:11px;color:#6b7280;margin-bottom:2px">Min</label>
+                    <input class="input counter-input" type="number" min="0" max="59" step="1"
+                      :value="(svc.duration_minutes ?? 60) % 60"
+                      @input="svc.duration_minutes = Math.floor((svc.duration_minutes ?? 60) / 60) * 60 + (parseInt($event.target.value) || 0)"
+                      :disabled="!!svc.appointment_type_id"
+                      style="font-size:13px;padding:6px" />
+                  </div>
+                </div>
+              </td>
+              <td data-label="Precio">
+                <input class="input counter-input" type="number" step="0.01" min="0" v-model.number="svc.price" placeholder="0" />
+              </td>
+              <td data-label="Activo">
+                <select class="input counter-input" v-model="svc.is_active">
+                  <option :value="true">Sí</option>
+                  <option :value="false">No</option>
+                </select>
+              </td>
+              <td data-label="Acciones">
+                <BtnTrash @click.prevent="removeService(index)" />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
-      <!-- Service form modal -->
-      <div v-if="editingService" class="modal-overlay" @click.self="cancelEditService">
-        <div class="modal-card">
-          <h3>{{ editingService.id ? 'Editar servicio' : 'Nuevo servicio' }}</h3>
-          <div class="modal-body">
-            <div class="form-group">
-              <label>Nombre</label>
-              <input v-model="editingService.name" class="input" placeholder="Ej: Sesión de fisioterapia" />
-            </div>
-            <div class="form-group">
-              <label>Descripción</label>
-              <textarea v-model="editingService.description" class="input" rows="2" placeholder="Descripción opcional" />
-            </div>
-            <div class="form-row-2">
-              <div class="form-group">
-                <label>Duración (minutos)</label>
-                <input v-model.number="editingService.duration_minutes" type="number" class="input" min="5" max="480" />
-              </div>
-              <div class="form-group">
-                <label>Precio (€)</label>
-                <input v-model.number="editingService.price" type="number" step="0.01" min="0" class="input" placeholder="0" />
-              </div>
-            </div>
-          </div>
-          <div class="modal-actions">
-            <button class="btn--ghost modal-action-btn" @click="cancelEditService">Cancelar</button>
-            <SaveButton class="modal-action-btn" @click="saveService" />
-          </div>
-        </div>
+      <div v-if="services.length === 0" class="empty-services">
+        No hay servicios configurados.
       </div>
     </div>
 
@@ -344,7 +355,7 @@ onMounted(loadSettings)
             <div v-for="sched in (schedules[bp.id] || [])" :key="sched.id" class="schedule-row">
               <span>{{ dayNames[sched.day_of_week] || 'Día ' + sched.day_of_week }}</span>
               <span>{{ sched.start_time }} - {{ sched.end_time }}</span>
-              <button class="btn btn-sm small warning" @click="deleteSchedule(bp.id, sched.id)">×</button>
+              <BtnTrash @click="deleteSchedule(bp.id, sched.id)" />
             </div>
             <div v-if="(schedules[bp.id] || []).length === 0" class="text-muted" style="font-size:13px;margin:8px 0;">
               Sin horarios configurados.
@@ -432,59 +443,104 @@ onMounted(loadSettings)
   border-color: #3b82f6;
 }
 
-.toggle-btn {
-  padding: 4px 12px;
-  border-radius: 999px;
-  border: 1px solid #d1d5db;
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.section-head-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.session-create-btn {
+  width: 33.333%;
+  margin-left: auto;
+  justify-content: center;
+  text-align: center;
+}
+
+.counter-table-wrap {
+  overflow-x: auto;
+}
+
+.counter-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
   background: #fff;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 600;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.counter-table th {
+  text-align: left;
+  padding: 10px 12px;
+  font-weight: 700;
+  color: #374151;
+  border-bottom: 2px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+.counter-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: middle;
+}
+
+.counter-input {
+  padding: 6px 10px;
+  font-size: 13px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  width: 100%;
+  box-sizing: border-box;
   font-family: inherit;
 }
 
-.toggle-btn.active {
-  background: #22c55e;
-  color: #fff;
-  border-color: #22c55e;
+.sesiones-table {
+  min-width: 700px;
 }
 
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-}
+.svc-col-name { width: 28% }
+.svc-col-duration { width: 12% }
+.svc-col-price { width: 15% }
+.svc-col-type { width: 22% }
+.svc-col-active { width: 13% }
+.svc-col-actions { width: 10% }
 
-.modal-card {
-  background: #fff;
-  border-radius: 16px;
+.empty-services {
+  text-align: center;
+  color: #6b7280;
   padding: 24px;
-  width: min(480px, calc(100% - 32px));
-  max-height: 80vh;
-  overflow-y: auto;
 }
 
-.modal-card h3 {
-  margin: 0 0 16px;
-  font-size: 16px;
-  font-weight: 700;
-}
-
-.modal-body {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.modal-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
+@media (max-width: 768px) {
+  .counter-table thead { display: none }
+  .counter-table tr {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 4px;
+    padding: 12px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  .counter-table td {
+    display: grid;
+    grid-template-columns: 100px 1fr;
+    gap: 8px;
+    padding: 4px 0;
+    border: none;
+    align-items: center;
+  }
+  .counter-table td::before {
+    content: attr(data-label);
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+  }
 }
 
 .professional-card-admin {

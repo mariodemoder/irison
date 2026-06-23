@@ -2,9 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Models\AppointmentType;
-use App\Models\Bonus;
-use App\Models\BonusType;
 use App\Models\BillingPayment;
 use App\Services\Counters\CounterService;
 use Illuminate\Http\JsonResponse;
@@ -25,6 +22,9 @@ class MeController
     public function __invoke(Request $request)
     {
         $user = $request->user();
+        if ($user) {
+            $user->load('profile:id,name,slug');
+        }
         $clinic = $user ? $user->clinic : null;
         $invoiceBackgroundUrl = $clinic && $clinic->invoice_background_path
             ? Storage::url($clinic->invoice_background_path)
@@ -105,8 +105,6 @@ class MeController
             'clinic' => $clinic,
             'clinic_invoice_background_url' => $invoiceBackgroundUrl,
             'counters' => $clinic ? $this->counterService->getProfileCounters((int) $clinic->id) : [],
-            'cesiones' => $clinic ? $clinic->appointmentTypes()->orderBy('id')->get(['id', 'description', 'estimated_hours', 'estimated_minutes', 'price'])->toArray() : [],
-            'bonus_types' => $clinic ? $this->readBonusTypes($clinic) : [],
             'subscription_payments' => $subscriptionPayments,
             'status' => $status,
             'read_only_no_transactions' => $readOnlyNoTransactions,
@@ -183,23 +181,6 @@ class MeController
             'counters.*.table_type' => ['required', Rule::in(CounterService::TABLE_TYPES)],
             'counters.*.prefix' => ['required', 'string', 'min:1', 'max:4', 'regex:/^[A-Za-z0-9]+$/'],
             'counters.*.last_number' => ['nullable', 'integer', 'min:0'],
-            'cesiones' => ['nullable', 'array'],
-            'cesiones.*.id' => ['nullable', 'string'],
-            'cesiones.*.description' => ['nullable', 'string', 'max:255'],
-            'cesiones.*.estimated_hours' => ['required', 'integer', 'min:0'],
-            'cesiones.*.estimated_minutes' => ['required', 'integer', 'min:0', 'max:59'],
-            'cesiones.*.price' => ['required', 'numeric', 'min:0'],
-            'bonus_types' => ['nullable', 'array'],
-            'bonus_types.*.id' => ['nullable', 'string'],
-            'bonus_types.*.description' => ['nullable', 'string', 'max:255'],
-            'bonus_types.*.sessions' => ['required', 'integer', 'min:1'],
-            'bonus_types.*.price' => ['required', 'numeric', 'min:0'],
-            'bonus_types.*.expires_at' => ['nullable', 'date'],
-            'bonus_types.*.lines' => ['nullable', 'array'],
-            'bonus_types.*.lines.*.appointment_type_id' => ['nullable', 'integer'],
-            'bonus_types.*.lines.*.appointment_type_index' => ['nullable', 'integer', 'min:0'],
-            'bonus_types.*.lines.*.quantity' => ['required', 'integer', 'min:1'],
-            'bonus_types.*.lines.*.unit_price' => ['required', 'numeric', 'min:0'],
         ]);
 
         DB::transaction(function () use ($data, $user, $clinic) {
@@ -242,146 +223,6 @@ class MeController
                 $this->counterService->upsertClinicCounters((int) $clinic->id, $data['counters']);
             }
 
-            $appointmentTypeIdByIndex = [];
-
-            // Guardar cesiones (appointment_types)
-            if (!empty($data['cesiones']) && is_array($data['cesiones'])) {
-                $existingIds = $clinic->appointmentTypes()->pluck('id')->all();
-                $keptIds = [];
-
-                foreach (array_values($data['cesiones']) as $index => $item) {
-                    $payload = [
-                        'clinic_id' => $clinic->id,
-                        'description' => $item['description'] ?? '',
-                        'estimated_hours' => max((int)($item['estimated_hours'] ?? 0), 0),
-                        'estimated_minutes' => max((int)($item['estimated_minutes'] ?? 60), 0),
-                        'price' => max((float)($item['price'] ?? 0), 0),
-                    ];
-
-                    $incomingId = isset($item['id']) && is_numeric($item['id'])
-                        ? (int) $item['id']
-                        : null;
-
-                    $model = $incomingId
-                        ? $clinic->appointmentTypes()->whereKey($incomingId)->first()
-                        : null;
-
-                    if ($model) {
-                        $model->update($payload);
-                    } else {
-                        $model = $clinic->appointmentTypes()->create($payload);
-                    }
-
-                    $keptIds[] = $model->id;
-                    $appointmentTypeIdByIndex[$index] = $model->id;
-                }
-
-                $toDelete = array_values(array_diff($existingIds, $keptIds));
-                if (!empty($toDelete)) {
-                    AppointmentType::query()
-                        ->where('clinic_id', $clinic->id)
-                        ->whereIn('id', $toDelete)
-                        ->delete();
-                }
-            } else {
-                $orderedIds = $clinic->appointmentTypes()->orderBy('id')->pluck('id')->values();
-                foreach ($orderedIds as $index => $id) {
-                    $appointmentTypeIdByIndex[(int) $index] = (int) $id;
-                }
-            }
-
-            // Guardar tipos de bono (bonus_types)
-            if ($this->hasBonusTypesTable() && isset($data['bonus_types']) && is_array($data['bonus_types'])) {
-                $existingBonusTypes = BonusType::withTrashed()
-                    ->where('clinic_id', $clinic->id)
-                    ->get()
-                    ->keyBy('id');
-
-                $keptBonusTypeIds = [];
-
-                foreach ($data['bonus_types'] as $item) {
-                    $payload = [
-                        'clinic_id'   => $clinic->id,
-                        'description' => $item['description'] ?? '',
-                        'sessions'    => max((int)($item['sessions'] ?? 1), 1),
-                        'price'       => max((float)($item['price'] ?? 0), 0),
-                        'expires_at'  => !empty($item['expires_at']) ? $item['expires_at'] : null,
-                    ];
-
-                    $incomingBonusTypeId = isset($item['id']) && is_numeric($item['id'])
-                        ? (int) $item['id']
-                        : null;
-
-                    $bonusType = null;
-                    if ($incomingBonusTypeId && isset($existingBonusTypes[$incomingBonusTypeId])) {
-                        $bonusType = $existingBonusTypes[$incomingBonusTypeId];
-                        if (method_exists($bonusType, 'trashed') && $bonusType->trashed()) {
-                            $bonusType->restore();
-                        }
-                        $bonusType->update($payload);
-                    } else {
-                        $bonusType = BonusType::create($payload);
-                    }
-
-                    $keptBonusTypeIds[] = $bonusType->id;
-
-                    $lines = is_array($item['lines'] ?? null) ? $item['lines'] : [];
-                    $syncData = [];
-                    foreach ($lines as $line) {
-                        $appointmentTypeId = null;
-
-                        if (isset($line['appointment_type_id']) && is_numeric($line['appointment_type_id'])) {
-                            $appointmentTypeId = (int) $line['appointment_type_id'];
-                        } elseif (isset($line['appointment_type_index']) && is_numeric($line['appointment_type_index'])) {
-                            $appointmentTypeId = $appointmentTypeIdByIndex[(int) $line['appointment_type_index']] ?? null;
-                        }
-
-                        if (!$appointmentTypeId) {
-                            continue;
-                        }
-
-                        $belongsToClinic = AppointmentType::query()
-                            ->where('clinic_id', $clinic->id)
-                            ->whereKey($appointmentTypeId)
-                            ->exists();
-
-                        if (!$belongsToClinic) {
-                            continue;
-                        }
-
-                        $syncData[$appointmentTypeId] = [
-                            'quantity' => max((int) ($line['quantity'] ?? 1), 1),
-                            'unit_price' => max((float) ($line['unit_price'] ?? 0), 0),
-                        ];
-                    }
-
-                    $bonusType->appointmentTypes()->sync($syncData);
-                }
-
-                $toRemove = array_values(array_diff($existingBonusTypes->keys()->all(), $keptBonusTypeIds));
-                foreach ($toRemove as $bonusTypeId) {
-                    /** @var BonusType|null $bonusType */
-                    $bonusType = $existingBonusTypes->get($bonusTypeId);
-                    if (!$bonusType) {
-                        continue;
-                    }
-
-                    $inUse = Bonus::query()
-                        ->where('clinic_id', $clinic->id)
-                        ->where('bonus_type_id', $bonusTypeId)
-                        ->exists();
-
-                    if ($inUse) {
-                        if (method_exists($bonusType, 'trashed') && ! $bonusType->trashed()) {
-                            $bonusType->delete();
-                        }
-                        continue;
-                    }
-
-                    $bonusType->appointmentTypes()->detach();
-                    $bonusType->forceDelete();
-                }
-            }
         }, 3);
 
         return response()->json([
@@ -391,50 +232,8 @@ class MeController
                 ? Storage::url($clinic->invoice_background_path)
                 : null,
             'counters' => $this->counterService->getProfileCounters((int) $clinic->id),
-            'cesiones' => $clinic->fresh()->appointmentTypes()->orderBy('id')->get(['id', 'description', 'estimated_hours', 'estimated_minutes', 'price'])->toArray(),
-            'bonus_types' => $this->readBonusTypes($clinic->fresh()),
             'message' => 'Datos actualizados',
         ]);
-    }
-
-    private function hasBonusTypesTable(): bool
-    {
-        return Schema::hasTable('bonus_types');
-    }
-
-    private function readBonusTypes($clinic): array
-    {
-        if (! $this->hasBonusTypesTable()) {
-            return [];
-        }
-
-        return $clinic->bonusTypes()
-            ->with(['appointmentTypes' => function ($query) {
-                $query->select('appointment_types.id');
-            }])
-            ->orderBy('id')
-            ->get(['id', 'description', 'sessions', 'price', 'expires_at'])
-            ->map(static function ($item) {
-                return [
-                    'id' => $item->id,
-                    'description' => $item->description,
-                    'sessions' => (int) $item->sessions,
-                    'price' => (float) $item->price,
-                    'expires_at' => $item->expires_at ? $item->expires_at->toDateString() : null,
-                    'lines' => $item->appointmentTypes
-                        ->map(static function ($appointmentType) {
-                            return [
-                                'appointment_type_id' => (int) $appointmentType->id,
-                                'quantity' => max((int) ($appointmentType->pivot->quantity ?? 1), 1),
-                                'unit_price' => max((float) ($appointmentType->pivot->unit_price ?? 0), 0),
-                            ];
-                        })
-                        ->values()
-                        ->toArray(),
-                ];
-            })
-            ->values()
-            ->toArray();
     }
 
     public function uploadInvoiceBackground(Request $request)

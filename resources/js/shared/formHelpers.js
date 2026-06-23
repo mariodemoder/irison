@@ -200,6 +200,20 @@ export async function openCreateAppointmentTypePopup({ api, Swal, toast } = {}) 
           <label for="swal-type-price">Precio (€)</label>
           <input id="swal-type-price" class="input" type="number" min="0" step="0.01" value="0">
         </div>
+        <div class="create-row">
+          <label>Color</label>
+          <div class="create-color-palette" id="swal-type-color-palette">
+            <button type="button" class="color-option" data-color="" style="background:#fff;border:2px solid #d1d5db" title="Ninguno"></button>
+            <button type="button" class="color-option" data-color="#F8FAFC" style="background:#F8FAFC" title="Irison"></button>
+            <button type="button" class="color-option" data-color="#CDD6E9" style="background:#CDD6E9" title="Negro"></button>
+            <button type="button" class="color-option" data-color="#FFE0E7" style="background:#FFE0E7" title="Rosa pastel"></button>
+            <button type="button" class="color-option" data-color="#FCE0CC" style="background:#FCE0CC" title="Durazno pastel"></button>
+            <button type="button" class="color-option" data-color="#FAF6CD" style="background:#FAF6CD" title="Amarillo pastel"></button>
+            <button type="button" class="color-option" data-color="#E0FFEC" style="background:#E0FFEC" title="Verde pastel"></button>
+            <button type="button" class="color-option" data-color="#CAE3FA" style="background:#CAE3FA" title="Azul pastel"></button>
+            <button type="button" class="color-option" data-color="#D8C0FA" style="background:#D8C0FA" title="Lila pastel"></button>
+          </div>
+        </div>
       </div>
     `,
     focusConfirm: false,
@@ -212,11 +226,23 @@ export async function openCreateAppointmentTypePopup({ api, Swal, toast } = {}) 
       confirmButton: 'primary',
       cancelButton: 'muted'
     },
+    didOpen: () => {
+      const palette = document.getElementById('swal-type-color-palette')
+      if (!palette) return
+      palette.querySelectorAll('.color-option').forEach(btn => {
+        btn.addEventListener('click', () => {
+          palette.querySelectorAll('.color-option').forEach(b => b.classList.remove('selected'))
+          btn.classList.add('selected')
+        })
+      })
+    },
     preConfirm: async () => {
       const description = document.getElementById('swal-type-description')?.value?.trim()
       const hours = document.getElementById('swal-type-hours')?.value?.trim()
       const minutes = document.getElementById('swal-type-minutes')?.value?.trim()
       const price = document.getElementById('swal-type-price')?.value?.trim()
+      const selectedColor = document.querySelector('#swal-type-color-palette .selected')
+      const color = selectedColor ? selectedColor.getAttribute('data-color') : ''
 
       if (!description) {
         Swal.showValidationMessage('La descripción es requerida')
@@ -229,6 +255,7 @@ export async function openCreateAppointmentTypePopup({ api, Swal, toast } = {}) 
           estimated_hours: hours ? Number(hours) : 0,
           estimated_minutes: minutes ? Number(minutes) : 60,
           price: price ? Number(price) : 0,
+          color: color || null,
         })
         return res.data || res.data?.data || res
       } catch (e) {

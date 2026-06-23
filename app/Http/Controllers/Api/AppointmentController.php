@@ -162,7 +162,7 @@ class AppointmentController extends Controller
             ->where('clinic_id', $clinicId)
             ->withCount('bonusTypes')
             ->orderBy('description')
-            ->get(['id', 'description', 'estimated_hours', 'estimated_minutes', 'price'])
+            ->get(['id', 'description', 'estimated_hours', 'estimated_minutes', 'price', 'color'])
             ->map(static function ($item) {
                 return [
                     'id' => (int) $item->id,
@@ -170,6 +170,7 @@ class AppointmentController extends Controller
                     'estimated_hours' => (int) $item->estimated_hours,
                     'estimated_minutes' => (int) $item->estimated_minutes,
                     'price' => (float) $item->price,
+                    'color' => $item->color,
                     'payment_type' => ((int) ($item->bonus_types_count ?? 0)) > 0 ? 'abono' : 'simple',
                 ];
             })

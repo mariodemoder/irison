@@ -146,7 +146,7 @@
               </div>
               <div class="item-total">{{ formatMoney(item.total) }}</div>
               <div>
-                <button type="button" class="btn-remove" @click="removeItem(idx)" title="Eliminar">✕</button>
+                <BtnTrash @click="removeItem(idx)" title="Eliminar" />
               </div>
             </div>
           </div>
@@ -197,6 +197,7 @@ import PatientSelect from '../../components/PatientSelect.vue'
 import { useToast } from 'vue-toastification'
 import Swal from 'sweetalert2'
 import { loadPatients as loadPatientsShared, openCreatePatientPopup as sharedOpenCreatePatientPopup } from '../../shared/formHelpers'
+import BtnTrash from '../../components/BtnTrash.vue'
 
 const toast = useToast()
 const route = useRoute()

@@ -16,11 +16,13 @@ class AppointmentType extends Model
         'estimated_hours',
         'estimated_minutes',
         'price',
+        'color',
     ];
 
     protected $casts = [
         'estimated_minutes' => 'integer',
         'price' => 'decimal:2',
+        'color' => 'string',
     ];
 
     public function clinic(): BelongsTo

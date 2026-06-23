@@ -33,6 +33,8 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
+        $this->call(ProfileSeeder::class);
+
         // Pacientes de prueba
         $this->call(PatientSeeder::class);
 

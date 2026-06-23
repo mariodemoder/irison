@@ -475,5 +475,28 @@ button[disabled],
 	.entity-card { padding: 12px }
 }
 
+/* Color palette picker (used in Swal popups outside Vue scope) */
+.create-color-palette {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+.create-color-palette .color-option {
+	width: 28px;
+	height: 28px;
+	border: 2px solid transparent;
+	border-radius: 6px;
+	cursor: pointer;
+	transition: all 0.2s;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+.create-color-palette .color-option:hover {
+	transform: scale(1.05);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+.create-color-palette .color-option.selected {
+	border-color: #111827;
+	box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.1), 0 4px 12px rgba(0, 0, 0, 0.15);
+}
 
 

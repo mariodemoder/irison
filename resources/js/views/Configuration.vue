@@ -18,9 +18,6 @@
             <button :class="['tab', { active: activeTab==='horarios' }]" @click="activeTab='horarios'">Horarios</button>
             <button :class="['tab', { active: activeTab==='contadores' }]" @click="activeTab='contadores'">Contadores</button>
             <button :class="['tab', { active: activeTab==='factura_pdf' }]" @click="activeTab='factura_pdf'">Factura PDF</button>
-            <button :class="['tab', { active: activeTab==='sesiones' }]" @click="activeTab='sesiones'">Sesiones</button>
-            <button :class="['tab', { active: activeTab==='bonos' }]" @click="activeTab='bonos'">Bonos</button>
-            <button :class="['tab', { active: activeTab==='booking' }]" @click="activeTab='booking'">Reserva Online</button>
             <button :class="['tab', { active: activeTab==='subscripcion' }]" @click="activeTab='subscripcion'">Subscripción</button>
           </div>
 
@@ -195,10 +192,6 @@
                 </div>
               </div>
 
-              <div class="tab-panel tab-card" v-show="activeTab==='booking'">
-                <BookingSettings />
-              </div>
-
               <div class="tab-panel tab-card" v-show="activeTab==='subscripcion'">
                 
                 <div class="subscription-header">
@@ -363,136 +356,6 @@
                 </div>
               </div>
 
-              <div class="tab-panel tab-card" v-show="activeTab==='sesiones'">
-                <div class="section-head">
-                  <h2>Sesiones</h2>
-                  <button v-if="canCreateWithSubscription" class="btn btn-sm session-create-btn" type="button" @click.prevent="addCesionType" title="Agregar tipo" aria-label="Agregar tipo">
-                    Nueva Sesión
-                  </button>
-                </div>
-                <div style="margin-top:8px;color:#6b7280;font-size:13px">
-                  Crea todos los tipos que necesites para tu clinica.
-                </div>
-
-                <div class="counter-table-wrap" style="margin-top:14px">
-                  <table class="counter-table sesiones-table">
-                    <colgroup>
-                      <col class="cesion-col-description">
-                      <col class="cesion-col-time">
-                      <col class="cesion-col-price">
-                      <col class="cesion-col-actions">
-                    </colgroup>
-                    <thead>
-                      <tr>
-                        <th>Descripcion</th>
-                        <th>Tiempo estimado</th>
-                        <th>Precio</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr v-for="item in cesionTypes" :key="item.id">
-                        <td data-label="Descripcion">
-                          <input class="input counter-input" v-model="item.description" placeholder="Ej: Sesion individual" />
-                        </td>
-                        <td data-label="Tiempo estimado">
-                          <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px">
-                            <div>
-                              <label style="display:block; font-size:11px; color:#6b7280; margin-bottom:2px">Horas</label>
-                              <input class="input counter-input" type="number" min="0" step="1" v-model.number="item.estimated_hours" style="font-size:13px; padding:6px" />
-                            </div>
-                            <div>
-                              <label style="display:block; font-size:11px; color:#6b7280; margin-bottom:2px">Min</label>
-                              <input class="input counter-input" type="number" min="0" max="59" step="1" v-model.number="item.estimated_minutes" style="font-size:13px; padding:6px" />
-                            </div>
-                          </div>
-                        </td>
-                        <td data-label="Precio">
-                          <input class="input counter-input" type="number" min="0" step="0.01" v-model.number="item.price" />
-                        </td>
-                        <td data-label="Acciones">
-                          <BtnTrash @click.prevent="removeCesionType(item.id)"></BtnTrash>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-
-                <div class="sesiones-list" style="margin-top:12px">
-                  <div v-if="cesionTypes.length === 0" class="subscription-history-empty">
-                    Aun no hay tipos de sesiones. Usa el botón Agregar para crear el primero.
-                  </div>
-                </div>
-              </div>
-
-              <div class="tab-panel tab-card" v-show="activeTab==='bonos'">
-                <div class="section-head">
-                  <h2>Bonos</h2>
-                  <button v-if="canCreateWithSubscription" class="btn btn-sm session-create-btn" type="button" @click.prevent="addBonusType" title="Agregar bono" aria-label="Agregar bono">
-                    Nuevo Bono
-                  </button>
-                </div>
-                <div style="margin-top:8px;color:#6b7280;font-size:13px">
-                  Arma paquete combinando sesiones existentes. Define cantidad por tipo de sesión y el precio final.
-                </div>
-
-                <div class="bonus-list" style="margin-top:14px">
-                  <div v-for="item in bonusTypes" :key="item.id ?? item._key" class="bonus-card">
-                    <div class="bonus-pack-top">
-                      <div class="bonus-top-actions">
-                        <button class="btn btn-sm bonus-top-btn" type="button" @click.prevent="addBonusLine(item)">+ Sesión</button>
-                        <BtnTrash class="bonus-top-btn" @click.prevent="removeBonusType(item)">Eliminar Bono</BtnTrash>
-                      </div>
-
-                      <div class="bonus-field-inline">
-                        <label class="label bonus-inline-label">Nombre</label>
-                        <input class="input counter-input" v-model="item.description" placeholder="Ej: Pack bienestar" />
-                      </div>
-                      <div class="bonus-field-inline bonus-field-inline-price">
-                        <label class="label bonus-inline-label">Precio final</label>
-                        <input class="input counter-input" type="number" min="0" step="0.01" v-model.number="item.price" />
-                      </div>
-                    </div>
-
-                    <div class="bonus-lines-wrap">
-                      <div class="bonus-lines-head">
-                        <span>Cantidad</span>
-                        <span>Sesión</span>
-                        <span>Precio</span>
-                        <span></span>
-                      </div>
-
-                      <div v-for="(line, lineIndex) in item.lines" :key="line._key" class="bonus-line-row">
-                        <input class="input counter-input" type="number" min="1" step="1" v-model.number="line.quantity" @input="syncBonusAmount(item)" />
-                        <select class="input counter-input" v-model="line.cesion_key" @change="applyLineSessionPrice(item, line)">
-                          <option value="">Seleccionar sesión</option>
-                          <option v-for="(cesion, cesionIndex) in cesionTypes" :key="`bonus-opt-${item.id ?? item._key}-${line._key}-${cesion.id ?? cesionIndex}`" :value="getCesionOptionValue(cesion, cesionIndex)">
-                            {{ cesion.description || `Sesión ${cesionIndex + 1}` }}
-                          </option>
-                        </select>
-                        <input class="input counter-input" type="number" min="0" step="0.01" v-model.number="line.unit_price" @input="syncBonusAmount(item)" />
-                        <BtnTrash @click.prevent="removeBonusLine(item, lineIndex)"></BtnTrash>
-                      </div>
-
-                    </div>
-
-                    <div class="bonus-summary">
-                      <span>Total de sesiones del pack:</span>
-                      <strong>{{ bonusTotalSessions(item) }}</strong>
-                      <span>·</span>
-                      <span>Total detalle:</span>
-                      <strong>{{ bonusDetailsTotal(item).toFixed(2) }}€</strong>
-                    </div>
-                  </div>
-                </div>
-
-                <div style="margin-top:12px">
-                  <div v-if="bonusTypes.length === 0" class="subscription-history-empty">
-                    Aún no hay tipos de bono. Usa el botón + para crear el primero.
-                  </div>
-                </div>
-              </div>
-
               <div class="tab-panel tab-card" v-show="activeTab==='factura_pdf'">
                 <h2>Fondo de factura</h2>
                 <div class="invoice-bg-help">
@@ -542,7 +405,7 @@
             </div>
 
             <div class="action-plane">
-              <div v-if="activeTab==='clinica' || activeTab==='horarios' || activeTab==='contadores' || activeTab==='sesiones' || activeTab==='bonos' || activeTab==='factura_pdf'" class="action-row action-row-save">
+              <div v-if="activeTab==='clinica' || activeTab==='horarios' || activeTab==='contadores' || activeTab==='factura_pdf'" class="action-row action-row-save">
                 <SaveButton class="save-button" :saving="saving" @click.prevent="save" />
               </div>
 
@@ -565,7 +428,6 @@ import api from '../services/api'
 import { useToast } from 'vue-toastification'
 import { meClinic } from '../shared/meCache'
 import { getLoadErrorMessage } from '../shared/httpErrors'
-import BookingSettings from './settings/BookingSettings.vue'
 import SaveButton from '../components/SaveButton.vue'
 
 const router = useRouter()
@@ -674,8 +536,6 @@ function defaultCounters() {
 }
 
 const counters = ref(defaultCounters())
-const cesionTypes = ref([])
-const bonusTypes = ref([])
 const businessHours = ref(defaultBusinessHours())
 const closedDays = ref([])
 const newClosedDay = ref('')
@@ -731,6 +591,25 @@ const canActivatePaidPlan = computed(() => isValidNif.value && hasClinicAddress.
       return 'No configurado'
     })
 
+function sanitizeBusinessHours(raw) {
+  const defaults = defaultBusinessHours()
+  if (!Array.isArray(raw)) return defaults
+  return defaults.map((def) => {
+    const found = raw.find((item) => item?.day === def.day)
+    return {
+      day: def.day,
+      enabled: found?.enabled === true,
+      start: found?.start || def.start,
+      end: found?.end || def.end,
+    }
+  })
+}
+
+function sanitizeClosedDays(raw) {
+  if (!Array.isArray(raw)) return []
+  return raw.filter((item) => typeof item === 'string' && item.trim())
+}
+
 onMounted(async () => {
   await load()
 })
@@ -781,12 +660,6 @@ async function load() {
       counters.value = defaultCounters()
     }
 
-    const incomingsesiones = Array.isArray(res.data.cesiones) ? res.data.cesiones : []
-    cesionTypes.value = incomingsesiones.map((item) => sanitizeCesionType(item))
-
-    const incomingBonusTypes = Array.isArray(res.data.bonus_types) ? res.data.bonus_types : []
-    bonusTypes.value = incomingBonusTypes.map((item) => sanitizeBonusType(item))
-
     if (activeTab.value === 'factura_pdf') {
       await refreshPreview()
     }
@@ -801,8 +674,6 @@ async function load() {
 async function save() {
   saving.value = true
   try {
-    cesionTypes.value = cesionTypes.value.map((item) => sanitizeCesionType(item))
-
     const payload = {
       name: form.value.name,
       email: form.value.email,
@@ -830,32 +701,10 @@ async function save() {
         prefix: (item.prefix ?? '').toString().trim().toUpperCase(),
         last_number: Number.isFinite(Number(item.last_number)) ? Math.max(Number(item.last_number), 0) : 0,
       })),
-      cesiones: cesionTypes.value.map((item) => ({
-        id: item.id != null ? String(item.id) : null,
-        description: item.description,
-        estimated_hours: item.estimated_hours,
-        estimated_minutes: item.estimated_minutes,
-        price: item.price,
-      })),
-      bonus_types: bonusTypes.value.map((item) => ({
-        id: item.id != null ? String(item.id) : null,
-        description: item.description,
-        sessions: Math.max(bonusTotalSessions(item), 1),
-        price: item.price,
-        expires_at: null,
-        lines: (Array.isArray(item.lines) ? item.lines : []).map((line) => {
-          const parsed = parseCesionOptionValue(line?.cesion_key)
-          return {
-            appointment_type_id: parsed?.id ?? null,
-            appointment_type_index: parsed?.index ?? null,
-            quantity: Number.isFinite(Number(line?.quantity)) ? Math.max(Number(line.quantity), 1) : 1,
-            unit_price: Number.isFinite(Number(line?.unit_price)) ? Math.max(Number(line.unit_price), 0) : 0,
-          }
-        }),
-      })),
     }
 
     const res = await api.put('/me', payload)
+
     toast.success('Configuración guardada')
     user.value = res.data.user ?? user.value
     clinic.value = res.data.clinic ?? clinic.value
@@ -872,11 +721,6 @@ async function save() {
         }
       })
     }
-    const incomingsesiones = Array.isArray(res.data.cesiones) ? res.data.cesiones : []
-    cesionTypes.value = incomingsesiones.map((item) => sanitizeCesionType(item))
-
-    const incomingBonusTypesSave = Array.isArray(res.data.bonus_types) ? res.data.bonus_types : []
-    bonusTypes.value = incomingBonusTypesSave.map((item) => sanitizeBonusType(item))
   } catch (e) {
     console.error('Error guardando configuración', e)
     const msg = e.response?.data?.message || 'Error guardando datos'
@@ -886,287 +730,6 @@ async function save() {
   }
 }
 
-function makeCesionType() {
-  return {
-    description: '',
-    estimated_hours: 1,
-    estimated_minutes: 0,
-    price: 0,
-  }
-}
-
-function sanitizeCesionType(item) {
-  return {
-    id: item?.id,
-    description: (item?.description ?? '').toString(),
-    estimated_hours: Number.isFinite(Number(item?.estimated_hours))
-      ? Math.max(Number(item.estimated_hours), 0)
-      : 0,
-    estimated_minutes: Number.isFinite(Number(item?.estimated_minutes))
-      ? Math.min(Math.max(Number(item.estimated_minutes), 0), 59)
-      : 0,
-    price: Number.isFinite(Number(item?.price))
-      ? Math.max(Number(item.price), 0)
-      : 0,
-  }
-}
-
-function sanitizeBusinessHours(items) {
-  const defaults = defaultBusinessHours()
-  const incoming = Array.isArray(items) ? items : []
-
-  return defaults.map((base) => {
-    const found = incoming.find((item) => item?.day === base.day)
-    return {
-      day: base.day,
-      enabled: Boolean(found?.enabled),
-      start: normalizeTimeValue(found?.start || base.start),
-      end: normalizeTimeValue(found?.end || base.end),
-    }
-  })
-}
-
-function sanitizeClosedDays(items) {
-  if (!Array.isArray(items)) return []
-  return Array.from(new Set(items
-    .map((item) => String(item || '').trim())
-    .filter((item) => /^\d{4}-\d{2}-\d{2}(\.\.\d{4}-\d{2}-\d{2})?$/.test(item))))
-    .sort()
-}
-
-function normalizeTimeValue(value) {
-  const text = String(value || '').trim()
-  return /^\d{2}:\d{2}$/.test(text) ? text : '09:00'
-}
-
-function addClosedDay() {
-  const value = String(newClosedDay.value || '').trim()
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    toast.error('Selecciona una fecha válida')
-    return
-  }
-
-  if (!closedDays.value.includes(value)) {
-    closedDays.value = [...closedDays.value, value].sort()
-  }
-  newClosedDay.value = ''
-}
-
-function addClosedDayRange() {
-  const start = String(closedRangeStart.value || '').trim()
-  const end = String(closedRangeEnd.value || '').trim()
-
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) {
-    toast.error('Selecciona un rango válido')
-    return
-  }
-
-  if (start > end) {
-    toast.error('La fecha Desde no puede ser mayor que Hasta')
-    return
-  }
-
-  const next = new Set(closedDays.value)
-  next.add(`${start}..${end}`)
-  closedDays.value = Array.from(next).sort()
-  closedRangeStart.value = ''
-  closedRangeEnd.value = ''
-}
-
-function removeClosedDay(value) {
-  closedDays.value = closedDays.value.filter((item) => item !== value)
-}
-
-function clearIndividualClosedDays() {
-  closedDays.value = closedDays.value.filter((item) => item.includes('..'))
-}
-
-function clearRangeClosedDays() {
-  closedDays.value = closedDays.value.filter((item) => !item.includes('..'))
-}
-
-function formatClosedDay(value) {
-  if (value.includes('..')) {
-    const [fromRaw, toRaw] = value.split('..')
-    const from = new Date(`${fromRaw}T00:00:00`)
-    const to = new Date(`${toRaw}T00:00:00`)
-    if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return value
-    const fromText = from.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })
-    const toText = to.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })
-    return `Desde ${fromText} hasta ${toText}`
-  }
-
-  const date = new Date(`${value}T00:00:00`)
-  if (Number.isNaN(date.getTime())) return value
-  return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })
-}
-
-function addCesionType() {
-  cesionTypes.value.push(makeCesionType())
-}
-
-let _bonusKey = 0
-function makeBonusType() {
-  return {
-    _key: ++_bonusKey,
-    description: '',
-    sessions: 1,
-    price: 0,
-    lines: [makeBonusLine(1)],
-  }
-}
-
-let _bonusLineKey = 0
-function makeBonusLine(quantity = 1, cesionKey = '') {
-  return {
-    _key: ++_bonusLineKey,
-    quantity: Number.isFinite(Number(quantity)) ? Math.max(Number(quantity), 1) : 1,
-    cesion_key: String(cesionKey || ''),
-    unit_price: 0,
-  }
-}
-
-function sanitizeBonusType(item) {
-  const normalizedSessions = Number.isFinite(Number(item?.sessions)) ? Math.max(Number(item.sessions), 1) : 1
-  const incomingLines = Array.isArray(item?.lines) ? item.lines : []
-  const lines = incomingLines.length > 0
-    ? incomingLines.map((line) => {
-      const optionValue = Number.isFinite(Number(line?.appointment_type_id))
-        ? `id:${Number(line.appointment_type_id)}`
-        : String(line?.cesion_key || '')
-      const nextLine = makeBonusLine(line?.quantity, optionValue)
-      nextLine.unit_price = Number.isFinite(Number(line?.unit_price)) ? Math.max(Number(line.unit_price), 0) : 0
-      return nextLine
-    })
-    : [makeBonusLine(normalizedSessions)]
-
-  return {
-    id: item?.id,
-    description: (item?.description ?? '').toString(),
-    sessions: normalizedSessions,
-    price: Number.isFinite(Number(item?.price)) ? Math.max(Number(item.price), 0) : 0,
-    lines,
-  }
-}
-
-function getCesionOptionValue(cesion, index) {
-  if (cesion?.id != null) return `id:${cesion.id}`
-  return `draft:${index}`
-}
-
-function getCesionFromOptionValue(optionValue) {
-  const value = String(optionValue || '')
-  if (!value) return null
-
-  if (value.startsWith('id:')) {
-    const id = Number(value.slice(3))
-    if (!Number.isFinite(id)) return null
-    return cesionTypes.value.find((item) => Number(item?.id) === id) || null
-  }
-
-  if (value.startsWith('draft:')) {
-    const index = Number(value.slice(6))
-    if (!Number.isInteger(index) || index < 0) return null
-    return cesionTypes.value[index] || null
-  }
-
-  return null
-}
-
-function parseCesionOptionValue(optionValue) {
-  const value = String(optionValue || '')
-  if (!value) return null
-
-  if (value.startsWith('id:')) {
-    const id = Number(value.slice(3))
-    if (!Number.isFinite(id)) return null
-    return { id: Math.trunc(id), index: null }
-  }
-
-  if (value.startsWith('draft:')) {
-    const index = Number(value.slice(6))
-    if (!Number.isInteger(index) || index < 0) return null
-    return { id: null, index }
-  }
-
-  return null
-}
-
-function applyLineSessionPrice(item, line) {
-  const selected = getCesionFromOptionValue(line?.cesion_key)
-  if (!selected) {
-    syncBonusAmount(item)
-    return
-  }
-  const nextPrice = Number(selected?.price)
-  if (!Number.isFinite(nextPrice)) {
-    syncBonusAmount(item)
-    return
-  }
-  line.unit_price = Math.max(nextPrice, 0)
-  syncBonusAmount(item)
-}
-
-function syncBonusAmount(item) {
-  item.price = Number(bonusDetailsTotal(item).toFixed(2))
-}
-
-function bonusTotalSessions(item) {
-  const lines = Array.isArray(item?.lines) ? item.lines : []
-  return lines.reduce((total, line) => {
-    const qty = Number.isFinite(Number(line?.quantity)) ? Math.max(Number(line.quantity), 0) : 0
-    return total + qty
-  }, 0)
-}
-
-function bonusDetailsTotal(item) {
-  const lines = Array.isArray(item?.lines) ? item.lines : []
-  return lines.reduce((total, line) => {
-    const qty = Number.isFinite(Number(line?.quantity)) ? Math.max(Number(line.quantity), 0) : 0
-    const unitPrice = Number.isFinite(Number(line?.unit_price)) ? Math.max(Number(line.unit_price), 0) : 0
-    return total + (qty * unitPrice)
-  }, 0)
-}
-
-function addBonusLine(item) {
-  if (!Array.isArray(item.lines)) {
-    item.lines = [makeBonusLine(1)]
-    syncBonusAmount(item)
-    return
-  }
-  item.lines.push(makeBonusLine(1))
-  syncBonusAmount(item)
-}
-
-function removeBonusLine(item, lineIndex) {
-  if (!Array.isArray(item?.lines) || item.lines.length <= 1) {
-    item.lines = [makeBonusLine(1)]
-    syncBonusAmount(item)
-    return
-  }
-  item.lines.splice(lineIndex, 1)
-  syncBonusAmount(item)
-}
-
-function addBonusType() {
-  bonusTypes.value.push(makeBonusType())
-}
-
-function removeBonusType(item) {
-  if (item.id != null) {
-    bonusTypes.value = bonusTypes.value.filter((b) => b !== item)
-  } else {
-    bonusTypes.value = bonusTypes.value.filter((b) => b !== item)
-  }
-}
-
-function removeCesionType(id) {
-  if (id == null) {
-    cesionTypes.value.pop()
-    return
-  }
-  cesionTypes.value = cesionTypes.value.filter((item) => item.id !== id)
-}
 
 function onInvoiceBackgroundPicked(event) {
   const files = event?.target?.files
@@ -1629,10 +1192,11 @@ onBeforeUnmount(() => {
 .counter-input {
   min-width: 120px;
 }
-.sesiones-table .cesion-col-description { width: 42%; }
-.sesiones-table .cesion-col-time { width: 22%; }
-.sesiones-table .cesion-col-price { width: 20%; }
-.sesiones-table .cesion-col-actions { width: 16%; }
+.sesiones-table .cesion-col-description { width: 32%; }
+.sesiones-table .cesion-col-time { width: 20%; }
+.sesiones-table .cesion-col-price { width: 16%; }
+.sesiones-table .cesion-col-color { width: 24%; }
+.sesiones-table .cesion-col-actions { width: 8%; }
 .section-head {
   display: flex;
   align-items: center;

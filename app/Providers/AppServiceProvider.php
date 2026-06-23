@@ -4,7 +4,9 @@ namespace App\Providers;
 
 use App\Models\CashierSubscription;
 use App\Models\Clinic;
+use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
@@ -36,6 +38,11 @@ class AppServiceProvider extends ServiceProvider
             return $frontendUrl
                 . '/reset-password?token=' . urlencode($token)
                 . '&email=' . urlencode((string) ($user->email ?? ''));
+        });
+
+        // Gate: acceso al módulo Team solo para administradores y gestores
+        Gate::define('team-access', function (User $user) {
+            return $user->profile && in_array($user->profile->slug, ['admin', 'manager'], true);
         });
 
         // Ensure route-model binding for Patient is scoped to the authenticated user's clinic
