@@ -131,9 +131,9 @@ export async function loadPatients(api, per_page = 200) {
   }
 }
 
-export async function checkOverlapShared({ start, end, currentId = null, api, Swal, per_page = 200 } = {}) {
+export async function checkOverlapShared({ start, end, currentId = null, api, Swal, per_page = 200, professionalId = null } = {}) {
   if (!start || !end) return []
-  const filtered = await findOverlaps({ start, end, currentId, api, per_page })
+  const filtered = await findOverlaps({ start, end, currentId, api, per_page, professionalId })
   // defensa adicional: excluir la misma cita si viene en la lista
   const cleaned = filtered.filter(a => String(a.id) !== String(currentId))
   const hasScheduled = cleaned.some(a => a.status === 'scheduled')

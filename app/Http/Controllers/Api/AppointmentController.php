@@ -178,6 +178,11 @@ class AppointmentController extends Controller
             ->values()
             ->toArray();
 
+        $professionals = User::where('clinic_id', $clinicId)
+            ->where('allow_manage_agenda', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
         return response()->json([
             'data' => [
                 'patients' => $patientsPayload,
@@ -185,6 +190,7 @@ class AppointmentController extends Controller
                 'bonuses' => $bonuses->values(),
                 'pending_credit_payments' => $pendingCreditPayments,
                 'appointment_types' => $appointmentTypes,
+                'professionals' => $professionals,
             ],
         ]);
     }

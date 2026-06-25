@@ -100,9 +100,12 @@ class MeController
                 ->toArray();
         }
 
+        $ownerName = $clinic?->ownerUser?->name ?? $clinic?->name ?? '';
+
         $payload = [
             'user' => $user,
             'clinic' => $clinic,
+            'clinic_owner_name' => $ownerName,
             'clinic_invoice_background_url' => $invoiceBackgroundUrl,
             'counters' => $clinic ? $this->counterService->getProfileCounters((int) $clinic->id) : [],
             'subscription_payments' => $subscriptionPayments,

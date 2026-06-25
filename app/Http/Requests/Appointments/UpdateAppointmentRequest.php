@@ -52,7 +52,7 @@ class UpdateAppointmentRequest extends FormRequest
                 'required',
                 'date_format:H:i',
                 new ValidateTimeRange($this->input('start_time')),
-                new ValidateSlotAvailability($this->input('date'), $clinicId, $appointmentId, $this->input('start_time')),
+                new ValidateSlotAvailability($this->input('date'), $clinicId, $appointmentId, $this->input('start_time'), $this->input('professional_id') !== null ? (int) $this->input('professional_id') : null),
             ],
             'patient_id' => [
                 'sometimes',
@@ -78,6 +78,7 @@ class UpdateAppointmentRequest extends FormRequest
             'apply_credit_amount' => ['sometimes', 'nullable', 'numeric', 'min:0'],
             'use_credit_payment_id' => ['sometimes', 'nullable', 'integer'],
             'use_credit_amount' => ['sometimes', 'nullable', 'numeric', 'min:0'],
+            'professional_id' => ['sometimes', 'nullable', 'integer', Rule::exists('users', 'id')->where('clinic_id', $clinicId)],
         ];
     }
 

@@ -70,6 +70,7 @@ class StoreAppointmentRequest extends FormRequest
             'apply_credit_amount' => ['nullable', 'numeric', 'min:0'],
             'use_credit_payment_id' => ['nullable', 'integer'],
             'use_credit_amount' => ['nullable', 'numeric', 'min:0'],
+            'professional_id' => ['nullable', 'integer', Rule::exists('users', 'id')->where('clinic_id', $clinicId)],
         ];
     }
 

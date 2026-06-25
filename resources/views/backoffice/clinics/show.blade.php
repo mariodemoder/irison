@@ -189,10 +189,18 @@
         <h3 class="text-lg font-medium">Logs</h3>
 
         @if (auth('admin')->user()?->role === 'super_admin')
-            <form class="mt-3 border-t border-slate-100 pt-3" method="POST" action="{{ route('backoffice.clinics.impersonate', $clinic) }}">
-                @csrf
-                <button class="rounded bg-amber-600 px-3 py-1.5 text-sm text-white hover:bg-amber-500" type="submit">Login como clínica</button>
-            </form>
+            <div class="mt-3 flex gap-3 border-t border-slate-100 pt-3">
+                <form method="POST" action="{{ route('backoffice.clinics.impersonate', $clinic) }}">
+                    @csrf
+                    <button class="rounded bg-amber-600 px-3 py-1.5 text-sm text-white hover:bg-amber-500" type="submit">Login como clínica</button>
+                </form>
+
+                <form method="POST" action="{{ route('backoffice.clinics.clear-logs', $clinic) }}"
+                      onsubmit="return confirm('¿Estás seguro de limpiar todos los logs de esta clínica? Esta acción no se puede deshacer.');">
+                    @csrf
+                    <button class="rounded bg-rose-700 px-3 py-1.5 text-sm text-white hover:bg-rose-600" type="submit">Limpiar logs</button>
+                </form>
+            </div>
         @endif
 
         <h4 class="mt-4 text-base font-medium text-slate-700">Logs de la clínica</h4>

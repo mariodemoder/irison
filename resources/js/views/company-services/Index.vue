@@ -602,6 +602,7 @@ function removeCesionType(item) {
 
 .session-create-btn {
   white-space: nowrap;
+  width: auto;
 }
 
 .counter-table-wrap {

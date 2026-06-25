@@ -80,7 +80,12 @@
 
           <div class="field full">
             <label class="label">Tipo de cita</label>
-            <div class="value">{{ appointment.appointment_type?.description || appointment.appointmentType?.description || appointment.custom_type || '—' }}</div>
+            <div class="value"><span class="type-badge" :style="appointmentTypeStyle(appointment)">{{ appointment.appointment_type?.description || appointment.appointmentType?.description || appointment.custom_type || '—' }}</span></div>
+          </div>
+
+          <div class="field full">
+            <label class="label">Profesional</label>
+            <div class="value">{{ appointment.professional?.name || clinicOwnerName }}</div>
           </div>
 
           <div class="field full">
@@ -131,7 +136,7 @@ import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
 import AppLoading from '../../components/AppLoading.vue'
 import { useToast } from 'vue-toastification'
-import { statusLabel, formatDateShort, formatTime, parseAppointmentDateTime } from '../../shared/appointmentHelpers'
+import { statusLabel, formatDateShort, formatTime, parseAppointmentDateTime, getContrastColor } from '../../shared/appointmentHelpers'
 import { appointmentCancelShared } from '../../shared/formHelpers'
 import { goBackWithStack } from '../../shared/navigationHelpers'
 
@@ -139,6 +144,7 @@ const route = useRoute()
 const router = useRouter()
 const appointment = ref({})
 const loading = ref(false)
+const clinicOwnerName = ref('')
 const cancelling = ref(false)
 const submitting = ref(false)
 const canReprogram = ref(false)
@@ -226,6 +232,15 @@ const reprogramTooltipMessage = 'Reprogramación sólo con al menos 1 hora de an
 const canShowReprogramAction = computed(() => isEdit.value && isFutureAppointment.value)
 const canShowCancelAction = computed(() => isEdit.value && !isCanceled.value && effectiveStatus.value !== 'completed')
 const hasQuickActions = computed(() => canShowReprogramAction.value || canShowCancelAction.value)
+
+async function loadOwnerName() {
+  try {
+    const res = await api.get('/me')
+    clinicOwnerName.value = res?.data?.clinic_owner_name || ''
+  } catch (e) {
+    clinicOwnerName.value = ''
+  }
+}
 
 async function load() {
   loading.value = true
@@ -333,8 +348,14 @@ function goReprogram() {
   router.push({ path: `/appointments/${appointment.value.id}/edit`, query: { mode: 'reprogram' } })
 }
 
+function appointmentTypeStyle(item) {
+  const color = item.appointment_type?.color || item.appointmentType?.color
+  return color ? { backgroundColor: color, color: getContrastColor(color) } : {}
+}
+
 onMounted(() => {
   load()
+  loadOwnerName()
   document.addEventListener('click', handleClickOutsideQuickActions)
 })
 
@@ -370,6 +391,7 @@ onBeforeUnmount(() => {
 .quick-item:hover { background:#f9fafb }
 .quick-item.danger { color:#b91c1c }
 
+.type-badge { padding:6px 10px; border-radius:9999px; font-weight:700 }
 .status { padding:8px 14px; border-radius:9999px; font-weight:700; text-transform:capitalize; display:inline-flex; align-items:center }
 .status.canceled { background:#fff4f4; color:#da7a7a }
 .status.scheduled { background:#eef2ff; color:#1e3a8a }

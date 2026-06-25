@@ -51,6 +51,8 @@ class AppointmentService
 
         if (!empty($filters['professional_id'])) {
             $query->where('professional_id', $filters['professional_id']);
+        } elseif (!empty($filters['no_professional'])) {
+            $query->whereNull('professional_id');
         }
 
         $appointments = $query->orderBy('start_time')->get();
@@ -147,7 +149,7 @@ class AppointmentService
             }
         }
 
-        $appointment->load(['bonus', 'patient', 'creditUsages', 'payments', 'appointmentType']);
+        $appointment->load(['bonus', 'patient', 'creditUsages', 'payments', 'appointmentType', 'professional']);
 
         $bonusPayments = collect();
         if ((string) $appointment->payment_status === 'covered_by_pack' && !empty($appointment->bonus_id)) {
@@ -319,12 +321,18 @@ private function resolveClinic(array $data)
             $ignoreAppointmentId = (int) $ignoreId;
         }
 
+        $professionalId = null;
+        if (array_key_exists('professional_id', $data) && $data['professional_id'] !== null && $data['professional_id'] !== '') {
+            $professionalId = (int) $data['professional_id'];
+        }
+
         $validation = $checker->validate(
             (int) $clinicId,
             $start,
             $end,
             $patientId,
-            $ignoreAppointmentId
+            $ignoreAppointmentId,
+            $professionalId
         );
 
         if (!$validation['valid']) {

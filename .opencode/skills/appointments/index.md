@@ -24,10 +24,34 @@ Controller uses `$request->validated()`; missing fields are silently stripped.
 Required: `price`, `payment_type`, `status`, `use_bonus_id`, `bonus_notes`, `apply_credit`, `apply_credit_mode`, `apply_credit_amount`, `use_credit_payment_id`, `use_credit_amount`
 Missing `price` → DomainException `"Debes indicar el precio de la sesión"`
 
-## Overlap Validation — One Source of Truth
-- Keep overlap validation ONLY in `AppointmentService` (via `CheckAvailability`)
-- Remove from FormRequest (`ValidateSlotAvailability`) to avoid duplicate 422 shapes
-- Test `test_reject_overlapping_appointment` asserts `assertJsonPath('error', '...')` (DomainException), not `errors.end_time`
+## Overlap Validation — Dual Path
+
+There are TWO independent overlap checks — both must be kept in sync:
+
+### 1. `ValidateSlotAvailability` rule (FormRequest layer)
+- File: `app/Rules/ValidateSlotAvailability.php`
+- Used in: `UpdateAppointmentRequest` on `end_time` field (not in `StoreAppointmentRequest`)
+- Fails immediately (422) with "El horario {value} no está disponible..."
+- Filters by `professional_id` when provided (nullable int); when null → `WHERE professional_id IS NULL`
+- Pass `professionalId` from request: `$this->input('professional_id') !== null ? (int) ... : null`
+
+### 2. `CheckAvailability` service (Service layer)
+- File: `app/Services/Availability/CheckAvailability.php`
+- Used in: `AppointmentService::checkAvailability()` (both create and update)
+- Throws DomainException with "La franja horaria se solapa con otra cita."
+- Filters by `professional_id` when provided (int); when null → `WHERE professional_id IS NULL`
+
+### Per-professional rule
+- Appointments with **different** professionals do NOT conflict (can overlap freely)
+- Appointments with **no** professional assigned only conflict with other unassigned appointments
+- Frontend overlap check (`findOverlaps` in `appointmentHelpers.js`) sends `no_professional=1` when no professional selected
+- Backend `AppointmentService::list()` handles `no_professional` → `whereNull('professional_id')`
+
+### Files to update together when changing overlap behavior:
+- `app/Rules/ValidateSlotAvailability.php` — FormRequest 422 path
+- `app/Services/Availability/CheckAvailability.php` — Service DomainException path
+- `app/Services/Appointments/AppointmentService.php` — `list()` and `checkAvailability()`
+- `resources/js/shared/appointmentHelpers.js` — `findOverlaps()` frontend check
 
 ## Helper: Use `currentClinicId()`
 From `app/helpers.php`. NOT `clinic()` — that does not exist and throws fatal.

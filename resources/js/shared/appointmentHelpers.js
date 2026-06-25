@@ -121,6 +121,16 @@ export function timeClass(s) {
 
 import Swal from 'sweetalert2'
 
+export function getContrastColor(hex) {
+  if (!hex) return '#1f2937'
+  const c = hex.replace('#', '')
+  const r = parseInt(c.substring(0,2), 16)
+  const g = parseInt(c.substring(2,4), 16)
+  const b = parseInt(c.substring(4,6), 16)
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  return luminance > 0.5 ? '#1f2937' : '#ffffff'
+}
+
 export async function confirmAndCancel(id, { api, toast, onSuccess } = {}) {
   const { isConfirmed } = await Swal.fire({
     title: '¿Cancelar esta cita?',
@@ -153,9 +163,14 @@ export async function confirmAndCancel(id, { api, toast, onSuccess } = {}) {
   }
 }
 
-export async function findOverlaps({ start, end, currentId = null, api, per_page = 200 }) {
+export async function findOverlaps({ start, end, currentId = null, api, per_page = 200, professionalId = null }) {
   if (!start || !end) return []
   const params = { start: new Date(start).toISOString(), end: new Date(end).toISOString(), per_page }
+  if (professionalId) {
+    params.professional_id = professionalId
+  } else {
+    params.no_professional = 1
+  }
   const res = await api.get('/appointments', { params })
   const list = Array.isArray(res.data.data) ? res.data.data : (res.data || [])
 

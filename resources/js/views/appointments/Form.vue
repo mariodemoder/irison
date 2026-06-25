@@ -71,6 +71,15 @@
             </div>
             <div v-if="errors.app_type_id" class="field-error">{{ errors.app_type_id[0] }}</div>
           </div>
+          <div class="field">
+            <label class="label">Profesional</label>
+            <select v-model="form.professional_id" class="input" :disabled="isCanceled && mode !== 'reprogram'">
+              <option value="">Sin asignar</option>
+              <option v-for="prof in professionals" :key="prof.id" :value="String(prof.id)">
+                {{ prof.name }}
+              </option>
+            </select>
+          </div>
           <div class="field" v-if="isCustomAppointmentType">
             <label class="label">Tipo personalizado</label>
             <input v-model="form.custom_type" type="text" class="input" placeholder="Ej: Seguimiento post-operatorio" :disabled="isCanceled && mode !== 'reprogram'" />
@@ -473,7 +482,7 @@ const route = useRoute()
 const APPOINTMENT_SLOT_MINUTES = 15
 const isEdit = ref(false)
 const mode = ref(route.query.mode || null)
-const form = reactive({ patient_id: '', status: 'scheduled', start_time: '', end_time: '', notes: '', price: '', app_type_id: '', custom_type: '', use_bonus_id: '', use_credit_payment_id: '', bonus_notes: '', bonus_name: '', payment_type: 'single', apply_credit: false, apply_credit_mode: 'auto', apply_credit_amount: '' })
+const form = reactive({ patient_id: '', status: 'scheduled', start_time: '', end_time: '', notes: '', price: '', app_type_id: '', custom_type: '', use_bonus_id: '', use_credit_payment_id: '', bonus_notes: '', bonus_name: '', payment_type: 'single', apply_credit: false, apply_credit_mode: 'auto', apply_credit_amount: '', professional_id: '' })
 const invoiceNotesDraft = ref('')
 const applyCreditConfirmed = ref(false)
 const sendWhatsapp = ref(false)
@@ -507,6 +516,7 @@ const loading = ref(false)
 const calendarInfoMessage = ref('')
 const patients = ref([])
 const appointmentTypes = ref([])
+const professionals = ref([])
 const overlapping = ref([])
 const hasScheduledOverlap = computed(() => overlapping.value.some(a => a.status === 'scheduled'))
 let overlapTimer = null
@@ -1066,6 +1076,7 @@ async function loadFormBootstrap({ appointmentId = null, patientId = null } = {}
 
   patients.value = Array.isArray(data.patients) ? data.patients : []
   appointmentTypes.value = Array.isArray(data.appointment_types) ? data.appointment_types : []
+  professionals.value = Array.isArray(data.professionals) ? data.professionals : []
   bonuses.value = Array.isArray(data.bonuses) ? data.bonuses : []
   pendingCreditPayments.value = Array.isArray(data.pending_credit_payments) ? data.pending_credit_payments : []
 
@@ -1107,6 +1118,7 @@ async function applyAppointmentData(data) {
   form.notes = data.notes || ''
   invoiceNotesDraft.value = form.notes || ''
   form.price = data.price != null ? Number(data.price) : ''
+  form.professional_id = data.professional_id ? String(data.professional_id) : ''
   suppressTypeChangePrompt.value = true
   form.app_type_id = data.app_type_id != null ? String(data.app_type_id) : (data.custom_type ? '__custom' : '')
   await nextTick()
@@ -1287,7 +1299,7 @@ function checkOverlap() {
     overlapTimer = setTimeout(async () => {
       try {
         const currentId = route.params.id ? String(route.params.id) : null
-        const cleaned = await checkOverlapShared({ start: form.start_time, end: form.end_time, currentId, api, Swal })
+        const cleaned = await checkOverlapShared({ start: form.start_time, end: form.end_time, currentId, api, Swal, professionalId: form.professional_id })
         overlapping.value = cleaned
       } catch (e) {
         overlapping.value = []
@@ -1720,6 +1732,7 @@ watch(() => route.params.id, (id) => {
     form.apply_credit = false
     form.apply_credit_mode = 'auto'
     form.apply_credit_amount = ''
+    form.professional_id = ''
     appointmentInvoiceId.value = null
     appointmentCoveredAmount.value = 0
     Object.keys(errors).forEach(k => delete errors[k])
@@ -1925,6 +1938,7 @@ async function submit(payNow = false) {
       use_credit_amount: form.payment_type === 'credit' ? (form.price || undefined) : undefined,
       bonus_notes: form.bonus_notes || undefined,
       bonus_name: form.bonus_name || undefined,
+      professional_id: form.professional_id || undefined,
       apply_credit: form.payment_type === 'single' ? applyCreditConfirmed.value : false,
       apply_credit_amount: form.payment_type === 'single' && applyCreditConfirmed.value && form.apply_credit_mode === 'manual'
         ? form.apply_credit_amount

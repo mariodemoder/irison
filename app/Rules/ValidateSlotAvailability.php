@@ -18,13 +18,15 @@ class ValidateSlotAvailability implements ValidationRule
     private ?int $clinicId;
     private ?int $appointmentId; // Para updates, excluir la cita actual
     private ?string $startTime;
+    private ?int $professionalId;
 
-    public function __construct(?string $date = null, ?int $clinicId = null, ?int $appointmentId = null, ?string $startTime = null)
+    public function __construct(?string $date = null, ?int $clinicId = null, ?int $appointmentId = null, ?string $startTime = null, ?int $professionalId = null)
     {
         $this->date = $date;
         $this->clinicId = $clinicId;
         $this->appointmentId = $appointmentId;
         $this->startTime = $startTime;
+        $this->professionalId = $professionalId;
     }
 
     public function validate(string $attribute, mixed $value, Closure $fail): void
@@ -56,8 +58,18 @@ class ValidateSlotAvailability implements ValidationRule
                 $query->where('id', '!=', $this->appointmentId);
             }
 
+            // Filtrar por profesional cuando está especificado
+            $query->where(function ($q) {
+                if ($this->professionalId !== null) {
+                    $q->where('professional_id', $this->professionalId);
+                } else {
+                    $q->whereNull('professional_id');
+                }
+            });
+
             if ($query->exists()) {
-                $fail("El horario {$value} no está disponible. Existe un conflicto con otra cita.");
+                $suffix = $this->professionalId !== null ? ' del mismo profesional.' : '.';
+                $fail("El horario {$value} no está disponible. Existe un conflicto con otra cita{$suffix}");
             }
         } catch (\Exception $e) {
             $fail("Error al validar disponibilidad de horario: {$e->getMessage()}");

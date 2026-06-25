@@ -21,9 +21,11 @@ class CheckAvailability
      * @param Carbon $start
      * @param Carbon $end
      * @param int|null $patientId
+     * @param int|null $ignoreAppointmentId
+     * @param int|null $professionalId
      * @return array ['valid' => bool, 'errors' => array]
      */
-    public function validate(int $clinicId, Carbon $start, Carbon $end, ?int $patientId = null, ?int $ignoreAppointmentId = null): array
+    public function validate(int $clinicId, Carbon $start, Carbon $end, ?int $patientId = null, ?int $ignoreAppointmentId = null, ?int $professionalId = null): array
     {
         $errors = [];
 
@@ -52,10 +54,19 @@ class CheckAvailability
             $query->where('id', '<>', $ignoreAppointmentId);
         }
 
+        $query->where(function ($q) use ($professionalId) {
+            if ($professionalId !== null) {
+                $q->where('professional_id', $professionalId);
+            } else {
+                $q->whereNull('professional_id');
+            }
+        });
+
         $overlap = $query->exists();
 
         if ($overlap) {
-            $errors[] = 'La franja horaria se solapa con otra cita.';
+            $suffix = $professionalId !== null ? ' del mismo profesional.' : '.';
+            $errors[] = 'La franja horaria se solapa con otra cita' . $suffix;
         }
 
         return empty($errors)
@@ -75,15 +86,24 @@ class CheckAvailability
      * @param Carbon $end
      * @return string
      */
-    public function check(int $clinicId, Carbon $start, Carbon $end): string
+    public function check(int $clinicId, Carbon $start, Carbon $end, ?int $professionalId = null): string
     {
-        $conflict = Appointment::where('clinic_id', $clinicId)
+        $query = Appointment::where('clinic_id', $clinicId)
             ->whereNotIn('status', ['canceled', 'cancelled'])
             ->where(function ($q) use ($start, $end) {
                 $q->where('start_time', '<', $end)
                   ->where('end_time', '>', $start);
-            })
-            ->exists();
+            });
+
+        $query->where(function ($q) use ($professionalId) {
+            if ($professionalId !== null) {
+                $q->where('professional_id', $professionalId);
+            } else {
+                $q->whereNull('professional_id');
+            }
+        });
+
+        $conflict = $query->exists();
 
         return $conflict ? 'ocupado' : 'disponible';
     }

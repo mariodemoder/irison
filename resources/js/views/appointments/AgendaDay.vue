@@ -140,54 +140,69 @@
           </div>
         </div>
 
-        <div class="list-header">
-          <div>Horario</div>
-          <div class="row-left">Paciente</div>
-          <div class="row-left">Notas</div>
-          <div>Estado</div>
-          <div>Pago</div>
-          <div></div>
-        </div>
+        <div class="list-wrapper">
+          <table class="agenda-table">
+            <thead>
+              <tr>
+                <th>Horario</th>
+                <th>Paciente</th>
+                <th>Profesional</th>
+                <th>Tipo</th>
+                <th>Estado</th>
+                <th>Pago</th>
+                <th class="action-col"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <AppLoading v-if="loading" message="Cargando citas..." />
+              <template v-else v-for="item in listWithGaps" :key="item._type === 'gap' ? `gap-${item.from}` : item.id">
 
-        <div class="list">
-          <AppLoading v-if="loading" message="Cargando citas..." />
-          <template v-else v-for="item in listWithGaps" :key="item._type === 'gap' ? `gap-${item.from}` : item.id">
+                <!-- Hueco libre -->
+                <tr v-if="item._type === 'gap'" class="gap-tr">
+                  <td colspan="7">
+                    <div class="gap-row" role="button" tabindex="0" @click="goToNewWithGap(item)" @keydown.enter="goToNewWithGap(item)">
+                      <svg class="gap-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                      <span class="gap-time">{{ hhmm(item.from) }} – {{ hhmm(item.to) }}</span>
+                      <span class="gap-dur">{{ item.duration }} min libres</span>
+                      <span class="gap-cta">+ Nueva cita</span>
+                    </div>
+                  </td>
+                </tr>
 
-            <!-- Hueco libre -->
-            <div v-if="item._type === 'gap'" class="gap-row" role="button" tabindex="0" @click="goToNewWithGap(item)" @keydown.enter="goToNewWithGap(item)">
-              <svg class="gap-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-              <span class="gap-time">{{ hhmm(item.from) }} – {{ hhmm(item.to) }}</span>
-              <span class="gap-dur">{{ item.duration }} min libres</span>
-              <span class="gap-cta">+ Nueva cita</span>
-            </div>
+                <!-- Cita -->
+                <tr v-else class="appointment-row" role="button" tabindex="0" @click="goToAppointment(item.id)" @keydown.enter="goToAppointment(item.id)">
+                  <td class="time">
+                    <span :class="timeClass(item.status)">
+                      <span v-if="isAllMode" class="row-date">{{ formatDateShort(item.start_time) }} · </span>{{ formatTimeCalendar(item.start_time) }} - {{ formatTimeCalendar(item.end_time) }}
+                    </span>
+                  </td>
+                  <td>
+                    <div class="row-name">{{ item.patient?.counter ? (`${item.patient.counter} · `) : '' }}{{ item.patient?.nif ?? '—' }} - {{ item.patient?.name ?? ('Paciente #' + item.patient_id) }}</div>
+                  </td>
+                  <td class="time">{{ item.professional?.name || clinicOwnerName }}</td>
+                  <td><span class="type-badge" :style="appointmentTypeStyle(item)">{{ item.appointment_type?.description || item.custom_type || '—' }}</span></td>
+                  <td><span class="status" :class="item.status">{{ statusLabel(item.status) }}</span></td>
+                  <td>
+                    <span class="payment-status" :class="paymentStatusClass(item.payment_status)">{{ paymentStatusLabel(item.payment_status) }}</span>
+                  </td>
+                  <td class="row-action">
+                    <router-link :to="`/appointments/${item.id}/edit`" class="action-btn datos" @click.stop>✎ Editar</router-link>
+                  </td>
+                </tr>
 
-            <!-- Cita -->
-            <div v-else class="appointment-row" role="button" tabindex="0" @click="goToAppointment(item.id)" @keydown.enter="goToAppointment(item.id)" :style="appointmentRowStyle(item)">
-              <div :class="['row-col','time', timeClass(item.status)]">
-                <span v-if="isAllMode" class="row-date">{{ formatDateShort(item.start_time) }} · </span>{{ formatTimeCalendar(item.start_time) }} - {{ formatTimeCalendar(item.end_time) }}
-              </div>
-              <div class="row-left">
-                <div class="row-name">{{ item.patient?.counter ? (`${item.patient.counter} · `) : '' }}{{ item.patient?.nif ?? '—' }} - {{ item.patient?.name ?? ('Paciente #' + item.patient_id) }}</div>
-              </div>
-              <div class="row-col note time">{{ item.notes ?? '' }}</div>
-              <div class="row-col"><span class="status" :class="item.status">{{ statusLabel(item.status) }}</span></div>
-              <div class="row-col">
-                <span class="payment-status" :class="paymentStatusClass(item.payment_status)">{{ paymentStatusLabel(item.payment_status) }}</span>
-              </div>
-              <div class="row-action">
-                <router-link :to="`/appointments/${item.id}/edit`" class="action-btn datos" @click.stop>✎ Editar</router-link>
-              </div>
-            </div>
-
-          </template>
-          <template v-if="!loading">
-            <EmptyIndexState
-              v-if="filteredAppointments.length === 0 && !hasActiveFilters"
-              :title="emptyStateTitle"
-              :subtitle="emptyStateSubtitle"
-            />
-            <div v-else-if="filteredAppointments.length === 0" class="empty">No hay resultados para los filtros aplicados.</div>
-          </template>
+              </template>
+              <tr v-if="!loading">
+                <td colspan="7">
+                  <EmptyIndexState
+                    v-if="filteredAppointments.length === 0 && !hasActiveFilters"
+                    :title="emptyStateTitle"
+                    :subtitle="emptyStateSubtitle"
+                  />
+                  <div v-else-if="filteredAppointments.length === 0" class="empty">No hay resultados para los filtros aplicados.</div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
         <div v-if="isAllMode && filteredAppointments.length > 0" class="pagination">
@@ -211,7 +226,7 @@ import MainLayout from '../../layouts/MainLayout.vue'
 import CalendarHeader from '../../components/calendar/CalendarHeader.vue'
 import EmptyIndexState from '../../components/EmptyIndexState.vue'
 import AppLoading from '../../components/AppLoading.vue'
-import { statusLabel, timeClass, formatTimeCalendar } from '../../shared/appointmentHelpers'
+import { statusLabel, timeClass, formatTimeCalendar, getContrastColor } from '../../shared/appointmentHelpers'
 import { isDateClosed, normalizeClosedDays } from '../../shared/clinicCalendar'
 import { useToast } from 'vue-toastification'
 
@@ -223,6 +238,7 @@ const loading = ref(false)
 const date = ref(localIsoDate())
 const closedDays = ref([])
 const subscriptionStatus = ref('blocked')
+const clinicOwnerName = ref('')
 const isAllMode = computed(() => String(route.query.all || '') === '1')
 const isTodayMode = computed(() => !isAllMode.value && date.value === localIsoDate())
 const canCreateAppointment = computed(() => {
@@ -393,6 +409,7 @@ async function loadClinicCalendarConfig() {
     const res = await api.get('/me')
     closedDays.value = normalizeClosedDays(res?.data?.clinic?.closed_days)
     subscriptionStatus.value = String(res?.data?.status || 'blocked').trim().toLowerCase()
+    clinicOwnerName.value = res?.data?.clinic_owner_name || ''
   } catch (e) {
     closedDays.value = []
     subscriptionStatus.value = 'blocked'
@@ -691,10 +708,9 @@ function goToNewWithGap(item) {
   router.push({ path: '/appointments/create', query: { start: toISO(item.from), end: toISO(item.to) } })
 }
 
-function appointmentRowStyle(item) {
+function appointmentTypeStyle(item) {
   const color = item.appointment_type?.color
-  if (!color) return {}
-  return { backgroundColor: color, borderLeft: '4px solid ' + color }
+  return color ? { backgroundColor: color, color: getContrastColor(color) } : {}
 }
 
 function createAppointmentFromHeader() {
@@ -995,28 +1011,28 @@ watch(totalPages, (pages) => {
 .mini-cal-wrapper { position: relative; z-index: 20 }
 .search-center, .search-wrapper { position: relative; z-index: 0 }
 
-.list { display:flex; flex-direction:column; gap:8px; overflow-x:auto }
-.list-header { display:grid; grid-template-columns: 140px 1.25fr 2.6fr 110px 120px 110px; gap:12px; align-items:center; padding:8px 14px; color:#6b7280; font-weight:600; font-size:13px }
-.appointment-row { display:grid; grid-template-columns: 140px 1.25fr 2.6fr 110px 120px 110px; gap:12px; align-items:center; background:#f8fbfe; padding:12px 14px; border-radius:10px; text-decoration:none; color:inherit; border:1px solid #eef2ff22; border-left-width:4px; min-width:820px }
-.appointment-row:hover { box-shadow: 0 10px 24px rgba(2,6,23,0.06); transform: translateY(-2px) }
-.row-left { display:flex; flex-direction:column }
-.row-name { font-weight:600; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
-.row-sub { color:#6b7280; font-size:13px }
-.row-col { color:#374151; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+/* ── Tabla responsiva ─────────────────────────────── */
+.list-wrapper { overflow-x: auto }
+.agenda-table { width:100%; min-width:1020px; border-collapse:collapse; table-layout:auto }
+.agenda-table thead { position:sticky; top:0; z-index:2 }
+.agenda-table th {
+  padding:8px 8px; font-weight:600; font-size:13px; color:#6b7280;
+  text-align:left; border-bottom:2px solid #e5e7eb; background:#fff;
+}
+.agenda-table th.action-col { width:80px; text-align:center }
+.agenda-table td { padding:6px 8px; font-size:13px; color:#374151; text-align:left; vertical-align:middle; border-bottom:1px solid #f3f4f6 }
+.agenda-table td:first-child { padding-left:12px }
+.appointment-row { cursor:pointer; transition:background .12s }
+.appointment-row:hover td { background:rgba(0,0,0,0.02) }
+.row-name { font-weight:600; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
 .time { white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
 .time-scheduled { background:#eef2ff; color:#1e3a8a; padding:4px 8px; border-radius:8px; display:inline-block }
 .time-completed { background:#dcfce7; color:#166534; padding:4px 8px; border-radius:8px; display:inline-block }
 .time-canceled { background:#fff4f4; color:#da7a7a; padding:4px 8px; border-radius:8px; display:inline-block }
  .time-rescheduled { background:#fff7ed; color:#b45309; padding:4px 8px; border-radius:8px; display:inline-block }
-.note { font-style: italic; display:block; text-align:left;
-  white-space: normal;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical; }
-.row-action { display:flex; align-items:center; justify-content:flex-start; color:#6b7280 }
+td.row-action { text-align:center; width:80px }
 
+.type-badge { padding:6px 10px; border-radius:9999px; font-weight:700 }
 .status { padding:6px 10px; border-radius:9999px; font-weight:700; text-transform:capitalize }
 .status.canceled { background:#fff4f4; color:#da7a7a }
 .status.scheduled { background:#eef2ff; color:#1e3a8a }
@@ -1101,11 +1117,6 @@ watch(totalPages, (pages) => {
 }
 
 @media (max-width: 480px) {
-  .appointment-row { grid-template-columns: 140px 2fr 260px 110px 120px auto; gap:8px }
-  .row-action { justify-content:flex-start }
-}
-.list-header > div,
-.appointment-row > div {
-  text-align: left;
+  .agenda-table { min-width:800px }
 }
 </style>

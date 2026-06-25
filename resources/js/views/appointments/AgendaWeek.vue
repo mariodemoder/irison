@@ -95,6 +95,7 @@
                 >
                   <span class="appt-t">{{ a._tLabel }}</span>
                   <span class="appt-n">{{ a.patient?.name ?? '—' }}</span>
+                  <span class="appt-prof">{{ a.professional?.name || clinicOwnerName }}</span>
                   <span v-if="a._h >= 48" class="appt-notes">{{ a.notes }}</span>
                 </div>
 
@@ -124,10 +125,33 @@ const router = useRouter()
 const toast = useToast()
 
 // ── Constantes ────────────────────────────────────────
-const HOUR_START = 0
-const HOUR_END   = 24
 const SLOT_H     = 64   // px por hora
-const hours      = Array.from({ length: HOUR_END - HOUR_START }, (_, i) => HOUR_START + i)
+
+const businessHours = ref([])
+const hourRange = computed(() => {
+  const arr = businessHours.value
+  if (!Array.isArray(arr) || arr.length === 0) return { start: 0, end: 24 }
+  let minStart = 24
+  let maxEnd = 0
+  for (const day of arr) {
+    if (!day.enabled) continue
+    if (day.start) {
+      const h = parseInt(day.start.split(':')[0], 10)
+      if (!isNaN(h) && h < minStart) minStart = h
+    }
+    if (day.end) {
+      const h = parseInt(day.end.split(':')[0], 10)
+      if (!isNaN(h) && h > maxEnd) maxEnd = h
+    }
+  }
+  if (minStart === 24) minStart = 0
+  if (maxEnd === 0) maxEnd = 24
+  return { start: minStart, end: maxEnd }
+})
+const hours = computed(() => {
+  const { start, end } = hourRange.value
+  return Array.from({ length: end - start }, (_, i) => start + i)
+})
 
 // ── Estado ────────────────────────────────────────────
 const weekStart  = ref(getMonday(new Date()))
@@ -136,6 +160,7 @@ const calBodyRef = ref(null)
 const appointments = ref([])
 const loading = ref(false)
 const closedDays = ref([])
+const clinicOwnerName = ref('')
 const subscriptionStatus = ref('blocked')
 const agendaProfessionals = ref([])
 const professionalFilter = ref('')
@@ -226,7 +251,9 @@ async function loadClinicCalendarConfig() {
   try {
     const res = await api.get('/me')
     closedDays.value = normalizeClosedDays(res?.data?.clinic?.closed_days)
+    businessHours.value = res?.data?.clinic?.business_hours ?? []
     subscriptionStatus.value = String(res?.data?.status || 'blocked').trim().toLowerCase()
+    clinicOwnerName.value = res?.data?.clinic_owner_name || ''
   } catch (e) {
     closedDays.value = []
     subscriptionStatus.value = 'blocked'
@@ -291,7 +318,7 @@ function goToNewSlot(iso, hour) {
   }
   const pad = n => String(n).padStart(2, '0')
   const start = `${iso}T${pad(hour)}:00`
-  const end   = `${iso}T${pad(Math.min(hour + 1, 23))}:00`
+  const end   = `${iso}T${pad(Math.min(hour + 1, hourRange.value.end))}:00`
   router.push({ path: '/appointments/create', query: { start, end } })
 }
 
@@ -350,7 +377,7 @@ function apptCountForDay(iso) {
 }
 
 function apptStyle(a) {
-  const top  = Math.max((a._sm - HOUR_START * 60) / 60 * SLOT_H, 0)
+  const top  = Math.max((a._sm - hourRange.value.start * 60) / 60 * SLOT_H, 0)
   const pct  = 100 / a._total
   const style = {
     top:    top + 'px',
@@ -368,9 +395,10 @@ function apptStyle(a) {
 // ── Indicador de hora actual ──────────────────────────
 function updateNow() {
   const now = new Date()
+  const { start, end } = hourRange.value
   const min = now.getHours() * 60 + now.getMinutes()
-  nowTop.value = (min >= HOUR_START * 60 && min < HOUR_END * 60)
-    ? (min - HOUR_START * 60) / 60 * SLOT_H
+  nowTop.value = (min >= start * 60 && min < end * 60)
+    ? (min - start * 60) / 60 * SLOT_H
     : null
 }
 
@@ -642,6 +670,14 @@ onUnmounted(() => {
 
 .appt-n {
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.appt-prof {
+  font-size: 10px;
+  opacity: .65;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

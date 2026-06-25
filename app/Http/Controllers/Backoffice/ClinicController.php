@@ -9,6 +9,7 @@ use App\Http\Requests\Backoffice\ClinicActionRequest;
 use App\Http\Requests\Backoffice\UpdateClinicRequest;
 use App\Models\ActivityLog;
 use App\Models\Appointment;
+use App\Models\BackofficeClinicActivity;
 use App\Models\BillingPayment;
 use App\Models\Clinic;
 use App\Models\Document;
@@ -19,6 +20,7 @@ use App\Services\Backoffice\ClinicManagementService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 use Stripe\Stripe;
 use Stripe\StripeClient;
@@ -234,6 +236,29 @@ class ClinicController extends Controller
 
         return redirect()->route('backoffice.clinics.index')
             ->with('status', 'Impersonación finalizada y token revocado.');
+    }
+
+    public function clearLogs(Request $request, Clinic $clinic): RedirectResponse
+    {
+        $admin = $request->user('admin');
+
+        $activityDeleted = ActivityLog::query()
+            ->where('tenant_id', $clinic->id)
+            ->delete();
+
+        $backofficeDeleted = BackofficeClinicActivity::query()
+            ->where('clinic_id', $clinic->id)
+            ->delete();
+
+        Log::info('backoffice.clinic.logs.cleared', [
+            'clinic_id' => $clinic->id,
+            'activity_logs_deleted' => $activityDeleted,
+            'backoffice_activities_deleted' => $backofficeDeleted,
+            'admin_user_id' => $admin?->id,
+        ]);
+
+        return redirect()->route('backoffice.clinics.show', $clinic)
+            ->with('status', 'Logs eliminados correctamente.');
     }
 
     private function loadStripeInvoices(Clinic $clinic): array
