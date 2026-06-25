@@ -1,93 +1,50 @@
-# 🏥 Irison – SaaS Multi-Tenant para Clínicas
+# Irison — SaaS de Gestión para Clínicas
 
-Aplicación web para gestión de clínicas con arquitectura multi-tenant por `clinic_id`, backend Laravel API y frontend Vue 3.
+Plataforma web moderna para la gestión integral de clínicas y centros de salud. Multi-tenancy, backend Laravel API, frontend SPA Vue 3 y base de datos PostgreSQL.
 
-## 🚀 Stack
+## Stack Tecnológico
 
-- Backend: Laravel 11
-- Frontend: Vue 3 + Vite
-- Autenticación: Laravel Sanctum
-- Base de datos: PostgreSQL (desarrollo) / SQLite in-memory (tests)
+- **Backend:** Laravel 12 / PHP 8.2+
+- **Frontend:** Vue 3 + Vite 6 + Tailwind CSS
+- **Base de datos:** PostgreSQL
+- **Pagos:** Stripe + Laravel Cashier
+- **PDFs:** Spatie Browsershot + Puppeteer
+- **Auth:** Laravel Sanctum
 
-## ✅ Estado actual (resumen)
+## Funcionalidades
 
-- CRUD principal de pacientes y citas.
-- Gestión de pagos, bonos y crédito.
-- Aislamiento por clínica en capa de aplicación.
-- Vistas SPA en `resources/js/views`.
+- **Agenda y citas** — Vista día/semana, tipos de sesión configurables, estados múltiples (programada, completada, cancelada, no-show), historial clínico por cita con PDF.
+- **Pacientes** — Ficha completa con auto-numeración por clínica, imágenes, historial clínico cronológico, crédito disponible.
+- **Bonos (paquetes de sesiones)** — Tipos de bono configurables, asignación a pacientes, control de consumos atómico, reversión automática al cancelar citas.
+- **Facturación** — Facturas, abonos y facturas varias. IVA desglosado, numeración automática por tipo de documento, PDF con branding personalizado de la clínica.
+- **Pagos** — Múltiples métodos (efectivo, tarjeta, transferencia), pagos parciales, vinculación a citas y bonos, y gestión de crédito.
+- **Reserva online** — Widget público multi-paso: selección de servicio, profesional, fecha y hora en tiempo real. Confirmación y cancelación mediante token sin autenticación.
+- **Equipo** — Gestión de usuarios, roles (owner, admin, manager, professional), profesiones personalizadas, horarios semanales y excepciones por fecha.
+- **Recordatorios automáticos** — Envíos programados 24h y 2h antes de cada cita vía email, historial completo de notificaciones y reenvío.
+- **Dashboard analítico** — Resumen diario de citas, producción financiera, alertas (bonos impagos, crédito pendiente, inactividad) y gráficos interactivos con Chart.js.
+- **Suscripciones SaaS** — Planes con prueba gratuita, facturación recurrente vía Stripe, gestión de ciclo de vida (trial, activo, cancelado, read-only).
+- **Multi-tenancy** — Aislamiento total por clínica. Datos, facturación y branding (logo, colores, fondo de facturas) completamente independientes.
+- **Backoffice** — Panel administrador con roles (super_admin, support, billing, readonly) para gestionar todas las clínicas desde un solo lugar.
 
-## 🛠 Instalación local
-
-1. Instalar dependencias:
+## Instalación Rápida
 
 ```bash
 composer install
 npm install
-```
-
-2. Crear y configurar entorno:
-
-```bash
 cp .env.example .env
 php artisan key:generate
 ```
 
-3. Configurar credenciales de base de datos en `.env`.
-
-Ejemplo para PostgreSQL local:
-
-```bash
-DB_CONNECTION=pgsql
-DB_HOST=127.0.0.1
-DB_PORT=5432
-DB_DATABASE=irison
-DB_USERNAME=postgres
-DB_PASSWORD=tu_password
-```
-
-4. Ejecutar migraciones:
+Configurar base de datos PostgreSQL en `.env` y ejecutar:
 
 ```bash
 php artisan migrate
-```
-
-5. Levantar entorno de desarrollo:
-
-```bash
+npm run build
 php artisan serve
-npm run dev
 ```
 
-## 🧪 Tests (entorno seguro)
-
-Los tests están aislados para no tocar datos reales:
-
-- Archivo de entorno: `.env.testing`
-- DB de tests: `sqlite` en memoria (`:memory:`)
-
-Comandos útiles:
+## Tests
 
 ```bash
 php artisan test
-php artisan test --filter=ExampleTest
-vendor\bin\phpunit
 ```
-
-## 📁 Estructura relevante
-
-- API y dominio: `app/`
-- Rutas: `routes/`
-- Vistas frontend: `resources/js/views/`
-- Componentes frontend: `resources/js/components/`
-- Migraciones: `database/migrations/`
-- Tests: `tests/`
-
-## 📝 Notas
-
-- Si haces cambios de esquema, ejecuta `php artisan migrate`.
-- Si cambias frontend, reinicia `npm run dev` si Vite no refleja cambios.
-
-## ☁️ Despliegue Linux/Cloud
-
-- Guía principal de servidor: `docs/deployment/linux-cloud.md`
-- Toda modificación de comandos Linux, configuración de servicios, permisos, SSL, colas, cron, storage o despliegue debe registrarse en la sección **Bitácora de cambios** de ese documento.
