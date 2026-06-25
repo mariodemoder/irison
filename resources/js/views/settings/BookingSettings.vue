@@ -351,14 +351,11 @@ onMounted(loadSettings)
 
         <div v-if="editingProfessional === bp.id" class="professional-card-admin__detail">
           <div class="detail-section">
-            <h4>Horario semanal</h4>
-            <div v-for="sched in (schedules[bp.id] || [])" :key="sched.id" class="schedule-row">
-              <span>{{ dayNames[sched.day_of_week] || 'Día ' + sched.day_of_week }}</span>
-              <span>{{ sched.start_time }} - {{ sched.end_time }}</span>
-              <BtnTrash @click="deleteSchedule(bp.id, sched.id)" />
-            </div>
-            <div v-if="(schedules[bp.id] || []).length === 0" class="text-muted" style="font-size:13px;margin:8px 0;">
-              Sin horarios configurados.
+            <div class="sched-header">
+              <h4>Horario semanal</h4>
+              <button v-if="!newSchedule || newSchedule.professionalId !== bp.id" class="btn btn-sm" @click="addSchedule(bp.id)">
+                + Añadir horario
+              </button>
             </div>
 
             <div v-if="newSchedule?.professionalId === bp.id" class="schedule-form">
@@ -367,13 +364,33 @@ onMounted(loadSettings)
               </select>
               <input v-model="newSchedule.start_time" type="time" class="input" style="width:auto;" />
               <input v-model="newSchedule.end_time" type="time" class="input" style="width:auto;" />
-              <button class="btn btn-sm" @click="saveNewSchedule">✓</button>
+              <button class="btn btn-sm small" @click="saveNewSchedule">✓</button>
               <button class="btn btn-sm small warning" @click="cancelNewSchedule">×</button>
             </div>
 
-            <button v-if="!newSchedule || newSchedule.professionalId !== bp.id" class="btn btn-sm" @click="addSchedule(bp.id)" style="margin-top:8px;">
-              + Añadir horario
-            </button>
+            <div class="counter-table-wrap" style="margin-top:6px">
+              <table class="counter-table schedule-table">
+                <thead>
+                  <tr>
+                    <th>Día</th>
+                    <th>Horario</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="sched in (schedules[bp.id] || [])" :key="sched.id">
+                    <td data-label="Día">{{ dayNames[sched.day_of_week] || 'Día ' + sched.day_of_week }}</td>
+                    <td data-label="Horario">{{ sched.start_time }} - {{ sched.end_time }}</td>
+                    <td data-label="Acciones">
+                      <BtnTrash @click="deleteSchedule(bp.id, sched.id)" />
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div v-if="(schedules[bp.id] || []).length === 0" class="text-muted" style="font-size:13px;margin:8px 0;">
+              Sin horarios configurados.
+            </div>
           </div>
 
           <div class="detail-section">
@@ -579,13 +596,36 @@ onMounted(loadSettings)
   color: #374151;
 }
 
-.schedule-row,
 .exception-row {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 6px 0;
   font-size: 13px;
+}
+
+.sched-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sched-header h4 {
+  margin: 0;
+}
+.sched-header .btn {
+  width: 25%;
+  justify-content: center;
+  text-align: center;
+}
+
+.schedule-table {
+  min-width: 300px;
+}
+.schedule-table th:last-child,
+.schedule-table td:last-child {
+  text-align: right;
+  width: 80px;
 }
 
 .schedule-form {

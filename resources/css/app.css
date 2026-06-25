@@ -272,6 +272,41 @@ body { background: var(--bg-app); color: var(--text-main); }
 .btn.btn-sm:hover { background: #eff6ff }
 .btn.btn-sm.small { padding:6px 10px; font-size:13px }
 
+/*
+ * CRUD button patterns — reutilizables para listados internos
+ *
+ * .crud-row: fila con contenido a la izquierda y botón de acción a la derecha.
+ *            El último hijo se empuja automáticamente a la derecha.
+ *            Usar con BtnTrash o cualquier botón de eliminar.
+ *
+ *   <div class="crud-row">
+ *     <span>Contenido</span>
+ *     <BtnTrash @click="deleteItem" />
+ *   </div>
+ *
+ * .crud-add-wrap: contenedor que alinea el botón "Añadir" a la derecha.
+ *                 El botón usa .btn.btn-sm estándar.
+ *
+ *   <div class="crud-add-wrap">
+ *     <button class="btn btn-sm">+ Añadir ítem</button>
+ *   </div>
+ */
+.crud-row {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+.crud-row > :last-child {
+	margin-left: auto;
+	flex-shrink: 0;
+}
+
+.crud-add-wrap {
+	display: flex;
+	justify-content: flex-end;
+	margin-top: 8px;
+}
+
 /* Disabled buttons (global): unified very light gray style across the app */
 button:disabled,
 button[disabled],

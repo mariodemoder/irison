@@ -8,6 +8,7 @@ Este directorio centraliza la documentacion oficial del backend y operaciones.
 - `backoffice/usuario/`: manuales para usuarios internos de backoffice.
 - `cliente/`: guias para cliente final (clinicas de Irison).
 - `deployment/`: despliegue e infraestructura.
+- `frontend/`: protocolos y guias para desarrollo frontend (Vue 3).
 - `documentation-plan.md`: plan de informacion, ownership y roadmap de docs.
 
 ## Reglas de mantenimiento
