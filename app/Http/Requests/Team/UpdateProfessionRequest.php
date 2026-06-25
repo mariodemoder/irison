@@ -15,7 +15,7 @@ class UpdateProfessionRequest extends FormRequest
     public function rules(): array
     {
         $clinicId = (int) (auth()->user()->clinic_id ?? 0);
-        $professionId = (int) ($this->route('profession') ?? 0);
+        $professionId = (int) ($this->route('profession')?->id ?? 0);
 
         return [
             'name' => [

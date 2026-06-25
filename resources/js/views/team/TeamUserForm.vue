@@ -261,7 +261,7 @@ async function loadForEdit(id) {
     })
   } catch (e) {
     toast.error('No se pudo cargar el usuario')
-    router.push('/team/users')
+    router.push('/team')
   }
 }
 
@@ -333,11 +333,11 @@ async function submit() {
     if (isEdit.value) {
       await api.put(`/team/users/${route.params.id}`, payload)
       toast.success('Usuario actualizado')
-      router.push('/team/users')
+      router.push('/team')
     } else {
       await api.post('/team/users', payload)
       toast.success('Usuario creado')
-      router.push('/team/users')
+      router.push('/team')
     }
   } catch (e) {
     if (e.response?.status === 422) {
@@ -354,7 +354,7 @@ async function submit() {
 }
 
 function cancel() {
-  router.push('/team/users')
+  router.push('/team')
 }
 
 onMounted(async () => {
