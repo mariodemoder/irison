@@ -78,37 +78,24 @@
               <!-- Profesiones -->
               <div v-show="activeTab === 'professions'">
                 <div class="team-section-head">
-                  <h2 class="section-head-title">Lista de profesiones</h2>
+                  <h2 class="section-head-title">Profesiones</h2>
+                  <button class="btn btn-sm btn-nueva-profesion" type="button" @click="addProfession">+ Nueva profesión</button>
                 </div>
                 <div class="section-copy">Cada profesión puede asignarse a uno o varios usuarios.</div>
-
-                <div class="profession-add-row">
-                  <input v-model="newProfessionName" class="input" placeholder="Nueva profesión..." @keyup.enter="addProfession" />
-                  <button class="btn btn-sm" type="button" @click="addProfession" :disabled="!newProfessionName.trim()">+ Añadir</button>
-                </div>
 
                 <div v-if="professionsLoading" style="text-align:center;padding:24px;color:#6b7280;">Cargando profesiones...</div>
 
                 <template v-else>
-                  <div v-if="professions.length > 0" class="profession-list">
-                    <div v-for="p in professions" :key="p.id" class="profession-row">
-                      <template v-if="editingProfessionId === p.id">
-                        <input v-model="editingProfessionName" class="input" @keyup.enter="saveProfession(p)" />
-                        <div class="profession-row-actions">
-                          <button class="btn btn-sm" @click="saveProfession(p)">✓</button>
-                          <button class="btn btn-sm muted" @click="cancelEditProfession">✕</button>
-                        </div>
-                      </template>
-                      <template v-else>
-                        <span class="profession-name">{{ p.name }}</span>
-                        <div class="profession-row-actions">
-                          <button class="action-btn datos" @click="startEditProfession(p)">✎</button>
-                          <BtnTrash @click="deleteProfession(p)" />
-                        </div>
-                      </template>
-                    </div>
-                  </div>
-                  <div v-else class="empty">No hay profesiones. Añade la primera.</div>
+                  <EntityTable v-if="professions.length > 0" :columns="professionColumns" table-class="professions-table">
+                    <tr v-for="p in professions" :key="p.id" class="entity-table-row" style="cursor:pointer" @click="editProfession(p)">
+                      <td class="col-min">{{ p.id }}</td>
+                      <td class="col-mid name-col">{{ p.name }}</td>
+                      <td class="row-action professions-action-col" @click.stop>
+                        <BtnTrash @click="deleteProfession(p)" />
+                      </td>
+                    </tr>
+                  </EntityTable>
+                  <EmptyIndexState v-else />
                 </template>
               </div>
 
@@ -203,9 +190,12 @@ async function deleteUser(u) {
 // Professions
 const professions = ref([])
 const professionsLoading = ref(false)
-const newProfessionName = ref('')
-const editingProfessionId = ref(null)
-const editingProfessionName = ref('')
+
+const professionColumns = [
+  { key: 'id', label: 'ID', thClass: 'col-min' },
+  { key: 'name', label: 'Nombre', thClass: 'col-mid' },
+  { key: 'actions', label: '', thClass: 'professions-action-col' },
+]
 
 async function loadProfessions() {
   professionsLoading.value = true
@@ -221,36 +211,43 @@ async function loadProfessions() {
 }
 
 async function addProfession() {
-  const name = newProfessionName.value.trim()
-  if (!name) return
+  const { value: name, isConfirmed } = await Swal.fire({
+    title: 'Nueva profesión',
+    input: 'text',
+    inputLabel: 'Nombre de la profesión',
+    inputPlaceholder: 'Ej: Fisioterapeuta',
+    showCancelButton: true,
+    confirmButtonText: 'Crear',
+    cancelButtonText: 'Cancelar',
+    inputValidator: (v) => { if (!v?.trim()) return 'El nombre es obligatorio' },
+    customClass: { popup: 'swal-popup-card' },
+  })
+  if (!isConfirmed || !name?.trim()) return
   try {
-    await api.post('/team/professions', { name })
+    await api.post('/team/professions', { name: name.trim() })
     toast.success('Profesión añadida')
-    newProfessionName.value = ''
     await loadProfessions()
   } catch (e) {
     toast.error(e.response?.data?.message || 'Error al añadir profesión')
   }
 }
 
-function startEditProfession(p) {
-  editingProfessionId.value = p.id
-  editingProfessionName.value = p.name
-}
-
-function cancelEditProfession() {
-  editingProfessionId.value = null
-  editingProfessionName.value = ''
-}
-
-async function saveProfession(p) {
-  const name = editingProfessionName.value.trim()
-  if (!name) return
+async function editProfession(p) {
+  const { value: name, isConfirmed } = await Swal.fire({
+    title: 'Editar profesión',
+    input: 'text',
+    inputLabel: 'Nombre de la profesión',
+    inputValue: p.name,
+    showCancelButton: true,
+    confirmButtonText: 'Guardar',
+    cancelButtonText: 'Cancelar',
+    inputValidator: (v) => { if (!v?.trim()) return 'El nombre es obligatorio' },
+    customClass: { popup: 'swal-popup-card' },
+  })
+  if (!isConfirmed || !name?.trim()) return
   try {
-    await api.put(`/team/professions/${p.id}`, { name })
+    await api.put(`/team/professions/${p.id}`, { name: name.trim() })
     toast.success('Profesión actualizada')
-    editingProfessionId.value = null
-    editingProfessionName.value = ''
     await loadProfessions()
   } catch (e) {
     toast.error(e.response?.data?.message || 'Error al actualizar profesión')
@@ -319,55 +316,14 @@ watch(activeTab, () => {
 .badge-on { background: #dcfce7; color: #166534; }
 .badge-off { background: #f3f4f6; color: #6b7280; }
 
-.profession-add-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin-bottom: 16px;
-}
-.profession-add-row .input {
-  flex: 1;
-  padding: 10px 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  font-size: 14px;
-}
-.profession-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.profession-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 14px;
-  background: #f9fafb;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
-}
-.profession-row .input {
-  flex: 1;
-  padding: 8px 10px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 14px;
-}
-.profession-name {
-  font-weight: 600;
-  color: #111827;
-}
-.profession-row-actions {
-  display: flex;
-  gap: 6px;
-}
-.empty { color: #6b7280; padding: 12px; text-align: center; }
+.professions-action-col { width: 80px; }
 .pagination { margin-top: 12px; display: flex; justify-content: flex-end; gap: 12px; align-items: center; }
 .pagination-info { color: #6b7280; font-size: 13px; }
 .pagination-actions { display: flex; gap: 8px; }
 .icon-btn { width: 32px; height: 32px; border-radius: 8px; border: 1px solid #e5e7eb; background: #fff; cursor: pointer; }
 .icon-btn:disabled { opacity: 0.45; }
-.btn-nuevo-usuario {
+.btn-nuevo-usuario,
+.btn-nueva-profesion {
   min-width: 0 !important;
   max-width: 140px !important;
   padding: 6px 12px !important;

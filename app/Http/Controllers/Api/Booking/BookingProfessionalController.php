@@ -11,7 +11,7 @@ class BookingProfessionalController extends Controller
 {
     public function index(): JsonResponse
     {
-        $professionals = BookingProfessional::with('user:id,name,email')
+        $professionals = BookingProfessional::with('user:id,name,email,profession_id', 'user.profession:id,name')
             ->where('clinic_id', currentClinicId())
             ->get();
 
@@ -31,7 +31,7 @@ class BookingProfessionalController extends Controller
 
         $bp = BookingProfessional::create($validated);
 
-        return response()->json(['message' => 'Profesional añadido.', 'data' => $bp->load('user:id,name,email')], 201);
+        return response()->json(['message' => 'Profesional añadido.', 'data' => $bp->load('user:id,name,email,profession_id', 'user.profession:id,name')], 201);
     }
 
     public function update(Request $request, int $id): JsonResponse
@@ -44,7 +44,7 @@ class BookingProfessionalController extends Controller
 
         $bp->update($validated);
 
-        return response()->json(['message' => 'Profesional actualizado.', 'data' => $bp->fresh()->load('user:id,name,email')]);
+        return response()->json(['message' => 'Profesional actualizado.', 'data' => $bp->fresh()->load('user:id,name,email,profession_id', 'user.profession:id,name')]);
     }
 
     public function destroy(int $id): JsonResponse

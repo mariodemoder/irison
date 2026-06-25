@@ -342,6 +342,7 @@ onMounted(loadSettings)
         <div class="professional-card-admin__header" @click="toggleProfessionalDetail(bp)">
           <div class="professional-card-admin__info">
             <strong>{{ bp.user?.name }}</strong>
+            <span v-if="bp.user?.profession" class="profession-badge">{{ bp.user.profession.name }}</span>
             <span class="text-muted" style="font-size:12px;">{{ bp.user?.email }}</span>
           </div>
           <button class="toggle-btn" :class="{ active: bp.allow_online_booking }" @click.stop="toggleProfessional(bp)">
@@ -580,6 +581,17 @@ onMounted(loadSettings)
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.profession-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  background: #f3f4f6;
+  padding: 1px 8px;
+  border-radius: 999px;
+  margin-left: 6px;
 }
 
 .professional-card-admin__detail {
