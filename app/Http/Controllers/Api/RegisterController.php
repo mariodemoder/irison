@@ -6,6 +6,7 @@ use App\Mail\AccountActivationMail;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Clinic;
+use App\Models\Profile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
@@ -35,12 +36,15 @@ class RegisterController extends Controller
             'status' => 'trial',
         ]);
 
+        $adminProfile = Profile::where('slug', 'admin')->first();
+
         $user = User::create([
             'clinic_id' => $clinic->id,
             'name' => $data['name'],
             'email' => $data['email'],
             // The User model casts 'password' => 'hashed', so avoid double hashing here.
             'password' => $data['password'],
+            'profile_id' => $adminProfile?->id,
         ]);
 
         $activationUrl = URL::temporarySignedRoute(

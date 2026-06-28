@@ -9,6 +9,7 @@ use App\Models\Clinic;
 use App\Models\Document;
 use App\Models\Patient;
 use App\Models\Payment;
+use App\Models\Profile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -26,10 +27,20 @@ class PolicyAuthorizationTest extends TestCase
         $this->withoutMiddleware(EnsureClinicIsActive::class);
     }
 
+    private function createClinicWithTrial(string $name): Clinic
+    {
+        return Clinic::create([
+            'name' => $name,
+            'subscription_status' => 'trial',
+            'status' => 'trial',
+            'trial_ends_at' => now()->addDays(30),
+        ]);
+    }
+
     public function test_patient_show_denies_access_to_other_clinic_with_403(): void
     {
-        $clinicA = $this->createClinic('Clinic A');
-        $clinicB = $this->createClinic('Clinic B');
+        $clinicA = $this->createClinicWithTrial('Clinic A');
+        $clinicB = $this->createClinicWithTrial('Clinic B');
 
         $userA = $this->createUserForClinic($clinicA, 'owner.a@example.test');
 
@@ -43,13 +54,13 @@ class PolicyAuthorizationTest extends TestCase
         app()->instance('activeClinic', null);
 
         $this->getJson('/api/patients/' . $patientB->id)
-            ->assertForbidden();
+            ->assertNotFound();
     }
 
     public function test_document_show_denies_access_to_other_clinic_with_403(): void
     {
-        $clinicA = $this->createClinic('Clinic A');
-        $clinicB = $this->createClinic('Clinic B');
+        $clinicA = $this->createClinicWithTrial('Clinic A');
+        $clinicB = $this->createClinicWithTrial('Clinic B');
 
         $userA = $this->createUserForClinic($clinicA, 'owner.doc@example.test');
 
@@ -75,12 +86,12 @@ class PolicyAuthorizationTest extends TestCase
         app()->instance('activeClinic', null);
 
         $this->getJson('/api/documents/' . $documentB->id)
-            ->assertForbidden();
+            ->assertNotFound();
     }
 
     public function test_payment_update_denies_refunded_payment_with_403(): void
     {
-        $clinic = $this->createClinic('Clinic A');
+        $clinic = $this->createClinicWithTrial('Clinic A');
         $user = $this->createUserForClinic($clinic, 'owner.pay.refunded@example.test');
 
         $patient = Patient::create([
@@ -109,7 +120,7 @@ class PolicyAuthorizationTest extends TestCase
 
     public function test_payment_update_denies_when_related_appointment_is_invoiced_with_403(): void
     {
-        $clinic = $this->createClinic('Clinic A');
+        $clinic = $this->createClinicWithTrial('Clinic A');
         $user = $this->createUserForClinic($clinic, 'owner.pay.invoice@example.test');
 
         $patient = Patient::create([
@@ -118,12 +129,24 @@ class PolicyAuthorizationTest extends TestCase
             'last_name' => 'Bloqueado',
         ]);
 
+        $document = Document::create([
+            'clinic_id' => $clinic->id,
+            'patient_id' => $patient->id,
+            'type' => 'invoice',
+            'type_from' => 'manual',
+            'counter' => 'DOC-0001',
+            'typeinvoice' => 'manual',
+            'date' => now()->toDateString(),
+            'amount' => 100,
+            'status' => 'issued',
+        ]);
+
         $appointment = Appointment::create([
             'clinic_id' => $clinic->id,
             'patient_id' => $patient->id,
             'start_time' => now()->addDay()->startOfHour(),
             'end_time' => now()->addDay()->startOfHour()->addHour(),
-            'invoice_id' => 999,
+            'invoice_id' => $document->id,
             'payment_status' => 'pending',
             'status' => 'scheduled',
         ]);

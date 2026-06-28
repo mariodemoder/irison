@@ -7,6 +7,28 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Stripe\StripeClient;
 
+Artisan::command('user:verify {email : Email del usuario a verificar}', function () {
+    $email = $this->argument('email');
+    $user = \App\Models\User::where('email', $email)->first();
+
+    if (! $user) {
+        $this->error("No se encontró un usuario con email: {$email}");
+
+        return self::FAILURE;
+    }
+
+    if ($user->email_verified_at) {
+        $this->warn("El usuario {$email} ya estaba verificado desde {$user->email_verified_at}.");
+
+        return self::SUCCESS;
+    }
+
+    $user->forceFill(['email_verified_at' => now()])->save();
+    $this->info("Usuario {$email} verificado correctamente.");
+
+    return self::SUCCESS;
+})->purpose('Verificar manualmente el email de un usuario');
+
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');

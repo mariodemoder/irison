@@ -29,6 +29,11 @@ class User extends Authenticatable
     protected $fillable = [
         'clinic_id', 'name', 'email', 'password', 'role',
         'profile_id', 'profession_id', 'allow_online_booking', 'allow_manage_agenda',
+        'email_verified_at',
+    ];
+
+    protected $attributes = [
+        'role' => 'owner',
     ];
 
     protected $hidden = [
@@ -79,5 +84,35 @@ class User extends Authenticatable
     public function sendPasswordResetNotification($token): void
     {
         $this->notify(new ResetPasswordNotificationEs($token));
+    }
+
+    public function isOwner(): bool
+    {
+        return $this->role === 'owner';
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->profile?->slug === 'admin';
+    }
+
+    public function isManager(): bool
+    {
+        return $this->profile?->slug === 'manager';
+    }
+
+    public function isProfessional(): bool
+    {
+        return $this->profile?->slug === 'professional';
+    }
+
+    public function hasFullAccess(): bool
+    {
+        return $this->isOwner() || $this->isAdmin() || $this->isManager();
+    }
+
+    public function isViewer(): bool
+    {
+        return $this->isProfessional();
     }
 }

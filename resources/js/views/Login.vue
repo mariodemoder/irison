@@ -97,7 +97,7 @@ async function submit() {
 
       <form @submit.prevent="submit">
         <BaseInput v-model="email" label="Email" autocomplete="email" />
-        <BaseInput v-model="password" label="Contraseña" type="password" autocomplete="current-password" />
+        <BaseInput v-model="password" label="Contraseña" type="password" autocomplete="current-password" show-password-toggle />
 
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;margin-bottom:6px;">
           <router-link to="/forgot-password" class="link text-sm text-gray-600">¿Has olvidado la contraseña?</router-link>

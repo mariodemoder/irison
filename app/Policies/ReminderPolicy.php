@@ -9,6 +9,6 @@ class ReminderPolicy extends BasePolicy
 {
     public function viewAny(User $user): bool
     {
-        return (bool) $user->clinic_id;
+        return (bool) $user->clinic_id && $user->hasFullAccess();
     }
 }

@@ -3,7 +3,10 @@
 Router rápido para cargar solo el skill que necesitas.
 
 ## Core (read first)
-- `core/index.md` — Quick start, architecture, conventions, auth recovery
+- `core/index.md` — Quick start, architecture, conventions
+
+## Auth / Autenticación
+- `auth/index.md` — Role helpers, policies, registration, appointment/patient scoping, financial data stripping
 
 ## Backend
 - `backend/index.md` — Business logging, soft deletes

@@ -99,6 +99,7 @@ class TeamUserService
             'allow_online_booking' => $data['allow_online_booking'] ?? false,
             'allow_manage_agenda' => $data['allow_manage_agenda'] ?? false,
             'role' => 'user',
+            'email_verified_at' => now(),
         ]);
 
         $this->syncSchedules($user, $data['schedules'] ?? null, $clinic);

@@ -34,6 +34,11 @@ class AppointmentService
 
         $query = Appointment::with(['patient', 'payments', 'creditUsages', 'appointmentType', 'professional']);
 
+        $user = auth()->user();
+        if ($user && $user->isViewer()) {
+            $query->where('professional_id', $user->id);
+        }
+
         if (!empty($filters['date'])) {
             $date = Carbon::parse($filters['date']);
             $query->whereBetween('start_time', [

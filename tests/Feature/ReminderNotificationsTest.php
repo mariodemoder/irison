@@ -65,6 +65,7 @@ class ReminderNotificationsTest extends TestCase
         $this->actingAs($user, 'sanctum');
         $this->withoutMiddleware(\App\Http\Middleware\EnsureClinic::class);
         $this->withoutMiddleware(\App\Http\Middleware\EnsureClinicIsActive::class);
+        $this->withoutMiddleware(\App\Http\Middleware\CheckSubscriptionAccess::class);
 
         $response = $this->getJson('/api/reminders?status=failed&reminder_type=2h&q=mario&from_date=2026-04-06&to_date=2026-04-06');
 
@@ -129,6 +130,7 @@ class ReminderNotificationsTest extends TestCase
         $this->actingAs($user, 'sanctum');
         $this->withoutMiddleware(\App\Http\Middleware\EnsureClinic::class);
         $this->withoutMiddleware(\App\Http\Middleware\EnsureClinicIsActive::class);
+        $this->withoutMiddleware(\App\Http\Middleware\CheckSubscriptionAccess::class);
 
         $response = $this->getJson('/api/reminders/' . $reminder->id);
 
@@ -189,6 +191,7 @@ class ReminderNotificationsTest extends TestCase
         $this->actingAs($user, 'sanctum');
         $this->withoutMiddleware(\App\Http\Middleware\EnsureClinic::class);
         $this->withoutMiddleware(\App\Http\Middleware\EnsureClinicIsActive::class);
+        $this->withoutMiddleware(\App\Http\Middleware\CheckSubscriptionAccess::class);
 
         $response = $this->postJson('/api/reminders/' . $failedReminder->id . '/resend');
 

@@ -26,7 +26,15 @@ class PatientController extends BaseController
     {
         Gate::authorize('viewAny', Patient::class);
 
-        return response()->json($this->patientsServices->index($request->all()));
+        $result = $this->patientsServices->index($request->all());
+
+        if (Auth::user()->isViewer()) {
+            $result['data'] = array_map(function ($patient) {
+                return $this->stripFinancialData($patient);
+            }, $result['data']);
+        }
+
+        return response()->json($result);
     }
 
     /**
@@ -49,7 +57,13 @@ class PatientController extends BaseController
     {
         Gate::authorize('view', $patient);
 
-        return response()->json($this->patientsServices->show($patient));
+        $data = $this->patientsServices->show($patient);
+
+        if (Auth::user()->isViewer()) {
+            $data = $this->stripFinancialData($data);
+        }
+
+        return response()->json($data);
     }
 
     /**
@@ -68,6 +82,17 @@ class PatientController extends BaseController
     /**
      * Eliminar paciente
      */
+    private function stripFinancialData(array $data): array
+    {
+        unset(
+            $data['available_credit'],
+            $data['payments'],
+            $data['packs'],
+        );
+
+        return $data;
+    }
+
     public function destroy(Patient $patient)
     {
         Gate::authorize('delete', $patient);
