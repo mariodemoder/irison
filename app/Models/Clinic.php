@@ -14,9 +14,9 @@ class Clinic extends Model
     use Billable, SoftDeletes;
 
     public const PLAN_USER_LIMITS = [
-        'basic' => 3,
-        'pro' => 6,
-        'enterprise' => 10,
+        'basic' => 1,
+        'pro' => 10,
+        'enterprise' => -1,
     ];
 
     protected $fillable = [

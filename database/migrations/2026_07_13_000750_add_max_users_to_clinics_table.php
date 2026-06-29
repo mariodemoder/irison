@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('clinics', function (Blueprint $table) {
-            $table->unsignedSmallInteger('max_users')->default(3);
+            $table->smallInteger('max_users')->default(1);
         });
     }
 

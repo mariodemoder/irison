@@ -93,7 +93,7 @@ class PatientsServices
 
     public function show(Patient $patient): array
     {
-        $patient->loadMissing(['appointments.clinicalRecord', 'packs', 'payments', 'clinicalRecords']);
+        $patient->loadMissing(['appointments.appointmentType', 'appointments.professional', 'appointments.clinicalRecord', 'packs', 'payments', 'clinicalRecords']);
 
         $appointments = $patient->relationLoaded('appointments')
             ? $patient->appointments->map(function ($appointment) {
@@ -102,6 +102,12 @@ class PatientsServices
                     'start_time' => $appointment->start_time,
                     'status' => $appointment->status,
                     'notes' => $appointment->notes ?: ($appointment->clinicalRecord?->notes ?? null),
+                    'appointment_type' => $appointment->relationLoaded('appointmentType') && $appointment->appointmentType
+                        ? ['description' => $appointment->appointmentType->description]
+                        : null,
+                    'professional' => $appointment->relationLoaded('professional') && $appointment->professional
+                        ? ['name' => $appointment->professional->name]
+                        : null,
                 ];
             })->toArray()
             : [];

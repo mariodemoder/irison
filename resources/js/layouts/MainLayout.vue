@@ -53,13 +53,16 @@
               <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
             </svg>
             <svg v-else-if="item.path === '/company-services'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M4 9l8-5 8 5v10l-8 4-8-4z"></path>
-              <path d="M9 12h6"></path>
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
             </svg>
             <svg v-else-if="item.path === '/consent-templates'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <path d="M10 2h4v6h6v12H4V8l6-6z"></path>
               <path d="M10 2v6H4"></path>
               <path d="M9 13h6M9 17h4"></path>
+            </svg>
+            <svg v-else-if="item.path === '/settings/subscription'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+              <path d="M8 12h8M12 8v8"></path>
             </svg>
             <svg v-else-if="item.path === '/settings'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="11.5" cy="10.3" r="3"></circle>
@@ -86,6 +89,7 @@
               <div class="header-card-label">{{ clinic?.name ?? '—' }} — <router-link to="/profile" class="user-link">Perfil de Usuario</router-link></div>
               <div class="header-card-sub">
                 <span class="sub-label">{{ subscriptionStatusDot }} {{ subscriptionState.label }}</span>
+                <span class="plan-badge" :class="'plan-' + mePlan">{{ planLabel }}</span>
               </div>
             </div>
             <button class="logout-btn" @click.prevent="logoutAction">Cerrar sesión</button>
@@ -159,6 +163,8 @@ import {
   meReadOnlyNoTransactions,
   meCanTransact,
   isProfessional,
+  mePlan,
+  planLabel,
   ensureMeLoaded,
 } from '../shared/meCache'
 
@@ -187,6 +193,7 @@ const navItems = [
   { path: '/team', label: 'Equipo' },
   { path: '/company-services', label: 'Servicios' },
   { path: '/consent-templates', label: 'Consentimientos' },
+  { path: '/settings/subscription', label: 'Suscripción' },
   { path: '/settings', label: 'Configuración' },
 ]
 
@@ -686,6 +693,10 @@ async function openContactForm() {
 .user-link:hover { text-decoration:underline }
 .header-card-sub { display:flex; align-items:center; gap:8px; color:#6b7280; font-size:13px }
 .sub-label { color:#6b7280 }
+.plan-badge { display:inline-block; padding:1px 7px; border-radius:4px; font-size:10px; font-weight:700; letter-spacing:0.3px; }
+.plan-basic { background:#f3f4f6; color:#6b7280; }
+.plan-pro { background:#dbeafe; color:#1e40af; }
+.plan-enterprise { background:#d1fae5; color:#065f46; }
 .logout-btn { padding:6px 12px; border-radius:999px; border:1px solid var(--theme-color); background:#fff; color:#374151; font-size:13px; font-weight:600; white-space:nowrap }
 .logout-btn:hover { background:#f8fafc }
 

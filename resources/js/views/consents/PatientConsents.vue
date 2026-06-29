@@ -203,11 +203,12 @@ function statusLabel(s) {
 .consent-section { background: #fff; border-radius: 8px; padding: 16px; }
 .section-header { display: flex; justify-content: space-between; align-items: center; font-weight: 600; margin-bottom: 12px; }
 .consent-list { list-style: none; padding: 0; margin: 0; }
-.consent-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f3f4f6; }
+.consent-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f3f4f6; gap:8px; }
 .consent-item:last-child { border-bottom: none; }
-.consent-info { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.consent-date { font-size: 12px; color: #9ca3af; }
-.consent-actions { display: flex; gap: 4px; flex-wrap: wrap; }
+.consent-info { display: flex; gap: 8px; align-items: center; flex-shrink:1; min-width:0; }
+.consent-info strong { font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px; }
+.consent-date { font-size: 12px; color: #9ca3af; white-space:nowrap; }
+.consent-actions { display: flex; gap: 4px; flex-wrap:nowrap; flex-shrink:0; }
 .action-btn { padding: 4px 10px; border-radius: 6px; border: 1px solid #d1d5db; background: #fff; cursor: pointer; font-size: 12px; }
 .action-btn.danger { color: #dc2626; }
 .pdf-btn { padding: 2px 8px; border-radius: 4px; border: 1px solid #d1d5db; background: #fff; cursor: pointer; font-size: 10px; font-weight: 700; color: #dc2626; letter-spacing: 0.5px; line-height: 1.4; }

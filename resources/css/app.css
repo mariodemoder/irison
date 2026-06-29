@@ -444,10 +444,9 @@ button[disabled],
 }
 .entity-table {
 	width: 100%;
-	min-width: 860px;
 	border-collapse: separate;
 	border-spacing: 0;
-	table-layout: fixed;
+	table-layout: auto;
 }
 .entity-table thead th {
 	text-align: left;
@@ -472,20 +471,12 @@ button[disabled],
 }
 .entity-table tbody tr:last-child td { border-bottom: none }
 
-/* Per-view table sizing overrides */
-.entity-table.products-table { min-width: 1120px }
-.entity-table.bonuses-table { min-width: 1260px }
-.entity-table.invoices-table { min-width: 1040px }
-.entity-table.payments-table { min-width: 1160px }
-
 /* Generic reusable width helpers for table columns */
 .entity-table .wide-min { width: 85px }
 .entity-table .wide-mid { width: 150px }
 .entity-table .wide-max { width: 20% }
 
 /* Aliases (preferred naming) for reusable column sizing */
-.entity-table .col-min { width: 85px }
-.entity-table .col-mid { width: 150px }
 .entity-table .col-max { width: 20% }
 
 /* Generic table row interaction */
@@ -500,10 +491,6 @@ button[disabled],
 	.search-wrapper { max-width: 100%; padding: 0 12px }
 	.search-input { font-size: 13px; padding: 8px 10px 8px 36px }
 	.search-icon { left:8px }
-}
-
-@media (max-width: 900px) {
-	.entity-table { min-width: 760px }
 }
 
 @media (max-width: 640px) {

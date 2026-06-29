@@ -10,15 +10,15 @@ return new class extends Migration
         DB::table('clinics')
             ->where('plan', 'basic')
             ->orWhereNull('plan')
-            ->update(['max_users' => 3]);
+            ->update(['max_users' => 1]);
 
         DB::table('clinics')
             ->where('plan', 'pro')
-            ->update(['max_users' => 6]);
+            ->update(['max_users' => 10]);
 
         DB::table('clinics')
             ->where('plan', 'enterprise')
-            ->update(['max_users' => 10]);
+            ->update(['max_users' => -1]);
     }
 
     public function down(): void

@@ -8,8 +8,15 @@
         </div>
 
         <form class="user-form" @submit.prevent="submit">
-          <div v-if="errors.general" class="field full">
+          <div v-if="errors.general && !errors.isLimitError" class="field full">
             <div class="field-error">{{ errors.general[0] }}</div>
+          </div>
+          <div v-if="errors.isLimitError" class="limit-banner">
+            <div class="limit-banner-icon">⚠️</div>
+            <div class="limit-banner-content">
+              <p>{{ errors.general[0] }}</p>
+              <router-link to="/settings/subscription" class="limit-banner-link">Ir a Suscripción</router-link>
+            </div>
           </div>
 
           <!-- Datos básicos -->
@@ -169,6 +176,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import MainLayout from '../../layouts/MainLayout.vue'
 import api from '../../services/api'
+import { isBasic } from '../../shared/meCache'
 
 const route = useRoute()
 const router = useRouter()
@@ -345,6 +353,10 @@ async function submit() {
       if (!Object.keys(errors).length) {
         errors.general = [e.response?.data?.message || 'Error de validación']
       }
+    } else if (e.response?.status === 409) {
+      const msg = e.response?.data?.message || ''
+      errors.general = [msg]
+      errors.isLimitError = msg.toLowerCase().includes('límite') || msg.toLowerCase().includes('límite de usuarios')
     } else {
       errors.general = [e.response?.data?.message || 'Error guardando usuario']
     }
@@ -358,6 +370,12 @@ function cancel() {
 }
 
 onMounted(async () => {
+  if (!route.params.id && isBasic.value) {
+    toast.error('Tu plan Basic incluye 1 usuario. Solicita un upgrade para añadir más.')
+    router.replace('/team')
+    return
+  }
+
   await loadFormData()
 
   if (route.params.id) {
@@ -383,6 +401,19 @@ onMounted(async () => {
 select.input { cursor: pointer; }
 .field-error { color: #b91c1c; font-size: 13px; margin-top: 4px; }
 .field-help { color: #6b7280; font-size: 12px; margin-top: 4px; }
+.limit-banner {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 14px 16px; border-radius: 10px;
+  background: #fef3c7; border: 1px solid #f59e0b; color: #92400e;
+  margin-bottom: 16px;
+}
+.limit-banner-icon { font-size: 20px; line-height: 1; }
+.limit-banner-content p { margin: 0 0 8px; font-size: 14px; line-height: 1.5; }
+.limit-banner-link {
+  display: inline-block; padding: 6px 14px; font-size: 13px; font-weight: 600;
+  border-radius: 8px; background: #f59e0b; color: #fff; text-decoration: none;
+}
+.limit-banner-link:hover { background: #d97706; }
 
 .toggle-row { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 14px; color: #374151; }
 .toggle-row input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }

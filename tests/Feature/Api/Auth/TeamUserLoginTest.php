@@ -38,6 +38,8 @@ class TeamUserLoginTest extends TestCase
             'name' => 'Test Clinic',
             'subscription_status' => 'trial',
             'status' => 'trial',
+            'plan' => 'pro',
+            'max_users' => 10,
             'trial_ends_at' => now()->addDays(30),
         ]);
 

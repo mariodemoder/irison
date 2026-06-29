@@ -88,8 +88,8 @@ class TeamUserService
         ])->validate();
 
         $currentCount = User::where('clinic_id', $clinicId)->count();
-        if ($currentCount >= $clinic->max_users) {
-            abort(409, 'Has alcanzado el límite de ' . $clinic->max_users . ' usuarios de tu plan ' . strtoupper((string) $clinic->plan) . '. Actualiza tu plan para añadir más usuarios.');
+        if ($clinic->max_users > 0 && $currentCount >= $clinic->max_users) {
+            abort(409, 'Límite de usuarios alcanzado. Tu plan ' . strtoupper((string) $clinic->plan) . ' permite hasta ' . $clinic->max_users . ' usuarios. Solicita un upgrade desde Configuración > Suscripción para añadir más.');
         }
 
         $user = User::create([

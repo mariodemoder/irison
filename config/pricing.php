@@ -1,0 +1,57 @@
+<?php
+
+return [
+    'basic' => [
+        'name' => 'Basic',
+        'price' => 29,
+        'users' => 1,
+        'features' => [
+            '1 usuario',
+            'Pacientes e historia clínica',
+            'Agenda de citas',
+            'Booking online',
+            'Consentimientos informados',
+            'Firma digital',
+            'Generación de PDF',
+            'Facturación',
+            'Notificaciones email',
+            'Adjuntos',
+            'Dashboard',
+            'Soporte email',
+        ],
+    ],
+    'pro' => [
+        'name' => 'Pro',
+        'price' => 89,
+        'users' => 10,
+        'recommended' => true,
+        'features' => [
+            'Todo Basic +',
+            'Hasta 10 usuarios',
+            'Rol de recepción',
+            'Gestión financiera',
+            'Control de gastos',
+            'Dashboard de beneficios',
+            'Notificaciones WhatsApp',
+            'Portal del paciente',
+            'Informes avanzados',
+            'API de integración',
+            'Soporte prioritario',
+        ],
+    ],
+    'enterprise' => [
+        'name' => 'Enterprise',
+        'price' => 189,
+        'users' => -1,
+        'features' => [
+            'Todo Pro +',
+            'Usuarios ilimitados',
+            'Multi sede',
+            'Roles avanzados',
+            'Registros de auditoría',
+            'Business Intelligence',
+            'White Label',
+            'Soporte dedicado',
+        ],
+    ],
+];

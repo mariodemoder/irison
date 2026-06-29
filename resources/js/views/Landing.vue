@@ -1,9 +1,25 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
+import axios from 'axios'
 import logo from '../assets/logoIni.svg'
+import PricingCard from '../components/pricing/PricingCard.vue'
+import FeatureComparisonTable from '../components/pricing/FeatureComparisonTable.vue'
+import FaqPricing from '../components/pricing/FaqPricing.vue'
 
 const currentYear = new Date().getFullYear()
+const plans = ref([])
+const pricingLoaded = ref(false)
+
+onMounted(async () => {
+  try {
+    const res = await axios.get('/api/pricing')
+    plans.value = Object.values(res.data.data || {})
+    pricingLoaded.value = true
+  } catch (_) {
+    pricingLoaded.value = true
+  }
+})
 
 const metrics = [
   { value: '15 min', label: 'para tener la cuenta lista y empezar a trabajar' },
@@ -36,55 +52,13 @@ const workflows = [
   'Crece sin rehacer procesos: el modelo SaaS permite escalar sin cambiar de sistema cada pocos meses.',
 ]
 
-const plans = [
-  {
-    name: 'Basic',
-    price: 'Gratis',
-    period: '30 días de prueba',
-    note: 'Para clínicas que empiezan y quieren probar la plataforma completa.',
-    users: 'Hasta 3 usuarios',
-    items: ['Agenda y pacientes', 'Historia clínica', 'Pagos y facturación', 'Recordatorios automáticos', 'Sin tarjeta'],
-    featured: false,
-    cta: 'Empezar gratis',
-    to: '/register',
-  },
-  {
-    name: 'Pro',
-    price: 'Desde 29€/mes',
-    period: 'Después del trial',
-    note: 'Para clínicas en operación diaria que necesitan más capacidad.',
-    users: 'Hasta 6 usuarios',
-    items: ['Todo Basic', 'Bonos y descuentos', 'Booking online', 'Múltiples profesionales', 'Soporte prioritario'],
-    featured: true,
-    cta: 'Solicitar demo',
-    to: '/register',
-  },
-  {
-    name: 'Enterprise',
-    price: '69€/mes',
-    period: 'Después del trial',
-    note: 'Para centros con varios profesionales y necesidades avanzadas.',
-    users: 'Hasta 10 usuarios',
-    items: ['Todo Pro', 'Configuración avanzada', 'Acompañamiento de despliegue', 'Panel de dirección', 'API y webhooks'],
-    featured: false,
-    cta: 'Hablar con ventas',
-    to: '/register',
-  },
-]
-
-const faqs = [
-  {
-    question: '¿Irison es SaaS o requiere instalación?',
-    answer: 'Irison funciona en la nube. No necesitas instalaciones complejas ni mantenimiento local para empezar a trabajar.',
-  },
-  {
-    question: '¿Puedo probarlo antes de pagar?',
-    answer: 'Sí. La propuesta base del sitio institucional parte de una prueba gratuita para que el centro valide el flujo real antes de contratar.',
-  },
-  {
-    question: '¿Está orientado solo a una especialidad?',
-    answer: 'No. El enfoque es servir a clínicas que necesitan una base sólida de agenda, pacientes, pagos y facturación, con capacidad de evolucionar por tipo de centro.',
-  },
+const faqList = [
+  { question: '¿Irison es SaaS o requiere instalación?', answer: 'Irison funciona en la nube. No necesitas instalaciones complejas ni mantenimiento local para empezar a trabajar.' },
+  { question: '¿Puedo probarlo antes de pagar?', answer: 'Sí. La propuesta base del sitio institucional parte de una prueba gratuita para que el centro valide el flujo real antes de contratar.' },
+  { question: '¿Está orientado solo a una especialidad?', answer: 'No. El enfoque es servir a clínicas que necesitan una base sólida de agenda, pacientes, pagos y facturación, con capacidad de evolucionar por tipo de centro.' },
+  { question: '¿Puedo cambiar de plan más adelante?', answer: 'Sí. Puedes solicitar un cambio de plan cuando tu clínica lo necesite. El nuevo plan se activa al inicio del siguiente ciclo de facturación.' },
+  { question: '¿Qué pasa con mis datos si dejo de pagar?', answer: 'Tus datos nunca se pierden. Si cancelas, tienes un periodo de solo lectura para exportar tu información antes de que se elimine definitivamente.' },
+  { question: '¿Cómo funciona la facturación?', answer: 'La suscripción es mensual. Recibirás una factura al inicio de cada ciclo. Aceptamos pago con tarjeta y transferencia.' },
 ]
 
 const brandStatement = computed(() => 'Gestiona tu clínica con una plataforma clara, segura y preparada para crecer contigo.')
@@ -194,21 +168,17 @@ const brandStatement = computed(() => 'Gestiona tu clínica con una plataforma c
         </p>
       </div>
 
-      <div class="pricing-grid">
-        <article v-for="plan in plans" :key="plan.name" class="pricing-card" :class="{ 'pricing-card--featured': plan.featured }">
-          <span class="pricing-card__tag">{{ plan.name }}</span>
-          <h3>{{ plan.price }}</h3>
-          <p class="pricing-card__period">{{ plan.period }}</p>
-          <p>{{ plan.note }}</p>
-          <strong class="pricing-card__users">{{ plan.users }}</strong>
-          <ul>
-            <li v-for="item in plan.items" :key="item">{{ item }}</li>
-          </ul>
-          <RouterLink class="btn" :class="plan.featured ? 'btn--solid landing-btn-main' : 'btn--ghost landing-btn-ghost'" :to="plan.to">
-            {{ plan.cta }}
-          </RouterLink>
-        </article>
+      <div v-if="!pricingLoaded" class="loading-pricing">Cargando planes...</div>
+      <div v-else class="pricing-grid">
+        <PricingCard
+          v-for="plan in plans"
+          :key="plan.name"
+          :plan="plan"
+          :cta-text="plan.name === 'Basic' ? 'Empezar gratis' : plan.name === 'Pro' ? 'Solicitar demo' : 'Hablar con ventas'"
+          :cta-href="'/register'"
+        />
       </div>
+      <FeatureComparisonTable v-if="pricingLoaded" />
     </section>
 
     <section class="landing-section landing-section--dark">
@@ -239,12 +209,7 @@ const brandStatement = computed(() => 'Gestiona tu clínica con una plataforma c
         <h2>FAQ base para la primera versión</h2>
       </div>
 
-      <div class="faq-list">
-        <article v-for="faq in faqs" :key="faq.question" class="faq-item">
-          <h3>{{ faq.question }}</h3>
-          <p>{{ faq.answer }}</p>
-        </article>
-      </div>
+      <FaqPricing :faqs="faqList" />
     </section>
 
     <footer class="landing-footer">
@@ -353,8 +318,6 @@ const brandStatement = computed(() => 'Gestiona tu clínica con una plataforma c
 .hero-panel,
 .workflow-card,
 .feature-card,
-.pricing-card,
-.faq-item,
 .trust-grid article {
   backdrop-filter: blur(8px);
 }
@@ -365,8 +328,7 @@ const brandStatement = computed(() => 'Gestiona tu clínica con una plataforma c
 
 .eyebrow,
 .card-kicker,
-.feature-card__eyebrow,
-.pricing-card__tag {
+.feature-card__eyebrow {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -406,9 +368,7 @@ const brandStatement = computed(() => 'Gestiona tu clínica con una plataforma c
 .hero-body,
 .section-head p,
 .feature-card p,
-.pricing-card p,
 .trust-grid p,
-.faq-item p,
 .landing-footer p,
 .workflow-card li,
 .hero-card p {
@@ -571,7 +531,6 @@ const brandStatement = computed(() => 'Gestiona tu clínica con una plataforma c
 
 .feature-grid,
 .pricing-grid,
-.faq-list,
 .trust-grid {
   display: grid;
   gap: 18px;
@@ -585,8 +544,6 @@ const brandStatement = computed(() => 'Gestiona tu clínica con una plataforma c
 }
 
 .feature-card,
-.pricing-card,
-.faq-item,
 .workflow-card,
 .trust-grid article {
   background: rgba(255, 255, 255, 0.78);
@@ -596,9 +553,7 @@ const brandStatement = computed(() => 'Gestiona tu clínica con una plataforma c
   box-shadow: 0 14px 36px rgba(17, 32, 59, 0.06);
 }
 
-.feature-card h3,
-.pricing-card h3,
-.faq-item h3 {
+.feature-card h3 {
   margin: 16px 0 10px;
   font-size: 1.28rem;
   line-height: 1.15;
@@ -609,26 +564,22 @@ const brandStatement = computed(() => 'Gestiona tu clínica con una plataforma c
   background: linear-gradient(135deg, rgba(17, 32, 59, 0.96), rgba(36, 101, 146, 0.92));
 }
 
-.workflow-card ul,
-.pricing-card ul {
+.workflow-card ul {
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.workflow-card li,
-.pricing-card li {
+.workflow-card li {
   position: relative;
   padding-left: 18px;
 }
 
-.workflow-card li + li,
-.pricing-card li + li {
+.workflow-card li + li {
   margin-top: 10px;
 }
 
-.workflow-card li::before,
-.pricing-card li::before {
+.workflow-card li::before {
   content: '';
   position: absolute;
   left: 0;
@@ -641,58 +592,6 @@ const brandStatement = computed(() => 'Gestiona tu clínica con una plataforma c
 
 .workflow-card li {
   color: rgba(248, 250, 252, 0.86);
-}
-
-.pricing-card {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.pricing-card--featured {
-  background: linear-gradient(180deg, var(--violet-900), var(--violet-700));
-  color: #f8fafc;
-  transform: translateY(-6px);
-}
-
-.pricing-card--featured .pricing-card__tag {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.16);
-  color: var(--violet-100);
-}
-
-.pricing-card--featured p,
-.pricing-card--featured li,
-.pricing-card--featured h3 {
-  color: #f8fafc;
-}
-
-.pricing-card__period {
-  margin: 0;
-  font-size: 0.85rem;
-  color: #556176;
-}
-
-.pricing-card--featured .pricing-card__period {
-  color: rgba(248, 250, 252, 0.7);
-}
-
-.pricing-card__users {
-  display: block;
-  font-size: 0.95rem;
-}
-
-.pricing-card--featured .pricing-card__users {
-  color: #f8fafc;
-}
-
-.pricing-card .btn {
-  margin-top: auto;
-  width: fit-content;
-}
-
-.faq-list {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .trust-grid article {
@@ -725,15 +624,11 @@ const brandStatement = computed(() => 'Gestiona tu clínica con una plataforma c
   .section-head--split,
   .feature-grid,
   .pricing-grid,
-  .faq-list,
   .trust-grid,
   .landing-footer {
     grid-template-columns: 1fr;
   }
 
-  .pricing-card--featured {
-    transform: none;
-  }
 }
 
 @media (max-width: 720px) {
@@ -752,8 +647,6 @@ const brandStatement = computed(() => 'Gestiona tu clínica con una plataforma c
 
   .hero-card,
   .feature-card,
-  .pricing-card,
-  .faq-item,
   .workflow-card,
   .trust-grid article {
     padding: 20px;

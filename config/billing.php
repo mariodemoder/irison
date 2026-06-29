@@ -15,4 +15,7 @@ return [
 
     // Internal mailbox for subscription cancellation alerts.
     'cancellation_notification_to' => env('BILLING_CANCELLATION_NOTIFICATION_TO', env('MAIL_TEST_INBOX', '')),
+
+    // Internal mailbox for subscription upgrade requests.
+    'subscription_request_notification_to' => env('BILLING_SUBSCRIPTION_REQUEST_NOTIFICATION_TO', env('MAIL_TEST_INBOX', '')),
 ];

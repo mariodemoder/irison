@@ -7,7 +7,7 @@
           <div class="form-sub">Administra los usuarios y profesiones de tu clínica</div>
         </div>
         <div v-if="userMeta" class="user-limit-badge">
-          {{ userMeta.total }} / {{ maxUsers }} usuarios
+          {{ userMeta.total }} / {{ maxUsers > 0 ? maxUsers : '∞' }} usuarios
         </div>
         <div class="sub-menu-wrap">
           <button class="btn sub-menu-trigger" @click.stop="showProfessionsMenu = !showProfessionsMenu" title="Más opciones">
@@ -19,6 +19,18 @@
             </button>
           </div>
         </div>
+      </div>
+
+      <div v-if="showLimitWarning" class="limit-warning-banner">
+        <div class="limit-warning-content">
+          <span class="limit-warning-icon">⚠️</span>
+          <span>
+            <strong>Límite de usuarios:</strong> Has usado {{ userMeta?.total ?? 0 }} de {{ maxUsers > 0 ? maxUsers : '∞' }} usuarios.
+            <template v-if="maxUsers > 0 && (userMeta?.total ?? 0) >= maxUsers">No puedes añadir más usuarios.</template>
+            <template v-else-if="maxUsers > 0">Quedan {{ maxUsers - (userMeta?.total ?? 0) }} disponibles.</template>
+          </span>
+        </div>
+        <router-link v-if="maxUsers > 0" to="/settings/subscription" class="limit-warning-btn">Solicitar upgrade</router-link>
       </div>
 
       <AppLoading v-if="loading" message="Cargando..." />
@@ -35,7 +47,8 @@
                     <input v-model="userQuery" class="search-input" placeholder="Buscar usuario..." @input="debouncedLoadUsers" />
                   </div>
                 </div>
-                <router-link to="/team/users/create" class="btn btn-sm small btn-nuevo-usuario">+ Nuevo usuario</router-link>
+                <router-link v-if="!isBasic" to="/team/users/create" class="btn btn-sm small btn-nuevo-usuario">+ Nuevo usuario</router-link>
+                <span v-else class="basic-limit-msg">Plan Basic: 1 usuario incluido</span>
               </div>
 
               <div v-if="usersLoading" style="text-align:center;padding:24px;color:#6b7280;">Cargando usuarios...</div>
@@ -132,6 +145,7 @@ import EntityTable from '../../components/EntityTable.vue'
 import BtnTrash from '../../components/BtnTrash.vue'
 import api from '../../services/api'
 import { getLoadErrorMessage } from '../../shared/httpErrors'
+import { isBasic } from '../../shared/meCache'
 
 const router = useRouter()
 const toast = useToast()
@@ -146,6 +160,12 @@ const usersLoading = ref(false)
 let searchTimer = null
 
 const maxUsers = ref(3)
+
+const showLimitWarning = computed(() => {
+  if (!userMeta.value || maxUsers.value <= 0) return false
+  const usage = userMeta.value.total ?? 0
+  return usage >= maxUsers.value * 0.8
+})
 
 const userColumns = [
   { key: 'id', label: 'ID', thClass: 'col-min' },
@@ -349,6 +369,22 @@ onMounted(async () => {
   font-weight: 600;
   white-space: nowrap;
 }
+
+.limit-warning-banner {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 16px; border-radius: 10px; margin-bottom: 16px;
+  background: #fef3c7; border: 1px solid #f59e0b; color: #92400e;
+  flex-wrap: wrap;
+}
+.limit-warning-content { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.limit-warning-icon { font-size: 18px; }
+.limit-warning-btn {
+  display: inline-block; padding: 6px 14px; font-size: 13px; font-weight: 600;
+  border-radius: 8px; background: #f59e0b; color: #fff; text-decoration: none; white-space: nowrap;
+}
+.limit-warning-btn:hover { background: #d97706; }
+
+.basic-limit-msg { font-size: 13px; color: #6b7280; font-weight: 500; padding: 6px 0; }
 
 .btn-nuevo-usuario,
 .btn-nueva-profesion {

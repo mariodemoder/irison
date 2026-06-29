@@ -28,6 +28,7 @@ Route::get('/hash-test', function () { return Hash::make('HOLISholis123'); });
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\Backoffice\AdminUserController;
 use App\Http\Controllers\Backoffice\ClinicController;
+use App\Http\Controllers\Backoffice\SubscriptionRequestController as BackofficeSubscriptionRequestController;
 use App\Http\Controllers\Backoffice\Auth\LoginController as BackofficeLoginController;
 use App\Http\Controllers\Backoffice\DashboardController as BackofficeDashboardController;
 use Illuminate\Http\Request;
@@ -157,6 +158,15 @@ $backofficeRoutes->as('backoffice.')->group(function () {
             Route::get('/admin-users/{adminUser}/edit', [AdminUserController::class, 'edit'])->name('admin-users.edit');
             Route::put('/admin-users/{adminUser}', [AdminUserController::class, 'update'])->name('admin-users.update');
             Route::patch('/admin-users/{adminUser}/toggle', [AdminUserController::class, 'toggleActive'])->name('admin-users.toggle');
+        });
+
+        Route::middleware('admin.role:super_admin,support,billing,readonly')->group(function () {
+            Route::get('/subscription-requests', [BackofficeSubscriptionRequestController::class, 'index'])->name('subscription-requests.index');
+        });
+
+        Route::middleware('admin.role:super_admin,billing')->group(function () {
+            Route::patch('/subscription-requests/{subscriptionRequest}/approve', [BackofficeSubscriptionRequestController::class, 'approve'])->name('subscription-requests.approve');
+            Route::patch('/subscription-requests/{subscriptionRequest}/reject', [BackofficeSubscriptionRequestController::class, 'reject'])->name('subscription-requests.reject');
         });
     });
 });

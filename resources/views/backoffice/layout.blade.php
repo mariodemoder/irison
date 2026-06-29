@@ -8,6 +8,7 @@
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon-backoffice.svg') }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>[x-cloak] { display: none !important; }</style>
 </head>
 <body class="bg-slate-100 text-slate-900 min-h-screen">
     <header class="bg-slate-900 text-white">
@@ -21,6 +22,7 @@
                 <nav class="flex items-center gap-4 text-sm">
                     <a class="hover:text-slate-200" href="{{ route('backoffice.dashboard') }}">Dashboard</a>
                     <a class="hover:text-slate-200" href="{{ route('backoffice.clinics.index') }}">Clínicas</a>
+                    <a class="hover:text-slate-200" href="{{ route('backoffice.subscription-requests.index') }}">Upgrades</a>
                     <a class="hover:text-slate-200" href="{{ route('backoffice.admin-users.index') }}">Admin Users</a>
                     @if (session()->has('backoffice_impersonation'))
                         <form method="POST" action="{{ route('backoffice.impersonate.stop') }}">

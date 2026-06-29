@@ -14,6 +14,15 @@ export const meCanTransact = ref(false)
 export const isProfessional = computed(() => meUser.value?.profile?.slug === 'professional')
 export const isFullAccess = computed(() => !isProfessional.value)
 
+export const mePlan = computed(() => meClinic.value?.plan || 'basic')
+export const isBasic = computed(() => mePlan.value === 'basic')
+export const isPro = computed(() => mePlan.value === 'pro')
+export const isEnterprise = computed(() => mePlan.value === 'enterprise')
+export const planLabel = computed(() => {
+  const labels = { basic: 'BASIC', pro: 'PRO', enterprise: 'ENTERPRISE' }
+  return labels[mePlan.value] || 'BASIC'
+})
+
 let lastToken = null
 let meLoaded = false
 let meRequestPromise = null

@@ -6,20 +6,24 @@
         <button
           class="toggle-canceled-btn"
           @click="toggleInactiveVisibility"
-          :title="showInactiveBonuses ? 'Ver solo bonos disponibles' : 'Ver todos los bonos'"
+          :title="showInactiveBonuses ? 'Ocultar pagados y agotados' : 'Ver todos los bonos'"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:14px;height:14px">
                     <circle cx="11" cy="11" r="7"></circle>
                     <path d="M21 21l-4.3-4.3"></path>
           </svg>
         </button>
-        <button v-if="!isProfessional" @click="showForm = !showForm" class="primary" style="padding:6px 10px;font-size:13px">Crear</button>
+        <button v-if="!isProfessional" @click="showForm = true" class="primary" style="padding:6px 10px;font-size:13px">Crear</button>
       </div>
     </div>
 
-    <div v-if="showForm" style="margin-top:8px">
-      <div class="create-card">
-        <form @submit.prevent="create" class="create-form">
+    <div v-if="showForm" class="modal-backdrop" @click.self="cancelForm">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3 style="margin:0">Crear bono</h3>
+          <button type="button" class="modal-close" @click="cancelForm">&times;</button>
+        </div>
+        <form @submit.prevent="create">
           <div class="create-row">
             <label>Tipo de bono</label>
             <select v-model="selectedTemplateId" @change="applySelectedTemplate">
@@ -262,7 +266,7 @@ function bonusPaymentClass(bonus) {
 const visibleBonuses = computed(() => {
   const filtered = showInactiveBonuses.value
     ? bonuses.value
-    : bonuses.value.filter(b => b.status !== 'expired' && b.status !== 'exhausted')
+    : bonuses.value.filter(b => !(b.is_paid && b.status === 'exhausted'))
 
   const order = { active: 0, last: 1, exhausted: 2, expired: 2 }
   return [...filtered].sort((a, b) => {
@@ -571,16 +575,47 @@ function prefillRenew(b) {
   font-weight:600;
 }
 
-/* Create form card */
-.create-card {
-  padding:12px;
-  border-radius:10px;
-  border:1px solid #e5e7eb;
-  background:#f8fafc;
+/* Modal */
+.modal-backdrop {
+  position:fixed;
+  inset:0;
+  z-index:1050;
+  background:rgba(0,0,0,0.45);
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
-.create-row { margin-bottom:8px }
+.modal-card {
+  background:#fff;
+  border-radius:12px;
+  width:90%;
+  max-width:480px;
+  max-height:90vh;
+  overflow-y:auto;
+  padding:24px;
+  box-shadow:0 20px 60px rgba(0,0,0,0.2);
+}
+.modal-header {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:16px;
+}
+.modal-close {
+  background:none;
+  border:none;
+  font-size:24px;
+  line-height:1;
+  cursor:pointer;
+  color:#6b7280;
+  padding:0 4px;
+}
+.modal-close:hover { color:#111827 }
+
+.create-row { margin-bottom:12px }
 .create-row label { display:block; font-weight:600; margin-bottom:6px }
 .create-row input { width:100%; padding:8px; border:1px solid #e5e7eb; border-radius:6px }
-.create-actions { margin-top:10px; display:flex; gap:8px }
+.create-row select { width:100%; padding:8px; border:1px solid #e5e7eb; border-radius:6px; background:#fff }
+.create-actions { margin-top:16px; display:flex; gap:8px; justify-content:flex-end }
 
 </style>

@@ -81,6 +81,7 @@ const routes = [
   { path: '/consent-templates/create', component: () => import('../views/consents/ConsentTemplatesForm.vue'), meta: { auth: true } },
   { path: '/consent-templates/:id/edit', component: () => import('../views/consents/ConsentTemplatesForm.vue'), meta: { auth: true } },
   { path: '/sign/:token', component: () => import('../views/consents/ConsentSignPublic.vue') },
+  { path: '/settings/subscription', component: () => import('../views/settings/Subscription.vue'), meta: { auth: true } },
   { path: '/privacy', component: Privacy },
   { path: '/terms', component: Terms },
 ]

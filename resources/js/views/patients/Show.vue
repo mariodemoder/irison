@@ -95,16 +95,14 @@
             </div>
             <div v-if="filteredAppointments && filteredAppointments.length"> 
               <ul>
-                <li v-for="a in filteredAppointments" :key="a.id" role="button" tabindex="0" @click.prevent="goToAppointment(a.id)" @keydown.enter.prevent="goToAppointment(a.id)" style="cursor:pointer">
-                  <div style="display:flex; gap:10px; align-items:center">
-                    <div>
-                      <strong>{{ formatDateShort(a.start_time) }} {{ formatTime(a.start_time) }}</strong>
+                  <li v-for="a in filteredAppointments" :key="a.id" role="button" tabindex="0" @click.prevent="goToAppointment(a.id)" @keydown.enter.prevent="goToAppointment(a.id)" style="cursor:pointer">
+                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:nowrap">
+                      <strong style="white-space:nowrap">{{ formatDateShort(a.start_time) }} {{ formatTime(a.start_time) }}</strong>
+                      <span style="font-size:12px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ a.appointment_type?.description ?? '—' }}</span>
+                      <span style="font-size:12px;color:#6b7280;white-space:nowrap">{{ a.professional?.name ?? '—' }}</span>
+                      <span class="status" :class="a.status" style="flex-shrink:0;margin-left:auto">{{ statusLabel(a.status) }}</span>
                     </div>
-                    <div>
-                      <span class="status" :class="a.status">{{ statusLabel(a.status) }}</span>
-                    </div>
-                  </div>
-                </li>
+                  </li>
               </ul>
             </div>
             <div v-else class="empty-card">Sin citas</div>
@@ -837,7 +835,7 @@ async function confirmDelete() {
 .card.full { grid-column:1 / -1 }
 .card-row { margin-bottom:6px }
 
-.history-grid { margin-top:18px; display:grid; grid-template-columns:repeat(3,1fr); gap:12px }
+.history-grid { margin-top:18px; display:grid; grid-template-columns:repeat(2,1fr); gap:12px }
 .history-card { background:#fff; padding:14px; border-radius:10px; border:1px solid #eef2ff; box-shadow: 0 6px 18px rgba(2,6,23,0.04) }
 .history-title { font-weight:700; margin-bottom:8px }
 .empty-card { padding:18px; border-radius:8px; border:2px dashed #e6e6e6; color:#6b7280; text-align:center; min-height:72px; display:flex; align-items:center; justify-content:center }

@@ -91,6 +91,9 @@ Route::middleware('throttle:30,1')->prefix('consent')->group(function () {
     Route::post('/sign/{token}', [\App\Http\Controllers\Api\ConsentSignController::class, 'sign']);
 });
 
+// Precios de planes (público para la landing, se usa cacheable)
+Route::get('/pricing', [\App\Http\Controllers\Api\PricingController::class, 'index']);
+
 // Webhooks (Stripe, billing) deben ser públicos y verificarse por firma
 // Stripe webhook (recibe eventos desde Stripe)
 Route::post('/stripe/webhook', [\App\Http\Controllers\Api\StripeWebhookController::class, 'handle']);
@@ -162,6 +165,11 @@ Route::middleware(['auth:sanctum', 'clinic', 'check.subscription'])->group(funct
 
     // Endpoint de testing para marcar clínica como suscrita (dev)
     Route::post('/subscribe/fake', \App\Http\Controllers\Api\FakeSubscribeController::class);
+
+    // Suscripción: plan actual, historial y solicitud de upgrade
+    Route::get('/settings/subscription', [\App\Http\Controllers\Api\SubscriptionController::class, 'show']);
+    Route::get('/settings/subscription/history', [\App\Http\Controllers\Api\SubscriptionController::class, 'history']);
+    Route::post('/settings/subscription/request', [\App\Http\Controllers\Api\SubscriptionRequestController::class, 'store']);
 
     // Logout: revoca el token actual
     Route::post('/logout', [\App\Http\Controllers\Api\AuthController::class, 'logout']);

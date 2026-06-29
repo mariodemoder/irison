@@ -16,6 +16,7 @@ use App\Models\{
     ConsentCategory,
     ConsentTemplate,
     PatientConsent,
+    SubscriptionRequest,
 };
 
 use App\Policies\{
@@ -30,6 +31,7 @@ use App\Policies\{
     ConsentCategoryPolicy,
     ConsentTemplatePolicy,
     PatientConsentPolicy,
+    SubscriptionRequestPolicy,
 };
 
 class AuthServiceProvider extends ServiceProvider
@@ -46,6 +48,7 @@ class AuthServiceProvider extends ServiceProvider
         ConsentCategory::class => ConsentCategoryPolicy::class,
         ConsentTemplate::class => ConsentTemplatePolicy::class,
         PatientConsent::class  => PatientConsentPolicy::class,
+        SubscriptionRequest::class => SubscriptionRequestPolicy::class,
     ];
 
     public function boot(): void
