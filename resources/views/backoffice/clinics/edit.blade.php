@@ -34,9 +34,11 @@
             Plan
             <select class="mt-1 w-full rounded border border-slate-300 px-3 py-2" name="plan" required>
                 @foreach (['basic', 'pro', 'enterprise'] as $plan)
-                    <option value="{{ $plan }}" @selected(old('plan', $clinic->plan ?: 'basic') === $plan)>{{ $plan }}</option>
+                    <option value="{{ $plan }}" data-max="{{ \App\Models\Clinic::PLAN_USER_LIMITS[$plan] ?? 3 }}"
+                        @selected(old('plan', $clinic->plan ?: 'basic') === $plan)>{{ $plan }} — {{ \App\Models\Clinic::PLAN_USER_LIMITS[$plan] ?? 3 }} usuarios</option>
                 @endforeach
             </select>
+            <span class="mt-1 block text-xs text-slate-500">Cada plan incluye un límite de usuarios. Al cambiar de plan se actualiza automáticamente.</span>
         </label>
 
         <button class="rounded bg-slate-900 px-4 py-2 text-white hover:bg-slate-700" type="submit">Guardar cambios</button>

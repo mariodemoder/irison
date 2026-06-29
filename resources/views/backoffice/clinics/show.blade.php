@@ -81,6 +81,7 @@
                 <div><dt class="text-slate-500">Email de contacto</dt><dd class="text-base text-slate-800">{{ $clinic->email ?: 'Sin email de contacto' }}</dd></div>
                 <div><dt class="text-slate-500">Slug</dt><dd>{{ $clinic->slug ?: '-' }}</dd></div>
                 <div><dt class="text-slate-500">Plan</dt><dd>{{ $clinic->plan ?: 'basic' }}</dd></div>
+                <div><dt class="text-slate-500">Límite usuarios</dt><dd>{{ $clinic->max_users }} usuarios</dd></div>
                 <div><dt class="text-slate-500">Subscription status</dt><dd>{{ $clinic->subscription_status ?: '-' }}</dd></div>
                 @if (in_array($subscriptionStatus, ['canceled', 'cancelled'], true))
                     <div>

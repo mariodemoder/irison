@@ -32,6 +32,8 @@ class TeamUserService
 
         $paginator = $query->paginate($perPage);
 
+        $clinic = Clinic::find($clinicId);
+
         return [
             'data' => $paginator->getCollection()->transform(fn ($u) => $this->map($u))->toArray(),
             'meta' => [
@@ -39,6 +41,7 @@ class TeamUserService
                 'last_page' => $paginator->lastPage(),
                 'per_page' => $paginator->perPage(),
                 'total' => $paginator->total(),
+                'max_users' => $clinic?->max_users ?? 3,
             ],
         ];
     }
@@ -86,7 +89,7 @@ class TeamUserService
 
         $currentCount = User::where('clinic_id', $clinicId)->count();
         if ($currentCount >= $clinic->max_users) {
-            abort(409, 'Has alcanzado el límite de usuarios permitido para tu plan.');
+            abort(409, 'Has alcanzado el límite de ' . $clinic->max_users . ' usuarios de tu plan ' . strtoupper((string) $clinic->plan) . '. Actualiza tu plan para añadir más usuarios.');
         }
 
         $user = User::create([

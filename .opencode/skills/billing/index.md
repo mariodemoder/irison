@@ -1,4 +1,23 @@
-# Billing Skill
+# Billing Skill — Planes y Suscripciones
+
+## Planes disponibles (`Clinic::PLAN_USER_LIMITS`)
+
+Definidos en `app/Models/Clinic.php`:
+| Plan | Máx usuarios | Stripe Price ID |
+|------|-------------|-----------------|
+| `basic` | 3 | `STRIPE_PRICE_ID` (env) |
+| `pro` | 6 | `STRIPE_PRICE_ID` (env) |
+| `enterprise` | 10 | `STRIPE_PRICE_ID` (env) |
+
+Todos los planes usan el mismo `STRIPE_PRICE_ID` de entorno; la diferenciación es por `plan` y `max_users` en DB.
+
+## Restricción de usuarios por plan
+
+- `clinics.max_users` default: 3 (basic)
+- Al cambiar plan via backoffice → `max_users` se actualiza automáticamente desde `Clinic::PLAN_USER_LIMITS`
+- Al registrar clínica → se setea `plan=basic`, `max_users=3`
+- Límite controlado en: `app/Services/Team/TeamUserService.php:87-90`
+- Frontend muestra "X / Y usuarios" en `resources/js/views/team/Team.vue`
 
 ## Stripe Error Handling
 - Unreachable Stripe → backend returns `503` with `code=STRIPE_UNREACHABLE` from `app/Http/Controllers/BillingController.php`

@@ -6,6 +6,9 @@
           <h1>Equipo</h1>
           <div class="form-sub">Administra los usuarios y profesiones de tu clínica</div>
         </div>
+        <div v-if="userMeta" class="user-limit-badge">
+          {{ userMeta.total }} / {{ maxUsers }} usuarios
+        </div>
         <div class="sub-menu-wrap">
           <button class="btn sub-menu-trigger" @click.stop="showProfessionsMenu = !showProfessionsMenu" title="Más opciones">
             &#8942;
@@ -142,6 +145,8 @@ const userQuery = ref('')
 const usersLoading = ref(false)
 let searchTimer = null
 
+const maxUsers = ref(3)
+
 const userColumns = [
   { key: 'id', label: 'ID', thClass: 'col-min' },
   { key: 'name', label: 'Nombre', thClass: 'col-mid' },
@@ -161,9 +166,11 @@ async function loadUsers(page = 1) {
     })
     users.value = Array.isArray(res.data?.data) ? res.data.data : []
     userMeta.value = res.data?.meta ?? null
+    maxUsers.value = res.data?.meta?.max_users ?? 3
   } catch (e) {
     users.value = []
     userMeta.value = null
+    maxUsers.value = 3
     toast.error(getLoadErrorMessage(e, 'usuarios'))
   } finally {
     usersLoading.value = false
@@ -331,6 +338,18 @@ onMounted(async () => {
 .pagination-actions { display: flex; gap: 8px; }
 .icon-btn { width: 32px; height: 32px; border-radius: 8px; border: 1px solid #e5e7eb; background: #fff; cursor: pointer; }
 .icon-btn:disabled { opacity: 0.45; }
+.user-limit-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .btn-nuevo-usuario,
 .btn-nueva-profesion {
   min-width: 0 !important;

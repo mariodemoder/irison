@@ -31,6 +31,8 @@ class RegisterController extends Controller
             'name' => $data['clinic_name'],
             'legal_name' => $data['clinic_name'],
             'email' => $data['email'],
+            'plan' => 'basic',
+            'max_users' => Clinic::PLAN_USER_LIMITS['basic'],
             'trial_ends_at' => now()->addDays(30),
             'subscription_status' => 'trial',
             'status' => 'trial',

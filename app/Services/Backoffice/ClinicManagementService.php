@@ -89,6 +89,11 @@ class ClinicManagementService
         $old = $clinic->only(['name', 'slug', 'email', 'phone', 'plan']);
 
         $clinic->fill($data);
+
+        if (! empty($data['plan']) && $data['plan'] !== ($old['plan'] ?? null)) {
+            $clinic->max_users = Clinic::PLAN_USER_LIMITS[$data['plan']] ?? $clinic->max_users;
+        }
+
         $clinic->save();
 
         $this->recordActivity($admin, $clinic, 'clinic.updated', [
@@ -288,6 +293,7 @@ class ClinicManagementService
         $beforePlan = (string) $clinic->plan;
 
         $clinic->plan = $plan;
+        $clinic->max_users = Clinic::PLAN_USER_LIMITS[$plan] ?? $clinic->max_users;
         $clinic->save();
 
         $this->recordActivity($admin, $clinic, 'clinic.plan.changed', [

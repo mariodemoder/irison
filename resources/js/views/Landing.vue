@@ -38,28 +38,34 @@ const workflows = [
 
 const plans = [
   {
-    name: 'Start',
-    price: 'Prueba gratuita',
-    note: 'Ideal para descubrir el flujo completo de Irison sin compromiso.',
-    items: ['Alta rápida', 'Agenda y pacientes', 'Historia clínica', 'Pagos y facturación', 'Sin tarjeta'],
+    name: 'Basic',
+    price: 'Gratis',
+    period: '30 días de prueba',
+    note: 'Para clínicas que empiezan y quieren probar la plataforma completa.',
+    users: 'Hasta 3 usuarios',
+    items: ['Agenda y pacientes', 'Historia clínica', 'Pagos y facturación', 'Recordatorios automáticos', 'Sin tarjeta'],
     featured: false,
     cta: 'Empezar gratis',
     to: '/register',
   },
   {
-    name: 'Professional',
+    name: 'Pro',
     price: 'Desde 29€/mes',
-    note: 'Para clínicas que ya quieren operar cada día dentro de la plataforma.',
-    items: ['Operación clínica centralizada', 'Cobros y documentos', 'Automatizaciones esenciales', 'Soporte de implantación'],
+    period: 'Después del trial',
+    note: 'Para clínicas en operación diaria que necesitan más capacidad.',
+    users: 'Hasta 6 usuarios',
+    items: ['Todo Basic', 'Bonos y descuentos', 'Booking online', 'Múltiples profesionales', 'Soporte prioritario'],
     featured: true,
     cta: 'Solicitar demo',
     to: '/register',
   },
   {
-    name: 'Custom',
-    price: 'A medida',
-    note: 'Para equipos con varios profesionales o necesidades específicas de implantación.',
-    items: ['Configuración avanzada', 'Acompañamiento de despliegue', 'Adaptación de procesos', 'Escalado por volumen'],
+    name: 'Enterprise',
+    price: '69€/mes',
+    period: 'Después del trial',
+    note: 'Para centros con varios profesionales y necesidades avanzadas.',
+    users: 'Hasta 10 usuarios',
+    items: ['Todo Pro', 'Configuración avanzada', 'Acompañamiento de despliegue', 'Panel de dirección', 'API y webhooks'],
     featured: false,
     cta: 'Hablar con ventas',
     to: '/register',
@@ -192,7 +198,9 @@ const brandStatement = computed(() => 'Gestiona tu clínica con una plataforma c
         <article v-for="plan in plans" :key="plan.name" class="pricing-card" :class="{ 'pricing-card--featured': plan.featured }">
           <span class="pricing-card__tag">{{ plan.name }}</span>
           <h3>{{ plan.price }}</h3>
+          <p class="pricing-card__period">{{ plan.period }}</p>
           <p>{{ plan.note }}</p>
+          <strong class="pricing-card__users">{{ plan.users }}</strong>
           <ul>
             <li v-for="item in plan.items" :key="item">{{ item }}</li>
           </ul>
@@ -656,6 +664,25 @@ const brandStatement = computed(() => 'Gestiona tu clínica con una plataforma c
 .pricing-card--featured p,
 .pricing-card--featured li,
 .pricing-card--featured h3 {
+  color: #f8fafc;
+}
+
+.pricing-card__period {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #556176;
+}
+
+.pricing-card--featured .pricing-card__period {
+  color: rgba(248, 250, 252, 0.7);
+}
+
+.pricing-card__users {
+  display: block;
+  font-size: 0.95rem;
+}
+
+.pricing-card--featured .pricing-card__users {
   color: #f8fafc;
 }
 
