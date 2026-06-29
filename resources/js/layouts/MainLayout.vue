@@ -7,7 +7,7 @@
 
       <nav class="space-y-1">
         <router-link
-          v-for="item in navItems"
+          v-for="item in filteredNavItems"
           :key="item.path"
           :class="[{ 'menu-active': isActive(item.path) }, 'menu-link']"
           :to="item.path"
@@ -153,6 +153,7 @@ import {
   meCancellationReadOnlyDaysLeft,
   meReadOnlyNoTransactions,
   meCanTransact,
+  isProfessional,
   ensureMeLoaded,
 } from '../shared/meCache'
 
@@ -182,6 +183,15 @@ const navItems = [
   { path: '/company-services', label: 'Servicios' },
   { path: '/settings', label: 'Configuración' },
 ]
+
+const professionalPaths = ['/appointments', '/patients']
+
+const filteredNavItems = computed(() => {
+  if (isProfessional.value) {
+    return navItems.filter(item => professionalPaths.includes(item.path))
+  }
+  return navItems
+})
 
 const user = meUser
 const clinic = meClinic

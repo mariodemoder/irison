@@ -13,7 +13,7 @@
                     <path d="M21 21l-4.3-4.3"></path>
           </svg>
         </button>
-        <button @click="showForm = !showForm" class="primary" style="padding:6px 10px;font-size:13px">Crear</button>
+        <button v-if="!isProfessional" @click="showForm = !showForm" class="primary" style="padding:6px 10px;font-size:13px">Crear</button>
       </div>
     </div>
 
@@ -91,7 +91,7 @@
           </div>
         </div>
 
-        <div class="bonus-actions">
+        <div v-if="!isProfessional" class="bonus-actions">
           <button
             v-if="b.status === 'last'"
             class="renew-btn"
@@ -155,6 +155,7 @@ import Swal from 'sweetalert2'
 import api from '../services/api'
 import { useToast } from 'vue-toastification'
 import { formatDMY } from '../shared/dateHelpers'
+import { isProfessional } from '../shared/meCache'
 
 const props = defineProps({ patientId: { type: [String, Number], required: true } })
 const emit = defineEmits(['active-bonus-count'])

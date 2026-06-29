@@ -39,7 +39,7 @@
             <button :class="['scope-btn', !showScheduledOnly && 'scope-active']" @click="setAppointmentScope('all')">Todas las citas</button>
           </div>
 
-          <div v-if="agendaProfessionals.length > 0" class="scope-bar">
+          <div v-if="!isProfessional && agendaProfessionals.length > 0" class="scope-bar">
             <select v-model="professionalFilter" class="professional-select" @change="onProfessionalChange">
               <option value="">Todos los profesionales</option>
               <option v-for="prof in agendaProfessionals" :key="prof.id" :value="String(prof.id)">
@@ -81,6 +81,7 @@
 
         <div class="header-actions-right">
           <button
+            v-if="!isProfessional"
             type="button"
             class="btn btn-sm small compact header-create-btn"
             :disabled="(isSelectedDateClosed && !isAllMode) || !canCreateAppointment"
@@ -150,7 +151,7 @@
                 <th>Tipo</th>
                 <th>Estado</th>
                 <th>Pago</th>
-                <th class="action-col"></th>
+                <th v-if="!isProfessional" class="action-col"></th>
               </tr>
             </thead>
             <tbody>
@@ -158,7 +159,7 @@
               <template v-else v-for="item in listWithGaps" :key="item._type === 'gap' ? `gap-${item.from}` : item.id">
 
                 <!-- Hueco libre -->
-                <tr v-if="item._type === 'gap'" class="gap-tr">
+                <tr v-if="item._type === 'gap' && !isProfessional" class="gap-tr">
                   <td colspan="7">
                     <div class="gap-row" role="button" tabindex="0" @click="goToNewWithGap(item)" @keydown.enter="goToNewWithGap(item)">
                       <svg class="gap-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -185,7 +186,7 @@
                   <td>
                     <span class="payment-status" :class="paymentStatusClass(item.payment_status)">{{ paymentStatusLabel(item.payment_status) }}</span>
                   </td>
-                  <td class="row-action">
+                  <td v-if="!isProfessional" class="row-action">
                     <router-link :to="`/appointments/${item.id}/edit`" class="action-btn datos" @click.stop>✎ Editar</router-link>
                   </td>
                 </tr>
@@ -229,6 +230,7 @@ import AppLoading from '../../components/AppLoading.vue'
 import { statusLabel, timeClass, formatTimeCalendar, getContrastColor } from '../../shared/appointmentHelpers'
 import { isDateClosed, normalizeClosedDays } from '../../shared/clinicCalendar'
 import { useToast } from 'vue-toastification'
+import { isProfessional } from '../../shared/meCache'
 
 const router = useRouter()
 const route = useRoute()

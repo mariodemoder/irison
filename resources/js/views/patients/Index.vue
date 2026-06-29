@@ -15,7 +15,7 @@
             </div>
           </div>
 
-          <router-link to="/patients/create" class="btn btn-sm small">Nuevo paciente</router-link>
+          <router-link v-if="!isProfessional" to="/patients/create" class="btn btn-sm small">Nuevo paciente</router-link>
         </div>
 
         <AppLoading v-if="loading" message="Cargando pacientes..." />
@@ -30,7 +30,7 @@
                   <th class="wide-min">Alta</th>
                   <th class="wide-min">Teléfono</th>
                   <th class="wide-mid">Email</th>
-                  <th class="patients-action-col"></th>
+                  <th v-if="!isProfessional" class="patients-action-col"></th>
                 </tr>
               </thead>
               <tbody>
@@ -50,7 +50,7 @@
                   <td class="wide-min">{{ formatDateOnlyDay(p.created_at) }}</td>
                   <td class="wide-min">{{ p.phone ?? '—' }}</td>
                   <td class="wide-mid">{{ p.email ?? '—' }}</td>
-                  <td class="row-action patients-action-col">
+                  <td v-if="!isProfessional" class="row-action patients-action-col">
                     <router-link :to="{ path: `/patients/${p.id}/edit`, query: { from: 'list' } }" class="action-btn datos" aria-label="Datos" @click.stop>✎ Editar</router-link>
                   </td>
                 </tr>
@@ -92,6 +92,7 @@ import MainLayout from '../../layouts/MainLayout.vue'
 import AppLoading from '../../components/AppLoading.vue'
 import EmptyIndexState from '../../components/EmptyIndexState.vue'
 import { formatDateOnlyDay } from '../../shared/dateHelpers'
+import { isProfessional } from '../../shared/meCache'
 
 const patients = ref([])
 const meta = ref(null)

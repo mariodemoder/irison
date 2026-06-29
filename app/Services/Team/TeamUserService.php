@@ -155,6 +155,10 @@ class TeamUserService
             unset($payload['profile_id']);
         }
 
+        if ($user->email_verified_at === null) {
+            $payload['email_verified_at'] = now();
+        }
+
         $user->update($payload);
 
         if (array_key_exists('schedules', $data)) {

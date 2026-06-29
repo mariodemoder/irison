@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature;
+namespace Tests\Feature\Admin;
 
 use App\Models\ActivityLog;
 use App\Models\BillingPayment;

@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Billing;
 
 use App\Mail\InvoicePaymentFailedMail;
 use App\Models\Clinic;

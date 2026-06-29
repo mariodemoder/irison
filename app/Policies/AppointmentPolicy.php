@@ -40,6 +40,13 @@ class AppointmentPolicy extends BasePolicy
         return $this->sameClinic($user, $model) && $user->hasFullAccess();
     }
 
+    public function updateNotes(User $user, Appointment $appointment): bool
+    {
+        return $this->sameClinic($user, $appointment)
+            && (int) $appointment->professional_id === (int) $user->id
+            && $user->isViewer();
+    }
+
     public function issueInvoice(User $user, Appointment $appointment): bool
     {
         return $this->sameClinic($user, $appointment) && $user->hasFullAccess();

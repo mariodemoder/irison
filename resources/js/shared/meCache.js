@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import api from '../services/api'
 
 export const meUser = ref(null)
@@ -10,6 +10,9 @@ export const meCancellationDaysLeft = ref(null)
 export const meCancellationReadOnlyDaysLeft = ref(null)
 export const meReadOnlyNoTransactions = ref(false)
 export const meCanTransact = ref(false)
+
+export const isProfessional = computed(() => meUser.value?.profile?.slug === 'professional')
+export const isFullAccess = computed(() => !isProfessional.value)
 
 let lastToken = null
 let meLoaded = false

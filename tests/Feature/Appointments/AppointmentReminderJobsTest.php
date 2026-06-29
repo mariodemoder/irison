@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature;
+namespace Tests\Feature\Appointments;
 
 use App\Jobs\SendAppointmentReminder24h;
 use App\Jobs\SendAppointmentReminder2h;

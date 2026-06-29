@@ -62,6 +62,7 @@
                 <div x-show="open" @click.outside="open = false"
                      class="absolute right-0 z-10 mt-1 w-48 rounded border border-slate-200 bg-white py-1 shadow-lg">
                     <a @click="open = false" href="#datos" class="block px-4 py-2 text-sm hover:bg-slate-50">Datos</a>
+                    <a @click="open = false" href="#usuarios" class="block px-4 py-2 text-sm hover:bg-slate-50">Usuarios</a>
                     <a @click="open = false" href="#administrativas" class="block px-4 py-2 text-sm hover:bg-slate-50">Administrativas</a>
                     <a @click="open = false" href="#desde-aqui" class="block px-4 py-2 text-sm hover:bg-slate-50">Desde aquí</a>
                     <a @click="open = false" href="#facturacion" class="block px-4 py-2 text-sm hover:bg-slate-50">Facturación</a>
@@ -98,6 +99,34 @@
                 <div><dt class="text-slate-500">Último documento creado</dt><dd>{{ $lastDocumentCreatedAt?->format('Y-m-d H:i') ?: '-' }}</dd></div>
                 <div><dt class="text-slate-500">Último error 500</dt><dd>{{ $last500ErrorAt?->format('Y-m-d H:i') ?: '-' }}</dd></div>
             </dl>
+        </article>
+
+        <article id="usuarios" class="rounded bg-white p-4 shadow-sm">
+            <h3 class="text-lg font-medium">Usuarios ({{ $users->count() }})</h3>
+            <div class="mt-3 overflow-x-auto">
+                <table class="min-w-full text-sm whitespace-nowrap">
+                    <thead class="border-b border-slate-200 bg-slate-50 text-left text-slate-600">
+                        <tr>
+                            <th class="px-3 py-2 font-medium">Nombre</th>
+                            <th class="px-3 py-2 font-medium">Cargo</th>
+                            <th class="px-3 py-2 font-medium">Email</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($users as $user)
+                            <tr class="border-b border-slate-100 align-top last:border-b-0">
+                                <td class="px-3 py-2 font-medium text-slate-900">{{ $user->name }}</td>
+                                <td class="px-3 py-2 text-slate-700">{{ $user->profile?->name ?: '-' }}</td>
+                                <td class="px-3 py-2 text-slate-600">{{ $user->email }}</td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td class="px-3 py-4 text-slate-500" colspan="3">Sin usuarios registrados.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
         </article>
 
         <article id="administrativas" class="rounded bg-white p-4 shadow-sm">
@@ -209,6 +238,7 @@
                 <thead class="border-b border-slate-200 bg-slate-50 text-left text-slate-600">
                     <tr>
                         <th class="px-3 py-2 font-medium">Evento</th>
+                        <th class="px-3 py-2 font-medium">Usuario</th>
                         <th class="px-3 py-2 font-medium">Fecha</th>
                         <th class="px-3 py-2 font-medium">Descripción</th>
                         <th class="px-3 py-2 font-medium">Detalle</th>
@@ -218,13 +248,14 @@
                     @forelse ($activityLog as $row)
                         <tr class="border-b border-slate-100 align-top last:border-b-0">
                             <td class="px-3 py-2 font-semibold text-slate-900">{{ $row->event }}</td>
+                            <td class="px-3 py-2 text-slate-600">{{ $row->user?->email ?: '-' }}</td>
                             <td class="px-3 py-2 text-slate-600">{{ $row->created_at?->format('Y-m-d H:i:s') }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $row->description }}</td>
                             <td class="px-3 py-2 text-slate-600">{{ !empty($row->metadata) ? json_encode($row->metadata, JSON_UNESCAPED_UNICODE) : '-' }}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td class="px-3 py-4 text-slate-500" colspan="4">Sin actividad registrada.</td>
+                            <td class="px-3 py-4 text-slate-500" colspan="5">Sin actividad registrada.</td>
                         </tr>
                     @endforelse
                 </tbody>

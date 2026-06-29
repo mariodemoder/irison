@@ -197,10 +197,18 @@ class AppointmentController extends Controller
 
     public function update(UpdateAppointmentRequest $request, Appointment $appointment)
     {
-        Gate::authorize('update', $appointment);
+        $user = $request->user();
+
+        if ($user->isViewer()) {
+            Gate::authorize('updateNotes', $appointment);
+            $validated = $request->safe()->only(['notes']);
+        } else {
+            Gate::authorize('update', $appointment);
+            $validated = $request->validated();
+        }
 
         try {
-            return $this->appointmentService->update($appointment, $request->validated());
+            return $this->appointmentService->update($appointment, $validated);
         } catch (\DomainException $e) {
             $status = $this->resolveDomainExceptionStatus($e->getMessage());
             return response()->json(['error' => $e->getMessage()], $status);

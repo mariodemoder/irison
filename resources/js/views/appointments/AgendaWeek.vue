@@ -16,7 +16,7 @@
         @today="goToToday"
       />
 
-      <div v-if="agendaProfessionals.length > 0" style="margin-bottom:10px">
+      <div v-if="!isProfessional && agendaProfessionals.length > 0" style="margin-bottom:10px">
         <select v-model="professionalFilter" class="professional-select" @change="load">
           <option value="">Todos los profesionales</option>
           <option v-for="prof in agendaProfessionals" :key="prof.id" :value="String(prof.id)">
@@ -67,7 +67,7 @@
                   :key="h"
                   :class="['hr-row', { 'hr-row-closed': day.isClosed, 'hr-row-disabled': !canCreateAppointment }]"
                   :title="canCreateAppointment ? `Nueva cita ${String(h).padStart(2,'0')}:00` : 'Activa tu suscripcion para crear citas'"
-                  @click="goToNewSlot(day.iso, h)"
+                  @click="isProfessional ? null : goToNewSlot(day.iso, h)"
                 ></div>
 
                 <div v-if="day.isClosed" class="day-closed-overlay">Día cerrado</div>
@@ -120,6 +120,7 @@ import MainLayout from '../../layouts/MainLayout.vue'
 import CalendarHeader from '../../components/calendar/CalendarHeader.vue'
 import { isDateClosed, normalizeClosedDays } from '../../shared/clinicCalendar'
 import { useToast } from 'vue-toastification'
+import { isProfessional } from '../../shared/meCache'
 
 const router = useRouter()
 const toast = useToast()

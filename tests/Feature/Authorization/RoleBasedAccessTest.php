@@ -190,8 +190,13 @@ class RoleBasedAccessTest extends TestCase
         $this->actingAs($this->professionalUser, 'sanctum');
         app()->instance('activeClinic', $this->clinic);
 
+        $originalStatus = $this->appointment->status;
+
         $this->putJson('/api/appointments/' . $this->appointment->id, ['status' => 'completed'])
-            ->assertForbidden();
+            ->assertOk();
+
+        $this->appointment->refresh();
+        $this->assertEquals($originalStatus, $this->appointment->status, 'El profesional no debería poder cambiar el estado');
     }
 
     public function test_professional_cannot_delete_appointments(): void
@@ -272,6 +277,66 @@ class RoleBasedAccessTest extends TestCase
 
         $this->getJson('/api/appointments/' . $other->id)
             ->assertForbidden();
+    }
+
+    public function test_professional_can_update_notes_on_own_appointment(): void
+    {
+        $this->actingAs($this->professionalUser, 'sanctum');
+        app()->instance('activeClinic', $this->clinic);
+
+        $this->putJson('/api/appointments/' . $this->appointment->id, [
+            'notes' => 'Nota actualizada por el profesional',
+        ])->assertOk();
+    }
+
+    public function test_professional_cannot_update_notes_on_other_appointment(): void
+    {
+        $otherProfessional = User::create([
+            'name' => 'Other Prof',
+            'email' => 'other.notes@test.com',
+            'password' => Hash::make('password'),
+            'clinic_id' => $this->clinic->id,
+            'role' => 'user',
+            'profile_id' => Profile::where('slug', 'professional')->first()->id,
+        ]);
+
+        $otherAppointment = Appointment::create([
+            'clinic_id' => $this->clinic->id,
+            'patient_id' => $this->patient->id,
+            'professional_id' => $otherProfessional->id,
+            'start_time' => Carbon::now()->addDay()->startOfHour(),
+            'end_time' => Carbon::now()->addDay()->startOfHour()->addHour(),
+            'price' => 50,
+            'status' => 'scheduled',
+            'payment_status' => 'pending',
+        ]);
+
+        $this->actingAs($this->professionalUser, 'sanctum');
+        app()->instance('activeClinic', $this->clinic);
+
+        $this->putJson('/api/appointments/' . $otherAppointment->id, [
+            'notes' => 'Intento de nota en cita ajena',
+        ])->assertForbidden();
+    }
+
+    public function test_professional_only_updates_notes_ignoring_other_fields(): void
+    {
+        $this->actingAs($this->professionalUser, 'sanctum');
+        app()->instance('activeClinic', $this->clinic);
+
+        $originalStart = $this->appointment->start_time->toISOString();
+
+        $this->putJson('/api/appointments/' . $this->appointment->id, [
+            'notes' => 'Solo notas',
+            'start_time' => '10:00',
+            'price' => 999,
+            'status' => 'completed',
+        ])->assertOk();
+
+        $this->appointment->refresh();
+        $this->assertEquals('Solo notas', $this->appointment->notes);
+        $this->assertEquals($originalStart, $this->appointment->start_time->toISOString());
+        $this->assertNotEquals(999, $this->appointment->price);
     }
 
     // ---------- PATIENTS ----------

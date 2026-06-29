@@ -9,12 +9,12 @@
           </h1>
           <div class="header-right">
             <div class="header-actions">
-              <template v-if="appointment.status !== 'canceled'">
+              <template v-if="appointment.status !== 'canceled' && !isProfessional">
                 <router-link :to="`/appointments/${appointment.id}/edit`" class="edit-btn">Editar</router-link>
               </template>
               <div class="back-menu-group">
                 <button class="muted back-btn" @click="back">Volver</button>
-                <div v-if="hasQuickActions" class="quick-actions" ref="quickActionsRef">
+                <div v-if="hasQuickActions && !isProfessional" class="quick-actions" ref="quickActionsRef">
                   <button
                     type="button"
                     class="muted quick-trigger menu-right-btn"
@@ -90,7 +90,18 @@
 
           <div class="field full">
             <label class="label">Notas</label>
-            <div class="value">{{ appointment.notes ?? '—' }}</div>
+            <div v-if="isProfessional && !isEditingNotes" class="value value-notes" @click="startEditNotes">
+              {{ appointment.notes || '—' }}
+              <span class="edit-hint">✎</span>
+            </div>
+            <div v-else-if="isProfessional && isEditingNotes" class="value">
+              <textarea v-model="notesDraft" class="notes-textarea" rows="3"></textarea>
+              <div class="notes-actions">
+                <button class="btn btn-sm" @click="saveNotes">Guardar</button>
+                <button class="btn btn-sm muted" @click="cancelEditNotes">Cancelar</button>
+              </div>
+            </div>
+            <div v-else class="value">{{ appointment.notes ?? '—' }}</div>
           </div>
 
           <div class="field">
@@ -139,6 +150,7 @@ import { useToast } from 'vue-toastification'
 import { statusLabel, formatDateShort, formatTime, parseAppointmentDateTime, getContrastColor } from '../../shared/appointmentHelpers'
 import { appointmentCancelShared } from '../../shared/formHelpers'
 import { goBackWithStack } from '../../shared/navigationHelpers'
+import { isProfessional } from '../../shared/meCache'
 
 const route = useRoute()
 const router = useRouter()
@@ -151,6 +163,30 @@ const canReprogram = ref(false)
 const isEdit = ref(!!route.params.id)
 const quickActionsOpen = ref(false)
 const quickActionsRef = ref(null)
+const isEditingNotes = ref(false)
+const notesDraft = ref('')
+
+async function saveNotes() {
+  try {
+    await api.put(`/appointments/${appointment.value.id}`, { notes: notesDraft.value })
+    appointment.value.notes = notesDraft.value
+    isEditingNotes.value = false
+    useToast().success('Notas actualizadas')
+  } catch (e) {
+    useToast().error('Error al guardar las notas')
+  }
+}
+
+function startEditNotes() {
+  notesDraft.value = appointment.value.notes || ''
+  isEditingNotes.value = true
+}
+
+function cancelEditNotes() {
+  isEditingNotes.value = false
+  notesDraft.value = ''
+}
+
 const isCanceled = computed(() => appointment.value && (appointment.value.status === 'canceled' || appointment.value.status === 'cancelled'))
 const isFutureAppointment = computed(() => {
   try {
@@ -407,5 +443,11 @@ onBeforeUnmount(() => {
 
 /* Alinear texto en botones */
 .actions button { display:inline-flex; align-items:center; gap:8px }
+.value-notes { cursor:pointer; display:flex; justify-content:space-between; align-items:center }
+.value-notes:hover { background:#f1f5f9 }
+.edit-hint { color:#94a3b8; font-size:13px }
+.notes-textarea { width:100%; padding:8px; border:1px solid #e2e8f0; border-radius:8px; font-family:inherit; font-size:14px; resize:vertical }
+.notes-textarea:focus { outline:none; border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,0.1) }
+.notes-actions { display:flex; gap:8px; margin-top:8px }
 
 </style>

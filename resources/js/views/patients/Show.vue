@@ -7,7 +7,7 @@
             <h1>Paciente e Historial</h1>
           </div>
           <div class="header-actions">
-            <button class="edit-btn" @click.prevent="goEdit">Editar</button>
+            <button v-if="!isProfessional" class="edit-btn" @click.prevent="goEdit">Editar</button>
             <div class="back-menu-group">
               <button class="muted back-btn" @click.prevent="goBack">Volver</button>
               <div class="quick-actions" ref="quickActionsRef">
@@ -39,7 +39,7 @@
                   >
                     Imagenes
                   </button>
-                  <BtnTrash class="quick-item danger" :disabled="deletingPatient" @click.prevent="runDelete">{{ deletingPatient ? 'Eliminando...' : 'Eliminar' }}</BtnTrash>
+                  <BtnTrash v-if="!isProfessional" class="quick-item danger" :disabled="deletingPatient" @click.prevent="runDelete">{{ deletingPatient ? 'Eliminando...' : 'Eliminar' }}</BtnTrash>
                 </div>
               </div>
             </div>
@@ -90,7 +90,7 @@
                     <path d="M21 21l-4.3-4.3"></path>
                   </svg>
                 </button>
-                <button class="primary" @click.prevent="createAppointment" style="padding:6px 10px;font-size:13px">Crear</button>
+                <button v-if="!isProfessional" class="primary" @click.prevent="createAppointment" style="padding:6px 10px;font-size:13px">Crear</button>
               </div>
             </div>
             <div v-if="filteredAppointments && filteredAppointments.length"> 
@@ -128,7 +128,7 @@
                     <path d="M21 21l-4.3-4.3"></path>
                   </svg>
                 </button>
-                <button class="primary" @click.prevent="createPayment" style="padding:6px 10px;font-size:13px">Crear</button>
+                <button v-if="!isProfessional" class="primary" @click.prevent="createPayment" style="padding:6px 10px;font-size:13px">Crear</button>
               </div>
             </div>
             <div v-if="sortedPayments && sortedPayments.length">
@@ -325,6 +325,7 @@ import { useToast } from 'vue-toastification'
 import Swal from 'sweetalert2'
 import { goBackWithStack } from '../../shared/navigationHelpers'
 import BtnTrash from '../../components/BtnTrash.vue'
+import { isProfessional } from '../../shared/meCache'
 
 const route = useRoute()
 const router = useRouter()

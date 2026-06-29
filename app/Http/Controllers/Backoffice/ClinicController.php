@@ -92,9 +92,16 @@ class ClinicController extends Controller
                 'subscription_cancelled',
                 'trial_extended',
             ])
+            ->with('user:id,name,email')
             ->orderByDesc('created_at')
             ->limit(100)
             ->get();
+
+        $users = User::query()
+            ->where('clinic_id', $clinic->id)
+            ->with('profile')
+            ->orderBy('name')
+            ->get(['id', 'name', 'email', 'profile_id']);
 
         $stripeBilling = $this->loadStripeInvoices($clinic);
 
@@ -132,6 +139,7 @@ class ClinicController extends Controller
             'clinic' => $clinic,
             'activity' => $this->clinicManagementService->recentActivity($clinic),
             'activityLog' => $activityLog,
+            'users' => $users,
             'lastStripePaymentAt' => $lastStripePayment?->created_at,
             'lastClinicActivityAt' => $lastClinicActivityAt,
             'lastTenantLoginAt' => $lastTenantLoginAt ? Carbon::parse((string) $lastTenantLoginAt) : null,
