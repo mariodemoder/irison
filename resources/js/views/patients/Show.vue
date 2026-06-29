@@ -141,6 +141,10 @@
             </div>
             <div v-else class="empty-card">Sin pagos</div>
           </div>
+
+          <div class="history-card">
+            <PatientConsents v-if="patient && patient.id" :patientId="patient.id" />
+          </div>
         </div>
       </div>
 
@@ -318,6 +322,7 @@
 import MainLayout from '../../layouts/MainLayout.vue'
 import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue'
 import PatientBonuses from '../../components/PatientBonuses.vue'
+import PatientConsents from '../consents/PatientConsents.vue'
 import { formatTime, formatDateShort, statusLabel } from '../../shared/appointmentHelpers'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../../services/api'

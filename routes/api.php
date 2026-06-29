@@ -85,6 +85,12 @@ Route::middleware(['auth:sanctum', 'clinic'])->group(function () {
 // Debe ir al final para no capturar las rutas admin (settings, services, professionals, etc.)
 Route::middleware('throttle:30,1')->get('/booking/{slug}', [\App\Http\Controllers\Api\Booking\PublicBookingPageController::class, 'show']);
 
+// Consentimientos informados — rutas públicas para firma remota (sin auth, con throttle)
+Route::middleware('throttle:30,1')->prefix('consent')->group(function () {
+    Route::get('/sign/{token}', [\App\Http\Controllers\Api\ConsentSignController::class, 'show']);
+    Route::post('/sign/{token}', [\App\Http\Controllers\Api\ConsentSignController::class, 'sign']);
+});
+
 // Webhooks (Stripe, billing) deben ser públicos y verificarse por firma
 // Stripe webhook (recibe eventos desde Stripe)
 Route::post('/stripe/webhook', [\App\Http\Controllers\Api\StripeWebhookController::class, 'handle']);
@@ -186,6 +192,27 @@ Route::middleware(['auth:sanctum', 'clinic', 'check.subscription'])->group(funct
     // Servicios de la clínica (sesiones + bonos): solo owner/admin/manager
     Route::get('/company-services', [\App\Http\Controllers\Api\CompanyServicesController::class, 'index']);
     Route::put('/company-services', [\App\Http\Controllers\Api\CompanyServicesController::class, 'update']);
+
+    // Consentimientos informados — categorías
+    Route::apiResource('consent-categories', \App\Http\Controllers\Api\ConsentCategoryController::class)
+        ->only(['index', 'store', 'update', 'destroy']);
+
+    // Consentimientos informados — plantillas
+    Route::apiResource('consent-templates', \App\Http\Controllers\Api\ConsentTemplateController::class)
+        ->only(['index', 'store', 'show', 'update', 'destroy']);
+    Route::get('consent-templates/{consent_template}/versions', [\App\Http\Controllers\Api\ConsentTemplateController::class, 'versions']);
+
+    // Consentimientos por paciente
+    Route::get('patients/{patient}/consents', [\App\Http\Controllers\Api\PatientConsentController::class, 'index']);
+    Route::post('patients/{patient}/consents', [\App\Http\Controllers\Api\PatientConsentController::class, 'store']);
+
+    // Acciones sobre consentimientos
+    Route::get('consents/{consent}', [\App\Http\Controllers\Api\PatientConsentController::class, 'show']);
+    Route::post('consents/{consent}/send', [\App\Http\Controllers\Api\PatientConsentController::class, 'send']);
+    Route::post('consents/{consent}/resend', [\App\Http\Controllers\Api\PatientConsentController::class, 'resend']);
+    Route::post('consents/{consent}/sign', [\App\Http\Controllers\Api\PatientConsentController::class, 'signPresential']);
+    Route::get('consents/{consent}/download', [\App\Http\Controllers\Api\PatientConsentController::class, 'download']);
+    Route::post('consents/{consent}/revoke', [\App\Http\Controllers\Api\PatientConsentController::class, 'revoke']);
 });
 
 // Información del usuario autenticado (`/me`): debe estar disponible

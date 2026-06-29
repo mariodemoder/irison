@@ -56,6 +56,11 @@
               <path d="M4 9l8-5 8 5v10l-8 4-8-4z"></path>
               <path d="M9 12h6"></path>
             </svg>
+            <svg v-else-if="item.path === '/consent-templates'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10 2h4v6h6v12H4V8l6-6z"></path>
+              <path d="M10 2v6H4"></path>
+              <path d="M9 13h6M9 17h4"></path>
+            </svg>
             <svg v-else-if="item.path === '/settings'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="11.5" cy="10.3" r="3"></circle>
               <path d="M12 2a1.5 1.5 0 0 1 1.5 1.5v1.1a7 7 0 0 1 1.77.73l.78-.78a1.5 1.5 0 1 1 2.12 2.12l-.78.78A7 7 0 0 1 18.4 9.5h1.1a1.5 1.5 0 0 1 0 3h-1.1a7 7 0 0 1-.73 1.77l.78.78a1.5 1.5 0 1 1-2.12 2.12l-.78-.78a7 7 0 0 1-1.77.73v1.1a1.5 1.5 0 0 1-3 0v-1.1a7 7 0 0 1-1.77-.73l-.78.78a1.5 1.5 0 1 1-2.12-2.12l.78-.78A7 7 0 0 1 4.6 12.5H3.5a1.5 1.5 0 0 1 0-3h1.1a7 7 0 0 1 .73-1.77l-.78-.78a1.5 1.5 0 1 1 2.12-2.12l.78.78A7 7 0 0 1 9.5 4.6V3.5A1.5 1.5 0 0 1 12 2z"></path>
@@ -181,6 +186,7 @@ const navItems = [
   { path: '/notifications', label: 'Notificaciones' },
   { path: '/team', label: 'Equipo' },
   { path: '/company-services', label: 'Servicios' },
+  { path: '/consent-templates', label: 'Consentimientos' },
   { path: '/settings', label: 'Configuración' },
 ]
 

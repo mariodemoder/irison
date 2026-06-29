@@ -77,6 +77,10 @@ const routes = [
   { path: '/appointments/:id', component: AppointmentsShow, meta: { auth: true } },
   { path: '/appointments/:id/edit', component: AppointmentsForm, meta: { auth: true } },
   { path: '/booking/:slug', component: () => import('../views/booking/BookingPage.vue'), meta: { publicLanding: true } },
+  { path: '/consent-templates', component: () => import('../views/consents/ConsentTemplatesIndex.vue'), meta: { auth: true } },
+  { path: '/consent-templates/create', component: () => import('../views/consents/ConsentTemplatesForm.vue'), meta: { auth: true } },
+  { path: '/consent-templates/:id/edit', component: () => import('../views/consents/ConsentTemplatesForm.vue'), meta: { auth: true } },
+  { path: '/sign/:token', component: () => import('../views/consents/ConsentSignPublic.vue') },
   { path: '/privacy', component: Privacy },
   { path: '/terms', component: Terms },
 ]

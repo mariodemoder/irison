@@ -95,6 +95,8 @@ return Application::configure(basePath: dirname(__DIR__))
             ->everyThirtyMinutes()
             ->withoutOverlapping();
     })
+    ->withEvents(false)
     ->withProviders([
         App\Providers\AuthServiceProvider::class,
+        App\Providers\EventServiceProvider::class,
     ])->create();

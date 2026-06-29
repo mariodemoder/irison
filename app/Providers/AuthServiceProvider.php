@@ -12,7 +12,10 @@ use App\Models\{
     Payment,
     Reminder,
     Document,
-    Product
+    Product,
+    ConsentCategory,
+    ConsentTemplate,
+    PatientConsent,
 };
 
 use App\Policies\{
@@ -23,7 +26,10 @@ use App\Policies\{
     PaymentPolicy,
     ReminderPolicy,
     DocumentPolicy,
-    ProductPolicy
+    ProductPolicy,
+    ConsentCategoryPolicy,
+    ConsentTemplatePolicy,
+    PatientConsentPolicy,
 };
 
 class AuthServiceProvider extends ServiceProvider
@@ -37,6 +43,9 @@ class AuthServiceProvider extends ServiceProvider
         Reminder::class       => ReminderPolicy::class,
         Document::class       => DocumentPolicy::class,
         Product::class        => ProductPolicy::class,
+        ConsentCategory::class => ConsentCategoryPolicy::class,
+        ConsentTemplate::class => ConsentTemplatePolicy::class,
+        PatientConsent::class  => PatientConsentPolicy::class,
     ];
 
     public function boot(): void

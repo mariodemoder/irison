@@ -40,6 +40,7 @@ See `.opencode/skills/index.md` for detailed routing. Key skills:
 - `qa` — Testing strategies, delegation
 - `deployment` — Production checklist, queues
 - `backoffice` — Tenant management, invoices
+- `consent` — Consentimientos informados, plantillas, firma digital, envío remoto
 
 ## QA Delegation Rule
 
