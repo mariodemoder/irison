@@ -41,6 +41,6 @@ class SubscriptionRequest extends Model
 
     public function reviewer(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'reviewed_by');
+        return $this->belongsTo(AdminUser::class, 'reviewed_by');
     }
 }

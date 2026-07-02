@@ -170,6 +170,7 @@ Route::middleware(['auth:sanctum', 'clinic', 'check.subscription'])->group(funct
     Route::get('/settings/subscription', [\App\Http\Controllers\Api\SubscriptionController::class, 'show']);
     Route::get('/settings/subscription/history', [\App\Http\Controllers\Api\SubscriptionController::class, 'history']);
     Route::post('/settings/subscription/request', [\App\Http\Controllers\Api\SubscriptionRequestController::class, 'store']);
+    Route::get('/settings/subscription/backup', [\App\Http\Controllers\Api\SubscriptionBackupController::class, 'download']);
 
     // Logout: revoca el token actual
     Route::post('/logout', [\App\Http\Controllers\Api\AuthController::class, 'logout']);

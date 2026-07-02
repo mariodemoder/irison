@@ -50,7 +50,7 @@
           </div>
         </section>
 
-        <!-- Historial -->
+        <!-- Historial de solicitudes -->
         <section class="sub-section">
           <h2>Historial de solicitudes</h2>
           <div v-if="history.length === 0" class="empty-card">Sin solicitudes previas</div>
@@ -72,6 +72,18 @@
               </tr>
             </tbody>
           </table>
+        </section>
+
+        <!-- Backup de datos -->
+        <section class="sub-section">
+          <h2>Backup de datos</h2>
+          <div class="backup-card">
+            <p class="backup-desc">Descarga un archivo Excel con todos los datos de tu clínica para tu seguridad o migración.</p>
+            <button class="btn btn-primary backup-btn" :disabled="backupping" @click="downloadBackup">
+              <span v-if="backupping">Generando...</span>
+              <span v-else>📥 Generar backup (.xlsx)</span>
+            </button>
+          </div>
         </section>
       </template>
 
@@ -117,6 +129,7 @@ const sub = ref(null)
 const history = ref([])
 const showModal = ref(false)
 const sending = ref(false)
+const backupping = ref(false)
 const form = ref({ requested_plan: '', comments: '' })
 const pricingMap = ref({})
 
@@ -183,6 +196,26 @@ async function submitRequest() {
   }
 }
 
+async function downloadBackup() {
+  backupping.value = true
+  try {
+    const res = await api.get('/settings/subscription/backup', { responseType: 'blob' })
+    const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'backup-clinica.xlsx'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+    toast.success('Backup descargado correctamente')
+  } catch (_) {
+    toast.error('Error al generar el backup')
+  } finally {
+    backupping.value = false
+  }
+}
+
 function fmtDate(d) {
   if (!d) return ''
   return new Date(d).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -246,4 +279,8 @@ function statusLabel(s) {
 .input:focus { border-color: #4338ca; box-shadow: 0 0 0 2px rgba(67,56,202,.15); }
 textarea.input { resize: vertical; }
 .form-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+.backup-card { background: #fff; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 3px rgba(0,0,0,.08); display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.backup-desc { margin: 0; font-size: 14px; color: #6b7280; }
+.backup-btn { white-space: nowrap; }
+.backup-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 </style>

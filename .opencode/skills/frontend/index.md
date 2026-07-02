@@ -21,3 +21,29 @@
 - Creation popups: always visible labels (placeholders only complementary)
 - Shared CSS in `resources/css/app.css`: `.swal-popup-card`, `.swal-card`, `.create-row`, `.create-grid-2`
 - No duplicate popup styles in view-scoped files
+
+## Table Responsiveness (Index Views)
+
+Cambios en `resources/css/app.css:446-489` para que las tablas index de productos, pagos, bonos, facturas, equipo se adapten al ancho del formulario:
+
+- `table-layout: fixed` → `auto` en `.entity-table` (línea 449)
+- Eliminados todos los `min-width` fijos por tabla: products (1120px), payments (1160px), bonuses (1260px), invoices (1040px)
+- Eliminados `width` fijos de `.col-min` / `.col-mid` (antes tenían 85px y 150px respectivamente)
+- Eliminado `@media (max-width:900px)` que forzaba `min-width:760px`
+- Se mantienen clases `.col-min` / `.col-mid` en templates Vue pero sin width fijo; heredan de `table-layout:auto`
+- Nueva clase `.wide-min` (85px) y `.wide-mid` (150px) para columnas que sí necesitan ancho fijo opcional
+- Nueva clase `.col-max` (20%) como alias de `.wide-max`
+
+## Patient Show Layout
+
+`resources/js/views/patients/Show.vue` — Grid de historial en la ficha paciente.
+
+### history-grid
+- `grid-template-columns: repeat(2, 1fr)` (antes 3 columnas) para dar más espacio a cada card.
+- Cada card contiene: Citas, Bonos, Pagos, Consentimientos.
+
+### Appointments line
+- Una línea por cita con: `fecha + hora` (bold nowrap) + `tipo cita` (ellipsis) + `profesional` (nowrap) + `estado` (badge, margin-left auto).
+- Flex nowrap en toda la línea.
+- Backend: `app/Services/Patients/PatientsServices.php:96-109` eager load `appointments.appointmentType` y `appointments.professional`.
+- Response: `appointment_type.description` y `professional.name`.

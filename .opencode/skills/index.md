@@ -20,6 +20,9 @@ Router rápido para cargar solo el skill que necesitas.
 ## Appointments
 - `appointments/index.md` — Form, availability, date/time pitfalls, overlap, bonus/credit
 
+## Consentimientos
+- `consent.md` — Templates, digital signature, remote signing, PDF generation, patient embed layout
+
 ## Online Booking
 - `booking/index.md` — Models, AvailabilityEngine, notifications, public vs admin routes
 

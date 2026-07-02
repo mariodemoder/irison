@@ -131,6 +131,21 @@ Frontend (Vue 3):
 - `ConsentTemplatePolicy`: viewAny/view → todos clinic; create/update/delete → hasFullAccess
 - `PatientConsentPolicy`: viewAny/signPresential → todos clinic; create/update/delete → hasFullAccess
 
+## PatientConsents Embed Layout
+
+`resources/js/views/consents/PatientConsents.vue` — Embed en ficha paciente (dentro del history-grid 2 columnas).
+
+### Layout
+- **Una línea por consentimiento** (flex row): título + fecha + badge + acciones.
+- Título con `ellipsis` y `max-width: 180px`, `white-space: nowrap`.
+- Badge de estado con colores: pending (amarillo), sent (azul), signed (verde), revoked (gris), rejected (rojo).
+- Acciones nowrap sin wrap: Enviar, Firmar, Reenviar, PDF (solo signed), Revocar (solo signed).
+- Estilos clave: `.consent-info { flex-shrink:1; min-width:0 }`, `.consent-actions { flex-wrap:nowrap; flex-shrink:0 }`.
+
+### Modales
+- **Nuevo consentimiento**: modal backdrop con selector de plantilla (`/api/consent-templates`).
+- **Firmar consentimiento**: modal con `<SignPad>` y confirmación vía `POST /api/consents/{consent}/sign`.
+
 ## Consideraciones importantes
 
 1. **PDF nunca se almacena en disco**: se genera en memoria con Browsershot bajo demanda
