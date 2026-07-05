@@ -45,6 +45,7 @@ class StripeWebhookController extends Controller
 
         if ($event->type === 'checkout.session.completed') {
             $session = $event->data->object;
+            $sessionId = (string) ($session->id ?? '');
             $email   = $session->customer_email ?? null;
             $customerId = (string) ($session->customer ?? '');
             $metadataClinicId = (int) ($session->metadata->clinic_id ?? 0);
@@ -121,9 +122,52 @@ class StripeWebhookController extends Controller
                     metadata: [
                         'provider' => 'stripe',
                         'webhook_event' => 'checkout.session.completed',
-                        'session_id' => (string) ($session->id ?? ''),
+                        'session_id' => $sessionId,
                     ],
                 );
+            }
+
+            // ✅ NUEVO: Manejar el flujo de upgrade de suscripción
+            if ($sessionId !== '') {
+                $subscriptionRequest = \App\Models\SubscriptionRequest::where('stripe_checkout_session_id', $sessionId)
+                    ->first();
+
+                if ($subscriptionRequest && $subscriptionRequest->status === 'waiting_payment') {
+                    // ✅ Log el webhook del upgrade
+                    \Illuminate\Support\Facades\Log::info('Procesando webhook de checkout.session.completed para solicitud de upgrade', [
+                        'request_id' => $subscriptionRequest->id,
+                        'clinic_id' => $subscriptionRequest->clinic_id,
+                        'session_id' => $sessionId,
+                        'plan' => $subscriptionRequest->requested_plan,
+                    ]);
+
+                    // ✅ Servicios para procesar el payment
+                    $upgradeService = app(\App\Services\Subscription\SubscriptionUpgradeService::class);
+
+                    try {
+                        // ✅ Marcar request como pagado y completar upgrade
+                        $upgradeService->handlePaymentCompleted($subscriptionRequest, [
+                            'provider' => 'stripe',
+                            'session_id' => $sessionId,
+                            'amount' => $session->amount_total,
+                            'currency' => $session->currency,
+                        ]);
+
+                        // ✅ Log el éxito
+                        \Illuminate\Support\Facades\Log::info('Upgrade de suscripción completado', [
+                            'request_id' => $subscriptionRequest->id,
+                            'clinic_id' => $subscriptionRequest->clinic_id,
+                            'plan' => $subscriptionRequest->requested_plan,
+                        ]);
+                    } catch (\Throwable $e) {
+                        // ❌ Log el error pero no fallar el webhook
+                        \Illuminate\Support\Facades\Log::error('Error en webhook de checkout.session.completed para upgrade', [
+                            'request_id' => $subscriptionRequest->id,
+                            'clinic_id' => $subscriptionRequest->clinic_id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
             }
             } elseif ($event->type === 'invoice.payment_succeeded') {
                 $invoice = $event->data->object;

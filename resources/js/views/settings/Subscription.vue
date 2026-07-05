@@ -181,16 +181,27 @@ onMounted(async () => {
 
 async function submitRequest() {
   if (!form.value.requested_plan) return
+  const currentPlan = String(sub.value?.plan || 'basic').trim().toLowerCase()
+  if (form.value.requested_plan === currentPlan) {
+    toast.error('El plan solicitado debe ser distinto al plan actual')
+    return
+  }
+
   sending.value = true
   try {
-    await api.post('/settings/subscription/request', form.value)
+    await api.post('/settings/subscription/request', {
+      current_plan: currentPlan,
+      requested_plan: form.value.requested_plan,
+      comments: form.value.comments,
+    })
     toast.success('Solicitud enviada. Te contactaremos pronto.')
     showModal.value = false
     form.value = { requested_plan: '', comments: '' }
     const res = await api.get('/settings/subscription/history')
     history.value = res.data.data
-  } catch (_) {
-    toast.error('Error al enviar solicitud')
+  } catch (e) {
+    const message = e?.response?.data?.message || 'Error al enviar solicitud'
+    toast.error(message)
   } finally {
     sending.value = false
   }

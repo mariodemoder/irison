@@ -20,6 +20,9 @@ class SubscriptionRequest extends Model
         'requested_by',
         'reviewed_by',
         'reviewed_at',
+        'completed_at',
+        'stripe_checkout_session_id',
+        'checkout_url',
     ];
 
     protected function casts(): array

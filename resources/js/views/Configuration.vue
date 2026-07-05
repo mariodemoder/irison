@@ -844,6 +844,7 @@ async function previewAndOpen() {
   await openPdfInNewTab()
 }
 
+
 async function subscribe() {
   if (!canActivatePaidPlan.value) {
     activeTab.value = 'clinica'
@@ -852,12 +853,18 @@ async function subscribe() {
   }
 
   try {
-    const res = await api.post('/stripe/checkout')
-    window.location.href = res.data.url
+    const res = await api.post('/billing/checkout')
+    const redirectUrl = res.data?.checkout?.checkout_url || res.data?.url || res.data?.checkout_url || res.data?.redirect_url
+    if (!redirectUrl) {
+      throw new Error('No se recibió una URL de redirección')
+    }
+
+    window.location.href = redirectUrl
   } catch (e) {
     console.error('Error creando checkout', e)
     toast.error('Error iniciando subscripción')
   }
+
 }
 
 function beginPaidPlanFake() {

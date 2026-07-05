@@ -3,43 +3,103 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Mail\SubscriptionRequestMail;
 use App\Models\SubscriptionRequest;
+use App\Services\Subscription\SubscriptionRequestService;
+use App\Services\Subscription\SubscriptionUpgradeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Mail;
 
 class SubscriptionRequestController extends Controller
 {
+    public function __construct(
+        private readonly SubscriptionRequestService $requestService,
+        private readonly SubscriptionUpgradeService $upgradeService,
+    ) {}
+
     public function store(Request $request): JsonResponse
     {
-        Gate::authorize('create', SubscriptionRequest::class);
-
-        $data = $request->validate([
-            'requested_plan' => 'required|in:pro,enterprise',
+        $requestData = $request->validate([
+            'current_plan' => 'nullable|string|in:basic,pro,enterprise',
+            'requested_plan' => 'required|string|in:basic,pro,enterprise',
             'comments' => 'nullable|string|max:2000',
         ]);
 
-        $user = Auth::user();
-        $clinic = $user->clinic;
-        $currentPlan = $clinic->plan ?? 'basic';
+        $currentPlan = strtolower(trim((string) ($requestData['current_plan'] ?? $request->user()?->clinic?->plan ?? 'basic')));
+        $requestedPlan = strtolower(trim((string) $requestData['requested_plan']));
 
-        $subscriptionRequest = SubscriptionRequest::create([
-            'clinic_id' => $clinic->id,
-            'current_plan' => $currentPlan,
-            'requested_plan' => $data['requested_plan'],
-            'comments' => $data['comments'] ?? null,
-            'requested_by' => $user->id,
-            'status' => 'pending',
-        ]);
-
-        $recipient = trim((string) config('billing.subscription_request_notification_to', ''));
-        if ($recipient && filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
-            Mail::to($recipient)->queue(new SubscriptionRequestMail($subscriptionRequest));
+        if (! $this->isValidUpgrade($currentPlan, $requestedPlan)) {
+            return response()->json([
+                'message' => 'El plan solicitado debe ser superior al plan actual.',
+            ], 422);
         }
 
-        return response()->json(['data' => $subscriptionRequest], 201);
+        $requestData['current_plan'] = $currentPlan;
+        $requestData['requested_plan'] = $requestedPlan;
+
+        try {
+            $subscriptionRequest = $this->requestService->createRequest(
+                $requestData,
+                $request->user()?->clinic_id,
+                $request->user()?->id,
+            );
+
+            return response()->json([
+                'message' => 'Solicitud de suscripción creada correctamente.',
+                'id' => $subscriptionRequest->id,
+            ], 201);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'Error al crear solicitud: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function approve(int $id): JsonResponse
+    {
+        $request = SubscriptionRequest::findOrFail($id);
+
+        if ($request->status !== 'pending') {
+            return response()->json(['message' => 'Esta solicitud ya ha sido procesada.'], 422);
+        }
+
+        try {
+            $this->upgradeService->approveAndGenerateCheckout($request);
+
+            return response()->json(['message' => 'Solicitud aprobada. Enlace de pago generado.'], 200);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'Error al aprobar solicitud: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function reject(int $id, Request $request): JsonResponse
+    {
+        $requestData = $request->validate([
+            'reviewer_comments' => 'nullable|string|max:2000',
+        ]);
+
+        $subscriptionRequest = SubscriptionRequest::findOrFail($id);
+
+        if ($subscriptionRequest->status !== 'pending') {
+            return response()->json(['message' => 'Esta solicitud ya ha sido procesada.'], 422);
+        }
+
+        $subscriptionRequest->status = 'rejected';
+        $subscriptionRequest->reviewer_comments = $requestData['reviewer_comments'] ?? null;
+        $subscriptionRequest->save();
+
+        return response()->json(['message' => 'Solicitud rechazada.'], 200);
+    }
+
+    private function isValidUpgrade(string $currentPlan, string $requestedPlan): bool
+    {
+        $levels = [
+            'basic' => 1,
+            'pro' => 2,
+            'enterprise' => 3,
+        ];
+
+        if (! isset($levels[$currentPlan], $levels[$requestedPlan])) {
+            return false;
+        }
+
+        return $levels[$requestedPlan] > $levels[$currentPlan];
     }
 }

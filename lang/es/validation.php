@@ -191,6 +191,8 @@ return [
         'amount' => 'importe',
         'paid_at' => 'fecha de pago',
         'reference' => 'referencia',
+        'current_plan' => 'current plan',
+        'requested_plan' => 'requested plan',
     ],
 
 ];
