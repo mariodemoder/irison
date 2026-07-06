@@ -15,8 +15,14 @@ class UpgradeSubscription
     {
         try {
             $request = $event->request;
+            $recipient = $request->clinic->ownerUser()->first()
+                ?? $request->clinic->users()->orderBy('id')->first();
 
-            $request->clinic->user->notify(new SubscriptionUpgradedNotification($request));
+            if (! $recipient) {
+                throw new \RuntimeException('No recipient user found for upgraded notification');
+            }
+
+            $recipient->notify(new SubscriptionUpgradedNotification($request));
         } catch (\Throwable $e) {
             Log::error('Failed to send subscription upgraded notification', [
                 'request_id' => $event->request->id,

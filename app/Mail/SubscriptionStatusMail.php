@@ -19,7 +19,7 @@ class SubscriptionStatusMail extends Mailable
 
     public function envelope(): Envelope
     {
-        $statusText = $this->request->status === 'approved' ? 'aprobada' : 'rechazada';
+        $statusText = $this->statusText();
         return new Envelope(
             subject: 'Tu solicitud de upgrade ha sido ' . $statusText,
         );
@@ -27,7 +27,7 @@ class SubscriptionStatusMail extends Mailable
 
     public function content(): Content
     {
-        $statusText = $this->request->status === 'approved' ? 'aprobada' : 'rechazada';
+        $statusText = $this->statusText();
         return new Content(
             view: 'emails.subscription-status',
             with: [
@@ -38,5 +38,14 @@ class SubscriptionStatusMail extends Mailable
                 'comments' => $this->request->reviewer_comments ?? '-',
             ],
         );
+    }
+
+    private function statusText(): string
+    {
+        return match ((string) $this->request->status) {
+            'approved', 'waiting_payment', 'paid', 'completed' => 'aprobada',
+            'rejected' => 'rechazada',
+            default => (string) $this->request->status,
+        };
     }
 }

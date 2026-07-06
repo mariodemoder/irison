@@ -132,6 +132,13 @@ class StripeWebhookController extends Controller
                 $subscriptionRequest = \App\Models\SubscriptionRequest::where('stripe_checkout_session_id', $sessionId)
                     ->first();
 
+                if (! $subscriptionRequest) {
+                    $metadataRequestId = (int) ($session->metadata->subscription_request_id ?? 0);
+                    if ($metadataRequestId > 0) {
+                        $subscriptionRequest = \App\Models\SubscriptionRequest::find($metadataRequestId);
+                    }
+                }
+
                 if ($subscriptionRequest && $subscriptionRequest->status === 'waiting_payment') {
                     // ✅ Log el webhook del upgrade
                     \Illuminate\Support\Facades\Log::info('Procesando webhook de checkout.session.completed para solicitud de upgrade', [

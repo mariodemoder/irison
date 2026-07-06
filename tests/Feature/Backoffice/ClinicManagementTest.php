@@ -7,6 +7,7 @@ namespace Tests\Feature\Backoffice;
 use App\Models\AdminUser;
 use App\Models\Clinic;
 use App\Models\Subscription;
+use App\Models\SubscriptionRequest;
 use App\Models\User;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -138,33 +139,81 @@ class ClinicManagementTest extends TestCase
             ->assertSessionHasErrors(['action']);
     }
 
-    public function test_billing_can_cancel_subscription_and_change_plan(): void
+    public function test_billing_can_approve_subscription_request_in_trial_and_generate_checkout_link(): void
     {
         $admin = $this->createAdmin(AdminUser::ROLE_BILLING);
-        [$clinic] = $this->createClinicWithOwner('Clinic Billing', 'billing@test.local');
+        [$clinic, $user] = $this->createClinicWithOwner('Clinic Billing', 'billing@test.local', 'basic');
 
-        $paidUntil = now()->addMonth();
+        $clinic->update([
+            'subscription_status' => 'trial',
+            'trial_ends_at' => now()->addDays(7),
+        ]);
 
         $subscription = Subscription::query()->create([
             'clinic_id' => $clinic->id,
-            'status' => 'active',
-            'current_period_end' => $paidUntil,
+            'status' => 'trial',
+            'trial_ends_at' => now()->addDays(7),
+            'current_period_end' => now()->addDays(30),
+        ]);
+
+        $subscriptionRequest = SubscriptionRequest::create([
+            'clinic_id' => $clinic->id,
+            'current_plan' => 'basic',
+            'requested_plan' => 'pro',
+            'status' => 'pending',
+            'requested_by' => $user->id,
         ]);
 
         $this->actingAs($admin, 'admin')
-            ->post('/backoffice/clinics/' . $clinic->id . '/cancel-subscription', ['reason' => 'manual'])
-            ->assertRedirect();
+            ->patch('/backoffice/subscription-requests/' . $subscriptionRequest->id . '/approve', [
+                'reviewer_comments' => 'Solicitud aprobada automáticamente.',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('status', 'Solicitud aprobada. Se ha generado el enlace de pago para la clínica.');
+
+        $subscriptionRequest->refresh();
+        $this->assertSame('waiting_payment', $subscriptionRequest->status);
+        $this->assertNotNull($subscriptionRequest->checkout_url);
 
         $clinic->refresh();
-        $subscription->refresh();
-        $this->assertSame('canceled', $clinic->subscription_status);
-        $this->assertSame($paidUntil->toDateString(), $subscription->current_period_end?->toDateString());
+        $this->assertSame('basic', (string) $clinic->plan);
+        $this->assertSame('trial', $clinic->subscription_status);
+    }
+
+    public function test_billing_can_approve_subscription_request_in_active_basic_and_complete_automatically(): void
+    {
+        $admin = $this->createAdmin(AdminUser::ROLE_BILLING);
+        [$clinic, $user] = $this->createClinicWithOwner('Clinic Billing Auto', 'billing-auto@test.local', 'basic');
+
+        Subscription::query()->create([
+            'clinic_id' => $clinic->id,
+            'status' => 'active',
+            'current_period_end' => now()->addDays(30),
+        ]);
+
+        $subscriptionRequest = SubscriptionRequest::create([
+            'clinic_id' => $clinic->id,
+            'current_plan' => 'basic',
+            'requested_plan' => 'pro',
+            'status' => 'pending',
+            'requested_by' => $user->id,
+        ]);
 
         $this->actingAs($admin, 'admin')
-            ->patch('/backoffice/clinics/' . $clinic->id . '/change-plan', ['plan' => 'enterprise', 'reason' => 'upgrade'])
-            ->assertRedirect();
+            ->patch('/backoffice/subscription-requests/' . $subscriptionRequest->id . '/approve', [
+                'reviewer_comments' => 'Upgrade automático para clínica activa basic.',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('status', 'Solicitud aprobada y upgrade completado automáticamente (pago registrado).');
 
-        $this->assertSame('enterprise', (string) $clinic->fresh()->plan);
+        $subscriptionRequest->refresh();
+        $this->assertSame('completed', $subscriptionRequest->status);
+        $this->assertNotNull($subscriptionRequest->completed_at);
+
+        $clinic->refresh();
+        $this->assertSame('pro', (string) $clinic->plan);
+        $this->assertSame(10, $clinic->max_users);
+        $this->assertSame('active', $clinic->subscription_status);
     }
 
     public function test_reactivating_canceled_clinic_marks_as_fake_provider_to_avoid_stripe_conflicts(): void
@@ -225,14 +274,16 @@ class ClinicManagementTest extends TestCase
         ]);
     }
 
-    private function createClinicWithOwner(string $name, string $ownerEmail): array
+    private function createClinicWithOwner(string $name, string $ownerEmail, string $plan = 'basic'): array
     {
         $clinic = Clinic::query()->create([
             'name' => $name,
-            'subscription_status' => 'trial',
-            'trial_ends_at' => now()->addDays(15),
-            'plan' => 'basic',
-            'status' => 'trial',
+            'subscription_status' => 'active',
+            'trial_ends_at' => null,
+            'plan' => $plan,
+            'status' => 'active',
+            'subscribed_at' => now(),
+            'subscription_provider' => 'fake',
         ]);
 
         $owner = User::query()->create([

@@ -39,3 +39,14 @@ La tabla `subscription_requests` tiene dos FKs a usuarios:
 ## Tenant Management
 
 - ...
+
+## Upgrade de Plan (Backoffice)
+
+Para incidencias o cambios en upgrades, cargar primero:
+
+- `backoffice/upgrade-flow.md` — flujo completo `trial` vs `basic activo`, estados esperados, archivos clave y checklist de diagnóstico.
+
+Regla rápida:
+
+- `trial` => `waiting_payment` + `checkout_url` + email + CTA en cliente.
+- `basic` activo (no trial) => auto-completado + actualización de plan + comprobante por email.

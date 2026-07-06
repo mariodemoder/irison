@@ -225,6 +225,24 @@
                   <div class="subscription-meta">
                     <div><strong>Modo de pago:</strong> {{ paymentModeLabel }}</div>
                   </div>
+
+                <div v-if="pendingUpgradeRequest" class="upgrade-pending-card" style="margin-top:12px">
+                  <div class="upgrade-pending-title">Upgrade pendiente de pago</div>
+                  <div class="upgrade-pending-copy">
+                    Tu solicitud de <strong>{{ pendingUpgradeRequest.current_plan }}</strong> a <strong>{{ pendingUpgradeRequest.requested_plan }}</strong>
+                    fue aprobada por backoffice. Completa el pago para activar el cambio.
+                  </div>
+                  <a
+                    v-if="pendingUpgradeRequest.checkout_url"
+                    class="upgrade-pending-link"
+                    :href="pendingUpgradeRequest.checkout_url"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    Ir a pagar en Stripe
+                  </a>
+                </div>
+
                 <div style="margin-top:12px">
                   <div v-if="status==='trial'">
                     <div class="max-w-2xl mx-auto my-6 p-6 bg-amber-50 border-l-4 border-amber-500 rounded-r-xl shadow-sm font-sans text-slate-800">
@@ -442,6 +460,7 @@ const saving = ref(false)
 const cancellingSubscription = ref(false)
 const showCancelSubscriptionModal = ref(false)
 const showSubscriptionMenu = ref(false)
+const subscriptionRequests = ref([])
 
 function handleClickOutsideSubMenu() {
   showSubscriptionMenu.value = false
@@ -584,6 +603,10 @@ const isValidNif = computed(() => isValidSpanishTaxId(normalizedClinicNif.value)
 const hasClinicAddress = computed(() => String(form.value.clinic_address || '').trim().length >= 5)
 const canActivatePaidPlan = computed(() => isValidNif.value && hasClinicAddress.value)
 
+const pendingUpgradeRequest = computed(() => {
+  return subscriptionRequests.value.find((req) => req?.status === 'waiting_payment' && req?.checkout_url) || null
+})
+
     const paymentModeLabel = computed(() => {
       const provider = String(clinic.value?.subscription_provider || '').trim().toLowerCase()
       if (provider === 'stripe') return 'Stripe'
@@ -623,13 +646,18 @@ watch(activeTab, async (tab) => {
 async function load() {
   loading.value = true
   try {
-    const res = await api.get('/me')
-    user.value = res.data.user
-    clinic.value = res.data.clinic
-    status.value = res.data.status || status.value
-    trial_ends_at.value = res.data.trial_ends_at || null
-    subscriptionPayments.value = Array.isArray(res.data.subscription_payments) ? res.data.subscription_payments : []
-    invoiceBackgroundUrl.value = res.data.clinic_invoice_background_url || null
+    const [meRes, historyRes] = await Promise.all([
+      api.get('/me'),
+      api.get('/settings/subscription/history').catch(() => ({ data: { data: [] } })),
+    ])
+
+    user.value = meRes.data.user
+    clinic.value = meRes.data.clinic
+    status.value = meRes.data.status || status.value
+    trial_ends_at.value = meRes.data.trial_ends_at || null
+    subscriptionPayments.value = Array.isArray(meRes.data.subscription_payments) ? meRes.data.subscription_payments : []
+    invoiceBackgroundUrl.value = meRes.data.clinic_invoice_background_url || null
+    subscriptionRequests.value = Array.isArray(historyRes?.data?.data) ? historyRes.data.data : []
 
     form.value.name = user.value?.name ?? ''
     form.value.email = user.value?.email ?? ''
@@ -1074,6 +1102,38 @@ onBeforeUnmount(() => {
   border-radius: 8px;
   padding: 8px 10px;
   font-size: 13px;
+}
+.upgrade-pending-card {
+  border: 1px solid #bfdbfe;
+  background: linear-gradient(180deg, #eff6ff 0%, #ffffff 100%);
+  border-radius: 10px;
+  padding: 12px;
+}
+.upgrade-pending-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e3a8a;
+}
+.upgrade-pending-copy {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #334155;
+}
+.upgrade-pending-link {
+  display: inline-flex;
+  margin-top: 10px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #1d4ed8;
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+}
+.upgrade-pending-link:hover {
+  background: #1e40af;
 }
 .subscription-header { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-top:4px }
 .subscription-actions { display:flex; gap:8px; margin-top:0; margin-left:auto; flex-wrap:wrap }

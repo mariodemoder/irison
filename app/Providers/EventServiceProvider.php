@@ -43,7 +43,6 @@ class EventServiceProvider extends ServiceProvider
         ],
         PaymentCompleted::class => [
             [SendPaymentConfirmationEmail::class, 'handle'],
-            [UpgradeSubscription::class, 'handle'],
         ],
         SubscriptionUpgraded::class => [
             [UpgradeSubscription::class, 'handle'],

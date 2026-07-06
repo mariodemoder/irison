@@ -60,6 +60,12 @@
                             <td class="py-2 pr-4">
                                 @if ($sr->status === 'pending')
                                     <span class="rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">Pendiente</span>
+                                @elseif ($sr->status === 'waiting_payment')
+                                    <span class="rounded bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">Aprobada - Pendiente pago</span>
+                                @elseif ($sr->status === 'paid')
+                                    <span class="rounded bg-cyan-100 px-2 py-0.5 text-xs font-medium text-cyan-700">Pago recibido</span>
+                                @elseif ($sr->status === 'completed')
+                                    <span class="rounded bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">Completada</span>
                                 @elseif ($sr->status === 'approved')
                                     <span class="rounded bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">Aprobada</span>
                                 @else

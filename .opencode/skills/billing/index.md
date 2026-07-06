@@ -1,5 +1,10 @@
 # Billing Skill — Planes y Suscripciones
 
+## Router rápido (anti-exploración)
+
+- Si el incidente es de upgrade aprobado en backoffice pero no reflejado en cliente/pago:
+  - Cargar `backoffice/upgrade-flow.md` antes de explorar código.
+
 ## Planes disponibles (`Clinic::PLAN_USER_LIMITS`)
 
 Definidos en `app/Models/Clinic.php`:

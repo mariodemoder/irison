@@ -61,6 +61,7 @@
                 <th>Desde</th>
                 <th>Hacia</th>
                 <th>Estado</th>
+                <th>Acción</th>
               </tr>
             </thead>
             <tbody>
@@ -69,6 +70,10 @@
                 <td>{{ r.current_plan }}</td>
                 <td>{{ r.requested_plan }}</td>
                 <td><span class="req-status" :class="'req-' + r.status">{{ statusLabel(r.status) }}</span></td>
+                <td>
+                  <a v-if="r.status === 'waiting_payment' && r.checkout_url" :href="r.checkout_url" target="_blank" rel="noopener" class="pay-link">Ir a pagar</a>
+                  <span v-else class="muted-row">-</span>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -233,7 +238,7 @@ function fmtDate(d) {
 }
 
 function statusLabel(s) {
-  const labels = { pending: 'Pendiente', approved: 'Aprobada', rejected: 'Rechazada', completed: 'Completada' }
+  const labels = { pending: 'Pendiente', waiting_payment: 'Pendiente de pago', approved: 'Aprobada', rejected: 'Rechazada', completed: 'Completada' }
   return labels[s] || s
 }
 </script>
@@ -281,6 +286,10 @@ function statusLabel(s) {
 .req-approved { background: #d1fae5; color: #065f46; }
 .req-rejected { background: #fee2e2; color: #991b1b; }
 .req-completed { background: #dbeafe; color: #1e40af; }
+.req-waiting_payment { background: #ffedd5; color: #9a3412; }
+.pay-link { color: #1d4ed8; font-weight: 600; text-decoration: none; }
+.pay-link:hover { text-decoration: underline; }
+.muted-row { color: #9ca3af; }
 .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; }
 .modal-content { background: #fff; border-radius: 12px; padding: 24px; min-width: 400px; max-width: 90vw; }
 .modal-content h3 { font-size: 18px; font-weight: 700; margin-bottom: 16px; }

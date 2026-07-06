@@ -36,11 +36,12 @@ class StripePaymentProvider implements PaymentProviderInterface
     {
         $successUrl = config('app.url') . '/billing/required?checkout=success&session_id={CHECKOUT_SESSION_ID}';
         $cancelUrl  = config('app.url') . '/billing/required?checkout=cancel';
+        $priceId = $this->resolvePriceIdForCheckout($data);
 
         $params = [
             'mode'       => 'subscription',
             'line_items' => [[
-                'price'    => config('services.stripe.price_id'),
+                'price'    => $priceId,
                 'quantity' => 1,
             ]],
             'success_url' => $successUrl,
@@ -84,5 +85,58 @@ class StripePaymentProvider implements PaymentProviderInterface
     public function getName(): string
     {
         return 'stripe';
+    }
+
+    private function resolvePriceIdForCheckout(array $data): string
+    {
+        $explicitPriceId = trim((string) ($data['price_id'] ?? ''));
+        if ($explicitPriceId !== '') {
+            return $explicitPriceId;
+        }
+
+        $productId = trim((string) ($data['stripe_product_id'] ?? ''));
+        if ($productId !== '') {
+            $resolved = $this->resolvePriceIdFromProduct($productId);
+            if ($resolved !== null) {
+                return $resolved;
+            }
+
+            throw new \RuntimeException('No se pudo resolver un price activo para el producto Stripe: ' . $productId);
+        }
+
+        $defaultPriceId = trim((string) config('services.stripe.price_id'));
+        if ($defaultPriceId === '') {
+            throw new \RuntimeException('No hay STRIPE_PRICE_ID configurado para crear el checkout');
+        }
+
+        return $defaultPriceId;
+    }
+
+    private function resolvePriceIdFromProduct(string $productId): ?string
+    {
+        $product = $this->stripe->products->retrieve($productId, []);
+
+        $defaultPrice = $product->default_price ?? null;
+        if (is_string($defaultPrice) && trim($defaultPrice) !== '') {
+            return $defaultPrice;
+        }
+
+        if (is_object($defaultPrice) && ! empty($defaultPrice->id)) {
+            return (string) $defaultPrice->id;
+        }
+
+        $prices = $this->stripe->prices->all([
+            'product' => $productId,
+            'active' => true,
+            'limit' => 10,
+        ]);
+
+        foreach ($prices->data as $price) {
+            if (! empty($price->recurring) && ! empty($price->id)) {
+                return (string) $price->id;
+            }
+        }
+
+        return null;
     }
 }

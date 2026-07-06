@@ -40,6 +40,7 @@ Router rápido para cargar solo el skill que necesitas.
 
 ## Backoffice
 - `backoffice/index.md` — Tenant management, Stripe customer sync, invoice resolution
+- `backoffice/upgrade-flow.md` — Flujo de upgrade por backoffice (`trial` vs `basic activo`), estados, webhooks y diagnóstico rápido
 
 ---
 

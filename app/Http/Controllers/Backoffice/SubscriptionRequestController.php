@@ -26,7 +26,13 @@ class SubscriptionRequestController extends Controller
             ->orderByDesc('created_at');
 
         if ($request->query('status')) {
-            $query->where('status', $request->query('status'));
+            $status = (string) $request->query('status');
+
+            if ($status === 'approved') {
+                $query->whereIn('status', ['waiting_payment', 'paid', 'completed']);
+            } else {
+                $query->where('status', $status);
+            }
         }
 
         return view('backoffice.subscription_requests.index', [
@@ -53,6 +59,12 @@ class SubscriptionRequestController extends Controller
             );
 
             $this->sendStatusMail($subscriptionRequest);
+
+            $status = (string) ($subscriptionRequest->fresh()?->status ?? '');
+            if ($status === 'completed') {
+                return redirect()->route('backoffice.subscription-requests.index')
+                    ->with('status', 'Solicitud aprobada y upgrade completado automáticamente (pago registrado).');
+            }
 
             return redirect()->route('backoffice.subscription-requests.index')
                 ->with('status', 'Solicitud aprobada. Se ha generado el enlace de pago para la clínica.');
