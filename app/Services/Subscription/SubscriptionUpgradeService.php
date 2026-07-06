@@ -8,13 +8,13 @@ use App\Events\SubscriptionUpgraded as SubscriptionUpgradedEvent;
 use App\Models\BillingPayment;
 use App\Models\Clinic;
 use App\Models\SubscriptionRequest;
+use App\Services\PaymentProvider\PaymentProviderInterface;
 use App\Services\PaymentProvider\Resolver;
 
 class SubscriptionUpgradeService
 {
     public function __construct(
         private readonly SubscriptionRequestService $requestService,
-        private readonly StripeCheckoutService $checkoutService,
         private readonly Resolver $paymentProviderResolver,
     ) {}
 
@@ -23,38 +23,33 @@ class SubscriptionUpgradeService
         ?int $reviewedBy = null,
         ?string $reviewerComments = null,
     ): void {
-        // Update request status and reviewer info
         $this->requestService->approveRequest($request, $reviewedBy, $reviewerComments);
 
-        // Regla de negocio: si ya es plan basic pagado (no trial), completar upgrade automaticamente.
-        if ($this->shouldAutoCompleteForPaidBasic($request)) {
-            $payment = BillingPayment::create([
-                'clinic_id' => $request->clinic_id,
-                'amount' => $this->getPlanAmount($request->requested_plan),
-                'currency' => 'EUR',
-                'status' => 'paid',
-                'provider' => 'stripe',
-                'provider_ref' => 'auto_upgrade_' . $request->id,
-                'method' => 'automatic_upgrade',
-            ]);
+        $provider = $this->paymentProviderResolver->resolve();
+        $clinic = $request->clinic;
+        $subscription = $clinic->currentSubscription();
 
-            $this->handlePaymentCompleted($request, [
-                'provider' => 'stripe',
-                'payment_id' => $payment->id,
-                'mode' => 'auto',
-            ]);
+        $result = $provider->upgradeSubscription([
+            'clinic' => $clinic,
+            'current_plan' => $request->current_plan,
+            'new_plan' => $request->requested_plan,
+            'subscription_reference' => $subscription?->stripe_subscription_id,
+            'metadata' => [
+                'clinic_id' => $clinic->id,
+                'subscription_request_id' => $request->id,
+                'plan' => $request->requested_plan,
+            ],
+        ]);
 
-            return;
+        if (! $result['success']) {
+            throw new \RuntimeException('El proveedor de pago no pudo procesar el upgrade');
         }
 
-        // Create Stripe Checkout session
-        $checkoutData = $this->createCheckoutForUpgrade($request);
-
-        // Save checkout info
-        $this->requestService->generateCheckoutUrl($request, $checkoutData);
-
-        // Dispatch event for notifications
-        event(new CheckoutCreated($request, $checkoutData));
+        match ($result['action']) {
+            'upgraded' => $this->handleUpgraded($request, $result, $provider),
+            'checkout_required' => $this->handleCheckoutRequired($request, $result),
+            default => throw new \RuntimeException('Acción de upgrade desconocida: ' . ($result['action'] ?? 'null')),
+        };
     }
 
     public function handlePaymentCompleted(
@@ -83,42 +78,41 @@ class SubscriptionUpgradeService
         $clinic->save();
     }
 
-    private function createCheckoutForUpgrade(SubscriptionRequest $request): array
-    {
-        $clinic = $request->clinic;
-
-        $checkoutData = $this->checkoutService->createCheckout([
-            'payment_id' => null,
-            'amount' => $this->getPlanAmount($request->requested_plan),
-            'currency' => 'EUR',
-            'clinic_id' => $clinic->id,
-            'email' => $clinic->email,
-            'plan' => $request->requested_plan,
-            'stripe_product_id' => config('services.stripe.upgrade_products.' . $request->requested_plan),
-            'metadata' => [
-                'clinic_id' => $clinic->id,
-                'subscription_request_id' => $request->id,
-                'plan' => $request->requested_plan,
-            ],
-        ]);
-
-        return $checkoutData;
-    }
-
-    private function getPlanAmount(string $plan): int
+    public static function getPlanPrice(string $plan): int
     {
         $pricing = config('pricing', []);
         $planConfig = $pricing[$plan] ?? [];
-        return $planConfig['price'] ?? 2900;
+        return (int) ($planConfig['price'] ?? 2900);
     }
 
-    private function shouldAutoCompleteForPaidBasic(SubscriptionRequest $request): bool
+    private function handleUpgraded(SubscriptionRequest $request, array $result, $provider): void
     {
-        $clinic = $request->clinic;
+        BillingPayment::create([
+            'clinic_id' => $request->clinic_id,
+            'amount' => $result['amount_charged'],
+            'currency' => 'EUR',
+            'status' => 'paid',
+            'provider' => $provider->getName(),
+            'provider_ref' => $result['provider_ref'] ?? ('upgrade_' . $request->id),
+            'method' => 'prorated_upgrade',
+        ]);
 
-        return $request->current_plan === 'basic'
-            && $clinic
-            && $clinic->isSubscribed()
-            && ! $clinic->isTrialActive();
+        $this->handlePaymentCompleted($request, [
+            'provider' => $provider->getName(),
+            'payment_id' => null,
+            'mode' => 'prorated_upgrade',
+            'amount_charged' => $result['amount_charged'],
+            'invoice_id' => $result['invoice_id'] ?? null,
+        ]);
+    }
+
+    private function handleCheckoutRequired(SubscriptionRequest $request, array $result): void
+    {
+        $this->requestService->generateCheckoutUrl($request, [
+            'session_id' => $result['provider_ref'],
+            'url' => $result['checkout_url'],
+        ]);
+
+        event(new CheckoutCreated($request, $result));
     }
 }

@@ -7,9 +7,12 @@ use App\Events\CheckoutCreated;
 use App\Http\Controllers\Controller;
 use App\Mail\SubscriptionStatusMail;
 use App\Models\SubscriptionRequest;
+use App\Services\PaymentProvider\Resolver;
 use App\Services\Subscription\SubscriptionUpgradeService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\View\View;
 
@@ -101,6 +104,41 @@ class SubscriptionRequestController extends Controller
 
         return redirect()->route('backoffice.subscription-requests.index')
             ->with('status', 'Solicitud rechazada.');
+    }
+
+    public function previewUpgrade(SubscriptionRequest $subscriptionRequest): JsonResponse
+    {
+        if ($subscriptionRequest->status !== 'pending') {
+            return response()->json([
+                'success' => false,
+                'message' => 'La solicitud ya ha sido procesada.',
+            ]);
+        }
+
+        try {
+            $provider = Resolver::resolve();
+            $clinic = $subscriptionRequest->clinic;
+            $subscription = $clinic->currentSubscription();
+
+            $preview = $provider->previewUpgrade([
+                'clinic' => $clinic,
+                'current_plan' => $subscriptionRequest->current_plan,
+                'new_plan' => $subscriptionRequest->requested_plan,
+                'subscription_reference' => $subscription?->stripe_subscription_id,
+            ]);
+
+            return response()->json($preview);
+        } catch (\Throwable $e) {
+            Log::error('Error al obtener preview de upgrade', [
+                'request_id' => $subscriptionRequest->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'No se pudo calcular la vista previa: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     private function sendStatusMail(SubscriptionRequest $subscriptionRequest): void

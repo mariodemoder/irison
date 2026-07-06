@@ -674,7 +674,7 @@ async function load() {
     businessHours.value = sanitizeBusinessHours(clinic.value?.business_hours)
     closedDays.value = sanitizeClosedDays(clinic.value?.closed_days)
 
-    const incomingCounters = Array.isArray(res.data.counters) ? res.data.counters : []
+    const incomingCounters = Array.isArray(meRes.data.counters) ? meRes.data.counters : []
     if (incomingCounters.length > 0) {
       counters.value = defaultCounters().map((base) => {
         const found = incomingCounters.find((item) => item.table_type === base.table_type)

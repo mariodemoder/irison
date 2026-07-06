@@ -164,6 +164,10 @@ $backofficeRoutes->as('backoffice.')->group(function () {
             Route::get('/subscription-requests', [BackofficeSubscriptionRequestController::class, 'index'])->name('subscription-requests.index');
         });
 
+        Route::middleware('admin.role:super_admin,billing,readonly')->group(function () {
+            Route::get('/subscription-requests/{subscriptionRequest}/preview-upgrade', [BackofficeSubscriptionRequestController::class, 'previewUpgrade'])->name('subscription-requests.preview-upgrade');
+        });
+
         Route::middleware('admin.role:super_admin,billing')->group(function () {
             Route::patch('/subscription-requests/{subscriptionRequest}/approve', [BackofficeSubscriptionRequestController::class, 'approve'])->name('subscription-requests.approve');
             Route::patch('/subscription-requests/{subscriptionRequest}/reject', [BackofficeSubscriptionRequestController::class, 'reject'])->name('subscription-requests.reject');

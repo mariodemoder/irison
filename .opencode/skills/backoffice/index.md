@@ -44,9 +44,21 @@ La tabla `subscription_requests` tiene dos FKs a usuarios:
 
 Para incidencias o cambios en upgrades, cargar primero:
 
-- `backoffice/upgrade-flow.md` — flujo completo `trial` vs `basic activo`, estados esperados, archivos clave y checklist de diagnóstico.
+- `backoffice/upgrade-flow.md` — flujo completo `trial` vs `activo pagado`, preview de facturación, estados esperados, archivos clave y checklist de diagnóstico.
 
-Regla rápida:
+### Regla rápida
 
-- `trial` => `waiting_payment` + `checkout_url` + email + CTA en cliente.
-- `basic` activo (no trial) => auto-completado + actualización de plan + comprobante por email.
+| Estado actual | Provider | Acción |
+|---------------|----------|--------|
+| `trial` | Stripe | `waiting_payment` + `checkout_url` + email |
+| `trial` | Fake | `waiting_payment` + `checkout_url` fake + email |
+| Activo pagado | Stripe (con `stripe_subscription_id`) | `upgraded` — Stripe actualiza sub con prorrateo, genera invoice |
+| Activo pagado | Fake | `upgraded` — auto-completado, actualización de plan |
+
+### Vista previa de facturación
+
+En el modal de aprobación se carga por AJAX un preview del prorrateo:
+- `GET /backoffice/subscription-requests/{id}/preview-upgrade`
+- Stripe API `invoices->upcoming()` si tiene sub ID; fallback a cálculo manual con `config('pricing')`
+- No modifica nada — es solo lectura
+- El admin ve crédito, coste prorrateado, total a pagar hoy y próxima factura antes de confirmar
