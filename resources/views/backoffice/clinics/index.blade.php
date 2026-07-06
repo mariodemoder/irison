@@ -33,17 +33,51 @@
         </div>
     </form>
 
+    @php
+        $sort = $filters['sort'] ?? 'id';
+        $direction = $filters['direction'] ?? 'desc';
+        $queryParams = request()->query();
+    @endphp
+
     <div class="overflow-hidden rounded bg-white shadow-sm">
         <table class="min-w-full text-sm">
             <thead class="bg-slate-100 text-left">
                 <tr>
-                    <th class="px-3 py-2">ID</th>
-                    <th class="px-3 py-2">Clínica / Contacto</th>
-                    <th class="px-3 py-2">Slug</th>
-                    <th class="px-3 py-2">Plan</th>
-                    <th class="px-3 py-2">Estado SaaS</th>
-                    <th class="px-3 py-2">Trial ends</th>
-                    <th class="px-3 py-2">Última actividad</th>
+                    <th class="px-3 py-2">
+                        <a href="{{ route('backoffice.clinics.index', array_merge($queryParams, ['sort' => 'id', 'direction' => $sort === 'id' && $direction === 'asc' ? 'desc' : 'asc'])) }}" class="flex items-center gap-1 text-inherit no-underline hover:text-blue-700">
+                            ID @if($sort === 'id')<span>{!! $direction === 'asc' ? '&#9650;' : '&#9660;' !!}</span>@endif
+                        </a>
+                    </th>
+                    <th class="px-3 py-2">
+                        <a href="{{ route('backoffice.clinics.index', array_merge($queryParams, ['sort' => 'name', 'direction' => $sort === 'name' && $direction === 'asc' ? 'desc' : 'asc'])) }}" class="flex items-center gap-1 text-inherit no-underline hover:text-blue-700">
+                            Clínica / Contacto @if($sort === 'name')<span>{!! $direction === 'asc' ? '&#9650;' : '&#9660;' !!}</span>@endif
+                        </a>
+                    </th>
+                    <th class="px-3 py-2">
+                        <a href="{{ route('backoffice.clinics.index', array_merge($queryParams, ['sort' => 'slug', 'direction' => $sort === 'slug' && $direction === 'asc' ? 'desc' : 'asc'])) }}" class="flex items-center gap-1 text-inherit no-underline hover:text-blue-700">
+                            Slug @if($sort === 'slug')<span>{!! $direction === 'asc' ? '&#9650;' : '&#9660;' !!}</span>@endif
+                        </a>
+                    </th>
+                    <th class="px-3 py-2">
+                        <a href="{{ route('backoffice.clinics.index', array_merge($queryParams, ['sort' => 'plan', 'direction' => $sort === 'plan' && $direction === 'asc' ? 'desc' : 'asc'])) }}" class="flex items-center gap-1 text-inherit no-underline hover:text-blue-700">
+                            Plan @if($sort === 'plan')<span>{!! $direction === 'asc' ? '&#9650;' : '&#9660;' !!}</span>@endif
+                        </a>
+                    </th>
+                    <th class="px-3 py-2">
+                        <a href="{{ route('backoffice.clinics.index', array_merge($queryParams, ['sort' => 'subscription_status', 'direction' => $sort === 'subscription_status' && $direction === 'asc' ? 'desc' : 'asc'])) }}" class="flex items-center gap-1 text-inherit no-underline hover:text-blue-700">
+                            Estado SaaS @if($sort === 'subscription_status')<span>{!! $direction === 'asc' ? '&#9650;' : '&#9660;' !!}</span>@endif
+                        </a>
+                    </th>
+                    <th class="px-3 py-2">
+                        <a href="{{ route('backoffice.clinics.index', array_merge($queryParams, ['sort' => 'trial_ends_at', 'direction' => $sort === 'trial_ends_at' && $direction === 'asc' ? 'desc' : 'asc'])) }}" class="flex items-center gap-1 text-inherit no-underline hover:text-blue-700">
+                            Trial ends @if($sort === 'trial_ends_at')<span>{!! $direction === 'asc' ? '&#9650;' : '&#9660;' !!}</span>@endif
+                        </a>
+                    </th>
+                    <th class="px-3 py-2">
+                        <a href="{{ route('backoffice.clinics.index', array_merge($queryParams, ['sort' => 'last_activity_at', 'direction' => $sort === 'last_activity_at' && $direction === 'asc' ? 'desc' : 'asc'])) }}" class="flex items-center gap-1 text-inherit no-underline hover:text-blue-700">
+                            Última actividad @if($sort === 'last_activity_at')<span>{!! $direction === 'asc' ? '&#9650;' : '&#9660;' !!}</span>@endif
+                        </a>
+                    </th>
                     <th class="px-3 py-2">Acciones</th>
                 </tr>
             </thead>
@@ -52,10 +86,12 @@
                     @php
                         $subscriptionStatus = strtolower((string) ($clinic->subscription_status ?? 'inactive'));
                         $operationalStatus = strtolower((string) ($clinic->status ?? ''));
+                        $tenantStatus = $clinic->tenantStatus();
                         $isGreenStatus = in_array($subscriptionStatus, ['trial', 'trial_warning', 'active'], true);
                         $isRedStatus = in_array($subscriptionStatus, ['canceled', 'cancelled'], true)
                             || in_array($operationalStatus, ['trial_read_only', 'churned'], true)
                             || ! $isGreenStatus;
+                        $isExpired = $tenantStatus === 'expired';
                     @endphp
                     <tr class="border-t border-slate-100">
                         <td class="px-3 py-2">{{ $clinic->id }}</td>
@@ -66,8 +102,8 @@
                         <td class="px-3 py-2">{{ $clinic->slug ?: '-' }}</td>
                         <td class="px-3 py-2">{{ $clinic->plan ?: 'basic' }}</td>
                         <td class="px-3 py-2">
-                            <span class="text-base font-semibold {{ $isRedStatus ? 'text-rose-700' : 'text-emerald-700' }}">
-                                {{ $clinic->tenantStatus() }}
+                            <span class="text-base font-semibold {{ $isExpired ? 'text-blue-700' : ($isRedStatus ? 'text-rose-700' : 'text-emerald-700') }}">
+                                {{ $tenantStatus }}
                             </span>
                         </td>
                         <td class="px-3 py-2">{{ $clinic->trial_ends_at?->format('Y-m-d H:i') ?: '-' }}</td>

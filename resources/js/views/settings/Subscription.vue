@@ -80,7 +80,7 @@
         </section>
 
         <!-- Backup de datos -->
-        <section class="sub-section">
+        <section v-if="canBackup" class="sub-section">
           <h2>Backup de datos</h2>
           <div class="backup-card">
             <p class="backup-desc">Descarga un archivo Excel con todos los datos de tu clínica para tu seguridad o migración.</p>
@@ -102,7 +102,6 @@
               <select v-model="form.requested_plan" class="input">
                 <option value="">Selecciona</option>
                 <option value="pro">Pro — 89€/mes</option>
-                <option value="enterprise">Enterprise — 189€/mes</option>
               </select>
             </label>
             <label class="field">
@@ -125,7 +124,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useToast } from 'vue-toastification'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
-import { mePlan, planLabel, isBasic, isPro, isEnterprise } from '../../shared/meCache'
+import { mePlan, meStatus, meReadOnlyNoTransactions, planLabel, isBasic, isPro, isEnterprise } from '../../shared/meCache'
 import SaveButton from '../../components/SaveButton.vue'
 
 const toast = useToast()
@@ -165,6 +164,11 @@ const nextFeatures = computed(() => {
   if (!sub.value?.next_plan) return []
   const p = pricingMap.value[sub.value.next_plan]
   return p?.features || []
+})
+
+const canBackup = computed(() => {
+  return meStatus.value === 'trial_read_only'
+    || (meStatus.value === 'canceled' && meReadOnlyNoTransactions.value)
 })
 
 onMounted(async () => {

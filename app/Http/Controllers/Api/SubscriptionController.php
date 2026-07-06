@@ -47,7 +47,7 @@ class SubscriptionController extends Controller
     {
         return match ($current) {
             'basic' => 'pro',
-            'pro' => 'enterprise',
+            'pro' => null,
             default => null,
         };
     }

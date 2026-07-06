@@ -4,10 +4,12 @@
     @php
         $subscriptionStatus = strtolower((string) ($clinic->subscription_status ?? 'inactive'));
         $operationalStatus = strtolower((string) ($clinic->status ?? ''));
+        $tenantStatus = $clinic->tenantStatus();
         $isGreenStatus = in_array($subscriptionStatus, ['trial', 'trial_warning', 'active'], true);
         $isRedStatus = in_array($subscriptionStatus, ['canceled', 'cancelled'], true)
             || in_array($operationalStatus, ['trial_read_only', 'churned'], true)
             || ! $isGreenStatus;
+        $isExpired = $tenantStatus === 'expired';
         $paidDaysLeft = $clinic->cancellationGraceDaysLeft();
         $canExtendTrial = in_array($subscriptionStatus, ['trial', 'trial_warning'], true);
         $canSuspend = ! $clinic->isSuspended();
@@ -27,7 +29,7 @@
             <p class="mt-1 text-lg text-slate-700">{{ $clinic->email ?: 'Sin email de contacto' }}</p>
             <p class="text-base text-slate-600">
                 Tenant #{{ $clinic->id }} · Estado:
-                <span class="font-semibold {{ $isRedStatus ? 'text-rose-700' : 'text-emerald-700' }}">{{ $clinic->tenantStatus() }}</span>
+                <span class="font-semibold {{ $isExpired ? 'text-blue-700' : ($isRedStatus ? 'text-rose-700' : 'text-emerald-700') }}">{{ $tenantStatus }}</span>
             </p>
         </div>
         <div class="flex gap-2">
@@ -44,7 +46,7 @@
             <div class="flex items-center gap-2">
                 <span class="text-sm font-semibold uppercase tracking-wide text-slate-600">Plan:</span>
                 <span class="rounded bg-slate-100 px-2 py-0.5 text-sm font-medium">{{ $clinic->plan ?: 'basic' }}</span>
-                <span class="rounded px-2 py-0.5 text-sm font-semibold {{ $isRedStatus ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700' }}">
+                <span class="rounded px-2 py-0.5 text-sm font-semibold {{ $isExpired ? 'bg-blue-100 text-blue-700' : ($isRedStatus ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700') }}">
                     {{ $clinic->subscription_status ?: 'inactive' }}
                 </span>
                 @if (in_array($subscriptionStatus, ['canceled', 'cancelled'], true) && ($paidDaysLeft ?? 0) > 0)
@@ -63,7 +65,9 @@
                      class="absolute right-0 z-10 mt-1 w-48 rounded border border-slate-200 bg-white py-1 shadow-lg">
                     <a @click="open = false" href="#datos" class="block px-4 py-2 text-sm hover:bg-slate-50">Datos</a>
                     <a @click="open = false" href="#usuarios" class="block px-4 py-2 text-sm hover:bg-slate-50">Usuarios</a>
-                    <a @click="open = false" href="#administrativas" class="block px-4 py-2 text-sm hover:bg-slate-50">Administrativas</a>
+                    @unless ($clinic->isFunctionalDataDeleted())
+                        <a @click="open = false" href="#administrativas" class="block px-4 py-2 text-sm hover:bg-slate-50">Administrativas</a>
+                    @endunless
                     <a @click="open = false" href="#desde-aqui" class="block px-4 py-2 text-sm hover:bg-slate-50">Desde aquí</a>
                     <a @click="open = false" href="#facturacion" class="block px-4 py-2 text-sm hover:bg-slate-50">Facturación</a>
                     <a @click="open = false" href="#notificaciones" class="block px-4 py-2 text-sm hover:bg-slate-50">Notificaciones</a>
@@ -130,106 +134,134 @@
             </div>
         </article>
 
-        <article id="administrativas" class="rounded bg-white p-4 shadow-sm">
-            <h3 class="text-lg font-medium">Acciones administrativas</h3>
+        @unless ($clinic->isFunctionalDataDeleted())
+            <article id="administrativas" class="rounded bg-white p-4 shadow-sm">
+                <h3 class="text-lg font-medium">Acciones administrativas</h3>
 
-            @if (in_array(auth('admin')->user()?->role, ['super_admin', 'support'], true))
-                <form class="mt-3 space-y-2 border-t border-slate-100 pt-3" method="POST" action="{{ route('backoffice.clinics.extend-trial', $clinic) }}">
-                    @csrf
-                    @method('PATCH')
-                    <div class="flex flex-col gap-3 md:flex-row md:items-end">
-                        <label class="block text-sm md:w-20">Días trial
-                            <input class="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-center disabled:cursor-not-allowed disabled:bg-slate-100 md:w-16" name="days" type="number" min="1" max="60" value="7" required @disabled(! $canExtendTrial)>
-                        </label>
-                        <label class="block text-sm md:flex-1">Motivo
-                            <input class="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 disabled:cursor-not-allowed disabled:bg-slate-100" name="reason" type="text" @disabled(! $canExtendTrial)>
-                        </label>
-                        <button class="rounded bg-slate-900 px-3 py-1.5 text-sm text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300" type="submit" @disabled(! $canExtendTrial)>Extender trial</button>
-                    </div>
-                    @if (! $canExtendTrial)
-                        <p class="text-xs text-slate-500">Solo disponible cuando la clínica está en trial.</p>
-                    @endif
-                </form>
+                @if (in_array(auth('admin')->user()?->role, ['super_admin', 'support'], true))
+                    <form class="mt-3 space-y-2 border-t border-slate-100 pt-3" method="POST" action="{{ route('backoffice.clinics.extend-trial', $clinic) }}">
+                        @csrf
+                        @method('PATCH')
+                        <div class="flex flex-col gap-3 md:flex-row md:items-end">
+                            <label class="block text-sm md:w-20">Días trial
+                                <input class="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-center disabled:cursor-not-allowed disabled:bg-slate-100 md:w-16" name="days" type="number" min="1" max="60" value="7" required @disabled(! $canExtendTrial)>
+                            </label>
+                            <label class="block text-sm md:flex-1">Motivo
+                                <input class="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 disabled:cursor-not-allowed disabled:bg-slate-100" name="reason" type="text" @disabled(! $canExtendTrial)>
+                            </label>
+                            <button class="rounded bg-slate-900 px-3 py-1.5 text-sm text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300" type="submit" @disabled(! $canExtendTrial)>Extender trial</button>
+                        </div>
+                        @if (! $canExtendTrial)
+                            <p class="text-xs text-slate-500">Solo disponible cuando la clínica está en trial.</p>
+                        @endif
+                    </form>
 
-                <form class="mt-3 space-y-2 border-t border-slate-100 pt-3" method="POST" action="{{ route('backoffice.clinics.suspend', $clinic) }}">
-                    @csrf
-                    @method('PATCH')
-                    <div class="flex items-end gap-3">
-                        <label class="block flex-1 text-sm">Motivo suspensión
-                            <input class="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 disabled:cursor-not-allowed disabled:bg-slate-100" name="reason" type="text" @disabled(! $canSuspend)>
-                        </label>
-                        <button class="rounded bg-rose-700 px-3 py-1.5 text-sm text-white hover:bg-rose-600 disabled:cursor-not-allowed disabled:bg-slate-300" type="submit" @disabled(! $canSuspend)>Suspender</button>
-                    </div>
-                    @if (! $canSuspend)
-                        <p class="text-xs text-slate-500">La clínica ya está suspendida.</p>
-                    @endif
-                </form>
+                    <form class="mt-3 space-y-2 border-t border-slate-100 pt-3" method="POST" action="{{ route('backoffice.clinics.suspend', $clinic) }}">
+                        @csrf
+                        @method('PATCH')
+                        <div class="flex items-end gap-3">
+                            <label class="block flex-1 text-sm">Motivo suspensión
+                                <input class="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 disabled:cursor-not-allowed disabled:bg-slate-100" name="reason" type="text" @disabled(! $canSuspend)>
+                            </label>
+                            <button class="rounded bg-rose-700 px-3 py-1.5 text-sm text-white hover:bg-rose-600 disabled:cursor-not-allowed disabled:bg-slate-300" type="submit" @disabled(! $canSuspend)>Suspender</button>
+                        </div>
+                        @if (! $canSuspend)
+                            <p class="text-xs text-slate-500">La clínica ya está suspendida.</p>
+                        @endif
+                    </form>
 
-                <form class="mt-3 space-y-2 border-t border-slate-100 pt-3" method="POST" action="{{ route('backoffice.clinics.reactivate', $clinic) }}">
-                    @csrf
-                    @method('PATCH')
-                    <div class="flex items-end gap-3">
-                        <label class="block flex-1 text-sm">Motivo reactivación
-                            <input class="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 disabled:cursor-not-allowed disabled:bg-slate-100" name="reason" type="text" @disabled(! $canReactivate)>
-                        </label>
-                        <button class="rounded bg-emerald-700 px-3 py-1.5 text-sm text-white hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-slate-300" type="submit" @disabled(! $canReactivate)>Reactivar</button>
-                    </div>
-                    @if (! $canReactivate)
-                        <p class="text-xs text-slate-500">Solo se puede reactivar una clínica suspendida o cancelada.</p>
-                    @endif
-                </form>
-            @endif
+                    <form class="mt-3 space-y-2 border-t border-slate-100 pt-3" method="POST" action="{{ route('backoffice.clinics.reactivate', $clinic) }}">
+                        @csrf
+                        @method('PATCH')
+                        <div class="flex items-end gap-3">
+                            <label class="block flex-1 text-sm">Motivo reactivación
+                                <input class="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 disabled:cursor-not-allowed disabled:bg-slate-100" name="reason" type="text" @disabled(! $canReactivate)>
+                            </label>
+                            <button class="rounded bg-emerald-700 px-3 py-1.5 text-sm text-white hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-slate-300" type="submit" @disabled(! $canReactivate)>Reactivar</button>
+                        </div>
+                        @if (! $canReactivate)
+                            <p class="text-xs text-slate-500">Solo se puede reactivar una clínica suspendida o cancelada.</p>
+                        @endif
+                    </form>
+                @endif
 
-            @if (in_array(auth('admin')->user()?->role, ['super_admin', 'billing'], true))
-                <form class="mt-3 space-y-2 border-t border-slate-100 pt-3" method="POST" action="{{ route('backoffice.clinics.cancel-subscription', $clinic) }}">
-                    @csrf
-                    <div class="flex items-end gap-3">
-                        <label class="block flex-1 text-sm">Motivo cancelación
-                            <input class="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 disabled:cursor-not-allowed disabled:bg-slate-100" name="reason" type="text" @disabled(! $canCancel)>
-                        </label>
-                        <button class="rounded bg-slate-900 px-3 py-1.5 text-sm text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300" type="submit" @disabled(! $canCancel)>Cancelar suscripción</button>
-                    </div>
-                    @if (! $canCancel)
-                        <p class="text-xs text-slate-500">La suscripción ya está cancelada.</p>
-                    @endif
-                </form>
+                @if (in_array(auth('admin')->user()?->role, ['super_admin', 'billing'], true))
+                    <form class="mt-3 space-y-2 border-t border-slate-100 pt-3" method="POST" action="{{ route('backoffice.clinics.cancel-subscription', $clinic) }}">
+                        @csrf
+                        <div class="flex items-end gap-3">
+                            <label class="block flex-1 text-sm">Motivo cancelación
+                                <input class="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 disabled:cursor-not-allowed disabled:bg-slate-100" name="reason" type="text" @disabled(! $canCancel)>
+                            </label>
+                            <button class="rounded bg-slate-900 px-3 py-1.5 text-sm text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300" type="submit" @disabled(! $canCancel)>Cancelar suscripción</button>
+                        </div>
+                        @if (! $canCancel)
+                            <p class="text-xs text-slate-500">La suscripción ya está cancelada.</p>
+                        @endif
+                    </form>
 
-                <form class="mt-3 space-y-2 border-t border-slate-100 pt-3" method="POST" action="{{ route('backoffice.clinics.change-plan', $clinic) }}">
-                    @csrf
-                    @method('PATCH')
-                    <div class="flex flex-col gap-3 md:flex-row md:items-end">
-                        <label class="block text-sm md:w-36">Plan
-                            <select class="mt-1 w-full rounded border border-slate-300 px-2 py-1.5" name="plan" required>
-                                @foreach (['basic', 'pro', 'enterprise'] as $plan)
-                                    <option value="{{ $plan }}" @selected(($clinic->plan ?: 'basic') === $plan)>{{ $plan }}</option>
-                                @endforeach
-                            </select>
-                        </label>
-                        <label class="block text-sm md:flex-1">Motivo
-                            <input class="mt-1 w-full rounded border border-slate-300 px-2 py-1.5" name="reason" type="text">
-                        </label>
-                        <button class="rounded bg-cyan-700 px-3 py-1.5 text-sm text-white hover:bg-cyan-600" type="submit">Cambiar plan</button>
-                    </div>
-                </form>
-            @endif
-        </article>
+                    <form class="mt-3 space-y-2 border-t border-slate-100 pt-3" method="POST" action="{{ route('backoffice.clinics.change-plan', $clinic) }}">
+                        @csrf
+                        @method('PATCH')
+                        <div class="flex flex-col gap-3 md:flex-row md:items-end">
+                            <label class="block text-sm md:w-36">Plan
+                                <select class="mt-1 w-full rounded border border-slate-300 px-2 py-1.5" name="plan" required>
+                                    @foreach (['basic', 'pro', 'enterprise'] as $plan)
+                                        <option value="{{ $plan }}" @selected(($clinic->plan ?: 'basic') === $plan)>{{ $plan }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
+                            <label class="block text-sm md:flex-1">Motivo
+                                <input class="mt-1 w-full rounded border border-slate-300 px-2 py-1.5" name="reason" type="text">
+                            </label>
+                            <button class="rounded bg-cyan-700 px-3 py-1.5 text-sm text-white hover:bg-cyan-600" type="submit">Cambiar plan</button>
+                        </div>
+                    </form>
+                @endif
+            </article>
+        @endunless
     </div>
 
     <article id="desde-aqui" class="rounded bg-white p-4 shadow-sm">
         <h3 class="text-lg font-medium">Logs</h3>
 
         @if (auth('admin')->user()?->role === 'super_admin')
-            <div class="mt-3 flex gap-3 border-t border-slate-100 pt-3">
-                <form method="POST" action="{{ route('backoffice.clinics.impersonate', $clinic) }}">
-                    @csrf
-                    <button class="rounded bg-amber-600 px-3 py-1.5 text-sm text-white hover:bg-amber-500" type="submit">Login como clínica</button>
-                </form>
+            @unless ($clinic->isFunctionalDataDeleted())
+                <div class="mt-3 flex gap-3 border-t border-slate-100 pt-3">
+                    <form method="POST" action="{{ route('backoffice.clinics.impersonate', $clinic) }}">
+                        @csrf
+                        <button class="rounded bg-amber-600 px-3 py-1.5 text-sm text-white hover:bg-amber-500" type="submit">Login como clínica</button>
+                    </form>
 
-                <form method="POST" action="{{ route('backoffice.clinics.clear-logs', $clinic) }}"
-                      onsubmit="return confirm('¿Estás seguro de limpiar todos los logs de esta clínica? Esta acción no se puede deshacer.');">
-                    @csrf
-                    <button class="rounded bg-rose-700 px-3 py-1.5 text-sm text-white hover:bg-rose-600" type="submit">Limpiar logs</button>
-                </form>
+                    <form method="POST" action="{{ route('backoffice.clinics.clear-logs', $clinic) }}"
+                          onsubmit="return confirm('¿Estás seguro de limpiar todos los logs de esta clínica? Esta acción no se puede deshacer.');">
+                        @csrf
+                        <button class="rounded bg-rose-700 px-3 py-1.5 text-sm text-white hover:bg-rose-600" type="submit">Limpiar logs</button>
+                    </form>
+                </div>
+            @endunless
+
+            @if ($clinic->subscription_status === 'active' || $clinic->isTrialActive())
+                <div class="mt-3 rounded border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
+                    Esta clínica tiene un <strong>{{ $clinic->subscription_status === 'active' ? 'plan activo' : 'trial en curso' }}</strong>.
+                    Asegúrate de que realmente quieres eliminar todos sus datos funcionales.
+                </div>
+            @endif
+
+            @unless ($clinic->isFunctionalDataDeleted())
+                <div class="mt-3 flex gap-3 border-t border-slate-100 pt-3">
+                    <form method="POST" action="{{ route('backoffice.clinics.hard-delete', $clinic) }}"
+                          onsubmit="return confirm('{{ $clinic->subscription_status === 'active' ? '¡ATENCIÓN! La clínica tiene un PLAN ACTIVO.\n\n' : ($clinic->isTrialActive() ? '¡ATENCIÓN! La clínica tiene un TRIAL EN CURSO.\n\n' : '') }}¿Eliminar TODOS los datos funcionales de esta clínica?\n\nSe eliminarán: pacientes, citas, historias clínicas, bonos, facturas locales, productos, consentimientos, etc.\nSe CONSERVARÁ la información de facturación Stripe.\n\nEsta acción NO se puede deshacer.');">
+                        @csrf
+                        <button class="rounded bg-red-800 px-3 py-1.5 text-sm text-white hover:bg-red-700" type="submit">Eliminar datos funcionales</button>
+                    </form>
+                </div>
+            @endunless
+        @endif
+
+        @if ($clinic->isFunctionalDataDeleted())
+            <div class="mt-3 rounded border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+                Los datos funcionales de esta clínica fueron eliminados el {{ $clinic->functional_data_deleted_at->format('d/m/Y H:i') }}.
+                Solo se conserva la información de facturación Stripe.
             </div>
         @endif
 

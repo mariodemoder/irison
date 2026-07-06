@@ -24,9 +24,19 @@ class ClinicManagementService
 
     public function listClinics(array $filters): LengthAwarePaginator
     {
-        $query = Clinic::query()->orderByDesc('id');
+        $query = Clinic::query();
         $hasPlanColumn = $this->hasClinicColumn('plan');
         $hasSuspendedAtColumn = $this->hasClinicColumn('suspended_at');
+
+        $sort = (string) ($filters['sort'] ?? 'id');
+        $direction = strtolower((string) ($filters['direction'] ?? 'desc')) === 'asc' ? 'asc' : 'desc';
+        $sortable = ['id', 'name', 'email', 'slug', 'plan', 'subscription_status', 'trial_ends_at', 'last_activity_at', 'created_at'];
+
+        if (in_array($sort, $sortable, true)) {
+            $query->orderBy($sort, $direction);
+        } else {
+            $query->orderByDesc('id');
+        }
 
         $q = trim((string) ($filters['q'] ?? ''));
         $status = trim((string) ($filters['status'] ?? ''));
@@ -232,6 +242,118 @@ class ClinicManagementService
         ]);
 
         return $clinic->fresh();
+    }
+
+    public function hardDeleteFunctionalData(AdminUser $admin, Clinic $clinic): void
+    {
+        DB::transaction(function () use ($admin, $clinic): void {
+            $clinicId = $clinic->id;
+
+            // Desarmar FKs desde tablas preservadas (facturación Stripe)
+            DB::table('subscription_requests')
+                ->where('clinic_id', $clinicId)
+                ->whereNotNull('requested_by')
+                ->update(['requested_by' => null]);
+
+            // Tablas hoja (sin clinic_id, subconsulta vía padre)
+            DB::table('document_items')
+                ->whereIn('document_id', function ($q) use ($clinicId): void {
+                    $q->select('id')->from('documents')->where('clinic_id', $clinicId);
+                })->delete();
+
+            DB::table('consent_logs')
+                ->whereIn('consent_id', function ($q) use ($clinicId): void {
+                    $q->select('id')->from('patient_consents')->where('clinic_id', $clinicId);
+                })->delete();
+
+            DB::table('user_schedules')
+                ->whereIn('user_id', function ($q) use ($clinicId): void {
+                    $q->select('id')->from('users')->where('clinic_id', $clinicId);
+                })->delete();
+
+            DB::table('user_schedule_exceptions')
+                ->whereIn('user_id', function ($q) use ($clinicId): void {
+                    $q->select('id')->from('users')->where('clinic_id', $clinicId);
+                })->delete();
+
+            DB::table('professional_schedules')
+                ->whereIn('professional_id', function ($q) use ($clinicId): void {
+                    $q->select('id')->from('booking_professionals')->where('clinic_id', $clinicId);
+                })->delete();
+
+            DB::table('schedule_exceptions')
+                ->whereIn('professional_id', function ($q) use ($clinicId): void {
+                    $q->select('id')->from('booking_professionals')->where('clinic_id', $clinicId);
+                })->delete();
+
+            // Usuarios (cascada DB: user_schedules, user_schedule_exceptions,
+            // booking_professionals → professional_schedules, schedule_exceptions)
+            DB::table('users')->where('clinic_id', $clinicId)->delete();
+
+            // Pacientes (cascada DB: appointments → reminders, clinical_records,
+            // bonuses → bonus_usages, documents → document_items, patient_images,
+            // patient_consents → consent_logs, credit_usages)
+            DB::table('patients')->where('clinic_id', $clinicId)->delete();
+
+            // Tablas directas restantes (sin depender de users/patients)
+            $this->deleteClinicDirectModels($clinicId);
+
+            // Activity logs (usa tenant_id, sin FK formal)
+            DB::table('activity_logs')->where('tenant_id', $clinicId)->delete();
+
+            // Sanear el registro de la clínica + marcar como deleted
+            $clinic->forceFill([
+                'slug' => null,
+                'legal_name' => null,
+                'email' => null,
+                'phone' => null,
+                'address' => null,
+                'nif' => null,
+                'locality' => null,
+                'province' => null,
+                'country' => null,
+                'zip' => null,
+                'timezone' => 'UTC',
+                'business_hours' => null,
+                'closed_days' => null,
+                'max_users' => 1,
+                'trial_ends_at' => null,
+                'status' => 'inactive',
+                'suspended_at' => null,
+                'churned_at' => null,
+                'last_activity_at' => null,
+                'subscribed_at' => null,
+                'invoice_background_path' => null,
+                'theme_color' => null,
+                'functional_data_deleted_at' => now(),
+            ])->save();
+        });
+
+        ActivityLogger::log(
+            tenantId: (int) $clinic->id,
+            userId: null,
+            event: 'hard_delete_functional_data',
+            description: 'Datos funcionales eliminados desde backoffice',
+            metadata: [
+                'admin_user_id' => (int) $admin->id,
+                'admin_email' => $admin->email ?? '',
+            ],
+        );
+    }
+
+    private function deleteClinicDirectModels(int $clinicId): void
+    {
+        DB::table('booking_pages')->where('clinic_id', $clinicId)->delete();
+        DB::table('booking_services')->where('clinic_id', $clinicId)->delete();
+        DB::table('consent_templates')->where('clinic_id', $clinicId)->delete();
+        DB::table('consent_categories')->where('clinic_id', $clinicId)->delete();
+        DB::table('bonus_types')->where('clinic_id', $clinicId)->delete();
+        DB::table('appointment_types')->where('clinic_id', $clinicId)->delete();
+        DB::table('products')->where('clinic_id', $clinicId)->delete();
+        DB::table('counters_clinics')->where('clinic_id', $clinicId)->delete();
+        DB::table('professions')->where('clinic_id', $clinicId)->delete();
+        DB::table('trial_journey_events')->where('clinic_id', $clinicId)->delete();
+        DB::table('backoffice_clinic_activities')->where('clinic_id', $clinicId)->delete();
     }
 
     public function cancelSubscription(AdminUser $admin, Clinic $clinic, ?string $reason = null): Clinic

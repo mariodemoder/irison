@@ -29,6 +29,7 @@ class Clinic extends Model
         'trial_ends_at' => 'datetime',
         'suspended_at' => 'datetime',
         'churned_at' => 'datetime',
+        'functional_data_deleted_at' => 'datetime',
         'last_activity_at' => 'datetime',
         'subscribed_at' => 'datetime',
         'max_users' => 'integer',
@@ -278,6 +279,11 @@ class Clinic extends Model
     public function isSuspended(): bool
     {
         return $this->suspended_at !== null;
+    }
+
+    public function isFunctionalDataDeleted(): bool
+    {
+        return $this->functional_data_deleted_at !== null;
     }
 
     public function tenantStatus(): string

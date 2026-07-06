@@ -9,7 +9,7 @@
         <router-link
           v-for="item in filteredNavItems"
           :key="item.path"
-          :class="[{ 'menu-active': isActive(item.path) }, 'menu-link']"
+          :class="[{ 'menu-active': isActive(item) }, 'menu-link']"
           :to="item.path"
           @click="keepMenuOpen"
         >
@@ -368,9 +368,12 @@ function logoutAction() {
   logout(router)
 }
 
-function isActive(base) {
+function isActive(item) {
   const p = route.path || ''
-  return p === base || p.startsWith(base + '/')
+  if (p === item.path) return true
+  if (!p.startsWith(item.path + '/')) return false
+  const hasExactChild = navItems.some(other => other.path !== item.path && other.path === p)
+  return !hasExactChild
 }
 
 function beginPaidPlanFromBanner() {

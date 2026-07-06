@@ -149,6 +149,7 @@ $backofficeRoutes->as('backoffice.')->group(function () {
             Route::post('/clinics/{clinic}/impersonate', [ClinicController::class, 'impersonate'])->name('clinics.impersonate');
             Route::post('/impersonate/stop', [ClinicController::class, 'stopImpersonation'])->name('impersonate.stop');
             Route::post('/clinics/{clinic}/clear-logs', [ClinicController::class, 'clearLogs'])->name('clinics.clear-logs');
+            Route::post('/clinics/{clinic}/hard-delete', [ClinicController::class, 'hardDelete'])->name('clinics.hard-delete');
         });
 
         Route::middleware('admin.role:super_admin')->group(function () {

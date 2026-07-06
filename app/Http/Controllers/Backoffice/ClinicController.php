@@ -40,6 +40,8 @@ class ClinicController extends Controller
                 'q' => (string) $request->query('q', ''),
                 'status' => (string) $request->query('status', ''),
                 'plan' => (string) $request->query('plan', ''),
+                'sort' => (string) $request->query('sort', 'id'),
+                'direction' => (string) $request->query('direction', 'desc'),
             ],
         ]);
     }
@@ -267,6 +269,17 @@ class ClinicController extends Controller
 
         return redirect()->route('backoffice.clinics.show', $clinic)
             ->with('status', 'Logs eliminados correctamente.');
+    }
+
+    public function hardDelete(ClinicActionRequest $request, Clinic $clinic): RedirectResponse
+    {
+        $this->clinicManagementService->hardDeleteFunctionalData(
+            $request->user('admin'),
+            $clinic
+        );
+
+        return redirect()->route('backoffice.clinics.show', $clinic)
+            ->with('status', 'Datos funcionales eliminados correctamente. Se conserva la información de facturación Stripe.');
     }
 
     private function loadStripeInvoices(Clinic $clinic): array

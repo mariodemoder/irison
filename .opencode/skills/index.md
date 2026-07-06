@@ -13,6 +13,7 @@ Router rápido para cargar solo el skill que necesitas.
 
 ## Frontend
 - `frontend/index.md` — Error handling, button/popup styling, toast
+- `frontend/menu-routing.md` — Menu nav items, `isActive()` rules, adding new items
 
 ## Billing
 - `billing/index.md` — Stripe, subscriptions, webhooks, backoffice shortcuts
