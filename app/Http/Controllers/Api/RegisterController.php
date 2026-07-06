@@ -4,33 +4,26 @@ namespace App\Http\Controllers\API;
 
 use App\Mail\AccountActivationMail;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\RegisterRequest;
 use App\Models\User;
 use App\Models\Clinic;
 use App\Models\Profile;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 
 class RegisterController extends Controller
 {
-    public function __invoke(Request $request)
+    public function __invoke(RegisterRequest $request)
     {
-        $data = $request->validate(
-            [
-                'name' => ['required', 'string', 'max:255'],
-                'clinic_name' => ['required', 'string', 'max:255'],
-                'email' => ['required', 'email', 'max:255', 'unique:users'],
-                'password' => ['required', 'min:8'],
-            ],
-            [
-                'email.unique' => 'El email ya está en uso.',
-            ]
-        );
+        $data = $request->validated();
 
         $clinic = Clinic::create([
             'name' => $data['clinic_name'],
             'legal_name' => $data['clinic_name'],
             'email' => $data['email'],
+            'nif' => $data['nif'],
+            'zip' => $data['zip'],
+            'phone' => $data['phone'],
             'plan' => 'basic',
             'max_users' => Clinic::PLAN_USER_LIMITS['basic'],
             'trial_ends_at' => now()->addDays(30),

@@ -244,9 +244,9 @@ class ClinicManagementService
         return $clinic->fresh();
     }
 
-    public function hardDeleteFunctionalData(AdminUser $admin, Clinic $clinic): void
+    public function hardDeleteFunctionalData(Clinic $clinic, ?AdminUser $admin = null): void
     {
-        DB::transaction(function () use ($admin, $clinic): void {
+        DB::transaction(function () use ($clinic): void {
             $clinicId = $clinic->id;
 
             // Desarmar FKs desde tablas preservadas (facturación Stripe)
@@ -329,16 +329,18 @@ class ClinicManagementService
             ])->save();
         });
 
-        ActivityLogger::log(
-            tenantId: (int) $clinic->id,
-            userId: null,
-            event: 'hard_delete_functional_data',
-            description: 'Datos funcionales eliminados desde backoffice',
-            metadata: [
-                'admin_user_id' => (int) $admin->id,
-                'admin_email' => $admin->email ?? '',
-            ],
-        );
+        if ($admin !== null) {
+            ActivityLogger::log(
+                tenantId: (int) $clinic->id,
+                userId: null,
+                event: 'hard_delete_functional_data',
+                description: 'Datos funcionales eliminados desde backoffice',
+                metadata: [
+                    'admin_user_id' => (int) $admin->id,
+                    'admin_email' => $admin->email ?? '',
+                ],
+            );
+        }
     }
 
     private function deleteClinicDirectModels(int $clinicId): void

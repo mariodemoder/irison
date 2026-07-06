@@ -1,9 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Console\Commands;
 
 use App\Models\Clinic;
-use App\Services\ClinicDataPurgeService;
+use App\Services\Backoffice\ClinicManagementService;
 use Illuminate\Console\Command;
 
 class PurgeExpiredClinics extends Command
@@ -11,9 +13,9 @@ class PurgeExpiredClinics extends Command
     protected $signature = 'clinics:purge-expired
                             {--dry-run : Listar clínicas elegibles sin borrar datos}';
 
-    protected $description = 'Elimina datos operativos de clínicas cuyo periodo de gracia (trial+7 o canceled+7) ha expirado.';
+    protected $description = 'Elimina datos funcionales de clínicas cuyo periodo de gracia (trial+7 o canceled+7) ha expirado.';
 
-    public function __construct(private readonly ClinicDataPurgeService $purgeService)
+    public function __construct(private readonly ClinicManagementService $clinicManagementService)
     {
         parent::__construct();
     }
@@ -22,9 +24,8 @@ class PurgeExpiredClinics extends Command
     {
         $dryRun = (bool) $this->option('dry-run');
 
-        // Solo consideramos clínicas en estados que puedan haber expirado
-        $candidates = Clinic::whereIn('subscription_status', ['trial', 'canceled', 'cancelled'])
-            ->with('saasSubscriptions')
+        $candidates = Clinic::whereNull('functional_data_deleted_at')
+            ->whereIn('subscription_status', ['trial', 'canceled', 'cancelled'])
             ->get();
 
         $eligible = $candidates->filter(
@@ -56,7 +57,7 @@ class PurgeExpiredClinics extends Command
 
         foreach ($eligible as $clinic) {
             $this->line("Purgando clinic_id={$clinic->id} ({$clinic->name})...");
-            $this->purgeService->purge($clinic);
+            $this->clinicManagementService->hardDeleteFunctionalData($clinic);
             $this->info("  ✓ Completado.");
         }
 

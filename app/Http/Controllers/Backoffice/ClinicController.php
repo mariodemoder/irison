@@ -274,8 +274,8 @@ class ClinicController extends Controller
     public function hardDelete(ClinicActionRequest $request, Clinic $clinic): RedirectResponse
     {
         $this->clinicManagementService->hardDeleteFunctionalData(
-            $request->user('admin'),
-            $clinic
+            $clinic,
+            $request->user('admin')
         );
 
         return redirect()->route('backoffice.clinics.show', $clinic)
