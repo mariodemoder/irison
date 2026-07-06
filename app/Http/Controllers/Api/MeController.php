@@ -4,14 +4,19 @@ namespace App\Http\Controllers\Api;
 
 use App\Models\BillingPayment;
 use App\Services\Counters\CounterService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Browsershot\Browsershot;
+use Stripe\Stripe;
+use Stripe\StripeClient;
+use Throwable;
 
 class MeController
 {
@@ -146,6 +151,111 @@ class MeController
 
         return response()->json($payload);
 
+    }
+
+    public function stripeInvoices(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $clinic = $user?->clinic;
+
+        if (!$clinic) {
+            return response()->json(['invoices' => [], 'error' => 'Clínica no encontrada']);
+        }
+
+        try {
+            $caBundlePath = config('services.stripe.ca_bundle')
+                ?: ini_get('curl.cainfo')
+                ?: base_path('vendor/stripe/stripe-php/data/ca-certificates.crt');
+
+            if (is_string($caBundlePath) && $caBundlePath !== '' && is_file($caBundlePath)) {
+                $normalizedPath = str_replace('\\', '/', $caBundlePath);
+                Stripe::setCABundlePath($normalizedPath);
+                putenv('SSL_CERT_FILE=' . $normalizedPath);
+                putenv('CURL_CA_BUNDLE=' . $normalizedPath);
+            }
+
+            if (!config('services.stripe.verify_ssl', true)) {
+                Stripe::setVerifySslCerts(false);
+            }
+
+            $stripe = new StripeClient((string) config('services.stripe.secret'));
+
+            $customerIds = collect([
+                trim((string) ($clinic->stripe_id ?? '')),
+                trim((string) ($clinic->stripe_customer_id ?? '')),
+            ])->filter()->values();
+
+            $subscriptionCustomerIds = $clinic->saasSubscriptions()
+                ->whereNotNull('stripe_customer_id')
+                ->orderByDesc('id')
+                ->pluck('stripe_customer_id')
+                ->map(static fn ($id) => trim((string) $id))
+                ->filter();
+
+            $customerIds = $customerIds->merge($subscriptionCustomerIds)->unique()->values();
+
+            if ($customerIds->isEmpty()) {
+                $clinicEmail = trim((string) ($clinic->email ?? ''));
+                if ($clinicEmail !== '') {
+                    $customersByEmail = $stripe->customers->all([
+                        'email' => $clinicEmail,
+                        'limit' => 10,
+                    ]);
+
+                    $resolvedByEmail = collect($customersByEmail->data ?? [])
+                        ->map(static fn ($customer) => trim((string) ($customer->id ?? '')))
+                        ->filter()
+                        ->values();
+
+                    $customerIds = $customerIds->merge($resolvedByEmail)->unique()->values();
+                }
+            }
+
+            if ($customerIds->isEmpty()) {
+                return response()->json(['invoices' => [], 'error' => null]);
+            }
+
+            $allInvoices = collect();
+            foreach ($customerIds as $customerId) {
+                $response = $stripe->invoices->all([
+                    'customer' => (string) $customerId,
+                    'limit' => 100,
+                ]);
+
+                $mapped = collect($response->data ?? [])->map(static function ($invoice): array {
+                    return [
+                        'id' => (string) ($invoice->id ?? ''),
+                        'number' => (string) ($invoice->number ?? ''),
+                        'status' => (string) ($invoice->status ?? ''),
+                        'currency' => strtoupper((string) ($invoice->currency ?? 'EUR')),
+                        'total' => (int) ($invoice->total ?? 0),
+                        'amount_paid' => (int) ($invoice->amount_paid ?? 0),
+                        'created_at' => isset($invoice->created)
+                            ? Carbon::createFromTimestamp((int) $invoice->created)->toIso8601String()
+                            : null,
+                        'hosted_invoice_url' => (string) ($invoice->hosted_invoice_url ?? ''),
+                        'invoice_pdf' => (string) ($invoice->invoice_pdf ?? ''),
+                    ];
+                });
+
+                $allInvoices = $allInvoices->concat($mapped);
+            }
+
+            $invoices = $allInvoices
+                ->unique('id')
+                ->sortByDesc(static fn (array $inv) => $inv['created_at'] ?? '')
+                ->values()
+                ->all();
+
+            return response()->json(['invoices' => $invoices, 'error' => null]);
+        } catch (Throwable $e) {
+            Log::warning('stripe.invoices.fetch_failed', [
+                'clinic_id' => $clinic->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json(['invoices' => [], 'error' => 'No se pudieron cargar las facturas.']);
+        }
     }
 
     public function update(Request $request)

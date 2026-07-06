@@ -297,7 +297,10 @@
                     <div>Tu suscripción está activa.</div>
 
                     <div class="subscription-history" id="sub-pagos" style="margin-top:14px">
-                      <div class="subscription-history-title">Pagos realizados</div>
+                      <div class="subscription-history-title">
+                        Pagos realizados
+                        <button class="btn btn-sm" style="margin-left:8px" @click="openStripeInvoices">Ver facturas</button>
+                      </div>
                       <div v-if="subscriptionPayments.length === 0" class="subscription-history-empty">
                         No hay pagos registrados.
                       </div>
@@ -315,6 +318,41 @@
                           <div>{{ formatDateTime(payment.created_at) }}</div>
                           <div>{{ payment.counter || '—' }}</div>
                           <div>{{ formatBillingAmount(payment.amount, payment.currency) }}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div v-if="showInvoicesModal" class="confirm-modal-backdrop" @click.self="showInvoicesModal=false">
+                      <div class="confirm-modal" role="dialog" aria-modal="true" aria-label="Facturas Stripe">
+                        <h3>Facturas Stripe</h3>
+                        <div v-if="loadingInvoices" style="padding:12px 0;font-size:13px;color:#6b7280">Cargando facturas...</div>
+                        <div v-else-if="stripeInvoices.length === 0" style="padding:12px 0;font-size:13px;color:#6b7280">No hay facturas disponibles.</div>
+                        <div v-else style="max-height:400px;overflow-y:auto">
+                          <table style="width:100%;font-size:12px;border-collapse:collapse">
+                            <thead>
+                              <tr style="border-bottom:1px solid #e2e8f0">
+                                <th style="padding:6px 8px;text-align:left">Nº</th>
+                                <th style="padding:6px 8px;text-align:left">Fecha</th>
+                                <th style="padding:6px 8px;text-align:right">Importe</th>
+                                <th style="padding:6px 8px;text-align:left">Estado</th>
+                                <th style="padding:6px 8px"></th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr v-for="inv in stripeInvoices" :key="inv.id" style="border-bottom:1px solid #f1f5f9">
+                                <td style="padding:6px 8px">{{ inv.number }}</td>
+                                <td style="padding:6px 8px">{{ inv.created_at ? new Date(inv.created_at).toLocaleDateString('es-ES') : '-' }}</td>
+                                <td style="padding:6px 8px;text-align:right">{{ formatBillingAmount(inv.total, inv.currency) }}</td>
+                                <td style="padding:6px 8px">{{ inv.status }}</td>
+                                <td style="padding:6px 8px">
+                                  <a :href="inv.hosted_invoice_url" target="_blank" rel="noopener" style="color:#2563eb;text-decoration:underline">Ver factura</a>
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                        <div class="confirm-modal-actions">
+                          <button class="btn" @click="showInvoicesModal=false">Cerrar</button>
                         </div>
                       </div>
                     </div>
@@ -475,6 +513,9 @@ function scrollToPayments() {
 onMounted(() => document.addEventListener('click', handleClickOutsideSubMenu))
 onBeforeUnmount(() => document.removeEventListener('click', handleClickOutsideSubMenu))
 const subscriptionPayments = ref([])
+const stripeInvoices = ref([])
+const loadingInvoices = ref(false)
+const showInvoicesModal = ref(false)
 const invoiceBackgroundUrl = ref(null)
 const invoiceBackgroundFile = ref(null)
 const uploadingInvoiceBackground = ref(false)
@@ -696,6 +737,20 @@ async function load() {
     toast.error(getLoadErrorMessage(e, 'configuración'))
   } finally {
     loading.value = false
+  }
+}
+
+async function openStripeInvoices() {
+  showInvoicesModal.value = true
+  loadingInvoices.value = true
+  stripeInvoices.value = []
+  try {
+    const res = await api.get('/me/stripe-invoices')
+    stripeInvoices.value = Array.isArray(res.data.invoices) ? res.data.invoices : []
+  } catch {
+    stripeInvoices.value = []
+  } finally {
+    loadingInvoices.value = false
   }
 }
 
