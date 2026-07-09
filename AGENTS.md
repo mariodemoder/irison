@@ -51,6 +51,8 @@ For focused tests, regression, HTTP validation, or risk hardening → delegate t
 - Local dev defaults to PostgreSQL; on WAMP ensure `pdo_pgsql` + `pgsql` in PHP CLI and Apache.
 - Some legacy migrations include MySQL-specific SQL (tests use SQLite in-memory).
 - Queue defaults to `database`; use process supervision and restart queues on deploy.
+- **Subscription upgrade proration**: Trial→paid upgrades must charge the FULL price of the new plan (no credit). Basic-paid→PRO uses Stripe's native proration. See `backoffice/upgrade-flow.md` for details.
+- **Price ID resolution**: Each plan has its own Stripe product. `resolvePriceIdForPlan()` only falls back to `STRIPE_PRICE_ID` for the `basic` plan. Trial→paid checkout passes `price_id` explicitly to avoid incorrect fallback.
 
 ## High-Value References
 

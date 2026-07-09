@@ -200,10 +200,14 @@ const navItems = [
 const professionalPaths = ['/appointments', '/patients']
 
 const filteredNavItems = computed(() => {
+  let items = navItems
   if (isProfessional.value) {
-    return navItems.filter(item => professionalPaths.includes(item.path))
+    items = items.filter(item => professionalPaths.includes(item.path))
   }
-  return navItems
+  if (meStatus.value === 'trial') {
+    items = items.filter(item => item.path !== '/settings/subscription')
+  }
+  return items
 })
 
 const user = meUser

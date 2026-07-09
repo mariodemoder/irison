@@ -6,7 +6,7 @@
         <h1 class="mt-6 text-3xl font-semibold leading-tight">
           Gestiona tu tiempo. Diseña tu futuro. Vive simple<br /> 
         </h1>
-        <p class="mt-4 text-gray-600">Todo lo que necesitas para gestionar clientes, citas y pagos.</p>
+        <p class="mt-4 text-gray-600">Todo lo que necesitas para gestionar pacientes, citas, ventas y pagos.</p>
       </div>
     </div>
 

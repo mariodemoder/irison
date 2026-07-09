@@ -24,7 +24,7 @@ class StorePatientRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['nullable', 'email', 'unique:patients,email'],
+            'email' => ['nullable', 'email'],
             'phone' => ['nullable', new ValidatePhoneFormat()],
             'nif' => ['nullable', new ValidateNIFFormat()],
             'birth_date' => ['nullable', 'date'],
@@ -47,7 +47,6 @@ class StorePatientRequest extends FormRequest
             'name.string' => 'El nombre debe ser texto.',
             'name.max' => 'El nombre no puede exceder 255 caracteres.',
             'email.email' => 'El email debe ser un formato válido.',
-            'email.unique' => 'Este email ya está registrado en el sistema.',
             'birth_date.date' => 'La fecha de nacimiento debe ser una fecha válida.',
         ];
     }

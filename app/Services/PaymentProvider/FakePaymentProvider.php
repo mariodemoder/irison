@@ -42,7 +42,30 @@ class FakePaymentProvider implements PaymentProviderInterface
         $currency = 'EUR';
 
         $subscription = $clinic->currentSubscription();
-        $periodEnd = $subscription?->current_period_end ?? $clinic->trial_ends_at ?? now()->addMonth();
+        $isTrial = in_array($subscription?->status ?? '', ['trial', 'trial_read_only'], true);
+
+        // Trial: nunca pagó, no hay crédito. Cobra el precio completo del nuevo plan.
+        if ($isTrial) {
+            return [
+                'success' => true,
+                'has_existing_subscription' => false,
+                'current_plan' => ['name' => ucfirst($currentPlan), 'amount' => 0],
+                'new_plan' => ['name' => ucfirst($newPlan), 'amount' => $newPrice * 100],
+                'credit_for_unused_days' => 0,
+                'prorated_new_plan_cost' => $newPrice * 100,
+                'amount_due_now' => $newPrice * 100,
+                'next_billing_date' => now()->copy()->addMonth()->toIso8601String(),
+                'next_billing_amount' => $newPrice * 100,
+                'currency' => $currency,
+                'details' => [
+                    ['description' => 'Plan ' . ucfirst($newPlan) . ' (precio completo)', 'amount' => $newPrice * 100],
+                    ['description' => 'Total a pagar hoy', 'amount' => $newPrice * 100],
+                ],
+            ];
+        }
+
+        // Basic paid → PRO: cálculo normal con prorrateo
+        $periodEnd = $subscription?->current_period_end ?? now()->addMonth();
         $now = now();
 
         $totalDays = (int) $now->diffInDays($periodEnd) + 1;

@@ -120,7 +120,7 @@ async function showSubscriberWelcomePopup() {
           <path d="M8 14c1 1.3 2.4 2 4 2s3-.7 4-2" stroke="#111827" stroke-width="1.6" stroke-linecap="round" />
         </svg>
         <div style="font-weight:700;color:#0f172a;">Enhorabuena</div>
-        <div style="color:#334155;">Ya eres un suscriptor activo en Irisos</div>
+        <div style="color:#334155;">Ya eres un suscriptor activo y oficial en Irison</div>
       </div>
     `,
     showConfirmButton: false,

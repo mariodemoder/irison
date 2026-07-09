@@ -12,8 +12,10 @@
                 <table role="presentation" width="640" cellspacing="0" cellpadding="0" style="max-width:640px;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 10px 30px rgba(15,23,42,.08);">
                     <tr>
                         <td style="background:linear-gradient(135deg,#0ea5e9,#1d4ed8);padding:26px 28px;color:#ffffff;">
-                            <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.9;">Irison</div>
-                            <h1 style="margin:8px 0 0;font-size:24px;line-height:1.25;">Tu upgrade est\u00e1 listo</h1>
+                            <a href="{{ config('app.url') }}" style="display:inline-block;">
+                                <img src="{{ asset('logo.svg') }}" alt="Irison" style="height:36px;display:block;">
+                            </a>
+                            <h1 style="margin:16px 0 0;font-size:24px;line-height:1.25;">Tu upgrade est\u00e1 listo</h1>
                             <p style="margin:10px 0 0;font-size:14px;opacity:.95;">Hola {{ $clinicName }}, completa el pago para activar tu nuevo plan.</p>
                         </td>
                     </tr>

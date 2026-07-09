@@ -24,7 +24,15 @@ class SubscriptionRequestController extends Controller
             'comments' => 'nullable|string|max:2000',
         ]);
 
-        $currentPlan = strtolower(trim((string) ($requestData['current_plan'] ?? $request->user()?->clinic?->plan ?? 'basic')));
+        $clinic = $request->user()?->clinic;
+
+        if ($clinic && $clinic->isTrialActive()) {
+            return response()->json([
+                'message' => 'Debes tener un plan Basic activo para solicitar una mejora de plan.',
+            ], 422);
+        }
+
+        $currentPlan = strtolower(trim((string) ($requestData['current_plan'] ?? $clinic?->plan ?? 'basic')));
         $requestedPlan = strtolower(trim((string) $requestData['requested_plan']));
 
         if (! $this->isValidUpgrade($currentPlan, $requestedPlan)) {

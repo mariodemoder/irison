@@ -83,7 +83,7 @@ async function submit() {
 <template>
   <AuthLayout>
     <div class="login-column">
-      <h2 class="text-2xl font-semibold mb-2">¡Buenos días!</h2>
+      <h2 class="text-2xl font-semibold mb-2">Hola!</h2>
 
       <div
         v-if="activationCard.show"

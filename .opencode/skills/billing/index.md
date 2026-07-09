@@ -8,13 +8,16 @@
 ## Planes disponibles (`Clinic::PLAN_USER_LIMITS`)
 
 Definidos en `app/Models/Clinic.php`:
-| Plan | Máx usuarios | Stripe Price ID |
-|------|-------------|-----------------|
-| `basic` | 3 | `STRIPE_PRICE_ID` (env) |
-| `pro` | 6 | `STRIPE_PRICE_ID` (env) |
-| `enterprise` | 10 | `STRIPE_PRICE_ID` (env) |
+| Plan | Precio | Máx usuarios | Stripe Product |
+|------|--------|-------------|----------------|
+| `basic` | 29€/mes | 1 | — (usa `STRIPE_PRICE_ID` env) |
+| `pro` | 89€/mes | 10 | `STRIPE_PRODUCT_PRO` env |
+| `enterprise` | 189€/mes | ilimitado | `STRIPE_PRODUCT_ENTERPRISE` env |
 
-Todos los planes usan el mismo `STRIPE_PRICE_ID` de entorno; la diferenciación es por `plan` y `max_users` en DB.
+### Price ID resolution
+- `resolvePriceIdForPlan($plan)` busca primero en `config('services.stripe.upgrade_products.{plan}')` (producto Stripe con default_price o precio recurring activo).
+- Solo para `basic` usa `STRIPE_PRICE_ID` como fallback.
+- Para upgrade trial→paid, se pasa `price_id` explícito al checkout para evitar que caiga al precio de Basic.
 
 ## Restricción de usuarios por plan
 

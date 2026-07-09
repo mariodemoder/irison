@@ -45,7 +45,7 @@ async function submit() {
   <AuthLayout>
     <h2 class="text-2xl font-semibold">Recuperar contraseña</h2>
     <p class="text-sm muted mt-2">
-      Introduce tu email y te enviaremos un enlace para restablecer tu contraseña.
+      Introduce tu email para restablecer tu contraseña.
     </p>
 
     <form class="mt-4" @submit.prevent="submit">

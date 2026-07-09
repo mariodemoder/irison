@@ -10,8 +10,9 @@
         <tr>
             <td align="center">
                 <table role="presentation" width="620" cellpadding="0" cellspacing="0" style="max-width:620px;background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;">
+                    @include('emails.partials.email-header')
                     <tr>
-                        <td style="padding:24px 24px 0 24px;">
+                        <td style="padding:12px 24px 0 24px;">
                             <p style="margin:0;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#64748b;">Irison Trial · {{ strtoupper($milestone) }}</p>
                             <h1 style="margin:8px 0 0 0;font-size:22px;line-height:1.3;color:#020617;">{{ $headline }}</h1>
                         </td>

@@ -5,6 +5,7 @@ namespace Tests\Feature\Billing;
 use App\Mail\InvoicePaymentFailedMail;
 use App\Models\Clinic;
 use App\Models\Subscription;
+use App\Models\SubscriptionRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -187,6 +188,190 @@ class StripeWebhookControllerTest extends TestCase
         Mail::assertSent(InvoicePaymentFailedMail::class, function (InvoicePaymentFailedMail $mail) {
             return $mail->hasTo('clinica@test.com') && $mail->hasTo('owner@test.com');
         });
+    }
+
+    public function test_checkout_session_completed_upgrades_clinical_plan_via_subscription_request(): void
+    {
+        config()->set('services.stripe.webhook_secret', 'whsec_test_secret');
+
+        $clinic = Clinic::create([
+            'name' => 'Clinica Upgrade',
+            'email' => 'upgrade-clinic@test.com',
+            'subscription_status' => 'trial',
+            'plan' => 'basic',
+            'trial_ends_at' => now()->addDays(5),
+        ]);
+
+        $owner = User::create([
+            'clinic_id' => $clinic->id,
+            'name' => 'Owner Upgrade',
+            'email' => 'owner-upgrade@test.com',
+            'password' => 'password',
+            'role' => 'owner',
+        ]);
+
+        Subscription::create([
+            'clinic_id' => $clinic->id,
+            'status' => 'trial',
+            'trial_ends_at' => now()->addDays(5),
+        ]);
+
+        $subRequest = SubscriptionRequest::create([
+            'clinic_id' => $clinic->id,
+            'current_plan' => 'basic',
+            'requested_plan' => 'pro',
+            'status' => 'waiting_payment',
+            'requested_by' => $owner->id,
+            'stripe_checkout_session_id' => 'cs_upgrade_test_123',
+        ]);
+
+        $payload = json_encode([
+            'id' => 'evt_upgrade_1',
+            'object' => 'event',
+            'type' => 'checkout.session.completed',
+            'data' => [
+                'object' => [
+                    'id' => 'cs_upgrade_test_123',
+                    'customer' => 'cus_upgrade_123',
+                    'subscription' => 'sub_upgrade_123',
+                    'customer_email' => 'owner-upgrade@test.com',
+                    'amount_total' => 8900,
+                    'currency' => 'eur',
+                    'metadata' => (object) [],
+                ],
+            ],
+        ], JSON_THROW_ON_ERROR);
+
+        $response = $this->postStripeWebhook($payload, 'whsec_test_secret');
+
+        $response->assertOk();
+
+        $clinic->refresh();
+        $this->assertSame('pro', $clinic->plan);
+        $this->assertSame(10, $clinic->max_users);
+        $this->assertSame('active', $clinic->subscription_status);
+
+        $subRequest->refresh();
+        $this->assertSame('completed', $subRequest->status);
+    }
+
+    public function test_safety_net_updates_plan_when_subscription_request_already_completed(): void
+    {
+        config()->set('services.stripe.webhook_secret', 'whsec_test_secret');
+
+        $clinic = Clinic::create([
+            'name' => 'Clinica Safety Net',
+            'email' => 'safety-net@test.com',
+            'subscription_status' => 'trial',
+            'plan' => 'basic',
+        ]);
+
+        $owner = User::create([
+            'clinic_id' => $clinic->id,
+            'name' => 'Owner Safety',
+            'email' => 'owner-safety@test.com',
+            'password' => 'password',
+            'role' => 'owner',
+        ]);
+
+        $subRequest = SubscriptionRequest::create([
+            'clinic_id' => $clinic->id,
+            'current_plan' => 'basic',
+            'requested_plan' => 'pro',
+            'status' => 'completed',
+            'requested_by' => $owner->id,
+        ]);
+
+        $payload = json_encode([
+            'id' => 'evt_safety_1',
+            'object' => 'event',
+            'type' => 'checkout.session.completed',
+            'data' => [
+                'object' => [
+                    'id' => 'cs_safety_123',
+                    'customer' => 'cus_safety_123',
+                    'subscription' => 'sub_safety_123',
+                    'customer_email' => 'owner-safety@test.com',
+                    'amount_total' => 8900,
+                    'currency' => 'eur',
+                    'metadata' => (object) [],
+                ],
+            ],
+        ], JSON_THROW_ON_ERROR);
+
+        $response = $this->postStripeWebhook($payload, 'whsec_test_secret');
+
+        $response->assertOk();
+
+        $clinic->refresh();
+        $this->assertSame('pro', $clinic->plan);
+        $this->assertSame(10, $clinic->max_users);
+    }
+
+    public function test_webhook_finds_subscription_request_by_clinic_id_fallback(): void
+    {
+        config()->set('services.stripe.webhook_secret', 'whsec_test_secret');
+
+        $clinic = Clinic::create([
+            'name' => 'Clinica Fallback',
+            'email' => 'fallback-clinic@test.com',
+            'subscription_status' => 'trial',
+            'plan' => 'basic',
+        ]);
+
+        $owner = User::create([
+            'clinic_id' => $clinic->id,
+            'name' => 'Owner Fallback',
+            'email' => 'owner-fallback@test.com',
+            'password' => 'password',
+            'role' => 'owner',
+        ]);
+
+        Subscription::create([
+            'clinic_id' => $clinic->id,
+            'status' => 'trial',
+        ]);
+
+        // Solicitud SIN stripe_checkout_session_id (simula que no se guardó)
+        $subRequest = SubscriptionRequest::create([
+            'clinic_id' => $clinic->id,
+            'current_plan' => 'basic',
+            'requested_plan' => 'pro',
+            'status' => 'waiting_payment',
+            'requested_by' => $owner->id,
+            'stripe_checkout_session_id' => null,
+        ]);
+
+        $payload = json_encode([
+            'id' => 'evt_fallback_1',
+            'object' => 'event',
+            'type' => 'checkout.session.completed',
+            'data' => [
+                'object' => [
+                    'id' => 'cs_fallback_456',
+                    'customer' => 'cus_fallback_456',
+                    'subscription' => 'sub_fallback_456',
+                    'customer_email' => 'owner-fallback@test.com',
+                    'amount_total' => 8900,
+                    'currency' => 'eur',
+                    'metadata' => [
+                        'clinic_id' => (string) $clinic->id,
+                        'plan' => 'pro',
+                    ],
+                ],
+            ],
+        ], JSON_THROW_ON_ERROR);
+
+        $response = $this->postStripeWebhook($payload, 'whsec_test_secret');
+
+        $response->assertOk();
+
+        $clinic->refresh();
+        $this->assertSame('pro', $clinic->plan);
+        $this->assertSame(10, $clinic->max_users);
+
+        $subRequest->refresh();
+        $this->assertSame('completed', $subRequest->status);
     }
 
     private function postStripeWebhook(string $payload, string $secret)

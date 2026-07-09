@@ -8,8 +8,9 @@ Objetivo: resolver incidencias de upgrade sin explorar todo el codebase.
   - Backoffice aprueba solicitud.
   - El provider retorna `action: checkout_required`.
   - Estado de solicitud: `waiting_payment`.
-  - Se genera `checkout_url` (Stripe) y se envía por email.
+  - Se genera `checkout_url` (Stripe) con el **precio completo del plan destino** (sin prorrateo).
   - En UI cliente debe aparecer CTA "Ir a pagar en Stripe".
+  - **No hay crédito** — el clinic nunca pagó el plan actual, así que se cobra el total del nuevo plan.
 
 - Caso B: clínica en plan activo (pagado, no trial):
   - Backoffice aprueba solicitud.
@@ -19,7 +20,7 @@ Objetivo: resolver incidencias de upgrade sin explorar todo el codebase.
   - Se crea `BillingPayment` con `method: prorated_upgrade` y el monto real cobrado.
   - Se envía comprobante por email.
 
-## Vista previa de facturación (nuevo)
+## Vista previa de facturación
 
 Antes de aprobar, el modal carga por AJAX un preview del prorrateo:
 
@@ -33,6 +34,17 @@ Antes de aprobar, el modal carga por AJAX un preview del prorrateo:
 5. **El preview es solo lectura** — no modifica nada en Stripe ni en DB
 6. Admin puede cerrar el modal sin aprobar (la solicitud sigue `pending`)
 
+### Comportamiento por tipo de clínica
+
+- **Trial → Plan paid**: el preview muestra solo el precio completo del nuevo plan (sin línea de crédito). Ej: "Plan Pro (precio completo): 89.00 EUR".
+- **Basic paid → PRO**: el preview muestra el prorrateo completo con crédito por días no usados. Ej: "Crédito: -28.03 EUR, Total: 60.97 EUR".
+
+### Price ID resolution para upgrades
+
+- `resolvePriceIdForPlan($plan)` resuelve el price ID desde `config('services.stripe.upgrade_products.{plan}')` o `config('services.stripe.price_id')`.
+- Para trial → paid, se pasa `price_id` explícito al `createCheckout()` para evitar el fallback al precio de Basic.
+- `resolvePriceIdForPlan()` solo usa `STRIPE_PRICE_ID` como fallback si el plan es `basic`.
+
 ## Arquitectura: Provider-agnostic upgrade
 
 El upgrade ahora se delega al `PaymentProviderInterface`:
@@ -42,13 +54,20 @@ SubscriptionUpgradeService::approveAndGenerateCheckout()
   → Resolver::resolve()->upgradeSubscription([...])
     → StripePaymentProvider:
         - Tiene sub ID → subscriptions->update() con proration_behavior: always_invoice
-        - No tiene sub ID → createCheckout (checkout_required)
+        - No tiene sub ID → createCheckout (checkout_required) con price_id explícito del plan destino
     → FakePaymentProvider:
         - Clinic activa (paid) → action: upgraded
         - Trial → action: checkout_required (fake checkout)
   → Según action:
     - 'upgraded' → handlePaymentCompleted() + BillingPayment con amount_charged real
     - 'checkout_required' → generateCheckoutUrl() + CheckoutCreated event
+
+Webhook checkout.session.completed (hardened):
+  1. Busca SubscriptionRequest por stripe_checkout_session_id
+  2. Fallback: metadata.subscription_request_id
+  3. Fallback: clinic_id + status='waiting_payment' (más reciente)
+  4. Si lo encuentra → handlePaymentCompleted() → upgradeClinic()
+  5. Safety net: si clinic.plan sigue en 'basic' pero hay solicitud completed → actualiza plan directamente
 ```
 
 ## Archivos clave (orden de lectura)
@@ -81,8 +100,12 @@ SubscriptionUpgradeService::approveAndGenerateCheckout()
 
 2. Si paga en Stripe y no cambia plan:
    - Revisar webhook `checkout.session.completed`.
-   - Buscar solicitud por `stripe_checkout_session_id` o `metadata.subscription_request_id`.
-   - Confirmar que `handlePaymentCompleted()` ejecuta `upgradeClinic()`.
+   - El webhook busca SubscriptionRequest en 3 niveles:
+     1. Por `stripe_checkout_session_id`
+     2. Por `metadata.subscription_request_id`
+     3. Por `clinic_id` + `status = 'waiting_payment'` (fallback)
+   - Si la solicitud ya estaba `completed` (doble webhook), el safety net detecta que el plan sigue en `basic` y lo actualiza desde la solicitud completada.
+   - Verificar logs: `Procesando webhook de checkout.session.completed para solicitud de upgrade` o `Safety net: plan actualizado via webhook`.
 
 3. Si no llega email:
    - Validar listeners (`SendCheckoutEmail`, `SendPaymentConfirmationEmail`).

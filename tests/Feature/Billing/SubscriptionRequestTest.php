@@ -215,6 +215,65 @@ class SubscriptionRequestTest extends TestCase
         ]);
     }
 
+    public function test_cannot_create_upgrade_request_from_trial(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-05-18 10:00:00'));
+
+        $clinic = Clinic::create([
+            'name' => 'Clinica Trial',
+            'email' => 'clinic-trial@test.local',
+            'subscription_status' => 'trial',
+            'plan' => 'basic',
+            'trial_ends_at' => now()->addDays(14),
+        ]);
+
+        $user = User::create([
+            'clinic_id' => $clinic->id,
+            'name' => 'Owner Trial',
+            'email' => 'owner-trial@test.local',
+            'password' => 'password',
+            'role' => 'owner',
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $response = $this->postJson('/api/settings/subscription/request', [
+            'requested_plan' => 'pro',
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonPath('message', 'Debes tener un plan Basic activo para solicitar una mejora de plan.');
+    }
+
+    public function test_cannot_create_upgrade_request_from_trial_warning(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-05-18 10:00:00'));
+
+        $clinic = Clinic::create([
+            'name' => 'Clinica Trial Warning',
+            'email' => 'clinic-tw@test.local',
+            'subscription_status' => 'trial_warning',
+            'plan' => 'basic',
+            'trial_ends_at' => now()->addDays(3),
+        ]);
+
+        $user = User::create([
+            'clinic_id' => $clinic->id,
+            'name' => 'Owner Trial Warning',
+            'email' => 'owner-tw@test.local',
+            'password' => 'password',
+            'role' => 'owner',
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $response = $this->postJson('/api/settings/subscription/request', [
+            'requested_plan' => 'pro',
+        ]);
+
+        $response->assertStatus(422);
+    }
+
     private function createClinicWithOwner(string $name, string $ownerEmail, string $plan = 'basic'): array
     {
         $clinic = Clinic::create([

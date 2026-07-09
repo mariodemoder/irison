@@ -3,7 +3,6 @@
 namespace App\Http\Requests\Patients;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 use App\Rules\ValidatePhoneFormat;
 use App\Rules\ValidateNIFFormat;
 
@@ -20,11 +19,9 @@ class UpdatePatientRequest extends FormRequest
      */
     public function rules(): array
     {
-        $patientId = $this->route('patient')?->id;
-
         return [
             'name' => ['sometimes', 'required', 'string', 'max:255'],
-            'email' => ['sometimes', 'nullable', 'email', Rule::unique('patients', 'email')->ignore($patientId)],
+            'email' => ['sometimes', 'nullable', 'email'],
             'phone' => ['sometimes', 'nullable', new ValidatePhoneFormat()],
             'nif' => ['sometimes', 'nullable', new ValidateNIFFormat()],
             'birth_date' => ['sometimes', 'nullable', 'date'],
@@ -41,7 +38,6 @@ class UpdatePatientRequest extends FormRequest
     {
         return [
             'name.required' => 'El nombre del paciente es requerido.',
-            'email.unique' => 'Este email ya está registrado.',
         ];
     }
 }

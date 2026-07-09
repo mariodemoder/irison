@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Mail\SubscriptionActivatedMail;
 use App\Support\ActivityLogger;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class SubscribeController extends Controller
 {
@@ -59,6 +62,29 @@ class SubscribeController extends Controller
             ],
             ip: $request->ip(),
         );
+
+        // Enviar email de activación de plan (solo nueva suscripción)
+        if ($previousSubscriptionStatus !== 'active') {
+            try {
+                $invoiceUrl = SubscriptionActivatedMail::resolveInvoiceUrl(
+                    ! empty($subscription->latest_invoice) ? (string) $subscription->latest_invoice : null
+                );
+
+                Mail::to($request->user()->email)->queue(
+                    new SubscriptionActivatedMail(
+                        clinicName: $clinic->name,
+                        plan: (string) ($clinic->plan ?? 'basic'),
+                        activatedAt: now()->format('d/m/Y H:i'),
+                        invoiceUrl: $invoiceUrl,
+                    )
+                );
+            } catch (\Throwable $e) {
+                Log::error('Failed to send activation email from subscribe', [
+                    'clinic_id' => $clinic->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
 
         return response()->json([
             'status'    => $subscription->stripe_status,

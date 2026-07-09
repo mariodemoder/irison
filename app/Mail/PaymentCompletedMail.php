@@ -15,6 +15,7 @@ class PaymentCompletedMail extends Mailable
 
     public function __construct(
         public readonly SubscriptionRequest $request,
+        public readonly ?string $invoiceUrl = null,
     ) {}
 
     public function envelope(): Envelope
@@ -33,6 +34,7 @@ class PaymentCompletedMail extends Mailable
                 'currentPlan' => $this->request->current_plan,
                 'requestedPlan' => $this->request->requested_plan,
                 'completedAt' => $this->request->completed_at,
+                'invoiceUrl' => $this->invoiceUrl,
             ],
         );
     }

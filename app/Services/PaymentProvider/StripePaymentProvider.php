@@ -176,7 +176,7 @@ class StripePaymentProvider implements PaymentProviderInterface
                 'clinic_id' => $clinic->id,
                 'email' => $clinic->email,
                 'plan' => $newPlan,
-                'stripe_product_id' => config('services.stripe.upgrade_products.' . $newPlan),
+                'price_id' => $this->resolvePriceIdForPlan($newPlan),
                 'metadata' => $data['metadata'] ?? [],
             ]);
 
@@ -236,7 +236,30 @@ class StripePaymentProvider implements PaymentProviderInterface
     private function manualPreview(string $currentPlan, string $newPlan, int $currentPrice, int $newPrice, string $currency, $clinic): array
     {
         $subscription = $clinic->currentSubscription();
-        $periodEnd = $subscription?->current_period_end ?? $clinic->trial_ends_at ?? now()->addMonth();
+        $isTrial = in_array($subscription?->status ?? '', ['trial', 'trial_read_only'], true);
+
+        // Trial: nunca pagó, no hay crédito. Cobra el precio completo del nuevo plan.
+        if ($isTrial) {
+            return [
+                'success' => true,
+                'has_existing_subscription' => false,
+                'current_plan' => ['name' => ucfirst($currentPlan), 'amount' => 0],
+                'new_plan' => ['name' => ucfirst($newPlan), 'amount' => $newPrice * 100],
+                'credit_for_unused_days' => 0,
+                'prorated_new_plan_cost' => $newPrice * 100,
+                'amount_due_now' => $newPrice * 100,
+                'next_billing_date' => now()->copy()->addMonth()->toIso8601String(),
+                'next_billing_amount' => $newPrice * 100,
+                'currency' => $currency,
+                'details' => [
+                    ['description' => 'Plan ' . ucfirst($newPlan) . ' (precio completo)', 'amount' => $newPrice * 100],
+                    ['description' => 'Total a pagar hoy', 'amount' => $newPrice * 100],
+                ],
+            ];
+        }
+
+        // Basic paid → PRO: cálculo normal con prorrateo
+        $periodEnd = $subscription?->current_period_end ?? now()->addMonth();
         $now = now();
 
         $totalDays = (int) $now->diffInDays($periodEnd) + 1;
@@ -282,12 +305,15 @@ class StripePaymentProvider implements PaymentProviderInterface
             }
         }
 
-        $defaultPriceId = trim((string) config('services.stripe.price_id'));
-        if ($defaultPriceId !== '') {
-            return $defaultPriceId;
+        // Solo usar el price_id por defecto (Basic) si el plan es basic
+        if ($plan === 'basic') {
+            $defaultPriceId = trim((string) config('services.stripe.price_id'));
+            if ($defaultPriceId !== '') {
+                return $defaultPriceId;
+            }
         }
 
-        throw new \RuntimeException('No se pudo resolver un price ID para el plan: ' . $plan);
+        throw new \RuntimeException('No se pudo resolver un price ID para el plan: ' . $plan . '. Verifica que el producto tenga un default_price configurado en Stripe.');
     }
 
     private function resolvePriceIdForCheckout(array $data): string

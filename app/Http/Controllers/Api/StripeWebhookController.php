@@ -125,6 +125,34 @@ class StripeWebhookController extends Controller
                         'session_id' => $sessionId,
                     ],
                 );
+
+                // Enviar email de activación de plan (solo nueva suscripción, no upgrades)
+                if ($previousSubscriptionStatus !== 'active') {
+                    try {
+                        $invoiceUrl = \App\Mail\SubscriptionActivatedMail::resolveInvoiceUrl(
+                            ! empty($session->invoice) ? (string) $session->invoice : null
+                        );
+
+                        $recipient = $clinic->ownerUser()->first()
+                            ?? $clinic->users()->orderBy('id')->first();
+
+                        if ($recipient && filter_var((string) $recipient->email, FILTER_VALIDATE_EMAIL)) {
+                            \Illuminate\Support\Facades\Mail::to($recipient->email)->queue(
+                                new \App\Mail\SubscriptionActivatedMail(
+                                    clinicName: $clinic->name,
+                                    plan: (string) ($clinic->plan ?? 'basic'),
+                                    activatedAt: now()->format('d/m/Y H:i'),
+                                    invoiceUrl: $invoiceUrl,
+                                )
+                            );
+                        }
+                    } catch (\Throwable $e) {
+                        Log::error('Failed to send activation email', [
+                            'clinic_id' => $clinic->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
             }
 
             // ✅ NUEVO: Manejar el flujo de upgrade de suscripción
@@ -137,6 +165,17 @@ class StripeWebhookController extends Controller
                     if ($metadataRequestId > 0) {
                         $subscriptionRequest = \App\Models\SubscriptionRequest::find($metadataRequestId);
                     }
+                }
+
+                // Fallback: buscar por clinic_id + estado waiting_payment (más reciente)
+                if (! $subscriptionRequest && $clinic) {
+                    $metadataPlan = (string) ($session->metadata->plan ?? '');
+                    $query = \App\Models\SubscriptionRequest::where('clinic_id', $clinic->id)
+                        ->where('status', 'waiting_payment');
+                    if ($metadataPlan !== '') {
+                        $query->where('requested_plan', $metadataPlan);
+                    }
+                    $subscriptionRequest = $query->latest()->first();
                 }
 
                 if ($subscriptionRequest && $subscriptionRequest->status === 'waiting_payment') {
@@ -172,6 +211,24 @@ class StripeWebhookController extends Controller
                             'request_id' => $subscriptionRequest->id,
                             'clinic_id' => $subscriptionRequest->clinic_id,
                             'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+
+                // Safety net: si el clinic sigue con plan básico pero hay una solicitud completed, actualizar plan
+                if ($clinic && $clinic->plan === 'basic') {
+                    $completedRequest = \App\Models\SubscriptionRequest::where('clinic_id', $clinic->id)
+                        ->where('status', 'completed')
+                        ->latest()
+                        ->first();
+                    if ($completedRequest && $completedRequest->requested_plan !== 'basic') {
+                        $clinic->plan = $completedRequest->requested_plan;
+                        $clinic->max_users = \App\Models\Clinic::PLAN_USER_LIMITS[$completedRequest->requested_plan] ?? $clinic->max_users;
+                        $clinic->save();
+                        \Illuminate\Support\Facades\Log::info('Safety net: plan actualizado via webhook', [
+                            'clinic_id' => $clinic->id,
+                            'new_plan' => $completedRequest->requested_plan,
+                            'request_id' => $completedRequest->id,
                         ]);
                     }
                 }

@@ -15,6 +15,7 @@ class SubscriptionUpgradedNotificationMail extends Mailable
 
     public function __construct(
         public readonly SubscriptionRequest $request,
+        public readonly ?string $invoiceUrl = null,
     ) {}
 
     public function envelope(): Envelope
@@ -34,6 +35,7 @@ class SubscriptionUpgradedNotificationMail extends Mailable
                 'requestedPlan' => $this->request->requested_plan,
                 'completedAt' => $this->request->completed_at,
                 'reviewerComments' => $this->request->reviewer_comments ?? '-',
+                'invoiceUrl' => $this->invoiceUrl,
             ],
         );
     }

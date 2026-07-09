@@ -9,12 +9,14 @@ import FaqPricing from '../components/pricing/FaqPricing.vue'
 
 const currentYear = new Date().getFullYear()
 const plans = ref([])
+const pricingData = ref({})
 const pricingLoaded = ref(false)
 
 onMounted(async () => {
   try {
     const res = await axios.get('/api/pricing')
-    plans.value = Object.values(res.data.data || {})
+    pricingData.value = res.data.data || {}
+    plans.value = Object.values(pricingData.value)
     pricingLoaded.value = true
   } catch (_) {
     pricingLoaded.value = true
@@ -174,6 +176,7 @@ const brandStatement = computed(() => 'Gestiona tu clínica con una plataforma c
           v-for="plan in plans"
           :key="plan.name"
           :plan="plan"
+          :all-plans="pricingData"
           :cta-text="plan.name === 'Basic' ? 'Empezar gratis' : plan.name === 'Pro' ? 'Solicitar demo' : 'Hablar con ventas'"
           :cta-href="'/register'"
         />

@@ -263,6 +263,83 @@ class ClinicManagementTest extends TestCase
         $this->assertSame($owner->id, (int) ($context['target_user_id'] ?? 0));
     }
 
+    public function test_preview_upgrade_trial_to_pro_shows_full_price_no_credit(): void
+    {
+        $admin = $this->createAdmin(AdminUser::ROLE_BILLING);
+        [$clinic, $user] = $this->createClinicWithOwner('Clinic Trial Preview', 'trial-preview@test.local', 'basic');
+
+        $clinic->update([
+            'subscription_status' => 'trial',
+            'trial_ends_at' => now()->addDays(7),
+        ]);
+
+        Subscription::query()->create([
+            'clinic_id' => $clinic->id,
+            'status' => 'trial',
+            'trial_ends_at' => now()->addDays(7),
+            'current_period_end' => now()->addDays(30),
+        ]);
+
+        $subscriptionRequest = SubscriptionRequest::create([
+            'clinic_id' => $clinic->id,
+            'current_plan' => 'basic',
+            'requested_plan' => 'pro',
+            'status' => 'pending',
+            'requested_by' => $user->id,
+        ]);
+
+        $response = $this->actingAs($admin, 'admin')
+            ->get('/backoffice/subscription-requests/' . $subscriptionRequest->id . '/preview-upgrade');
+
+        $response->assertOk();
+        $json = $response->json();
+
+        $this->assertTrue($json['success']);
+        $this->assertSame(0, $json['credit_for_unused_days']);
+        $this->assertSame(8900, $json['amount_due_now']);
+        $this->assertSame(8900, $json['new_plan']['amount']);
+        $this->assertSame(0, $json['current_plan']['amount']);
+
+        $descriptions = array_column($json['details'], 'description');
+        $this->assertContains('Total a pagar hoy', $descriptions);
+        $this->assertNotContains('Crédito por días no usados de Basic', $descriptions);
+    }
+
+    public function test_preview_upgrade_basic_paid_to_pro_shows_prorated_credit(): void
+    {
+        $admin = $this->createAdmin(AdminUser::ROLE_BILLING);
+        [$clinic, $user] = $this->createClinicWithOwner('Clinic Paid Preview', 'paid-preview@test.local', 'basic');
+
+        Subscription::query()->create([
+            'clinic_id' => $clinic->id,
+            'status' => 'active',
+            'current_period_end' => now()->addDays(15),
+        ]);
+
+        $subscriptionRequest = SubscriptionRequest::create([
+            'clinic_id' => $clinic->id,
+            'current_plan' => 'basic',
+            'requested_plan' => 'pro',
+            'status' => 'pending',
+            'requested_by' => $user->id,
+        ]);
+
+        $response = $this->actingAs($admin, 'admin')
+            ->get('/backoffice/subscription-requests/' . $subscriptionRequest->id . '/preview-upgrade');
+
+        $response->assertOk();
+        $json = $response->json();
+
+        $this->assertTrue($json['success']);
+        $this->assertGreaterThan(0, $json['credit_for_unused_days']);
+        $this->assertLessThan(8900, $json['amount_due_now']);
+        $this->assertSame(8900, $json['new_plan']['amount']);
+        $this->assertSame(2900, $json['current_plan']['amount']);
+
+        $descriptions = array_column($json['details'], 'description');
+        $this->assertContains('Crédito por días no usados de Basic', $descriptions);
+    }
+
     private function createAdmin(string $role): AdminUser
     {
         return AdminUser::query()->create([

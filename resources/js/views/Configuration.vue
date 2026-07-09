@@ -195,7 +195,10 @@
               <div class="tab-panel tab-card" v-show="activeTab==='subscripcion'">
                 
                 <div class="subscription-header">
-                  <div>{{ subscriptionStatusDot }} {{ subscriptionState.label }}</div>
+                  <div class="subscription-status-pill" :class="`is-${subscriptionState.color}`">
+                    <span class="subscription-status-dot" aria-hidden="true">{{ subscriptionStatusDot }}</span>
+                    <span>{{ subscriptionState.label }}</span>
+                  </div>
                   <div class="subscription-actions">
                     <button v-if="status !== 'active'" class="btn btn-primary allow-readonly-action" :disabled="!canActivatePaidPlan" @click.prevent="beginPaidPlanFake">Activar cuenta de pago</button>
                     <button v-if="status==='blocked'" class="btn" :disabled="!canActivatePaidPlan" @click.prevent="subscribe">Activar plan (Stripe)</button>
@@ -222,9 +225,12 @@
                   Para activar tu cuenta de pago debes completar en la solapa Clínica: NIF válido y dirección.
                 </div>
                 
-                  <div class="subscription-meta">
-                    <div><strong>Modo de pago:</strong> {{ paymentModeLabel }}</div>
+                <div class="subscription-meta">
+                  <div class="subscription-meta-item">
+                    <span class="subscription-meta-label">Modo de pago</span>
+                    <strong class="subscription-meta-value">{{ paymentModeLabel }}</strong>
                   </div>
+                </div>
 
                 <div v-if="pendingUpgradeRequest" class="upgrade-pending-card" style="margin-top:12px">
                   <div class="upgrade-pending-title">Upgrade pendiente de pago</div>
@@ -245,42 +251,38 @@
 
                 <div style="margin-top:12px">
                   <div v-if="status==='trial'">
-                    <div class="max-w-2xl mx-auto my-6 p-6 bg-amber-50 border-l-4 border-amber-500 rounded-r-xl shadow-sm font-sans text-slate-800">
-                      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-amber-200 pb-4 mb-4">
-                        <div class="flex items-center gap-3">
-                          <span class="text-2xl" role="img" aria-label="Alerta">⚠️</span>
-                          <div>
-                            <h3 class="text-lg font-bold text-amber-900 leading-tight">
-                              Tu suscripción está por vencer
-                            </h3>
-                            <p class="text-sm text-amber-700">Quedan {{ diasRestantes }} días de demo.</p>
-                          </div>
-                        </div>
+                    <div class="trial-warning-card">
+                      <div class="trial-warning-hero">
+                        <div class="trial-warning-kicker">Prueba activa</div>
+                        <h3 class="trial-warning-title">Tu suscripción está por vencer</h3>
+                        <p class="trial-warning-subtitle">Quedan {{ diasRestantes }} días de demo.</p>
 
-                        <div class="bg-amber-500 text-white font-extrabold px-4 py-2 rounded-lg text-center shadow-sm text-sm tracking-wide uppercase">
-                          {{ diasRestantes }} Días restantes
+                        <div class="trial-warning-countdown" aria-label="Días de prueba restantes">
+                          <span class="trial-warning-countdown-value">{{ diasRestantes }}</span>
+                          <span class="trial-warning-countdown-label">días restantes</span>
                         </div>
                       </div>
 
-                      <div class="space-y-3 text-sm text-slate-600 leading-relaxed">
-                        <p class="font-medium text-slate-700">
-                          Una vez finalizado el período de prueba, si no se registra el pago, <span class="text-amber-950 font-semibold">no podrás realizar transacciones</span>.
+                      <div class="trial-warning-body">
+                        <p class="trial-warning-main-text">
+                          Una vez finalizado el período de prueba, si no se registra el pago,
+                          <span>no podrás realizar transacciones</span>.
                         </p>
 
-                        <div class="bg-white/60 p-3 rounded-lg border border-amber-100 text-xs text-slate-500 space-y-1">
-                          <p>• Tus datos y tu cuenta se conservarán durante <strong>7 días adicionales</strong>.</p>
-                          <p>• Transcurrido ese plazo sin activación, la cuenta y toda la información serán <strong>eliminadas de forma definitiva</strong>.</p>
-                        </div>
+                        <ul class="trial-warning-points" aria-label="Condiciones al finalizar la prueba">
+                          <li>Tus datos y tu cuenta se conservarán durante <strong>7 días adicionales</strong>.</li>
+                          <li>Transcurrido ese plazo sin activación, la cuenta y toda la información serán <strong>eliminadas de forma definitiva</strong>.</li>
+                        </ul>
 
-                        <p class="font-medium text-amber-900 pt-1">
+                        <p class="trial-warning-cta-copy">
                           No pierdas tu información. Activa tu plan para seguir operando.
                         </p>
                       </div>
 
-                      <div class="mt-5 flex justify-end">
+                      <div class="trial-warning-actions">
                         <button
                           @click="activarPlan"
-                          class="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white font-semibold px-6 py-2.5 rounded-lg transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] shadow-md shadow-amber-600/20"
+                          class="btn trial-warning-cta"
                         >
                           Activar mi plan ahora
                         </button>
@@ -1193,6 +1195,211 @@ onBeforeUnmount(() => {
 .subscription-header { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-top:4px }
 .subscription-actions { display:flex; gap:8px; margin-top:0; margin-left:auto; flex-wrap:wrap }
   .subscription-meta { margin-top:10px; color:#374151; font-size:14px }
+  .subscription-status-pill {
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    border-radius:999px;
+    border:1px solid #fed7aa;
+    background:linear-gradient(180deg, #fff7ed 0%, #fffbeb 100%);
+    color:#9a3412;
+    font-size:13px;
+    font-weight:700;
+    padding:7px 12px;
+  }
+  .subscription-status-pill.is-green {
+    border-color:#86efac;
+    background:linear-gradient(180deg, #ecfdf5 0%, #f0fdf4 100%);
+    color:#166534;
+  }
+  .subscription-status-pill.is-red {
+    border-color:#fecaca;
+    background:linear-gradient(180deg, #fef2f2 0%, #fff1f2 100%);
+    color:#991b1b;
+  }
+  .subscription-status-dot {
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:20px;
+    height:20px;
+    border-radius:999px;
+    background:rgba(255,255,255,0.9);
+    font-size:12px;
+  }
+  .subscription-meta-item {
+    display:inline-flex;
+    align-items:center;
+    gap:10px;
+    border:1px solid #e2e8f0;
+    border-radius:10px;
+    background:#f8fafc;
+    padding:8px 12px;
+  }
+  .subscription-meta-label {
+    font-size:12px;
+    color:#64748b;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+    font-weight:700;
+  }
+  .subscription-meta-value {
+    color:#0f172a;
+    font-size:14px;
+    font-weight:700;
+  }
+  .trial-warning-card {
+    position:relative;
+    overflow:hidden;
+    border-radius:16px;
+    border:1px solid #fed7aa;
+    background:linear-gradient(140deg, #fff7ed 0%, #ffffff 58%, #fffbeb 100%);
+    box-shadow:0 16px 30px rgba(154, 52, 18, 0.12);
+  }
+  .trial-warning-card::before {
+    content:'';
+    position:absolute;
+    right:-42px;
+    top:-42px;
+    width:160px;
+    height:160px;
+    border-radius:999px;
+    background:radial-gradient(circle, rgba(251, 146, 60, 0.2) 0%, rgba(251, 146, 60, 0) 70%);
+    pointer-events:none;
+  }
+  .trial-warning-hero {
+    position:relative;
+    padding:18px 18px 14px;
+    border-bottom:1px solid #fed7aa;
+  }
+  .trial-warning-kicker {
+    display:inline-flex;
+    align-items:center;
+    border-radius:999px;
+    border:1px solid #fdba74;
+    background:#ffedd5;
+    color:#9a3412;
+    font-size:11px;
+    font-weight:800;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    padding:5px 9px;
+  }
+  .trial-warning-title {
+    margin:10px 0 4px;
+    font-size:22px;
+    line-height:1.2;
+    color:#7c2d12;
+    font-weight:800;
+  }
+  .trial-warning-subtitle {
+    margin:0;
+    color:#9a3412;
+    font-size:14px;
+    font-weight:600;
+  }
+  .trial-warning-countdown {
+    margin-top:14px;
+    display:inline-flex;
+    align-items:flex-end;
+    gap:8px;
+    border-radius:12px;
+    border:1px solid #fdba74;
+    background:#fff7ed;
+    padding:10px 12px;
+  }
+  .trial-warning-countdown-value {
+    font-size:30px;
+    line-height:1;
+    color:#c2410c;
+    font-weight:900;
+  }
+  .trial-warning-countdown-label {
+    color:#9a3412;
+    font-size:12px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+    margin-bottom:4px;
+  }
+  .trial-warning-body {
+    padding:16px 18px 14px;
+    display:grid;
+    gap:12px;
+  }
+  .trial-warning-main-text {
+    margin:0;
+    color:#475569;
+    font-size:14px;
+    line-height:1.55;
+    font-weight:600;
+  }
+  .trial-warning-main-text span {
+    color:#7c2d12;
+    font-weight:800;
+  }
+  .trial-warning-points {
+    margin:0;
+    padding:0;
+    list-style:none;
+    display:grid;
+    gap:8px;
+  }
+  .trial-warning-points li {
+    position:relative;
+    padding:10px 12px 10px 34px;
+    border:1px solid #ffedd5;
+    border-radius:10px;
+    background:rgba(255, 255, 255, 0.82);
+    color:#475569;
+    font-size:13px;
+    line-height:1.45;
+  }
+  .trial-warning-points li::before {
+    content:'!';
+    position:absolute;
+    left:12px;
+    top:10px;
+    width:16px;
+    height:16px;
+    border-radius:999px;
+    display:grid;
+    place-items:center;
+    background:#fed7aa;
+    color:#9a3412;
+    font-size:11px;
+    font-weight:800;
+  }
+  .trial-warning-cta-copy {
+    margin:0;
+    color:#9a3412;
+    font-size:14px;
+    font-weight:700;
+  }
+  .trial-warning-actions {
+    padding:0 18px 18px;
+    display:flex;
+    justify-content:flex-end;
+  }
+  .trial-warning-cta {
+    border:none;
+    border-radius:10px;
+    background:linear-gradient(180deg, #ea580c 0%, #c2410c 100%);
+    color:#ffffff;
+    font-size:14px;
+    font-weight:700;
+    padding:10px 16px;
+    box-shadow:0 10px 18px rgba(194, 65, 12, 0.26);
+    transition:transform 0.14s ease, box-shadow 0.14s ease, filter 0.14s ease;
+  }
+  .trial-warning-cta:hover {
+    transform:translateY(-1px);
+    box-shadow:0 14px 24px rgba(194, 65, 12, 0.3);
+    filter:brightness(1.02);
+  }
+  .trial-warning-cta:active {
+    transform:translateY(0);
+  }
   .subscription-cancel-btn { background:#fff; border:1px solid #ef4444; color:#b91c1c }
   .subscription-cancel-btn:hover { background:#fef2f2 }
   .sub-menu-wrap { position:relative; display:inline-block }
@@ -1624,6 +1831,30 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 768px) {
+  .subscription-header {
+    flex-direction:column;
+    align-items:stretch;
+  }
+  .subscription-actions {
+    margin-left:0;
+  }
+  .subscription-meta-item {
+    width:100%;
+    justify-content:space-between;
+  }
+  .trial-warning-title {
+    font-size:19px;
+  }
+  .trial-warning-countdown {
+    width:100%;
+    justify-content:center;
+  }
+  .trial-warning-actions {
+    padding-top:4px;
+  }
+  .trial-warning-cta {
+    width:100%;
+  }
   .tabs {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

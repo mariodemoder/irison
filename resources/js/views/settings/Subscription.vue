@@ -32,7 +32,10 @@
           <h2>Funcionalidades incluidas</h2>
           <div class="features-card">
             <ul class="features-list">
-              <li v-for="f in currentFeatures" :key="f">{{ f }}</li>
+              <li v-for="f in currentFeatures" :key="f">
+                <a v-if="f.startsWith('Todo ')" class="plan-link" href="#" @click.prevent="showBasicFeaturesModal = true">{{ f }}</a>
+                <template v-else>{{ f }}</template>
+              </li>
             </ul>
           </div>
         </section>
@@ -115,6 +118,19 @@
           </form>
         </div>
       </div>
+
+      <!-- Modal funcionalidades Basic -->
+      <div v-if="showBasicFeaturesModal" class="modal-backdrop" @click.self="showBasicFeaturesModal = false">
+        <div class="modal-content">
+          <h3>Funcionalidades del plan Basic</h3>
+          <ul class="plan-modal-features">
+            <li v-for="f in basicFeatures" :key="f">{{ f }}</li>
+          </ul>
+          <div class="form-actions">
+            <button type="button" class="btn btn-primary" @click="showBasicFeaturesModal = false">Cerrar</button>
+          </div>
+        </div>
+      </div>
     </div>
   </MainLayout>
 </template>
@@ -132,6 +148,7 @@ const loading = ref(true)
 const sub = ref(null)
 const history = ref([])
 const showModal = ref(false)
+const showBasicFeaturesModal = ref(false)
 const sending = ref(false)
 const backupping = ref(false)
 const form = ref({ requested_plan: '', comments: '' })
@@ -152,6 +169,10 @@ const currentFeatures = computed(() => {
   if (!sub.value) return []
   const p = pricingMap.value[sub.value.plan]
   return p?.features || []
+})
+
+const basicFeatures = computed(() => {
+  return pricingMap.value.basic?.features || []
 })
 
 const nextPlanName = computed(() => {
@@ -307,4 +328,9 @@ textarea.input { resize: vertical; }
 .backup-desc { margin: 0; font-size: 14px; color: #6b7280; }
 .backup-btn { white-space: nowrap; }
 .backup-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.plan-link { color: #4338ca; text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px; cursor: pointer; font-weight: 600; }
+.plan-link:hover { text-decoration-style: solid; }
+.plan-modal-features { list-style: none; padding: 0; margin: 0; }
+.plan-modal-features li { position: relative; padding-left: 20px; font-size: 14px; line-height: 2.2; color: #374151; }
+.plan-modal-features li::before { content: '\2713'; position: absolute; left: 0; font-weight: 700; color: #10b981; }
 </style>

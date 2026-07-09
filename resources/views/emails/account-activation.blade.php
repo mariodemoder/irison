@@ -10,8 +10,9 @@
         <tr>
             <td align="center">
                 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;">
+                    @include('emails.partials.email-header')
                     <tr>
-                        <td style="padding:24px 24px 8px 24px;">
+                        <td style="padding:12px 24px 8px 24px;">
                             <h1 style="margin:0;font-size:22px;line-height:1.3;color:#111827;">Activa tu cuenta</h1>
                         </td>
                     </tr>
