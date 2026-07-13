@@ -142,15 +142,15 @@ function resetBooking() {
 }
 
 onMounted(loadPage)
+
+const currentYear = new Date().getFullYear()
+const faviconUrl = `${import.meta.env.BASE_URL}favicon.svg`
 </script>
 
 <template>
   <div class="booking-shell">
     <div class="booking-inner">
       <header class="booking-header">
-        <div class="booking-header__top">
-          <img src="../../assets/logonameviolet.svg" alt="Irison" class="booking-logo" />
-        </div>
         <div v-if="pageData" class="booking-header__clinic">
           <h1>{{ pageData.clinic.name }}</h1>
           <p v-if="pageData.clinic.address">{{ pageData.clinic.address }}</p>
@@ -232,6 +232,24 @@ onMounted(loadPage)
           <button class="btn btn--ghost booking-btn-ghost" @click="prevStep">Volver</button>
         </div>
       </template>
+
+      <footer class="booking-footer">
+        <div class="booking-footer-inner">
+          <div class="booking-footer-brand">
+            <img :src="faviconUrl" alt="Irison" class="booking-footer-logo" />
+            <span class="booking-footer-name">Irison</span>
+          </div>
+
+          <nav class="booking-footer-nav">
+            <a href="https://irison.es/privacy" class="booking-footer-link">Privacidad</a>
+            <a href="https://irison.es/terms" class="booking-footer-link">Términos</a>
+            <a href="mailto:hola@irison.es" class="booking-footer-link">Contacto</a>
+          </nav>
+
+          <p class="booking-footer-copy">&copy; {{ currentYear }} Irison. All rights reserved.</p>
+          <p class="booking-footer-tagline">Simplify your time. Focus on what matters.</p>
+        </div>
+      </footer>
     </div>
   </div>
 </template>
@@ -262,17 +280,9 @@ onMounted(loadPage)
   padding: 20px 0 30px;
 }
 
-.booking-header__top {
-  margin-bottom: 16px;
-}
-
-.booking-logo {
-  height: 40px;
-}
-
 .booking-header__clinic h1 {
   margin: 0;
-  font-size: 1.6rem;
+  font-size: 2rem;
   font-weight: 800;
   letter-spacing: -0.03em;
 }
@@ -384,5 +394,68 @@ onMounted(loadPage)
   display: flex;
   justify-content: center;
   margin-top: 24px;
+}
+
+.booking-footer {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 14px 16px;
+  font-size: 13px;
+  opacity: 0.55;
+  margin-top: 40px;
+}
+
+.booking-footer-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.booking-footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.booking-footer-logo {
+  width: 18px;
+  height: 18px;
+  opacity: 0.8;
+  filter: grayscale(1);
+}
+
+.booking-footer-name {
+  font-weight: 600;
+  color: #111827;
+  font-size: 14px;
+}
+
+.booking-footer-nav {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.booking-footer-link {
+  color: #6b7280;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.booking-footer-link:hover {
+  color: #111827;
+}
+
+.booking-footer-copy {
+  margin: 0;
+  color: #6b7280;
+}
+
+.booking-footer-tagline {
+  margin: 0;
+  font-size: 11px;
+  color: #9ca3af;
+  letter-spacing: 0.02em;
 }
 </style>

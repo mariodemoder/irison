@@ -5,14 +5,18 @@ namespace App\Listeners;
 use App\Events\SubscriptionUpgraded;
 use App\Mail\SubscriptionUpgradedNotificationMail;
 use App\Notifications\SubscriptionUpgradedNotification;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Stripe\StripeClient;
 
-class UpgradeSubscription
+class UpgradeSubscription implements ShouldQueue
 {
-    use InteractsWithQueue;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public function handle(SubscriptionUpgraded $event): void
     {
@@ -27,7 +31,6 @@ class UpgradeSubscription
 
             $recipient->notify(new SubscriptionUpgradedNotification($request));
 
-            // Enviar email de upgrade completado
             if (filter_var((string) $recipient->email, FILTER_VALIDATE_EMAIL)) {
                 $invoiceUrl = $this->resolveInvoiceUrl($request);
 
@@ -48,7 +51,6 @@ class UpgradeSubscription
         try {
             $stripe = new StripeClient(config('services.stripe.secret'));
 
-            // Prioridad 1: usar el session_id del checkout si existe
             if (! empty($request->stripe_checkout_session_id)) {
                 $session = $stripe->checkout->sessions->retrieve($request->stripe_checkout_session_id);
                 if (! empty($session->invoice)) {
@@ -58,7 +60,6 @@ class UpgradeSubscription
                 }
             }
 
-            // Prioridad 2: última factura del customer
             $customerId = $request->clinic->stripe_id ?? $request->clinic->stripe_customer_id ?? null;
             if ($customerId) {
                 $invoices = $stripe->invoices->all(['customer' => $customerId, 'limit' => 1]);

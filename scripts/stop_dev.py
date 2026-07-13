@@ -34,7 +34,7 @@ def kill_by_port_unix(port):
     return list(pids)
 
 def main():
-    ports = [8000, 5173, 1025, 8025]
+    ports = [8000, 5173, 1025, 8025, 6379]
     system = platform.system()
     killed = {}
 
@@ -74,7 +74,7 @@ def main():
             if pids:
                 print(f'Puerto {p}: terminados PIDs {", ".join(pids)}')
     else:
-        print('No se encontraron procesos en los puertos 8000/5173/1025/8025.')
+        print('No se encontraron procesos en los puertos 8000/5173/1025/8025/6379.')
         if '--force' in sys.argv:
             print('Forzando cierre de procesos node/php (esto puede afectar otros proyectos)...')
             if system == 'Windows':

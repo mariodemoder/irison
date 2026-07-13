@@ -63,6 +63,7 @@ Route::middleware('throttle:30,1')->group(function () {
 Route::middleware(['auth:sanctum', 'clinic'])->group(function () {
     Route::get('/booking/settings', [\App\Http\Controllers\Api\Booking\BookingSettingsController::class, 'show']);
     Route::put('/booking/settings', [\App\Http\Controllers\Api\Booking\BookingSettingsController::class, 'update']);
+    Route::get('/booking/slug-check', [\App\Http\Controllers\Api\Booking\BookingSettingsController::class, 'checkSlug']);
     Route::get('/booking/services', [\App\Http\Controllers\Api\Booking\BookingServiceController::class, 'index']);
     Route::post('/booking/services', [\App\Http\Controllers\Api\Booking\BookingServiceController::class, 'store']);
     Route::put('/booking/services/{id}', [\App\Http\Controllers\Api\Booking\BookingServiceController::class, 'update']);
@@ -170,6 +171,7 @@ Route::middleware(['auth:sanctum', 'clinic', 'check.subscription'])->group(funct
     Route::get('/settings/subscription', [\App\Http\Controllers\Api\SubscriptionController::class, 'show']);
     Route::get('/settings/subscription/history', [\App\Http\Controllers\Api\SubscriptionController::class, 'history']);
     Route::post('/settings/subscription/request', [\App\Http\Controllers\Api\SubscriptionRequestController::class, 'store']);
+    Route::post('/settings/subscription/confirm-upgrade', [\App\Http\Controllers\Api\SubscriptionRequestController::class, 'confirmUpgrade']);
     Route::get('/settings/subscription/backup', [\App\Http\Controllers\Api\SubscriptionBackupController::class, 'download']);
 
     // Logout: revoca el token actual

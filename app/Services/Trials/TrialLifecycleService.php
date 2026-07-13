@@ -102,7 +102,7 @@ class TrialLifecycleService
         $recipient = $this->resolveEmailRecipient($clinic);
 
         if ($recipient !== null) {
-            Mail::to($recipient)->send(new TrialLifecycleMail($clinic, $eventKey, $subject, $headline, $message));
+            Mail::to($recipient)->queue(new TrialLifecycleMail($clinic, $eventKey, $subject, $headline, $message));
         } else {
             Log::warning('trial.milestone.recipient_invalid', [
                 'event' => 'trial.milestone.recipient_invalid',

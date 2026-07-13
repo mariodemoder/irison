@@ -137,13 +137,17 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
+import Swal from 'sweetalert2'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
 import { mePlan, meStatus, meReadOnlyNoTransactions, planLabel, isBasic, isPro, isEnterprise } from '../../shared/meCache'
 import SaveButton from '../../components/SaveButton.vue'
 
 const toast = useToast()
+const route = useRoute()
+const router = useRouter()
 const loading = ref(true)
 const sub = ref(null)
 const history = ref([])
@@ -207,7 +211,62 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+
+  if (route.query.upgraded === '1') {
+    await confirmUpgradeReturn()
+  } else if (sub.value?.recent_completed_upgrade) {
+    await confirmUpgradeReturn()
+  }
 })
+
+async function confirmUpgradeReturn() {
+  const sessionId = String(route.query.session_id || '').trim()
+
+  try {
+    const res = await api.post('/settings/subscription/confirm-upgrade', {
+      session_id: sessionId || undefined,
+    })
+
+    const invoiceUrl = res.data?.invoice_url || null
+    const plan = res.data?.plan || 'pro'
+    const clinicName = res.data?.clinic_name || ''
+
+    await Swal.fire({
+      html: `
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+          <svg width="42" height="42" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" stroke="#111827" stroke-width="1.6" />
+            <circle cx="9" cy="10" r="1" fill="#111827" />
+            <circle cx="15" cy="10" r="1" fill="#111827" />
+            <path d="M8 14c1 1.3 2.4 2 4 2s3-.7 4-2" stroke="#111827" stroke-width="1.6" stroke-linecap="round" />
+          </svg>
+          <div style="font-weight:700;color:#0f172a;font-size:18px;">¡Enhorabuena!</div>
+          <div style="color:#334155;font-size:15px;">Has cambiado al plan <strong style="text-transform:capitalize;">${plan}</strong></div>
+          ${invoiceUrl ? `<a href="${invoiceUrl}" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;padding:10px 20px;background:#059669;color:#fff;text-decoration:none;border-radius:10px;font-weight:700;font-size:14px;">Ver factura</a>` : ''}
+        </div>
+      `,
+      showConfirmButton: false,
+      timer: 3500,
+      timerProgressBar: true,
+      customClass: { popup: 'swal-popup-card' },
+    })
+  } catch (e) {
+    await Swal.fire({
+      html: `
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+          <div style="font-weight:700;color:#0f172a;font-size:18px;">¡Enhorabuena!</div>
+          <div style="color:#334155;font-size:15px;">Tu plan ha sido actualizado correctamente.</div>
+        </div>
+      `,
+      showConfirmButton: false,
+      timer: 3000,
+      timerProgressBar: true,
+      customClass: { popup: 'swal-popup-card' },
+    })
+  } finally {
+    router.replace({ path: '/settings/subscription' })
+  }
+}
 
 async function submitRequest() {
   if (!form.value.requested_plan) return

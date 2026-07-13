@@ -276,9 +276,60 @@ export async function openCreateAppointmentTypePopup({ api, Swal, toast } = {}) 
   return null
 }
 
+export async function openCreateProfessionPopup({ api, Swal, toast } = {}) {
+  const { value: formValues } = await Swal.fire({
+    title: 'Crear profesión',
+    html: `
+      <div class="swal-card">
+        <div class="create-row">
+          <label for="swal-profession-name">Nombre</label>
+          <input id="swal-profession-name" class="input" placeholder="Ej: Psicólogo">
+        </div>
+      </div>
+    `,
+    focusConfirm: false,
+    showCancelButton: true,
+    confirmButtonText: 'Crear',
+    cancelButtonText: 'Cancelar',
+    buttonsStyling: false,
+    customClass: {
+      popup: 'swal-popup-card',
+      confirmButton: 'primary',
+      cancelButton: 'muted'
+    },
+    preConfirm: async () => {
+      const name = document.getElementById('swal-profession-name')?.value?.trim()
+
+      if (!name) {
+        Swal.showValidationMessage('El nombre es requerido')
+        return false
+      }
+
+      try {
+        const res = await api.post('/team/professions', { name })
+        return res.data || res.data?.data || res
+      } catch (e) {
+        const validationErrors = e.response?.data?.errors
+        const firstFieldError = validationErrors && Object.values(validationErrors)[0]?.[0]
+        const msg = firstFieldError || e.response?.data?.message || 'Error creando profesión'
+        Swal.showValidationMessage(msg)
+        return false
+      }
+    }
+  })
+
+  if (formValues) {
+    const newProfession = formValues.data ? formValues.data : formValues
+    if (toast && typeof toast.success === 'function') toast.success('Profesión creada')
+    return newProfession
+  }
+  return null
+}
+
 export default {
   openCreatePatientPopup,
   openCreateAppointmentTypePopup,
+  openCreateProfessionPopup,
   loadPatients,
   checkOverlapShared,
   goBack,

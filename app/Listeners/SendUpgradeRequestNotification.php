@@ -5,13 +5,17 @@ namespace App\Listeners;
 use App\Events\UpgradeRequested;
 use App\Mail\SubscriptionRequestMail;
 use App\Notifications\SubscriptionUpgradeRequested;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
-class SendUpgradeRequestNotification
+class SendUpgradeRequestNotification implements ShouldQueue
 {
-    use InteractsWithQueue;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public function handle(UpgradeRequested $event): void
     {
@@ -20,7 +24,7 @@ class SendUpgradeRequestNotification
         $requesterEmail = (string) ($request->requester?->email ?? '');
         if (filter_var($requesterEmail, FILTER_VALIDATE_EMAIL)) {
             try {
-                Mail::to($requesterEmail)->send(new SubscriptionRequestMail($request));
+                Mail::to($requesterEmail)->queue(new SubscriptionRequestMail($request));
             } catch (\Throwable $e) {
                 Log::error('Failed to send subscription request mail to requester', [
                     'request_id' => $request->id,

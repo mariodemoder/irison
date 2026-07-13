@@ -3,11 +3,15 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Mail\SubscriptionUpgradedNotificationMail;
 use App\Models\SubscriptionRequest;
 use App\Services\Subscription\SubscriptionRequestService;
 use App\Services\Subscription\SubscriptionUpgradeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Stripe\StripeClient;
 
 class SubscriptionRequestController extends Controller
 {
@@ -94,6 +98,142 @@ class SubscriptionRequestController extends Controller
         $subscriptionRequest->save();
 
         return response()->json(['message' => 'Solicitud rechazada.'], 200);
+    }
+
+    public function confirmUpgrade(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'session_id' => 'nullable|string',
+        ]);
+
+        $clinic = $request->user()?->clinic;
+        if (! $clinic) {
+            return response()->json(['message' => 'Clínica no disponible'], 403);
+        }
+
+        $sessionId = trim((string) ($validated['session_id'] ?? ''));
+
+        // Buscar la solicitud de upgrade por session_id o por clinic + waiting_payment
+        $subscriptionRequest = null;
+
+        if ($sessionId !== '') {
+            $subscriptionRequest = SubscriptionRequest::where('stripe_checkout_session_id', $sessionId)
+                ->where('clinic_id', $clinic->id)
+                ->first();
+        }
+
+        if (! $subscriptionRequest) {
+            $subscriptionRequest = SubscriptionRequest::where('clinic_id', $clinic->id)
+                ->where('status', 'waiting_payment')
+                ->latest()
+                ->first();
+        }
+
+        if (! $subscriptionRequest) {
+            return response()->json(['message' => 'No se encontró una solicitud de upgrade pendiente.'], 404);
+        }
+
+        // Si ya está completada, solo resolver la factura
+        if ($subscriptionRequest->status === 'completed') {
+            $invoiceUrl = $this->resolveInvoiceUrl($subscriptionRequest, $sessionId);
+
+            return response()->json([
+                'invoice_url' => $invoiceUrl,
+                'plan' => $subscriptionRequest->requested_plan,
+                'clinic_name' => $subscriptionRequest->clinic->name ?? '-',
+            ]);
+        }
+
+        // Procesar el upgrade si aún no se ha completado
+        $wasAlreadyCompleted = $subscriptionRequest->status === 'completed';
+
+        try {
+            $this->upgradeService->handlePaymentCompleted($subscriptionRequest, [
+                'provider' => 'stripe',
+                'session_id' => $sessionId,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('confirmUpgrade: handlePaymentCompleted falló, continuando con resolución de factura', [
+                'request_id' => $subscriptionRequest->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        // Refrescar el modelo después del procesamiento
+        $subscriptionRequest->refresh();
+
+        $invoiceUrl = $this->resolveInvoiceUrl($subscriptionRequest, $sessionId);
+
+        // Enviar email SOLO si esta llamada completó el upgrade (evitar duplicados con webhook)
+        if (! $wasAlreadyCompleted && $subscriptionRequest->status === 'completed') {
+            $this->sendUpgradeEmailBackup($subscriptionRequest, $invoiceUrl);
+        }
+
+        return response()->json([
+            'invoice_url' => $invoiceUrl,
+            'plan' => $subscriptionRequest->requested_plan,
+            'clinic_name' => $subscriptionRequest->clinic->name ?? '-',
+        ]);
+    }
+
+    private function sendUpgradeEmailBackup(SubscriptionRequest $subscriptionRequest, ?string $invoiceUrl): void
+    {
+        try {
+            $recipient = $subscriptionRequest->clinic->ownerUser()->first()
+                ?? $subscriptionRequest->clinic->users()->orderBy('id')->first();
+
+            if ($recipient && filter_var((string) $recipient->email, FILTER_VALIDATE_EMAIL)) {
+                Mail::to($recipient->email)->send(
+                    new SubscriptionUpgradedNotificationMail($subscriptionRequest, $invoiceUrl)
+                );
+            }
+        } catch (\Throwable $e) {
+            Log::warning('confirmUpgrade: no se pudo enviar email de upgrade como backup', [
+                'request_id' => $subscriptionRequest->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function resolveInvoiceUrl(SubscriptionRequest $request, string $sessionId): ?string
+    {
+        try {
+            $stripe = new StripeClient(config('services.stripe.secret'));
+
+            // Prioridad 1: sesión de checkout del request
+            if (! empty($request->stripe_checkout_session_id)) {
+                $session = $stripe->checkout->sessions->retrieve($request->stripe_checkout_session_id);
+                if (! empty($session->invoice)) {
+                    $invoice = $stripe->invoices->retrieve($session->invoice);
+                    return $invoice->hosted_invoice_url ?? null;
+                }
+            }
+
+            // Prioridad 2: sesión por el sessionId recibido
+            if ($sessionId !== '') {
+                $session = $stripe->checkout->sessions->retrieve($sessionId);
+                if (! empty($session->invoice)) {
+                    $invoice = $stripe->invoices->retrieve($session->invoice);
+                    return $invoice->hosted_invoice_url ?? null;
+                }
+            }
+
+            // Prioridad 3: última factura del customer
+            $customerId = $request->clinic->stripe_id ?? $request->clinic->stripe_customer_id ?? null;
+            if ($customerId) {
+                $invoices = $stripe->invoices->all(['customer' => $customerId, 'limit' => 1]);
+                if (count($invoices->data) > 0) {
+                    return $invoices->data[0]->hosted_invoice_url ?? null;
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('confirmUpgrade: no se pudo resolver URL de factura', [
+                'request_id' => $request->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return null;
     }
 
     private function isValidUpgrade(string $currentPlan, string $requestedPlan): bool

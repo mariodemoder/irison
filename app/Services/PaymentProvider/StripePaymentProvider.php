@@ -34,7 +34,8 @@ class StripePaymentProvider implements PaymentProviderInterface
 
     public function createCheckout(array $data): array
     {
-        $successUrl = config('app.url') . '/billing/required?checkout=success&session_id={CHECKOUT_SESSION_ID}';
+        $successUrl = $data['success_url']
+            ?? (config('app.url') . '/billing/required?checkout=success&session_id={CHECKOUT_SESSION_ID}');
         $cancelUrl  = config('app.url') . '/billing/required?checkout=cancel';
         $priceId = $this->resolvePriceIdForCheckout($data);
 
@@ -178,6 +179,7 @@ class StripePaymentProvider implements PaymentProviderInterface
                 'plan' => $newPlan,
                 'price_id' => $this->resolvePriceIdForPlan($newPlan),
                 'metadata' => $data['metadata'] ?? [],
+                'success_url' => config('app.url') . '/settings/subscription?upgraded=1&session_id={CHECKOUT_SESSION_ID}',
             ]);
 
             return [

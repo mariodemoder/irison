@@ -36,12 +36,18 @@ def run_in_new_terminal(cmd, title=None):
 
 def check_available(cmd):
     exe = cmd.split()[0]
+    if os.path.isfile(exe):
+        return True
     return shutil.which(exe) is not None
 
+REDIS_PATH = r'C:\Redis\redis-server.exe'
+
 cmds = [
+    REDIS_PATH,
     'mailpit',
     'npm run dev',
-    'php artisan serve --host=127.0.0.1 --port=8000 --no-reload'
+    'php artisan serve --host=127.0.0.1 --port=8000 --no-reload',
+    'php artisan queue:work --verbose --sleep=3 --tries=3',
 ]
 
 titles = {}

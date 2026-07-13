@@ -27,8 +27,15 @@ function formatDateTime(dateTimeStr) {
 
     <div v-if="appointment" class="confirmation-details">
       <div class="detail-row">
-        <span class="detail-label">Clínica</span>
-        <span class="detail-value">{{ appointment.appointment.clinic.name }}</span>
+        <span class="detail-label">Lugar</span>
+        <span class="detail-value">
+          <strong>{{ appointment.appointment.clinic.name }}</strong>
+          <span v-if="appointment.appointment.clinic.address"> - {{ appointment.appointment.clinic.address }}</span>
+        </span>
+      </div>
+      <div v-if="appointment.appointment.clinic.phone" class="detail-row">
+        <span class="detail-label">Teléfono</span>
+        <span class="detail-value">{{ appointment.appointment.clinic.phone }}</span>
       </div>
       <div class="detail-row">
         <span class="detail-label">Profesional</span>

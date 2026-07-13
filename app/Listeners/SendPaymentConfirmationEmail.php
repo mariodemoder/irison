@@ -5,14 +5,18 @@ namespace App\Listeners;
 use App\Events\PaymentCompleted;
 use App\Mail\PaymentCompletedMail;
 use App\Notifications\PaymentCompletedNotification;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use Stripe\StripeClient;
 
-class SendPaymentConfirmationEmail
+class SendPaymentConfirmationEmail implements ShouldQueue
 {
-    use InteractsWithQueue;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public function handle(PaymentCompleted $event): void
     {
@@ -42,17 +46,14 @@ class SendPaymentConfirmationEmail
 
     private function resolveInvoiceUrl($request, array $paymentData): ?string
     {
-        // Prioridad 1: invoice_url directo del paymentData
         if (! empty($paymentData['invoice_url'])) {
             return $paymentData['invoice_url'];
         }
 
-        // Prioridad 2: invoice_id del paymentData
         if (! empty($paymentData['invoice_id'])) {
             return \App\Mail\SubscriptionActivatedMail::resolveInvoiceUrl($paymentData['invoice_id']);
         }
 
-        // Prioridad 3: sesión de checkout del request
         if (! empty($request->stripe_checkout_session_id)) {
             try {
                 $stripe = new StripeClient(config('services.stripe.secret'));
@@ -68,7 +69,6 @@ class SendPaymentConfirmationEmail
             }
         }
 
-        // Prioridad 4: última factura del customer
         try {
             $stripe = new StripeClient(config('services.stripe.secret'));
             $customerId = $request->clinic->stripe_id ?? $request->clinic->stripe_customer_id ?? null;

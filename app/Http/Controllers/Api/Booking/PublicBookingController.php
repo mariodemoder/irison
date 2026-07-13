@@ -57,6 +57,8 @@ class PublicBookingController extends Controller
                     ] : null,
                     'clinic' => [
                         'name' => $appointment->clinic->name,
+                        'address' => $appointment->clinic->address,
+                        'phone' => $appointment->clinic->phone,
                     ],
                 ],
                 'confirmation_token' => $appointment->confirmation_token,
@@ -87,6 +89,8 @@ class PublicBookingController extends Controller
                     ] : null,
                     'clinic' => [
                         'name' => $appointment->clinic->name,
+                        'address' => $appointment->clinic->address,
+                        'phone' => $appointment->clinic->phone,
                     ],
                 ],
             ]);

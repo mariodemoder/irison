@@ -70,7 +70,7 @@ class SubscribeController extends Controller
                     ! empty($subscription->latest_invoice) ? (string) $subscription->latest_invoice : null
                 );
 
-                Mail::to($request->user()->email)->queue(
+                Mail::to($request->user()->email)->send(
                     new SubscriptionActivatedMail(
                         clinicName: $clinic->name,
                         plan: (string) ($clinic->plan ?? 'basic'),

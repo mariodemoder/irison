@@ -32,6 +32,20 @@ class BookingSettingsController extends Controller
         ]);
     }
 
+    public function checkSlug(Request $request): JsonResponse
+    {
+        $request->validate([
+            'slug' => 'required|string|max:255',
+        ]);
+
+        $slug = $request->input('slug');
+        $exists = BookingPage::where('slug', $slug)
+            ->where('clinic_id', '!=', currentClinicId())
+            ->exists();
+
+        return response()->json(['available' => !$exists]);
+    }
+
     public function update(Request $request): JsonResponse
     {
         $validated = $request->validate([

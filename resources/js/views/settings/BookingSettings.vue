@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import api from '../../services/api'
 import { useToast } from 'vue-toastification'
 import BtnTrash from '../../components/BtnTrash.vue'
@@ -26,6 +26,8 @@ const schedules = ref({})
 const exceptions = ref({})
 
 const editingProfessional = ref(null)
+const slugError = ref('')
+const slugTimeout = ref(null)
 
 let _serviceKey = 0
 
@@ -84,7 +86,38 @@ async function loadSettings() {
   }
 }
 
+async function checkSlugAvailability() {
+  const slug = settings.value.slug?.trim()
+  if (!slug) {
+    slugError.value = ''
+    return true
+  }
+  try {
+    const res = await api.get('/booking/slug-check', { params: { slug } })
+    if (!res.data.available) {
+      slugError.value = 'Esa URL ya está en uso. Elige otra.'
+      return false
+    }
+    slugError.value = ''
+    return true
+  } catch {
+    slugError.value = ''
+    return true
+  }
+}
+
+watch(() => settings.value.slug, () => {
+  if (slugTimeout.value) clearTimeout(slugTimeout.value)
+  slugTimeout.value = setTimeout(checkSlugAvailability, 400)
+})
+
 async function saveBookingSettings() {
+  const slugAvailable = await checkSlugAvailability()
+  if (!slugAvailable) {
+    toast.error('La URL ya está en uso. Elige otra antes de guardar.')
+    return
+  }
+
   try {
     await api.put('/booking/settings', settings.value)
 
@@ -112,7 +145,7 @@ defineExpose({ saveBookingSettings })
 async function toggleProfessional(bp) {
   try {
     const res = await api.put(`/booking/professionals/${bp.id}`, {
-      allow_online_booking: !bp.allow_online_booking,
+      allow_online_booking: bp.allow_online_booking,
     })
     Object.assign(bp, res.data.data)
   } catch {
@@ -213,7 +246,8 @@ onMounted(loadSettings)
         <div class="form-group">
           <label>URL pública</label>
           <div class="url-preview">/booking/<strong>{{ settings.slug }}</strong></div>
-          <input v-model="settings.slug" class="input" placeholder="mi-clinica" />
+          <input v-model="settings.slug" class="input" :class="{ 'input-error': slugError }" placeholder="mi-clinica" />
+          <span v-if="slugError" class="slug-error">{{ slugError }}</span>
         </div>
         <div class="form-group">
           <label>Título</label>
@@ -222,10 +256,10 @@ onMounted(loadSettings)
       </div>
       <div class="form-row-2">
         <div class="form-group">
-          <label>Activo</label>
-          <select v-model.number="settings.is_active" class="input">
-            <option :value="1">Activado</option>
-            <option :value="0">Desactivado</option>
+          <label>Estado</label>
+          <select v-model="settings.is_active" class="input">
+            <option :value="true">Activado</option>
+            <option :value="false">Desactivado</option>
           </select>
         </div>
         <div class="form-group">
@@ -345,9 +379,10 @@ onMounted(loadSettings)
             <span v-if="bp.user?.profession" class="profession-badge">{{ bp.user.profession.name }}</span>
             <span class="text-muted" style="font-size:12px;">{{ bp.user?.email }}</span>
           </div>
-          <button class="toggle-btn" :class="{ active: bp.allow_online_booking }" @click.stop="toggleProfessional(bp)">
-            {{ bp.allow_online_booking ? 'Online' : 'Offline' }}
-          </button>
+          <select class="input counter-input" style="width:auto;min-width:100px;" v-model="bp.allow_online_booking" @change="toggleProfessional(bp)" @click.stop>
+            <option :value="true">Online</option>
+            <option :value="false">Offline</option>
+          </select>
         </div>
 
         <div v-if="editingProfessional === bp.id" class="professional-card-admin__detail">
@@ -459,6 +494,16 @@ onMounted(loadSettings)
 .input:focus {
   outline: none;
   border-color: #3b82f6;
+}
+
+.input-error {
+  border-color: #ef4444;
+}
+
+.slug-error {
+  font-size: 12px;
+  color: #ef4444;
+  margin-top: 4px;
 }
 
 .section-head {

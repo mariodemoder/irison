@@ -73,15 +73,15 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withSchedule(function (Schedule $schedule): void {
         $schedule
-            ->call(fn () => app(SendAppointmentReminder24h::class)->handle())
+            ->job(new SendAppointmentReminder24h())
             ->name('appointments:reminders-24h')
-            ->hourly()
+            ->everyMinute()
             ->withoutOverlapping();
 
         $schedule
-            ->call(fn () => app(SendAppointmentReminder2h::class)->handle())
+            ->job(new SendAppointmentReminder2h())
             ->name('appointments:reminders-2h')
-            ->everyThirtyMinutes()
+            ->everyMinute()
             ->withoutOverlapping();
 
         $schedule
@@ -93,7 +93,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule
             ->command(ProcessTrialLifecycle::class)
             ->everyThirtyMinutes()
-            ->withoutOverlapping();
+            ->withoutOverlapping()
+            ->runInBackground();
     })
     ->withEvents(false)
     ->withProviders([

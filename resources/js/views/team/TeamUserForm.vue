@@ -54,9 +54,10 @@
               </div>
               <div class="field">
                 <label class="label">Profesión</label>
-                <select v-model.number="form.profession_id" class="input">
+                <select v-model="form.profession_id" class="input" @change="onProfessionChange">
                   <option :value="null">Sin profesión</option>
                   <option v-for="p in professions" :key="p.id" :value="p.id">{{ p.name }}</option>
+                  <option value="__create">+ Crear profesión...</option>
                 </select>
                 <div v-if="errors.profession_id" class="field-error">{{ errors.profession_id[0] }}</div>
               </div>
@@ -174,9 +175,11 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
+import Swal from 'sweetalert2'
 import MainLayout from '../../layouts/MainLayout.vue'
 import api from '../../services/api'
 import { isBasic } from '../../shared/meCache'
+import { openCreateProfessionPopup } from '../../shared/formHelpers'
 
 const route = useRoute()
 const router = useRouter()
@@ -238,6 +241,23 @@ async function loadFormData() {
   }
 }
 
+const previousProfessionId = ref(null)
+
+async function onProfessionChange() {
+  if (form.profession_id === '__create') {
+    const newProfession = await openCreateProfessionPopup({ api, Swal, toast })
+    if (newProfession) {
+      professions.value.unshift(newProfession)
+      form.profession_id = newProfession.id
+      previousProfessionId.value = newProfession.id
+    } else {
+      form.profession_id = previousProfessionId.value
+    }
+  } else {
+    previousProfessionId.value = form.profession_id
+  }
+}
+
 async function loadForEdit(id) {
   try {
     const res = await api.get(`/team/users/${id}`)
@@ -247,6 +267,7 @@ async function loadForEdit(id) {
     form.password = ''
     form.profile_id = data.profile?.id ?? null
     form.profession_id = data.profession?.id ?? null
+    previousProfessionId.value = form.profession_id
     form.allow_online_booking = !!data.allow_online_booking
     form.allow_manage_agenda = !!data.allow_manage_agenda
     isOwner.value = data.role === 'owner'

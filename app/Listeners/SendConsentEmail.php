@@ -4,10 +4,17 @@ namespace App\Listeners;
 
 use App\Events\ConsentSent;
 use App\Mail\ConsentSignRequestMail;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Mail;
 
-class SendConsentEmail
+class SendConsentEmail implements ShouldQueue
 {
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
     public function handle(ConsentSent $event): void
     {
         $consent = $event->consent;
@@ -21,6 +28,6 @@ class SendConsentEmail
         $signUrl = $frontendUrl . '/sign/' . $consent->token;
 
         Mail::to($patient->email)
-            ->send(new ConsentSignRequestMail($consent, $signUrl));
+            ->queue(new ConsentSignRequestMail($consent, $signUrl));
     }
 }

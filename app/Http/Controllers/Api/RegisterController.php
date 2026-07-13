@@ -49,7 +49,7 @@ class RegisterController extends Controller
             ['url' => config('app.url')]
         );
 
-        Mail::to($user->email)->send(new AccountActivationMail($user, $activationUrl));
+        Mail::to($user->email)->queue(new AccountActivationMail($user, $activationUrl));
 
         return response()->json([
             'message' => 'Cuenta creada. Revisa tu correo para activar el periodo de prueba.',

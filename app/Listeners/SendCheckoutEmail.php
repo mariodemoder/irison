@@ -5,13 +5,17 @@ namespace App\Listeners;
 use App\Events\CheckoutCreated;
 use App\Mail\UpgradeCheckoutLinkMail;
 use App\Notifications\CheckoutLinkGenerated;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 
-class SendCheckoutEmail
+class SendCheckoutEmail implements ShouldQueue
 {
-    use InteractsWithQueue;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public function handle(CheckoutCreated $event): void
     {
@@ -24,10 +28,8 @@ class SendCheckoutEmail
                 throw new \RuntimeException('No recipient user found for clinic checkout notification');
             }
 
-            // Notificacion interna en la app
             $recipient->notify(new CheckoutLinkGenerated($request));
 
-            // Email visible en Mailpit/Mailhog con plantilla HTML de upgrade
             if (filter_var((string) $recipient->email, FILTER_VALIDATE_EMAIL)) {
                 Mail::to($recipient->email)->queue(new UpgradeCheckoutLinkMail($request));
             }

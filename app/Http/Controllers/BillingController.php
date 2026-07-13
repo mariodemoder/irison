@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\SubscriptionActivatedMail;
 use App\Mail\SubscriptionCanceledInternalMail;
 use App\Http\Controllers\Controller;
 use App\Models\BillingPayment;
@@ -136,6 +137,29 @@ class BillingController extends Controller
                     ],
                     ip: $request->ip(),
                 );
+
+                // Enviar email de activación de plan (solo nueva suscripción)
+                if ($previousSubscriptionStatus !== 'active') {
+                    try {
+                        $recipient = $clinic->ownerUser()->first()
+                            ?? $clinic->users()->orderBy('id')->first();
+
+                        if ($recipient && filter_var((string) $recipient->email, FILTER_VALIDATE_EMAIL)) {
+                            Mail::to($recipient->email)->queue(
+                                new SubscriptionActivatedMail(
+                                    clinicName: $clinic->name,
+                                    plan: (string) ($clinic->plan ?? 'basic'),
+                                    activatedAt: now()->format('d/m/Y H:i'),
+                                )
+                            );
+                        }
+                    } catch (\Throwable $e) {
+                        Log::error('Failed to send activation email from fake checkout', [
+                            'clinic_id' => $clinic->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
             }
         } catch (\Exception $e) {
             // ignore failures here; payment created but subscription update non-fatal
@@ -293,6 +317,35 @@ class BillingController extends Controller
             ip: $request->ip(),
         );
 
+        // Enviar email de activación de plan (solo nueva suscripción, no upgrades)
+        if ($previousSubscriptionStatus !== 'active') {
+            try {
+                $invoiceUrl = null;
+                if (! empty($session->invoice)) {
+                    $invoiceUrl = SubscriptionActivatedMail::resolveInvoiceUrl((string) $session->invoice);
+                }
+
+                $recipient = $clinic->ownerUser()->first()
+                    ?? $clinic->users()->orderBy('id')->first();
+
+                if ($recipient && filter_var((string) $recipient->email, FILTER_VALIDATE_EMAIL)) {
+                    Mail::to($recipient->email)->send(
+                        new SubscriptionActivatedMail(
+                            clinicName: $clinic->name,
+                            plan: (string) ($clinic->plan ?? 'basic'),
+                            activatedAt: now()->format('d/m/Y H:i'),
+                            invoiceUrl: $invoiceUrl,
+                        )
+                    );
+                }
+            } catch (\Throwable $e) {
+                Log::error('Failed to send activation email from confirmCheckout', [
+                    'clinic_id' => $clinic->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
         return response()->json([
             'status' => 'active',
             'session_id' => $sessionId,
@@ -433,7 +486,7 @@ class BillingController extends Controller
 
             ActivityLogger::log(
                 tenantId: (int) $clinic->id,
-                userId: (int) $user->id,
+                userId: $user->id,
                 event: $previousSubscriptionStatus === 'active' ? 'subscription_renewed' : 'subscription_created',
                 description: $previousSubscriptionStatus === 'active'
                     ? 'Suscripcion renovada por fake success local'
@@ -444,6 +497,29 @@ class BillingController extends Controller
                 ],
                 ip: $request->ip(),
             );
+
+            // Enviar email de activación de plan (solo nueva suscripción)
+            if ($previousSubscriptionStatus !== 'active') {
+                try {
+                    $recipient = $clinic->ownerUser()->first()
+                        ?? $clinic->users()->orderBy('id')->first();
+
+                    if ($recipient && filter_var((string) $recipient->email, FILTER_VALIDATE_EMAIL)) {
+                        Mail::to($recipient->email)->send(
+                            new SubscriptionActivatedMail(
+                                clinicName: $clinic->name,
+                                plan: (string) ($clinic->plan ?? 'basic'),
+                                activatedAt: now()->format('d/m/Y H:i'),
+                            )
+                        );
+                    }
+                } catch (\Throwable $e) {
+                    Log::error('Failed to send activation email from fakeSuccess', [
+                        'clinic_id' => $clinic->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
         }
 
         // Redirigir al dashboard de la SPA - la SPA debe consultar /api/me
@@ -481,7 +557,7 @@ class BillingController extends Controller
         }
 
         try {
-            Mail::to($recipient)->send(new SubscriptionCanceledInternalMail(
+            Mail::to($recipient)->queue(new SubscriptionCanceledInternalMail(
                 clinicName: (string) ($clinic->name ?? '-'),
                 clinicId: (int) ($clinic->id ?? 0),
                 clinicEmail: (string) ($clinic->email ?? ''),

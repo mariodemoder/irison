@@ -149,17 +149,17 @@ class ReminderService
         }
 
         try {
-            Mail::to($email)->send(new AppointmentReminderMail($appointment, $this->hoursBeforeForType($reminderType)));
+            Mail::to($email)->queue(new AppointmentReminderMail($appointment, $this->hoursBeforeForType($reminderType)));
 
             if ($markAppointmentSent) {
                 $this->markAppointmentReminderAsSent($appointment, $reminderType);
             }
 
-            $sentReminder = $this->createReminderRecord($appointment, $reminderType, $email, 'sent', now(), null);
+            $sentReminder = $this->createReminderRecord($appointment, $reminderType, $email, 'queued', now(), null);
 
-            Log::info('reminder.sent', [
-                'event' => 'reminder.sent',
-                'result' => 'sent',
+            Log::info('reminder.queued', [
+                'event' => 'reminder.queued',
+                'result' => 'queued',
                 'reminder_id' => $sentReminder->id,
                 'appointment_id' => $appointment->id,
                 'clinic_id' => (int) $appointment->clinic_id,

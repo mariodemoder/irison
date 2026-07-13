@@ -25,7 +25,7 @@ class GenerateClinicErrorTest extends TestCase
             $this->shouldPersist = true;
 
             $connection = getenv('CLINIC_ERROR_DB') ?: 'pgsql';
-            $database = getenv('CLINIC_ERROR_DB_NAME') ?: 'dueleahi';
+            $database = getenv('CLINIC_ERROR_DB_NAME') ?: 'irison';
 
             putenv("DB_CONNECTION={$connection}");
             putenv("DB_DATABASE={$database}");
@@ -40,7 +40,7 @@ class GenerateClinicErrorTest extends TestCase
             $connection = getenv('CLINIC_ERROR_DB') ?: 'pgsql';
 
             config()->set('database.default', $connection);
-            config()->set("database.connections.{$connection}.database", getenv('CLINIC_ERROR_DB_NAME') ?: getenv('DB_DATABASE') ?: 'dueleahi');
+            config()->set("database.connections.{$connection}.database", getenv('CLINIC_ERROR_DB_NAME') ?: getenv('DB_DATABASE') ?: 'irison');
             config()->set("database.connections.{$connection}.host", getenv('CLINIC_ERROR_DB_HOST') ?: getenv('DB_HOST') ?: '127.0.0.1');
             config()->set("database.connections.{$connection}.port", getenv('CLINIC_ERROR_DB_PORT') ?: getenv('DB_PORT') ?: '5432');
             config()->set("database.connections.{$connection}.username", getenv('CLINIC_ERROR_DB_USERNAME') ?: getenv('DB_USERNAME') ?: 'postgres');

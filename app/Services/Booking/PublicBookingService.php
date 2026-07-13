@@ -126,18 +126,20 @@ class PublicBookingService
                 'app_type_id' => $service->appointment_type_id,
             ]);
 
-            try {
-                $patient->notify(new BookingConfirmation($appointment));
+            DB::afterCommit(function () use ($patient, $appointment, $clinicId) {
+                try {
+                    $patient->notify(new BookingConfirmation($appointment));
 
-                $clinicUsers = \App\Models\User::where('clinic_id', $clinicId)->where('role', 'owner')->get();
-                Notification::send($clinicUsers, new NewOnlineBooking($appointment));
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('booking.notification_failed', [
-                    'event' => 'booking.notification_failed',
-                    'appointment_id' => $appointment->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
+                    $clinicUsers = \App\Models\User::where('clinic_id', $clinicId)->where('role', 'owner')->get();
+                    Notification::send($clinicUsers, new NewOnlineBooking($appointment));
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('booking.notification_failed', [
+                        'event' => 'booking.notification_failed',
+                        'appointment_id' => $appointment->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            });
 
             return $appointment;
         });

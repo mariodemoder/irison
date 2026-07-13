@@ -137,7 +137,7 @@ class StripeWebhookController extends Controller
                             ?? $clinic->users()->orderBy('id')->first();
 
                         if ($recipient && filter_var((string) $recipient->email, FILTER_VALIDATE_EMAIL)) {
-                            \Illuminate\Support\Facades\Mail::to($recipient->email)->queue(
+                            \Illuminate\Support\Facades\Mail::to($recipient->email)->send(
                                 new \App\Mail\SubscriptionActivatedMail(
                                     clinicName: $clinic->name,
                                     plan: (string) ($clinic->plan ?? 'basic'),
@@ -369,7 +369,7 @@ class StripeWebhookController extends Controller
         }
 
         try {
-            Mail::to($emails)->send(new InvoicePaymentFailedMail($clinic, $invoice));
+            Mail::to($emails)->queue(new InvoicePaymentFailedMail($clinic, $invoice));
         } catch (\Throwable $e) {
             Log::warning('Stripe invoice.payment_failed mail send failed', [
                 'clinic_id' => $clinic->id,

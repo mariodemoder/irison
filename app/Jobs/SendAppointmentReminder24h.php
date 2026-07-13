@@ -6,21 +6,28 @@ namespace App\Jobs;
 
 use App\Services\Reminders\ReminderService;
 use App\Services\Appointments\AppointmentReminderService;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
 
-class SendAppointmentReminder24h
+class SendAppointmentReminder24h implements ShouldQueue
 {
-    public function __construct(
-        private readonly AppointmentReminderService $appointmentReminderService,
-        private readonly ReminderService $reminderService,
-    ) {
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public function __construct()
+    {
     }
 
-    public function handle(): void
-    {
-        $appointments = $this->appointmentReminderService->getAppointmentsFor24hReminder();
+    public function handle(
+        AppointmentReminderService $appointmentReminderService,
+        ReminderService $reminderService,
+    ): void {
+        $appointments = $appointmentReminderService->getAppointmentsFor24hReminder();
 
         foreach ($appointments as $appointment) {
-            $this->reminderService->sendAppointmentReminder($appointment, '24h');
+            $reminderService->sendAppointmentReminder($appointment, '24h');
         }
     }
 }

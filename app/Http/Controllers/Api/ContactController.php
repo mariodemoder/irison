@@ -22,7 +22,7 @@ class ContactController extends Controller
         $user   = $request->user();
         $clinic = $user->clinic;
 
-        Mail::to(env('CONTACT_EMAIL', 'hola@irison.es'))->send(new ContactMail(
+        Mail::to(env('CONTACT_EMAIL', 'hola@irison.es'))->queue(new ContactMail(
             clinicId:       $clinic->id,
             clinicName:     $clinic->name,
             senderName:     $user->name,

@@ -19,6 +19,13 @@ class SubscriptionController extends Controller
         $maxUsers = $planConfig['users'] ?? 0;
         $userCount = $clinic->users()->count();
 
+        $recentUpgrade = SubscriptionRequest::query()
+            ->where('clinic_id', $clinic->id)
+            ->where('status', 'completed')
+            ->where('completed_at', '>=', now()->subHours(24))
+            ->latest('completed_at')
+            ->first();
+
         return response()->json([
             'data' => [
                 'plan' => $plan,
@@ -28,6 +35,12 @@ class SubscriptionController extends Controller
                 'max_users' => $maxUsers,
                 'users_used' => $userCount,
                 'next_plan' => $this->nextPlan($plan),
+                'recent_completed_upgrade' => $recentUpgrade ? [
+                    'id' => $recentUpgrade->id,
+                    'current_plan' => $recentUpgrade->current_plan,
+                    'requested_plan' => $recentUpgrade->requested_plan,
+                    'completed_at' => $recentUpgrade->completed_at,
+                ] : null,
             ],
         ]);
     }
