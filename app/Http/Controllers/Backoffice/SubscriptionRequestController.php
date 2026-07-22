@@ -2,10 +2,7 @@
 
 namespace App\Http\Controllers\Backoffice;
 
-use App\Events\UpgradeRequested;
-use App\Events\CheckoutCreated;
 use App\Http\Controllers\Controller;
-use App\Mail\SubscriptionStatusMail;
 use App\Models\SubscriptionRequest;
 use App\Services\PaymentProvider\Resolver;
 use App\Services\Subscription\SubscriptionUpgradeService;
@@ -13,7 +10,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\View\View;
 
 class SubscriptionRequestController extends Controller
@@ -55,15 +51,14 @@ class SubscriptionRequestController extends Controller
             $data = $request->validate([
                 'reviewer_comments' => 'nullable|string|max:2000',
             ]);
-            $this->upgradeService->approveAndGenerateCheckout(
+            $result = $this->upgradeService->approveAndGenerateCheckout(
                 $subscriptionRequest,
                 $request->user('admin')->id,
                 $data['reviewer_comments'] ?? null,
             );
 
-            $this->sendStatusMail($subscriptionRequest);
-
             $status = (string) ($subscriptionRequest->fresh()?->status ?? '');
+
             if ($status === 'completed') {
                 return redirect()->route('backoffice.subscription-requests.index')
                     ->with('status', 'Solicitud aprobada y upgrade completado automáticamente (pago registrado).');
@@ -79,7 +74,7 @@ class SubscriptionRequestController extends Controller
             ]);
 
             return redirect()->route('backoffice.subscription-requests.index')
-                ->with('status', 'Error al aprobar solicitud: ' . $e->getMessage());
+                ->with('status', 'Error al aprobar solicitud: '.$e->getMessage());
         }
     }
 
@@ -136,76 +131,8 @@ class SubscriptionRequestController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'No se pudo calcular la vista previa: ' . $e->getMessage(),
+                'message' => 'No se pudo calcular la vista previa: '.$e->getMessage(),
             ], 500);
-        }
-    }
-
-    private function sendStatusMail(SubscriptionRequest $subscriptionRequest): void
-    {
-        $clinic = $subscriptionRequest->clinic;
-        $clinicEmail = $clinic->email;
-
-        if ($clinicEmail && filter_var($clinicEmail, FILTER_VALIDATE_EMAIL)) {
-            try {
-                Mail::to($clinicEmail)->queue(new SubscriptionStatusMail($subscriptionRequest));
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('No se pudo enviar SubscriptionStatusMail', [
-                    'clinic_id' => $clinic->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-        }
-    }
-
-    private function sendCheckoutMail(SubscriptionRequest $subscriptionRequest): void
-    {
-        $clinic = $subscriptionRequest->clinic;
-        $clinicEmail = $clinic->email;
-
-        if ($clinicEmail && filter_var($clinicEmail, FILTER_VALIDATE_EMAIL)) {
-            try {
-                Mail::to($clinicEmail)->queue(new UpgradeCheckoutLinkMail($subscriptionRequest));
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('No se pudo enviar UpgradeCheckoutLinkMail', [
-                    'clinic_id' => $clinic->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-        }
-    }
-
-    private function sendPaymentCompletedMail(SubscriptionRequest $subscriptionRequest): void
-    {
-        $clinic = $subscriptionRequest->clinic;
-        $clinicEmail = $clinic->email;
-
-        if ($clinicEmail && filter_var($clinicEmail, FILTER_VALIDATE_EMAIL)) {
-            try {
-                Mail::to($clinicEmail)->queue(new PaymentCompletedMail($subscriptionRequest));
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('No se pudo enviar PaymentCompletedMail', [
-                    'clinic_id' => $clinic->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-        }
-    }
-
-    private function sendUpgradedMail(SubscriptionRequest $subscriptionRequest): void
-    {
-        $clinic = $subscriptionRequest->clinic;
-        $clinicEmail = $clinic->email;
-
-        if ($clinicEmail && filter_var($clinicEmail, FILTER_VALIDATE_EMAIL)) {
-            try {
-                Mail::to($clinicEmail)->queue(new SubscriptionUpgradedNotificationMail($subscriptionRequest));
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('No se pudo enviar SubscriptionUpgradedNotificationMail', [
-                    'clinic_id' => $clinic->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
         }
     }
 }

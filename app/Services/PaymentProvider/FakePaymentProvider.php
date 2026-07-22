@@ -2,16 +2,13 @@
 
 namespace App\Services\PaymentProvider;
 
-use Carbon\Carbon;
-use Illuminate\Support\Facades\URL;
-
 class FakePaymentProvider implements PaymentProviderInterface
 {
     public function createCheckout(array $data): array
     {
         return [
             'checkout_url' => route('billing.fake.success'),
-            'provider_ref' => 'fake_' . uniqid(),
+            'provider_ref' => 'fake_'.uniqid(),
         ];
     }
 
@@ -58,7 +55,7 @@ class FakePaymentProvider implements PaymentProviderInterface
                 'next_billing_amount' => $newPrice * 100,
                 'currency' => $currency,
                 'details' => [
-                    ['description' => 'Plan ' . ucfirst($newPlan) . ' (precio completo)', 'amount' => $newPrice * 100],
+                    ['description' => 'Plan '.ucfirst($newPlan).' (precio completo)', 'amount' => $newPrice * 100],
                     ['description' => 'Total a pagar hoy', 'amount' => $newPrice * 100],
                 ],
             ];
@@ -87,8 +84,8 @@ class FakePaymentProvider implements PaymentProviderInterface
             'next_billing_amount' => $newPrice * 100,
             'currency' => $currency,
             'details' => [
-                ['description' => 'Crédito por días no usados de ' . ucfirst($currentPlan), 'amount' => -$credit],
-                ['description' => 'Nuevo plan ' . ucfirst($newPlan) . ' (precio completo)', 'amount' => $newPrice * 100],
+                ['description' => 'Crédito por días no usados de '.ucfirst($currentPlan), 'amount' => -$credit],
+                ['description' => 'Nuevo plan '.ucfirst($newPlan).' (precio completo)', 'amount' => $newPrice * 100],
                 ['description' => 'Total a pagar hoy', 'amount' => $amountDue],
             ],
         ];
@@ -113,6 +110,7 @@ class FakePaymentProvider implements PaymentProviderInterface
                 'checkout_url' => $checkout['checkout_url'],
                 'provider_ref' => $checkout['provider_ref'],
                 'invoice_id' => null,
+                'invoice_url' => null,
             ];
         }
 
@@ -121,8 +119,9 @@ class FakePaymentProvider implements PaymentProviderInterface
             'action' => 'upgraded',
             'amount_charged' => 0,
             'checkout_url' => null,
-            'provider_ref' => 'fake_upgrade_' . uniqid(),
+            'provider_ref' => 'fake_upgrade_'.uniqid(),
             'invoice_id' => null,
+            'invoice_url' => null,
         ];
     }
 
@@ -130,6 +129,7 @@ class FakePaymentProvider implements PaymentProviderInterface
     {
         $pricing = config('pricing', []);
         $planConfig = $pricing[$plan] ?? [];
+
         return (int) ($planConfig['price'] ?? 2900);
     }
 }

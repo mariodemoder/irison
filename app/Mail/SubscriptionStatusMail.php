@@ -15,19 +15,22 @@ class SubscriptionStatusMail extends Mailable
 
     public function __construct(
         public readonly SubscriptionRequest $request,
+        public readonly ?string $invoiceUrl = null,
     ) {}
 
     public function envelope(): Envelope
     {
         $statusText = $this->statusText();
+
         return new Envelope(
-            subject: 'Tu solicitud de upgrade ha sido ' . $statusText,
+            subject: 'Tu solicitud de upgrade ha sido '.$statusText,
         );
     }
 
     public function content(): Content
     {
         $statusText = $this->statusText();
+
         return new Content(
             view: 'emails.subscription-status',
             with: [
@@ -36,6 +39,7 @@ class SubscriptionStatusMail extends Mailable
                 'requestedPlan' => $this->request->requested_plan,
                 'status' => $statusText,
                 'comments' => $this->request->reviewer_comments ?? '-',
+                'invoiceUrl' => $this->invoiceUrl,
             ],
         );
     }

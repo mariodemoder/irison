@@ -328,6 +328,7 @@
                             <td class="px-3 py-2">
                                 @if (! empty($invoice['hosted_invoice_url']))
                                     <a class="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50" href="{{ $invoice['hosted_invoice_url'] }}" target="_blank" rel="noreferrer">Ver</a>
+                                    <button type="button" onclick="confirmResend('{{ $invoice['hosted_invoice_url'] }}')" class="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50">Reenviar</button>
                                 @elseif (! empty($invoice['invoice_pdf']))
                                     <a class="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50" href="{{ $invoice['invoice_pdf'] }}" target="_blank" rel="noreferrer">PDF</a>
                                 @else
@@ -382,4 +383,40 @@
     </article>
         </div>
     </div>
+
+    <div id="resend-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50" style="display:none;">
+        <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <h3 class="mb-4 text-lg font-semibold text-slate-900">Reenviar factura</h3>
+            <form id="resend-form" method="POST" action="{{ route('backoffice.clinics.resend-invoice', $clinic) }}">
+                @csrf
+                <input type="hidden" name="invoice_url" id="resend-invoice-url">
+                <div class="mb-3">
+                    <label for="resend-subject" class="mb-1 block text-sm font-medium text-slate-700">Asunto</label>
+                    <input type="text" id="resend-subject" name="subject" value="Felicitaciones por tu crecimiento - Upgrade Plan Invoice" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                </div>
+                <div class="mb-4">
+                    <label for="resend-message" class="mb-1 block text-sm font-medium text-slate-700">Mensaje</label>
+                    <textarea id="resend-message" name="message" rows="3" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">Muchas gracias por seguir confiando en Irison, a continuación te proporcionamos la factura de este gran paso en tu crecimiento.</textarea>
+                </div>
+            </form>
+            <div class="flex justify-end gap-2">
+                <button type="button" onclick="closeResendModal()" class="rounded-lg border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50">Cancelar</button>
+                <button type="submit" form="resend-form" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">Enviar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function confirmResend(url) {
+            document.getElementById('resend-invoice-url').value = url;
+            const modal = document.getElementById('resend-modal');
+            modal.style.display = 'flex';
+        }
+        function closeResendModal() {
+            document.getElementById('resend-modal').style.display = 'none';
+        }
+        document.getElementById('resend-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeResendModal();
+        });
+    </script>
 @endsection

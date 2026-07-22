@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Backoffice;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Backoffice\ClinicActionRequest;
 use App\Http\Requests\Backoffice\UpdateClinicRequest;
+use App\Jobs\ResendInvoiceEmail;
 use App\Models\ActivityLog;
 use App\Models\Appointment;
 use App\Models\BackofficeClinicActivity;
@@ -28,9 +29,7 @@ use Throwable;
 
 class ClinicController extends Controller
 {
-    public function __construct(private readonly ClinicManagementService $clinicManagementService)
-    {
-    }
+    public function __construct(private readonly ClinicManagementService $clinicManagementService) {}
 
     public function index(Request $request): View
     {
@@ -119,7 +118,7 @@ class ClinicController extends Controller
             ->get()
             ->map(function (Reminder $reminder): array {
                 $patient = $reminder->appointment?->patient;
-                $contactName = trim((string) (($patient?->first_name ?? '') . ' ' . ($patient?->last_name ?? '')));
+                $contactName = trim((string) (($patient?->first_name ?? '').' '.($patient?->last_name ?? '')));
                 $appointmentDate = $reminder->appointment?->start_time?->format('Y-m-d H:i');
                 $reminderType = trim((string) ($reminder->reminder_type ?? 'recordatorio'));
 
@@ -128,9 +127,9 @@ class ClinicController extends Controller
                     'contact_name' => $contactName !== '' ? $contactName : '-',
                     'contact_phone' => trim((string) ($patient?->phone ?? '')) ?: '-',
                     'contact_email' => trim((string) ($reminder->recipient_email ?? $patient?->email ?? '')) ?: '-',
-                    'subject' => 'Recordatorio ' . ($reminderType !== '' ? $reminderType : '-'),
+                    'subject' => 'Recordatorio '.($reminderType !== '' ? $reminderType : '-'),
                     'body' => $appointmentDate
-                        ? 'Recordatorio asociado a cita del ' . $appointmentDate
+                        ? 'Recordatorio asociado a cita del '.$appointmentDate
                         : (trim((string) ($reminder->error_message ?? '')) ?: 'Sin cuerpo registrado'),
                     'method' => strtolower(trim((string) ($reminder->channel ?? 'email'))),
                 ];
@@ -212,10 +211,10 @@ class ClinicController extends Controller
         $daysLeft = $clinic->cancellationGraceDaysLeft();
         $daysText = $daysLeft === null
             ? 'sin periodo pagado pendiente'
-            : ($daysLeft === 1 ? '1 día' : $daysLeft . ' días');
+            : ($daysLeft === 1 ? '1 día' : $daysLeft.' días');
 
         return redirect()->route('backoffice.clinics.show', $clinic)
-            ->with('status', 'Suscripción cancelada. Quedan ' . $daysText . ' de uso pagado; luego entrará en modo solo lectura.');
+            ->with('status', 'Suscripción cancelada. Quedan '.$daysText.' de uso pagado; luego entrará en modo solo lectura.');
     }
 
     public function changePlan(ClinicActionRequest $request, Clinic $clinic): RedirectResponse
@@ -235,7 +234,7 @@ class ClinicController extends Controller
         $result = $this->clinicManagementService->startImpersonation($request->user('admin'), $clinic);
 
         $frontendBase = rtrim((string) config('app.frontend_url', (string) env('FRONTEND_URL', 'http://localhost:5173')), '/');
-        $targetUrl = $frontendBase . '/impersonate?token=' . urlencode((string) $result['token']) . '&clinic_id=' . (int) $clinic->id;
+        $targetUrl = $frontendBase.'/impersonate?token='.urlencode((string) $result['token']).'&clinic_id='.(int) $clinic->id;
 
         return redirect()->away($targetUrl);
     }
@@ -282,6 +281,28 @@ class ClinicController extends Controller
             ->with('status', 'Datos funcionales eliminados correctamente. Se conserva la información de facturación Stripe.');
     }
 
+    public function resendInvoice(Request $request, Clinic $clinic): RedirectResponse
+    {
+        $data = $request->validate([
+            'invoice_url' => ['required', 'url'],
+            'subject' => ['required', 'string', 'max:200'],
+            'message' => ['required', 'string', 'max:2000'],
+        ]);
+
+        $owner = $clinic->ownerUser()->first()
+            ?? $clinic->users()->orderBy('id')->first();
+
+        if (! $owner || ! filter_var((string) $owner->email, FILTER_VALIDATE_EMAIL)) {
+            return redirect()->route('backoffice.clinics.show', $clinic)
+                ->with('status', 'No se encontró un destinatario válido para esta clínica.');
+        }
+
+        ResendInvoiceEmail::dispatch($clinic, $data['invoice_url'], $data['subject'], $data['message']);
+
+        return redirect()->route('backoffice.clinics.show', $clinic)
+            ->with('status', 'Factura reenviada a '.$owner->email.'. Se procesará en segundo plano.');
+    }
+
     private function loadStripeInvoices(Clinic $clinic): array
     {
         try {
@@ -292,8 +313,8 @@ class ClinicController extends Controller
             if (is_string($caBundlePath) && $caBundlePath !== '' && is_file($caBundlePath)) {
                 $normalizedPath = str_replace('\\', '/', $caBundlePath);
                 Stripe::setCABundlePath($normalizedPath);
-                putenv('SSL_CERT_FILE=' . $normalizedPath);
-                putenv('CURL_CA_BUNDLE=' . $normalizedPath);
+                putenv('SSL_CERT_FILE='.$normalizedPath);
+                putenv('CURL_CA_BUNDLE='.$normalizedPath);
             }
 
             if (! config('services.stripe.verify_ssl', true)) {

@@ -63,3 +63,4 @@ For focused tests, regression, HTTP validation, or risk hardening → delegate t
 - `app/Models/Concerns/BelongsToClinic.php` — Tenant trait
 - `app/Models/Scopes/ClinicScope.php` — Tenant scope
 - `app/Traits/MultiTenantAuthorization.php` — Tenant auth
+- `docs/backend/auth-flow.md` — Auth completo: registro, activación, login, password reset

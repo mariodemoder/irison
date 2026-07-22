@@ -1,1 +1,1 @@
-{"mailpit": "irison-0-mailpit", "npm run dev": "irison-1-npm", "php artisan serve --host=127.0.0.1 --port=8000 --no-reload": "irison-2-php"}
+{"C:\\Redis\\redis-server.exe": "irison-0-C:\\Redis\\redis-server.exe", "mailpit": "irison-1-mailpit", "npm run dev": "irison-2-npm", "php artisan serve --host=127.0.0.1 --port=8000 --no-reload": "irison-3-php", "php artisan queue:work --verbose --sleep=3 --tries=3": "irison-4-php"}

@@ -8,7 +8,6 @@ use App\Events\SubscriptionUpgraded as SubscriptionUpgradedEvent;
 use App\Models\BillingPayment;
 use App\Models\Clinic;
 use App\Models\SubscriptionRequest;
-use App\Services\PaymentProvider\PaymentProviderInterface;
 use App\Services\PaymentProvider\Resolver;
 
 class SubscriptionUpgradeService
@@ -22,7 +21,7 @@ class SubscriptionUpgradeService
         SubscriptionRequest $request,
         ?int $reviewedBy = null,
         ?string $reviewerComments = null,
-    ): void {
+    ): array {
         $this->requestService->approveRequest($request, $reviewedBy, $reviewerComments);
 
         $provider = $this->paymentProviderResolver->resolve();
@@ -48,8 +47,10 @@ class SubscriptionUpgradeService
         match ($result['action']) {
             'upgraded' => $this->handleUpgraded($request, $result, $provider),
             'checkout_required' => $this->handleCheckoutRequired($request, $result),
-            default => throw new \RuntimeException('Acción de upgrade desconocida: ' . ($result['action'] ?? 'null')),
+            default => throw new \RuntimeException('Acción de upgrade desconocida: '.($result['action'] ?? 'null')),
         };
+
+        return $result;
     }
 
     public function handlePaymentCompleted(
@@ -82,6 +83,7 @@ class SubscriptionUpgradeService
     {
         $pricing = config('pricing', []);
         $planConfig = $pricing[$plan] ?? [];
+
         return (int) ($planConfig['price'] ?? 2900);
     }
 
@@ -93,7 +95,7 @@ class SubscriptionUpgradeService
             'currency' => 'EUR',
             'status' => 'paid',
             'provider' => $provider->getName(),
-            'provider_ref' => $result['provider_ref'] ?? ('upgrade_' . $request->id),
+            'provider_ref' => $result['provider_ref'] ?? ('upgrade_'.$request->id),
             'method' => 'prorated_upgrade',
         ]);
 

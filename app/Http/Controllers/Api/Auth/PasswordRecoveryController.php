@@ -18,9 +18,7 @@ use Illuminate\Validation\Rules;
 
 class PasswordRecoveryController extends Controller
 {
-    public function __construct(private readonly PasswordRecoveryLimiter $passwordRecoveryLimiter)
-    {
-    }
+    public function __construct(private readonly PasswordRecoveryLimiter $passwordRecoveryLimiter) {}
 
     public function sendResetLink(Request $request): JsonResponse
     {
@@ -68,6 +66,10 @@ class PasswordRecoveryController extends Controller
 
                 if (Schema::hasColumn($user->getTable(), 'remember_token')) {
                     $attributes['remember_token'] = Str::random(60);
+                }
+
+                if (! $user->email_verified_at) {
+                    $attributes['email_verified_at'] = now();
                 }
 
                 $user->forceFill($attributes)->save();

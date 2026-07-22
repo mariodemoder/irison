@@ -1,12 +1,12 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Backoffice\AdminUserController;
 /*
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\PatientController;
-use Illuminate\Support\Facades\Hash; 
+use Illuminate\Support\Facades\Hash;
 
 Route::get('/', function () {
     return view('welcome');
@@ -25,13 +25,13 @@ Route::get('/hash-test', function () { return Hash::make('HOLISholis123'); });
 
 */
 
-use App\Http\Controllers\BillingController;
-use App\Http\Controllers\Backoffice\AdminUserController;
-use App\Http\Controllers\Backoffice\ClinicController;
-use App\Http\Controllers\Backoffice\SubscriptionRequestController as BackofficeSubscriptionRequestController;
 use App\Http\Controllers\Backoffice\Auth\LoginController as BackofficeLoginController;
+use App\Http\Controllers\Backoffice\ClinicController;
 use App\Http\Controllers\Backoffice\DashboardController as BackofficeDashboardController;
+use App\Http\Controllers\Backoffice\SubscriptionRequestController as BackofficeSubscriptionRequestController;
+use App\Http\Controllers\BillingController;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 
 // Rutas públicas/auxiliares para billing (fake provider local)
@@ -47,7 +47,7 @@ Route::get('/sandbox/invoice-blade', function (Request $request) {
     $useBackground = $request->boolean('bg', true);
     $invoiceBackgroundDataUri = null;
 
-    if ($useBackground && $clinic && !empty($clinic->invoice_background_path) && Storage::disk('public')->exists($clinic->invoice_background_path)) {
+    if ($useBackground && $clinic && ! empty($clinic->invoice_background_path) && Storage::disk('public')->exists($clinic->invoice_background_path)) {
         $path = (string) $clinic->invoice_background_path;
         $content = Storage::disk('public')->get($path);
         $extension = strtolower((string) pathinfo($path, PATHINFO_EXTENSION));
@@ -59,7 +59,7 @@ Route::get('/sandbox/invoice-blade', function (Request $request) {
             default => 'application/octet-stream',
         };
 
-        $invoiceBackgroundDataUri = 'data:' . $mime . ';base64,' . base64_encode($content);
+        $invoiceBackgroundDataUri = 'data:'.$mime.';base64,'.base64_encode($content);
     }
 
     $now = now();
@@ -143,6 +143,7 @@ $backofficeRoutes->as('backoffice.')->group(function () {
         Route::middleware('admin.role:super_admin,billing')->group(function () {
             Route::post('/clinics/{clinic}/cancel-subscription', [ClinicController::class, 'cancelSubscription'])->name('clinics.cancel-subscription');
             Route::patch('/clinics/{clinic}/change-plan', [ClinicController::class, 'changePlan'])->name('clinics.change-plan');
+            Route::post('/clinics/{clinic}/resend-invoice', [ClinicController::class, 'resendInvoice'])->name('clinics.resend-invoice');
         });
 
         Route::middleware('admin.role:super_admin')->group(function () {
@@ -179,5 +180,3 @@ $backofficeRoutes->as('backoffice.')->group(function () {
 Route::get('/{any}', function () {
     return view('app');
 })->where('any', '.*');
-
-

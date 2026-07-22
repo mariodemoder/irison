@@ -22,6 +22,15 @@
                             @if ($comments !== '-')
                                 <p style="margin:0 0 12px 0;"><strong>Comentarios:</strong> {{ $comments }}</p>
                             @endif
+                            @if(!empty($invoiceUrl))
+                                <table role="presentation" cellspacing="0" cellpadding="0" style="margin:20px 0 0;">
+                                    <tr>
+                                        <td style="background:linear-gradient(135deg,#0ea5e9,#1d4ed8);border-radius:10px;">
+                                            <a href="{{ $invoiceUrl }}" style="display:inline-block;padding:13px 22px;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;">Ver factura</a>
+                                        </td>
+                                    </tr>
+                                </table>
+                            @endif
                             <p style="margin:16px 0 0 0;color:#6b7280;">Equipo Irison</p>
                         </td>
                     </tr>

@@ -20,8 +20,8 @@ class StripePaymentProvider implements PaymentProviderInterface
             Stripe::setCABundlePath($normalizedPath);
 
             // Compatibilidad extra para runtimes en Windows y procesos CLI
-            putenv('SSL_CERT_FILE=' . $normalizedPath);
-            putenv('CURL_CA_BUNDLE=' . $normalizedPath);
+            putenv('SSL_CERT_FILE='.$normalizedPath);
+            putenv('CURL_CA_BUNDLE='.$normalizedPath);
         }
 
         // Solo para pruebas locales si existe inspeccion TLS en red corporativa/antivirus
@@ -35,21 +35,21 @@ class StripePaymentProvider implements PaymentProviderInterface
     public function createCheckout(array $data): array
     {
         $successUrl = $data['success_url']
-            ?? (config('app.url') . '/billing/required?checkout=success&session_id={CHECKOUT_SESSION_ID}');
-        $cancelUrl  = config('app.url') . '/billing/required?checkout=cancel';
+            ?? (config('app.url').'/billing/required?checkout=success&session_id={CHECKOUT_SESSION_ID}');
+        $cancelUrl = config('app.url').'/billing/required?checkout=cancel';
         $priceId = $this->resolvePriceIdForCheckout($data);
 
         $params = [
-            'mode'       => 'subscription',
+            'mode' => 'subscription',
             'line_items' => [[
-                'price'    => $priceId,
+                'price' => $priceId,
                 'quantity' => 1,
             ]],
             'success_url' => $successUrl,
-            'cancel_url'  => $cancelUrl,
-            'metadata'    => [
+            'cancel_url' => $cancelUrl,
+            'metadata' => [
                 'payment_id' => $data['payment_id'] ?? null,
-                'clinic_id'  => $data['clinic_id']  ?? null,
+                'clinic_id' => $data['clinic_id'] ?? null,
             ],
         ];
 
@@ -71,15 +71,15 @@ class StripePaymentProvider implements PaymentProviderInterface
         // Los eventos de Stripe se procesan en StripeWebhookController (/api/stripe/webhook)
         // Este método existe para cumplir la interfaz; no se usa con este provider.
     }
-    
+
     public function cancelSubscription(array $data): void
     {
         $subscriptionId = (string) ($data['stripe_subscription_id'] ?? '');
-        
+
         if ($subscriptionId === '') {
             throw new \InvalidArgumentException('No hay una suscripción de Stripe para cancelar');
         }
-        
+
         $this->stripe->subscriptions->cancel($subscriptionId, []);
     }
 
@@ -179,7 +179,7 @@ class StripePaymentProvider implements PaymentProviderInterface
                 'plan' => $newPlan,
                 'price_id' => $this->resolvePriceIdForPlan($newPlan),
                 'metadata' => $data['metadata'] ?? [],
-                'success_url' => config('app.url') . '/settings/subscription?upgraded=1&session_id={CHECKOUT_SESSION_ID}',
+                'success_url' => config('app.url').'/settings/subscription?upgraded=1&session_id={CHECKOUT_SESSION_ID}',
             ]);
 
             return [
@@ -211,12 +211,14 @@ class StripePaymentProvider implements PaymentProviderInterface
 
         $amountCharged = 0;
         $invoiceId = null;
+        $invoiceUrl = null;
         $latestInvoiceId = $updatedSub->latest_invoice ?? null;
         if ($latestInvoiceId) {
             try {
                 $invoice = $this->stripe->invoices->retrieve($latestInvoiceId);
                 $amountCharged = (int) ($invoice->amount_due ?? 0);
                 $invoiceId = $invoice->id;
+                $invoiceUrl = $invoice->hosted_invoice_url ?? null;
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::warning('stripe.upgrade.invoice_retrieve_failed', [
                     'invoice_id' => $latestInvoiceId,
@@ -232,6 +234,7 @@ class StripePaymentProvider implements PaymentProviderInterface
             'checkout_url' => null,
             'provider_ref' => $subscriptionId,
             'invoice_id' => $invoiceId,
+            'invoice_url' => $invoiceUrl,
         ];
     }
 
@@ -254,7 +257,7 @@ class StripePaymentProvider implements PaymentProviderInterface
                 'next_billing_amount' => $newPrice * 100,
                 'currency' => $currency,
                 'details' => [
-                    ['description' => 'Plan ' . ucfirst($newPlan) . ' (precio completo)', 'amount' => $newPrice * 100],
+                    ['description' => 'Plan '.ucfirst($newPlan).' (precio completo)', 'amount' => $newPrice * 100],
                     ['description' => 'Total a pagar hoy', 'amount' => $newPrice * 100],
                 ],
             ];
@@ -283,8 +286,8 @@ class StripePaymentProvider implements PaymentProviderInterface
             'next_billing_amount' => $newPrice * 100,
             'currency' => $currency,
             'details' => [
-                ['description' => 'Crédito por días no usados de ' . ucfirst($currentPlan), 'amount' => -$credit],
-                ['description' => 'Nuevo plan ' . ucfirst($newPlan) . ' (precio completo)', 'amount' => $newPrice * 100],
+                ['description' => 'Crédito por días no usados de '.ucfirst($currentPlan), 'amount' => -$credit],
+                ['description' => 'Nuevo plan '.ucfirst($newPlan).' (precio completo)', 'amount' => $newPrice * 100],
                 ['description' => 'Total a pagar hoy', 'amount' => $amountDue],
             ],
         ];
@@ -294,12 +297,13 @@ class StripePaymentProvider implements PaymentProviderInterface
     {
         $pricing = config('pricing', []);
         $planConfig = $pricing[$plan] ?? [];
+
         return (int) ($planConfig['price'] ?? 2900);
     }
 
     private function resolvePriceIdForPlan(string $plan): string
     {
-        $productId = config('services.stripe.upgrade_products.' . $plan);
+        $productId = config('services.stripe.upgrade_products.'.$plan);
         if ($productId) {
             $resolved = $this->resolvePriceIdFromProduct($productId);
             if ($resolved !== null) {
@@ -315,7 +319,7 @@ class StripePaymentProvider implements PaymentProviderInterface
             }
         }
 
-        throw new \RuntimeException('No se pudo resolver un price ID para el plan: ' . $plan . '. Verifica que el producto tenga un default_price configurado en Stripe.');
+        throw new \RuntimeException('No se pudo resolver un price ID para el plan: '.$plan.'. Verifica que el producto tenga un default_price configurado en Stripe.');
     }
 
     private function resolvePriceIdForCheckout(array $data): string
@@ -332,7 +336,7 @@ class StripePaymentProvider implements PaymentProviderInterface
                 return $resolved;
             }
 
-            throw new \RuntimeException('No se pudo resolver un price activo para el producto Stripe: ' . $productId);
+            throw new \RuntimeException('No se pudo resolver un price activo para el producto Stripe: '.$productId);
         }
 
         $defaultPriceId = trim((string) config('services.stripe.price_id'));

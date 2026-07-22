@@ -4,6 +4,7 @@ Este directorio centraliza la documentacion oficial del backend y operaciones.
 
 ## Mapa principal
 
+- `backend/`: flujos de autenticación, autorización y lógica de negocio del API.
 - `backoffice/`: arquitectura y operacion del panel interno.
 - `backoffice/usuario/`: manuales para usuarios internos de backoffice.
 - `cliente/`: guias para cliente final (clinicas de Irison).
