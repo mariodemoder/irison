@@ -22,6 +22,7 @@ const currentMonth = ref(new Date().getMonth())
 const currentYear = ref(new Date().getFullYear())
 const availabilityMap = ref({})
 const loading = ref(false)
+const availabilityError = ref('')
 
 const monthLabel = computed(() => {
   const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
@@ -41,6 +42,7 @@ today.setHours(0, 0, 0, 0)
 
 async function loadAvailability() {
   loading.value = true
+  availabilityError.value = ''
   try {
     const monthStr = `${currentYear.value}-${String(currentMonth.value + 1).padStart(2, '0')}`
     const params = {
@@ -57,8 +59,9 @@ async function loadAvailability() {
     for (const d of res.data.dates) {
       availabilityMap.value[d.date] = d.has_availability
     }
-  } catch {
-    // silently fail, calendar shows unavailable
+  } catch (e) {
+    availabilityMap.value = {}
+    availabilityError.value = e.response?.data?.message || 'Error al cargar la disponibilidad.'
   } finally {
     loading.value = false
   }
@@ -112,6 +115,8 @@ onMounted(loadAvailability)
   <div class="step-card">
     <h2 class="step-title">Elige una fecha</h2>
     <p class="step-subtitle">Selecciona el día para tu consulta.</p>
+
+    <div v-if="availabilityError" class="availability-error">{{ availabilityError }}</div>
 
     <div class="calendar">
       <div class="calendar-header">
@@ -295,5 +300,16 @@ onMounted(loadAvailability)
 .calendar-loading {
   display: flex;
   justify-content: center;
+}
+
+.availability-error {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  font-weight: 500;
 }
 </style>

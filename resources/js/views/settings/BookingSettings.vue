@@ -22,7 +22,8 @@ const settings = ref({
 
 const services = ref([])
 const professionals = ref([])
-const schedules = ref({})
+const scheduleGrid = ref({})
+const scheduleFromUser = ref({})
 const exceptions = ref({})
 
 const editingProfessional = ref(null)
@@ -89,8 +90,8 @@ async function loadSettings() {
 async function checkSlugAvailability() {
   const slug = settings.value.slug?.trim()
   if (!slug) {
-    slugError.value = ''
-    return true
+    slugError.value = 'La URL es obligatoria.'
+    return false
   }
   try {
     const res = await api.get('/booking/slug-check', { params: { slug } })
@@ -136,7 +137,7 @@ async function saveBookingSettings() {
     }
     removedServiceIds.value = []
   } catch (e) {
-    // parent handles error toast
+    throw e
   }
 }
 
@@ -153,12 +154,55 @@ async function toggleProfessional(bp) {
   }
 }
 
+const dayLabels = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+
+function defaultScheduleGrid() {
+  return [
+    { day_of_week: 1, enabled: true,  start_time: '09:00', end_time: '18:00' },
+    { day_of_week: 2, enabled: true,  start_time: '09:00', end_time: '18:00' },
+    { day_of_week: 3, enabled: true,  start_time: '09:00', end_time: '18:00' },
+    { day_of_week: 4, enabled: true,  start_time: '09:00', end_time: '18:00' },
+    { day_of_week: 5, enabled: true,  start_time: '09:00', end_time: '18:00' },
+    { day_of_week: 6, enabled: false, start_time: '09:00', end_time: '14:00' },
+    { day_of_week: 7, enabled: false, start_time: '09:00', end_time: '14:00' },
+  ]
+}
+
 async function loadSchedules(professionalId) {
   try {
     const res = await api.get(`/booking/professionals/${professionalId}/schedules`)
-    schedules.value[professionalId] = res.data.data || []
+    const data = res.data.data || []
+    scheduleFromUser.value[professionalId] = !!res.data.from_user
+
+    const grid = defaultScheduleGrid()
+    if (data.length > 0) {
+      scheduleGrid.value[professionalId] = grid.map(def => {
+        const found = data.find(s => s.day_of_week === def.day_of_week)
+        return found
+          ? { day_of_week: found.day_of_week, enabled: true, start_time: found.start_time, end_time: found.end_time }
+          : { ...def, enabled: false }
+      })
+    } else {
+      scheduleGrid.value[professionalId] = grid
+    }
   } catch {
-    schedules.value[professionalId] = []
+    scheduleGrid.value[professionalId] = defaultScheduleGrid()
+    scheduleFromUser.value[professionalId] = false
+  }
+}
+
+async function saveBulkSchedules(professionalId) {
+  try {
+    const schedules = scheduleGrid.value[professionalId].map(s => ({
+      day_of_week: s.day_of_week,
+      start_time: s.enabled ? (s.start_time || '').substring(0, 5) : null,
+      end_time: s.enabled ? (s.end_time || '').substring(0, 5) : null,
+    }))
+    await api.post(`/booking/professionals/${professionalId}/schedules/bulk`, { schedules })
+    scheduleFromUser.value[professionalId] = false
+    toast.success('Horarios guardados.')
+  } catch (e) {
+    toast.error('Error al guardar horarios.')
   }
 }
 
@@ -181,52 +225,7 @@ function toggleProfessionalDetail(bp) {
   }
 }
 
-async function saveSchedule(professionalId, schedule) {
-  try {
-    if (schedule.id) {
-      const res = await api.put(`/booking/professionals/${professionalId}/schedules/${schedule.id}`, schedule)
-      const idx = schedules.value[professionalId].findIndex(s => s.id === schedule.id)
-      if (idx >= 0) schedules.value[professionalId][idx] = res.data.data
-    } else {
-      const res = await api.post(`/booking/professionals/${professionalId}/schedules`, schedule)
-      schedules.value[professionalId].push(res.data.data)
-    }
-    toast.success('Horario guardado.')
-  } catch (e) {
-    toast.error('Error al guardar horario.')
-  }
-}
 
-async function deleteSchedule(professionalId, scheduleId) {
-  try {
-    await api.delete(`/booking/professionals/${professionalId}/schedules/${scheduleId}`)
-    schedules.value[professionalId] = schedules.value[professionalId].filter(s => s.id !== scheduleId)
-  } catch {
-    toast.error('Error al eliminar horario.')
-  }
-}
-
-const newSchedule = ref(null)
-
-function addSchedule(professionalId) {
-  newSchedule.value = { professionalId, day_of_week: 1, start_time: '09:00', end_time: '17:00' }
-}
-
-function cancelNewSchedule() {
-  newSchedule.value = null
-}
-
-async function saveNewSchedule() {
-  if (!newSchedule.value) return
-  await saveSchedule(newSchedule.value.professionalId, {
-    day_of_week: newSchedule.value.day_of_week,
-    start_time: newSchedule.value.start_time,
-    end_time: newSchedule.value.end_time,
-  })
-  newSchedule.value = null
-}
-
-const dayNames = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 
 onMounted(loadSettings)
 </script>
@@ -291,6 +290,14 @@ onMounted(loadSettings)
       <div class="section-head">
         <span class="section-head-title">Servicios</span>
         <button class="btn btn-sm session-create-btn" type="button" @click="addServiceView">+ Nuevo servicio</button>
+        <a v-if="settings.slug"
+           :href="`/booking/${settings.slug}`"
+           target="_blank"
+           rel="noopener"
+           class="btn btn-sm"
+           style="margin-left:8px;">
+          Ver página pública ↗
+        </a>
       </div>
 
       <div class="counter-table-wrap" style="margin-top:14px">
@@ -388,44 +395,51 @@ onMounted(loadSettings)
         <div v-if="editingProfessional === bp.id" class="professional-card-admin__detail">
           <div class="detail-section">
             <div class="sched-header">
-              <h4>Horario semanal</h4>
-              <button v-if="!newSchedule || newSchedule.professionalId !== bp.id" class="btn btn-sm" @click="addSchedule(bp.id)">
-                + Añadir horario
+              <h4>
+                Horario semanal
+                <span v-if="!scheduleFromUser[bp.id]" class="badge badge-booking">Personalizado para booking</span>
+              </h4>
+              <button class="btn btn-sm" @click="saveBulkSchedules(bp.id)">
+                Guardar horarios
               </button>
             </div>
 
-            <div v-if="newSchedule?.professionalId === bp.id" class="schedule-form">
-              <select v-model.number="newSchedule.day_of_week" class="input" style="width:auto;">
-                <option v-for="(name, i) in dayNames" :key="i" :value="i" :disabled="i===0">{{ name }}</option>
-              </select>
-              <input v-model="newSchedule.start_time" type="time" class="input" style="width:auto;" />
-              <input v-model="newSchedule.end_time" type="time" class="input" style="width:auto;" />
-              <button class="btn btn-sm small" @click="saveNewSchedule">✓</button>
-              <button class="btn btn-sm small warning" @click="cancelNewSchedule">×</button>
-            </div>
-
-            <div class="counter-table-wrap" style="margin-top:6px">
-              <table class="counter-table schedule-table">
+            <div class="hours-table-wrap" style="margin-top:6px">
+              <table class="counter-table hours-table">
                 <thead>
                   <tr>
-                    <th>Día</th>
-                    <th>Horario</th>
                     <th></th>
+                    <th v-for="s in (scheduleGrid[bp.id] || [])" :key="'head-'+s.day_of_week">{{ dayLabels[s.day_of_week] || 'Día ' + s.day_of_week }}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="sched in (schedules[bp.id] || [])" :key="sched.id">
-                    <td data-label="Día">{{ dayNames[sched.day_of_week] || 'Día ' + sched.day_of_week }}</td>
-                    <td data-label="Horario">{{ sched.start_time }} - {{ sched.end_time }}</td>
-                    <td data-label="Acciones">
-                      <BtnTrash @click="deleteSchedule(bp.id, sched.id)" />
+                  <tr>
+                    <td class="hours-row-label">Trabaja</td>
+                    <td v-for="s in (scheduleGrid[bp.id] || [])" :key="'enabled-'+s.day_of_week" class="hours-cell-center">
+                      <label class="day-toggle">
+                        <input v-model="s.enabled" type="checkbox" />
+                        <span>{{ s.enabled ? 'Sí' : 'No' }}</span>
+                      </label>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="hours-row-label">Desde</td>
+                    <td v-for="s in (scheduleGrid[bp.id] || [])" :key="'start-'+s.day_of_week" class="hours-cell-center">
+                      <input class="input counter-input" type="time" step="300" v-model="s.start_time" :disabled="!s.enabled" />
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="hours-row-label">Hasta</td>
+                    <td v-for="s in (scheduleGrid[bp.id] || [])" :key="'end-'+s.day_of_week" class="hours-cell-center">
+                      <input class="input counter-input" type="time" step="300" v-model="s.end_time" :disabled="!s.enabled" />
                     </td>
                   </tr>
                 </tbody>
               </table>
             </div>
-            <div v-if="(schedules[bp.id] || []).length === 0" class="text-muted" style="font-size:13px;margin:8px 0;">
-              Sin horarios configurados.
+
+            <div v-if="scheduleFromUser[bp.id]" class="text-muted" style="font-size:13px;margin:8px 0;">
+              <span class="badge badge-team">Usando horario de Equipo</span> — Los horarios del equipo se cargaron por defecto. Personaliza arriba y presiona "Guardar horarios" para crear horarios específicos para booking.
             </div>
           </div>
 
@@ -676,25 +690,36 @@ onMounted(loadSettings)
   text-align: center;
 }
 
-.schedule-table {
-  min-width: 300px;
-}
-.schedule-table th:last-child,
-.schedule-table td:last-child {
-  text-align: right;
-  width: 80px;
-}
-
-.schedule-form {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-top: 8px;
-}
+.hours-table-wrap { overflow-x: auto; }
+.hours-table { min-width: 100%; }
+.hours-table th { padding: 8px 6px; text-align: center; font-size: 13px; font-weight: 600; color: #374151; border-bottom: 1px solid #e5e7eb; }
+.hours-row-label { font-weight: 600; color: #374151; padding-right: 12px; white-space: nowrap; font-size: 13px; }
+.hours-cell-center { text-align: center; padding: 4px; }
+.day-toggle { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; font-size: 13px; }
+.day-toggle input { width: 16px; height: 16px; cursor: pointer; }
 
 .text-muted {
   color: #6b7280;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  vertical-align: middle;
+  margin-left: 6px;
+}
+.badge-booking {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+.badge-team {
+  background: #fef3c7;
+  color: #92400e;
 }
 
 .sub-tabs .tab-small {

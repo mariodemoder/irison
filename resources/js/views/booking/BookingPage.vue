@@ -198,7 +198,7 @@ const faviconUrl = `${import.meta.env.BASE_URL}favicon.svg`
           v-if="currentStep === 2"
           :slug="slug"
           :service-id="selectedService.id"
-          :professional-id="selectedProfessional?.id || null"
+          :professional-id="selectedProfessional?.id ?? null"
           :selected-date="selectedDate"
           :max-horizon-days="pageData.settings.max_horizon_days"
           @select="selectDate"

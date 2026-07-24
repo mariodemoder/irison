@@ -41,10 +41,11 @@ def check_available(cmd):
     return shutil.which(exe) is not None
 
 REDIS_PATH = r'C:\Redis\redis-server.exe'
+MAILPIT_PATH = r'C:\Users\Mario\scoop\apps\mailpit\1.30.5\mailpit.exe'
 
 cmds = [
     REDIS_PATH,
-    'mailpit',
+    MAILPIT_PATH,
     'npm run dev',
     'php artisan serve --host=127.0.0.1 --port=8000 --no-reload',
     'php artisan queue:work --verbose --sleep=3 --tries=3',

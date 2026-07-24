@@ -40,9 +40,10 @@ class AppServiceProvider extends ServiceProvider
                 . '&email=' . urlencode((string) ($user->email ?? ''));
         });
 
-        // Gate: acceso al módulo Team solo para administradores y gestores
+        // Gate: acceso al módulo Team para administradores, gestores y dueños de clínica
         Gate::define('team-access', function (User $user) {
-            return $user->profile && in_array($user->profile->slug, ['admin', 'manager'], true);
+            return ($user->profile && in_array($user->profile->slug, ['admin', 'manager'], true))
+                || $user->role === 'owner';
         });
 
         // Ensure route-model binding for Patient is scoped to the authenticated user's clinic

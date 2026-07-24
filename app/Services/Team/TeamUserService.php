@@ -4,7 +4,7 @@ namespace App\Services\Team;
 
 use App\Models\Clinic;
 use App\Models\User;
-use App\Models\Booking\BookingProfessional;
+use Modules\Booking\Models\BookingProfessional;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;

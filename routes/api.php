@@ -48,43 +48,7 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/password/forgot', [PasswordRecoveryController::class, 'sendResetLink']);
 Route::post('/password/reset', [PasswordRecoveryController::class, 'reset']);
 
-// Reserva online — rutas públicas (sin auth, con throttle)
-// NOTA: /booking/availability, /booking/slots, /booking/confirm/{token} y /booking/cancel/{token}
-// deben definirse ANTES de /booking/{slug} para evitar que {slug} las capture.
-Route::middleware('throttle:30,1')->group(function () {
-    Route::get('/booking/availability', [\App\Http\Controllers\Api\Booking\AvailabilityController::class, 'dates']);
-    Route::get('/booking/slots', [\App\Http\Controllers\Api\Booking\AvailabilityController::class, 'slots']);
-    Route::post('/booking', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'store']);
-    Route::get('/booking/confirm/{token}', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'show']);
-    Route::post('/booking/cancel/{token}', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'cancel']);
-});
-
-// Reserva online — rutas de configuración (admin, auth). Deben ir ANTES de /booking/{slug}
-Route::middleware(['auth:sanctum', 'clinic'])->group(function () {
-    Route::get('/booking/settings', [\App\Http\Controllers\Api\Booking\BookingSettingsController::class, 'show']);
-    Route::put('/booking/settings', [\App\Http\Controllers\Api\Booking\BookingSettingsController::class, 'update']);
-    Route::get('/booking/slug-check', [\App\Http\Controllers\Api\Booking\BookingSettingsController::class, 'checkSlug']);
-    Route::get('/booking/services', [\App\Http\Controllers\Api\Booking\BookingServiceController::class, 'index']);
-    Route::post('/booking/services', [\App\Http\Controllers\Api\Booking\BookingServiceController::class, 'store']);
-    Route::put('/booking/services/{id}', [\App\Http\Controllers\Api\Booking\BookingServiceController::class, 'update']);
-    Route::delete('/booking/services/{id}', [\App\Http\Controllers\Api\Booking\BookingServiceController::class, 'destroy']);
-    Route::get('/booking/professionals', [\App\Http\Controllers\Api\Booking\BookingProfessionalController::class, 'index']);
-    Route::post('/booking/professionals', [\App\Http\Controllers\Api\Booking\BookingProfessionalController::class, 'store']);
-    Route::put('/booking/professionals/{id}', [\App\Http\Controllers\Api\Booking\BookingProfessionalController::class, 'update']);
-    Route::delete('/booking/professionals/{id}', [\App\Http\Controllers\Api\Booking\BookingProfessionalController::class, 'destroy']);
-    Route::get('/booking/professionals/{professionalId}/schedules', [\App\Http\Controllers\Api\Booking\ScheduleController::class, 'index']);
-    Route::post('/booking/professionals/{professionalId}/schedules', [\App\Http\Controllers\Api\Booking\ScheduleController::class, 'store']);
-    Route::put('/booking/professionals/{professionalId}/schedules/{scheduleId}', [\App\Http\Controllers\Api\Booking\ScheduleController::class, 'update']);
-    Route::delete('/booking/professionals/{professionalId}/schedules/{scheduleId}', [\App\Http\Controllers\Api\Booking\ScheduleController::class, 'destroy']);
-    Route::get('/booking/professionals/{professionalId}/exceptions', [\App\Http\Controllers\Api\Booking\ExceptionController::class, 'index']);
-    Route::post('/booking/professionals/{professionalId}/exceptions', [\App\Http\Controllers\Api\Booking\ExceptionController::class, 'store']);
-    Route::put('/booking/professionals/{professionalId}/exceptions/{exceptionId}', [\App\Http\Controllers\Api\Booking\ExceptionController::class, 'update']);
-    Route::delete('/booking/professionals/{professionalId}/exceptions/{exceptionId}', [\App\Http\Controllers\Api\Booking\ExceptionController::class, 'destroy']);
-    Route::get('/booking/appointments', [\App\Http\Controllers\Api\Booking\BookingAppointmentController::class, 'index']);
-});
-
-// Debe ir al final para no capturar las rutas admin (settings, services, professionals, etc.)
-Route::middleware('throttle:30,1')->get('/booking/{slug}', [\App\Http\Controllers\Api\Booking\PublicBookingPageController::class, 'show']);
+// Booking module: rutas movidas a modules/Booking/Routes/api.php
 
 // Consentimientos informados — rutas públicas para firma remota (sin auth, con throttle)
 Route::middleware('throttle:30,1')->prefix('consent')->group(function () {

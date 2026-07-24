@@ -8,7 +8,7 @@ use App\Models\Profile;
 use App\Models\Profession;
 use App\Models\UserSchedule;
 use App\Models\UserScheduleException;
-use App\Models\Booking\BookingProfessional;
+use Modules\Booking\Models\BookingProfessional;
 use App\Notifications\ResetPasswordNotificationEs;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
