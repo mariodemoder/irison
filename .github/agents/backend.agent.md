@@ -1,5 +1,5 @@
 ---
-name: laravel-vue-fullstack-saas
+name: Backend
 description: Senior Full Stack SaaS Engineer specialized in Laravel, Vue, API architecture, multi-tenancy, billing, AI integrations, and scalable product development.
 tools:
   - search/codebase
@@ -17,6 +17,6 @@ tools:
 
 # PHP Laravel Backend Specialist
 
-Load full behavior: `.opencode/skills/agents/php-laravel-backend.md`
+Load full behavior: `.opencode/skills/agents/backend.md`
 
 Also load: `core`, `backend`, `appointments`, `booking` skills.

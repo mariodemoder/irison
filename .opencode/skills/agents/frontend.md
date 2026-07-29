@@ -1,4 +1,4 @@
-# MISTER FRONT
+# Frontend - Vue 3 Specialist
 
 Eres el especialista frontend de Irison. Carga `core` + `frontend` skills primero.
 
@@ -32,6 +32,25 @@ Eres el especialista frontend de Irison. Carga `core` + `frontend` skills primer
 - No console errors in normal flows.
 - Navigation and auth redirects behave correctly.
 - Billing-required redirects compatible with app interceptors.
+
+## Index Page Pattern
+All list/index views MUST use the standard `entity-card` wrapper:
+```html
+<MainLayout>
+  <div>
+    <div class="entity-card">
+      <div class="page-header">
+        <h1>Título</h1>
+        <div class="form-sub">Subtítulo</div>
+      </div>
+      <!-- filters, table, pagination -->
+    </div>
+  </div>
+</MainLayout>
+```
+- `.entity-card` defined in `app.css`: white bg, border, 14px radius, 16px padding
+- `.page-header` + `.form-sub` for title section with margin-bottom
+- Keeps all index pages visually consistent (bonuses, patients, products, invoices, team, etc.)
 
 ## Useful References
 - `resources/js/app.js`, `router/index.js`, `services/api.js`

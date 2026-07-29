@@ -1,6 +1,6 @@
 <template>
   <MainLayout>
-    <div>
+    <div class="entity-card">
       <div class="page-header">
         <div>
           <h1>Configuración</h1>
@@ -12,8 +12,7 @@
       <AppLoading v-if="loading" message="Cargando configuración..." />
 
       <div v-else>
-        <div class="profile-container">
-          <div class="tabs">
+        <div class="tabs">
             <button :class="['tab', { active: activeTab==='clinica' }]" @click="activeTab='clinica'">Clínica</button>
             <button :class="['tab', { active: activeTab==='horarios' }]" @click="activeTab='horarios'">Horarios</button>
             <button :class="['tab', { active: activeTab==='contadores' }]" @click="activeTab='contadores'">Contadores</button>
@@ -296,12 +295,12 @@
                     </div>
                   </div>
                   <div v-else-if="status==='active'">
-                    <div>Tu suscripción está activa.</div>
+                    
 
                     <div class="subscription-history" id="sub-pagos" style="margin-top:14px">
                       <div class="subscription-history-title">
                         Pagos realizados
-                        <button class="btn btn-sm" style="margin-left:8px" @click="openStripeInvoices">Ver facturas</button>
+                        
                       </div>
                       <div v-if="subscriptionPayments.length === 0" class="subscription-history-empty">
                         No hay pagos registrados.
@@ -322,6 +321,7 @@
                           <div>{{ formatBillingAmount(payment.amount, payment.currency) }}</div>
                         </div>
                       </div>
+                      <button class="btn btn-sm" style="margin-left:8px" @click="openStripeInvoices">Ver facturas</button>
                     </div>
 
                     <div v-if="showInvoicesModal" class="confirm-modal-backdrop" @click.self="showInvoicesModal=false">
@@ -470,7 +470,6 @@
               <div v-else class="action-row action-row-empty"></div>
             </div>
           </div>
-        </div>
       </div>
     </div>
   </MainLayout>
@@ -1086,16 +1085,6 @@ onBeforeUnmount(() => {
 .sub-banner .small { font-size:12px; color:var(--text-muted,#6b7280) }
 .section-copy { margin-top:8px; color:#6b7280; font-size:13px }
 
-.profile-container {
-  width: 100%;
-  max-width: none;
-  margin-top: 14px;
-  padding: 18px;
-  border: 1px solid #e5e7eb;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 16px 40px rgba(2, 6, 23, 0.08);
-}
 .profile-shell { display:grid; gap:14px }
 .card-stage { min-height:560px }
 .tabs {

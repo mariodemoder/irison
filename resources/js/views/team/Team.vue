@@ -1,44 +1,42 @@
 <template>
   <MainLayout>
     <div>
-      <div class="page-header">
-        <div>
-          <h1>Equipo</h1>
-          <div class="form-sub">Administra los usuarios y profesiones de tu clínica</div>
-        </div>
-        <div v-if="userMeta" class="user-limit-badge">
-          {{ userMeta.total }} / {{ maxUsers > 0 ? maxUsers : '∞' }} usuarios
-        </div>
-        <div class="sub-menu-wrap">
-          <button class="btn sub-menu-trigger" @click.stop="showProfessionsMenu = !showProfessionsMenu" title="Más opciones">
-            &#8942;
-          </button>
-          <div v-if="showProfessionsMenu" class="sub-menu-dropdown">
-            <button class="sub-menu-item" @click="openProfessionsModal(); showProfessionsMenu = false">
-              Profesiones
+      <div class="entity-card">
+        <div class="page-header">
+          <div>
+            <h1>Equipo</h1>
+            <div class="form-sub">Administra los usuarios y profesiones de tu clínica</div>
+          </div>
+          <div v-if="userMeta" class="user-limit-badge">
+            {{ userMeta.total }} / {{ maxUsers > 0 ? maxUsers : '∞' }} usuarios
+          </div>
+          <div class="sub-menu-wrap">
+            <button class="btn sub-menu-trigger" @click.stop="showProfessionsMenu = !showProfessionsMenu" title="Más opciones">
+              &#8942;
             </button>
+            <div v-if="showProfessionsMenu" class="sub-menu-dropdown">
+              <button class="sub-menu-item" @click="openProfessionsModal(); showProfessionsMenu = false">
+                Profesiones
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div v-if="showLimitWarning" class="limit-warning-banner">
-        <div class="limit-warning-content">
-          <span class="limit-warning-icon">⚠️</span>
-          <span>
-            <strong>Límite de usuarios:</strong> Has usado {{ userMeta?.total ?? 0 }} de {{ maxUsers > 0 ? maxUsers : '∞' }} usuarios.
-            <template v-if="maxUsers > 0 && (userMeta?.total ?? 0) >= maxUsers">No puedes añadir más usuarios.</template>
-            <template v-else-if="maxUsers > 0">Quedan {{ maxUsers - (userMeta?.total ?? 0) }} disponibles.</template>
-          </span>
+        <div v-if="showLimitWarning" class="limit-warning-banner">
+          <div class="limit-warning-content">
+            <span class="limit-warning-icon">⚠️</span>
+            <span>
+              <strong>Límite de usuarios:</strong> Has usado {{ userMeta?.total ?? 0 }} de {{ maxUsers > 0 ? maxUsers : '∞' }} usuarios.
+              <template v-if="maxUsers > 0 && (userMeta?.total ?? 0) >= maxUsers">No puedes añadir más usuarios.</template>
+              <template v-else-if="maxUsers > 0">Quedan {{ maxUsers - (userMeta?.total ?? 0) }} disponibles.</template>
+            </span>
+          </div>
+          <router-link v-if="maxUsers > 0" to="/settings/subscription" class="limit-warning-btn">Solicitar upgrade</router-link>
         </div>
-        <router-link v-if="maxUsers > 0" to="/settings/subscription" class="limit-warning-btn">Solicitar upgrade</router-link>
-      </div>
 
-      <AppLoading v-if="loading" message="Cargando..." />
+        <AppLoading v-if="loading" message="Cargando..." />
 
-      <div v-else>
-        <div class="profile-container">
-          <div class="profile-shell">
-            <div class="card-stage">
+        <div v-else>
 
               <div class="team-section-head">
                 <div class="search-center">
@@ -94,8 +92,6 @@
                 </div>
               </template>
 
-            </div>
-          </div>
         </div>
       </div>
     </div>

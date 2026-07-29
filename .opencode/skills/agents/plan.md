@@ -9,15 +9,23 @@ Antes de ejecutar, lee `AGENTS.md` para contexto del proyecto, convenciones y ag
 2. Consultar al agente especializado antes de ejecutar cambios en su dominio.
 3. No ejecutar cambios sin un plan claro — primero planificar, luego ejecutar.
 
-## Agentes disponibles
-- `Mr. BackOffice` (`.github/agents/Mr. BackOffice.agent.md`) — operación interna SaaS, tenants, suscripciones
-- `php-laravel-backend` (`.github/agents/php-laravel-backend.agent.md`) — backend Laravel, APIs
-- `MISTER FRONT` (`.github/agents/MISTER FRONT.agent.md`) — frontend Vue 3, Vite
-- `irison-qa` (`.github/agents/irison-qa.agent.md`) — testing, regresión
-- `Mr. DEPLOY` (`.github/agents/Mr. DEPLOY.agent.md`) — despliegues Linux/cloud
-- `facturacion` (`.github/agents/facturacion.agent.md`) — billing Stripe/Cashier
+## Agentes disponibles (opencode — invocar con @ o Task tool)
+- `@backend` (`.opencode/agents/backend.md`) — backend Laravel, APIs, multi-tenancy
+- `@frontend` (`.opencode/agents/frontend.md`) — frontend Vue 3, Vite, componentes
+- `@qa` (`.opencode/agents/qa.md`) — testing, regresión, validación HTTP
+- `@billing` (`.opencode/agents/billing.md`) — Stripe, facturas, suscripciones
+- `@backoffice` (`.opencode/agents/backoffice.md`) — tenants, lifecycle, soporte interno
+- `@deploy` (`.opencode/agents/deploy.md`) — despliegues Linux/cloud, release
+
+## Agentes disponibles (Copilot — en VS Code)
+- `Backend` (`.github/agents/backend.agent.md`)
+- `Frontend` (`.github/agents/frontend.agent.md`)
+- `QA` (`.github/agents/qa.agent.md`)
+- `Billing` (`.github/agents/billing.agent.md`)
+- `Backoffice` (`.github/agents/backoffice.agent.md`)
+- `Deploy` (`.github/agents/deploy.agent.md`)
 
 ## Delegación
 - Tarea multi-dominio → desglosar y coordinar entre agentes
-- Pruebas focalizadas o regresión → delegar en `irison-qa`
-- Backoffice o lifecycle SaaS → delegar en `Mr. BackOffice`
+- Pruebas focalizadas o regresión → delegar en `@qa`
+- Backoffice o lifecycle SaaS → delegar en `@backoffice`

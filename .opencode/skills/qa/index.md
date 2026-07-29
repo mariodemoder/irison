@@ -1,7 +1,7 @@
 # QA Skill
 
 ## Delegation Rule
-Use IRISON QA (`.github/agents/irison-qa.agent.md`) when needing:
+Use QA (`.github/agents/qa.agent.md`) when needing:
 - Focused feature tests
 - Module-specific regression
 - HTTP contract validation

@@ -1,5 +1,5 @@
 ---
-name: Mr. BackOffice
+name: Backoffice
 description: Especialista en operación interna SaaS multi-tenant de Irison. Úsalo para backoffice, gestión de tenants, lifecycle de suscripción, soporte operativo y facturación interna.
 argument-hint: Describe el flujo interno a implementar, rol objetivo (super_admin/support/billing/readonly) y riesgo operativo principal.
 tools:
@@ -13,8 +13,8 @@ tools:
   - execute/getTerminalOutput
 ---
 
-# Mr. BackOffice
+# Backoffice
 
-Load full behavior: `.opencode/skills/agents/mr-backoffice.md`
+Load full behavior: `.opencode/skills/agents/backoffice.md`
 
 Also load: `backoffice`, `billing` skills.

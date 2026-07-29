@@ -1,18 +1,17 @@
 <template>
   <MainLayout>
-    <div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+    <div class="entity-card">
+      <div class="page-header">
         <div>
           <h1>Mi cuenta</h1>
-          <div class="page-subtitle">Tus datos personales y seguridad.</div>
+          <div class="form-sub">Tus datos personales y seguridad.</div>
         </div>
       </div>
 
       <AppLoading v-if="loading" message="Cargando perfil..." />
 
       <div v-else>
-        <div class="profile-container">
-          <div class="tabs">
+        <div class="tabs">
             <button :class="['tab', { active: activeTab==='datos' }]" @click="activeTab='datos'">Datos</button>
             <button :class="['tab', { active: activeTab==='seguridad' }]" @click="activeTab='seguridad'">Seguridad</button>
           </div>
@@ -69,7 +68,6 @@
               <div v-else class="action-row action-row-empty"></div>
             </div>
           </div>
-        </div>
       </div>
     </div>
   </MainLayout>
@@ -173,10 +171,6 @@ async function changePassword() {
 .input { width:100%; padding:10px; border-radius:8px; border:1px solid #e5e7eb }
 .page-subtitle { color:#6b7280; font-size:13px; margin-top:4px }
 
-.profile-container {
-  width: 100%;
-  max-width: 860px;
-}
 .profile-shell { display:grid; gap:14px }
 .card-stage { min-height:420px }
 .tabs {

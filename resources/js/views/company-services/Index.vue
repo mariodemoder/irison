@@ -1,6 +1,6 @@
 <template>
   <MainLayout>
-    <div>
+    <div class="entity-card">
       <div class="page-header">
         <div style="display:flex;align-items:center;gap:12px">
           <button v-if="returnTo" type="button" class="btn btn-sm" style="padding:6px 12px;font-size:13px" @click="router.push(returnTo)">
@@ -16,8 +16,7 @@
       <AppLoading v-if="loading" message="Cargando servicios..." />
 
       <div v-else>
-        <div class="profile-container">
-          <div class="tabs">
+        <div class="tabs">
             <button :class="['tab', { active: activeTab==='sesiones' }]" @click="activeTab='sesiones'">Sesiones</button>
             <button :class="['tab', { active: activeTab==='bonos' }]" @click="activeTab='bonos'">Bonos</button>
             <button :class="['tab', { active: activeTab==='booking' }]" @click="activeTab='booking'">Reserva Online</button>
@@ -195,7 +194,6 @@
               <div v-else class="action-row action-row-empty"></div>
             </div>
           </div>
-        </div>
       </div>
     </div>
   </MainLayout>
@@ -530,17 +528,6 @@ function removeCesionType(item) {
 </script>
 
 <style scoped>
-.profile-container {
-  width: 100%;
-  max-width: none;
-  margin-top: 14px;
-  padding: 18px;
-  border: 1px solid #e5e7eb;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 16px 40px rgba(2, 6, 23, 0.08);
-}
-
 .profile-shell {
   display: grid;
   gap: 14px;

@@ -1,4 +1,4 @@
-# Mr. BackOffice - Lógica Operativa
+# Backoffice - Lógica Operativa
 
 ## Propósito
 
@@ -238,7 +238,7 @@ Contexto mínimo por evento:
 - La conversión interrumpe correctamente eventos pendientes de trial.
 - Día 30 bloquea transacciones y mantiene lectura.
 - El churn se marca solo tras expirar trial y gracia sin pago.
-- Cobertura de pruebas específicas delegada a IRISON QA.
+- Cobertura de pruebas específicas delegada a QA.
 
 ## ETAPA 3 — Ejecución planificada (4 días)
 
@@ -293,7 +293,7 @@ Regla de seguridad de pruebas:
 - `database.connections.sqlite.database=:memory:`
 
 Delegación QA:
-- Para regresión amplia, contratos HTTP y validación de escenarios de riesgo, delegar ejecución especializada a `IRISON QA` (`.github/agents/irison-qa.agent.md`).
+- Para regresión amplia, contratos HTTP y validación de escenarios de riesgo, delegar ejecución especializada a `QA` (`.github/agents/qa.agent.md`).
 
 ## Última modificación (2026-06-02): ETAPA 3 Fase 1 (Hardening)
 

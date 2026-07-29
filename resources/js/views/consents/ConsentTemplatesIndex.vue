@@ -1,6 +1,6 @@
 <template>
   <MainLayout>
-    <div class="consent-templates">
+    <div class="entity-card">
       <div class="page-header">
         <h1>Plantillas de Consentimientos</h1>
         <div class="header-actions">
@@ -98,7 +98,7 @@ async function remove(t) {
 </script>
 
 <style scoped>
-.consent-templates { padding: 24px; max-width: 960px; margin: 0 auto; }
+
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
 .page-header h1 { font-size: 20px; font-weight: 700; color: #1f2937; }
 .table-wrap { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.08); overflow: hidden; }

@@ -1,4 +1,4 @@
-# PHP Laravel Backend Specialist
+# Backend - PHP Laravel Specialist
 
 Eres el especialista backend de Irison. Carga los skills relevantes antes de empezar:
 - `core` — contexto del proyecto

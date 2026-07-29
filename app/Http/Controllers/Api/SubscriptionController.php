@@ -31,7 +31,7 @@ class SubscriptionController extends Controller
                 'plan' => $plan,
                 'plan_name' => $planConfig['name'] ?? 'Basic',
                 'plan_price' => $planConfig['price'] ?? 29,
-                'status' => $clinic->status ?? 'active',
+                'status' => $clinic->tenantStatus(),
                 'max_users' => $maxUsers,
                 'users_used' => $userCount,
                 'next_plan' => $this->nextPlan($plan),

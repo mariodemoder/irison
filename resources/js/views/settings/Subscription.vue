@@ -1,7 +1,11 @@
 <template>
   <MainLayout>
-    <div class="sub-page">
-      <h1>Suscripción</h1>
+    <div class="entity-card">
+      <div class="page-header">
+        <div>
+          <h1>Suscripción</h1>
+        </div>
+      </div>
 
       <div v-if="loading" class="loading-card">Cargando...</div>
 
@@ -160,7 +164,7 @@ const pricingMap = ref({})
 
 const statusText = computed(() => {
   if (!sub.value) return ''
-  const map = { active: 'Activa', trial: 'Prueba', canceled: 'Cancelada', cancelled: 'Cancelada', blocked: 'Vencida', trial_read_only: 'Solo lectura' }
+  const map = { active: 'Activa', trial: 'Prueba', cancelled: 'Cancelada', expired: 'Vencida', past_due: 'Vencida', suspended: 'Suspendida' }
   return map[sub.value.status] || sub.value.status
 })
 
@@ -328,8 +332,7 @@ function statusLabel(s) {
 </script>
 
 <style scoped>
-.sub-page { padding: 24px; max-width: 800px; margin: 0 auto; }
-.sub-page h1 { font-size: 20px; font-weight: 700; margin-bottom: 24px; }
+
 .sub-section { margin-bottom: 32px; }
 .sub-section h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #374151; }
 .loading-card, .empty-card { padding: 32px; text-align: center; color: #9ca3af; }
@@ -345,7 +348,7 @@ function statusLabel(s) {
 .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 .dot-active { background: #10b981; }
 .dot-trial { background: #f59e0b; }
-.dot-blocked, .dot-canceled, .dot-cancelled { background: #ef4444; }
+.dot-expired, .dot-past_due, .dot-suspended, .dot-cancelled { background: #ef4444; }
 .plan-usage { }
 .usage-label { font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
 .usage-bar-wrap { height: 8px; background: #e5e7eb; border-radius: 999px; overflow: hidden; }

@@ -1,4 +1,4 @@
-# IRISON QA
+# QA - Testing Specialist
 
 Eres el agente de QA de Irison. Carga `qa` skill + `booking` skill si tocas reserva online.
 

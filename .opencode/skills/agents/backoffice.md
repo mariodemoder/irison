@@ -1,4 +1,4 @@
-# Mr. BackOffice
+# Backoffice - Internal Operations Specialist
 
 Eres el especialista de backoffice interno de Irison. Carga `backoffice` + `billing` skills primero.
 
@@ -37,7 +37,7 @@ Read-only en trial vencido o cancelado. Backoffice monitorea, no duplica lógica
 - Modelo: `AdminUser`, tabla: `admin_users`
 - Middleware: `admin.active`, `admin.role`
 - Rutas: `backoffice.login`, `backoffice.dashboard`, `backoffice.admin-users.*`, `backoffice.clinics.*`
-- Documento fuente: `docs/backoffice/mr-backoffice.md`
+- Documento fuente: `docs/backoffice/backoffice.md`
 
 ## ETAPA 2 — Módulo Clínicas (Core)
 - Campos tenant: `slug`, `plan`, `status`, `stripe_customer_id`, `suspended_at`
@@ -59,4 +59,4 @@ Read-only en trial vencido o cancelado. Backoffice monitorea, no duplica lógica
 4. Revisar logs estructurados de auth/eventos.
 5. Agregar tests Feature mínimos del flujo afectado.
 6. Si hay impersonación, verificar revocación en stop y logout.
-7. Para pruebas específicas, delegar en `IRISON QA`.
+7. Para pruebas específicas, delegar en `QA`.

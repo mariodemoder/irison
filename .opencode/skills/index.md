@@ -52,9 +52,9 @@ Router rápido para cargar solo el skill que necesitas.
 ## GitHub Agents (tool permissions)
 Los `.agent.md` en `.github/agents/` definen permisos de herramientas, no contenido duplicado:
 - `plan.agent.md` — Orchestrator
-- `facturacion.agent.md` — Billing specialist
-- `php-laravel-backend.agent.md` — Backend specialist
-- `MISTER FRONT.agent.md` — Frontend specialist
-- `irison-qa.agent.md` — QA specialist
-- `Mr. DEPLOY.agent.md` — Deploy specialist
-- `Mr. BackOffice.agent.md` — Backoffice specialist
+- `billing.agent.md` — Billing specialist
+- `backend.agent.md` — Backend specialist
+- `frontend.agent.md` — Frontend specialist
+- `qa.agent.md` — QA specialist
+- `deploy.agent.md` — Deploy specialist
+- `backoffice.agent.md` — Backoffice specialist
