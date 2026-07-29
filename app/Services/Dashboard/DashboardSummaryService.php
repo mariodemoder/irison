@@ -10,7 +10,7 @@ use App\Models\Clinic;
 use App\Models\CreditUsage;
 use App\Models\Patient;
 use App\Models\Payment;
-use App\Services\Bonus\BonusService;
+use Modules\Bonus\Services\BonusService;
 use Carbon\Carbon;
 
 class DashboardSummaryService

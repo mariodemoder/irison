@@ -1,21 +1,20 @@
 <?php
 
-namespace App\Http\Requests\Bonuses;
+declare(strict_types=1);
 
-use Illuminate\Foundation\Http\FormRequest;
+namespace Modules\Bonus\Requests\Bonuses;
+
 use App\Rules\ValidateDateAfterNow;
 use App\Rules\ValidatePaymentAmount;
+use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateBonusRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true; // Autorización manejada por Policy
+        return true;
     }
 
-    /**
-     * Reglas de validación para actualizar un bono.
-     */
     public function rules(): array
     {
         $total = $this->input('total_sessions') ?? $this->route('bonus')?->total_sessions ?? 0;

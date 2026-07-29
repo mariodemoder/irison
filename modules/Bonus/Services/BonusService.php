@@ -1,20 +1,22 @@
 <?php
+
 declare(strict_types=1);
 
-namespace App\Services\Bonus;
+namespace Modules\Bonus\Services;
 
+use App\Models\Appointment;
 use App\Models\Bonus;
 use App\Models\BonusType;
 use App\Models\BonusUsage;
-use App\Models\Appointment;
 use App\Models\Payment;
-use Illuminate\Support\Collection;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use DomainException;
+use Modules\Bonus\Contracts\BonusConsumableInterface;
+use Modules\Bonus\Models\BonusSessionLine;
 
-class BonusService
+class BonusService implements BonusConsumableInterface
 {
     public function index(array $filters, ?int $clinicId = null): array
     {
@@ -103,29 +105,6 @@ class BonusService
         ];
     }
 
-    public function packageCandidatesForPatient(
-        int $patientId,
-        int $clinicId,
-        bool $onlyUnpaid = true,
-        ?int $currentBonusId = null
-    ): Collection {
-        $query = $this->queryWithPaymentFlag($clinicId)
-            ->where('bonuses.clinic_id', $clinicId)
-            ->where('bonuses.patient_id', $patientId)
-            ->when($onlyUnpaid, function (Builder $builder) use ($currentBonusId) {
-                $builder->where(function (Builder $subQuery) use ($currentBonusId) {
-                    $subQuery->whereNull('paid_packages.package_id');
-
-                    if ($currentBonusId) {
-                        $subQuery->orWhere('bonuses.id', (int) $currentBonusId);
-                    }
-                });
-            })
-            ->orderByDesc('bonuses.created_at');
-
-        return $query->get();
-    }
-
     public function forPatient(int $patientId, ?int $clinicId = null, bool $activeOnly = false): Collection
     {
         $query = $this->queryWithPaymentFlag($clinicId)
@@ -151,13 +130,22 @@ class BonusService
                 'id' => $bonus->id,
                 'counter' => $bonus->counter,
                 'name' => $bonus->name,
+                'bonus_type_id' => $bonus->bonus_type_id ? (int) $bonus->bonus_type_id : null,
+                'bonus_type_name' => $bonus->bonusType?->description,
                 'total_sessions' => (int) $bonus->total_sessions,
                 'remaining_sessions' => (int) $bonus->remaining_sessions,
-                    'price' => (float) ($bonus->price ?? 0),
-                    'invoice_id' => $bonus->invoice_id ? (int) $bonus->invoice_id : null,
+                'price' => (float) ($bonus->price ?? 0),
+                'invoice_id' => $bonus->invoice_id ? (int) $bonus->invoice_id : null,
                 'expires_at' => $bonus->expires_at ? $bonus->expires_at->toDateString() : null,
                 'status' => $bonus->status,
                 'is_paid' => $isPaid,
+                'session_lines' => $bonus->sessionLines->map(fn ($line) => [
+                    'id' => $line->id,
+                    'appointment_type_id' => $line->appointment_type_id,
+                    'appointment_type_name' => $line->appointmentType->description ?? '—',
+                    'quantity' => $line->quantity,
+                    'remaining_quantity' => $line->remaining_quantity,
+                ])->toArray(),
             ];
         });
     }
@@ -169,10 +157,33 @@ class BonusService
             ->count('bonuses.id');
     }
 
+    public function packageCandidatesForPatient(
+        int $patientId,
+        int $clinicId,
+        bool $onlyUnpaid = true,
+        ?int $currentBonusId = null
+    ): Collection {
+        $query = $this->queryWithPaymentFlag($clinicId)
+            ->where('bonuses.clinic_id', $clinicId)
+            ->where('bonuses.patient_id', $patientId)
+            ->when($onlyUnpaid, function (Builder $builder) use ($currentBonusId) {
+                $builder->where(function (Builder $subQuery) use ($currentBonusId) {
+                    $subQuery->whereNull('paid_packages.package_id');
+
+                    if ($currentBonusId) {
+                        $subQuery->orWhere('bonuses.id', (int) $currentBonusId);
+                    }
+                });
+            })
+            ->orderByDesc('bonuses.created_at');
+
+        return $query->get();
+    }
+
     public function createForPatient(int $patientId, array $data, ?int $clinicId = null): Bonus
     {
         if (!$clinicId) {
-            throw new DomainException('No se encontró clínica activa para crear el bono');
+            throw new \DomainException('No se encontró clínica activa para crear el bono');
         }
 
         $bonusTypeId = null;
@@ -183,14 +194,14 @@ class BonusService
                 ->whereKey($candidateBonusTypeId)
                 ->exists();
 
-            if (! $existsInClinic) {
-                throw new DomainException('El tipo de bono no pertenece a la clínica activa');
+            if (!$existsInClinic) {
+                throw new \DomainException('El tipo de bono no pertenece a la clínica activa');
             }
 
             $bonusTypeId = $candidateBonusTypeId;
         }
 
-        return $this->assignBonusToPatient(
+        $bonus = $this->assignBonusToPatient(
             $clinicId,
             $patientId,
             $data['name'],
@@ -199,6 +210,13 @@ class BonusService
             isset($data['expires_at']) ? new \DateTime($data['expires_at']) : null,
             $bonusTypeId
         );
+
+        // Copy session lines from the template if bonus_type_id was provided
+        if ($bonusTypeId) {
+            $this->createSessionLinesFromTemplate($bonus, $bonusTypeId, $clinicId);
+        }
+
+        return $bonus;
     }
 
     public function updateBonus(Bonus $bonus, array $data): Bonus
@@ -212,7 +230,7 @@ class BonusService
     public function deleteBonus(Bonus $bonus): void
     {
         if (!empty($bonus->invoice_id)) {
-            throw new DomainException('No se puede eliminar un bono que ya está facturado');
+            throw new \DomainException('No se puede eliminar un bono que ya está facturado');
         }
 
         $bonus->delete();
@@ -248,10 +266,6 @@ class BonusService
         })->values();
     }
 
-    /**
-     * Assign a bonus to a patient (create Bonus record).
-     * Returns the created Bonus.
-     */
     public function assignBonusToPatient(
         int $clinicId,
         int $patientId,
@@ -260,8 +274,7 @@ class BonusService
         float $price = 0.0,
         ?\DateTime $expiresAt = null,
         ?int $bonusTypeId = null
-    ): Bonus
-    {
+    ): Bonus {
         $data = [
             'clinic_id' => $clinicId,
             'patient_id' => $patientId,
@@ -278,8 +291,8 @@ class BonusService
 
     /**
      * Use a bonus for an appointment.
-     * Throws Exception on invalid usage (no remaining, expired, already used for this appointment).
-     * Returns the created BonusUsage.
+     * If the bonus has session lines, decrements the matching type.
+     * Otherwise, decrements the global counter (backward compatibility).
      */
     public function useBonusForAppointment(int $bonusId, Appointment $appointment, ?string $notes = null): BonusUsage
     {
@@ -289,23 +302,42 @@ class BonusService
                 throw new \Exception('Bono no encontrado');
             }
 
-            // Check expiration (inclusive of the expiration day)
             if ($bonus->isExpired()) {
                 throw new \Exception('Bono expirado');
             }
 
-            // Check remaining
             if ($bonus->remaining_sessions <= 0) {
                 throw new \Exception('El bono seleccionado no está disponible');
             }
 
             // Prevent double use for same appointment
-            $existing = BonusUsage::where('bonus_id', $bonus->id)->where('appointment_id', $appointment->id)->first();
+            $existing = BonusUsage::where('bonus_id', $bonus->id)
+                ->where('appointment_id', $appointment->id)
+                ->first();
             if ($existing) {
                 throw new \Exception('El bono ya fue usado para esta cita');
             }
 
-            // Decrement and create usage
+            $appointmentTypeId = $appointment->app_type_id;
+
+            // Multi-type: decrement the matching session line
+            if ($bonus->hasSessionLines() && $appointmentTypeId) {
+                $line = BonusSessionLine::where('bonus_id', $bonus->id)
+                    ->where('appointment_type_id', $appointmentTypeId)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$line) {
+                    throw new \Exception('Tipo de cita no incluido en este bono');
+                }
+                if ($line->remaining_quantity <= 0) {
+                    throw new \Exception('No quedan sesiones de este tipo en el bono');
+                }
+
+                $line->remaining_quantity = $line->remaining_quantity - 1;
+                $line->save();
+            }
+
             $bonus->remaining_sessions = $bonus->remaining_sessions - 1;
             $bonus->save();
 
@@ -314,6 +346,7 @@ class BonusService
                 'appointment_id' => $appointment->id,
                 'used_at' => now(),
                 'notes' => $notes,
+                'appointment_type_id' => $appointmentTypeId,
             ]);
 
             return $usage;
@@ -322,20 +355,33 @@ class BonusService
 
     /**
      * Restore a bonus usage when an appointment is cancelled.
-     * If a usage exists for the appointment, increments remaining_sessions and deletes usage.
-     * Returns true if restored, false if no usage found.
+     * If the bonus has session lines, restores the matching type.
      */
     public function restoreBonusIfCancelled(Appointment $appointment): bool
     {
         return DB::transaction(function () use ($appointment) {
             $usage = BonusUsage::where('appointment_id', $appointment->id)->first();
-            if (!$usage) return false;
+            if (!$usage) {
+                return false;
+            }
 
             $bonus = Bonus::where('id', $usage->bonus_id)->lockForUpdate()->first();
             if (!$bonus) {
-                // If bonus no longer exists, just delete usage
                 $usage->delete();
                 return true;
+            }
+
+            // Multi-type: restore the matching session line
+            if ($bonus->hasSessionLines() && $usage->appointment_type_id) {
+                $line = BonusSessionLine::where('bonus_id', $bonus->id)
+                    ->where('appointment_type_id', $usage->appointment_type_id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($line) {
+                    $line->remaining_quantity = $line->remaining_quantity + 1;
+                    $line->save();
+                }
             }
 
             $bonus->remaining_sessions = $bonus->remaining_sessions + 1;
@@ -345,6 +391,29 @@ class BonusService
 
             return true;
         });
+    }
+
+    /**
+     * Create session lines from a bonus type template.
+     */
+    private function createSessionLinesFromTemplate(Bonus $bonus, int $bonusTypeId, int $clinicId): void
+    {
+        $template = BonusType::with('appointmentTypes')->find($bonusTypeId);
+        if (!$template) {
+            return;
+        }
+
+        foreach ($template->appointmentTypes as $appointmentType) {
+            $quantity = $appointmentType->pivot->quantity ?? 1;
+
+            BonusSessionLine::create([
+                'clinic_id' => $clinicId,
+                'bonus_id' => $bonus->id,
+                'appointment_type_id' => $appointmentType->id,
+                'quantity' => $quantity,
+                'remaining_quantity' => $quantity,
+            ]);
+        }
     }
 
     private function queryWithPaymentFlag(?int $clinicId = null): Builder
@@ -382,7 +451,7 @@ class BonusService
                 'expires_at' => $bonus->expires_at,
                 'status' => $bonus->status,
                 'is_paid' => $isPaid,
-                    'invoice_id' => $bonus->invoice_id ? (int) $bonus->invoice_id : null,
+                'invoice_id' => $bonus->invoice_id ? (int) $bonus->invoice_id : null,
                 'created_at' => $bonus->created_at,
                 'updated_at' => $bonus->updated_at,
                 'patient' => $bonus->patient ? [

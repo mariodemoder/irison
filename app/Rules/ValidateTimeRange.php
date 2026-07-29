@@ -30,7 +30,7 @@ class ValidateTimeRange implements ValidationRule
             $end = Carbon::createFromFormat('H:i', $value);
 
             if ($end->lte($start)) {
-                $fail("El campo {$attribute} debe ser posterior a la hora de inicio.");
+                $fail("La hora de finalización debe ser posterior a la hora de comienzo.");
             }
         } catch (\Exception $e) {
             $fail("El formato de hora no es válido (esperado: HH:mm).");

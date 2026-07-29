@@ -80,6 +80,9 @@ async function loadSettings() {
     ])
     services.value = svcRes.data.data || []
     professionals.value = profRes.data.data || []
+
+    const profIds = professionals.value.map(p => p.id)
+    await Promise.all(profIds.flatMap(id => [loadSchedules(id), loadExceptions(id)]))
   } catch (e) {
     toast.error('Error al cargar configuración de reserva online.')
   } finally {
@@ -216,13 +219,7 @@ async function loadExceptions(professionalId) {
 }
 
 function toggleProfessionalDetail(bp) {
-  if (editingProfessional.value === bp.id) {
-    editingProfessional.value = null
-  } else {
-    editingProfessional.value = bp.id
-    loadSchedules(bp.id)
-    loadExceptions(bp.id)
-  }
+  editingProfessional.value = editingProfessional.value === bp.id ? null : bp.id
 }
 
 
@@ -386,10 +383,13 @@ onMounted(loadSettings)
             <span v-if="bp.user?.profession" class="profession-badge">{{ bp.user.profession.name }}</span>
             <span class="text-muted" style="font-size:12px;">{{ bp.user?.email }}</span>
           </div>
-          <select class="input counter-input" style="width:auto;min-width:100px;" v-model="bp.allow_online_booking" @change="toggleProfessional(bp)" @click.stop>
-            <option :value="true">Online</option>
-            <option :value="false">Offline</option>
-          </select>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <select class="input counter-input" style="width:auto;min-width:100px;" v-model="bp.allow_online_booking" @change="toggleProfessional(bp)" @click.stop>
+              <option :value="true">Online</option>
+              <option :value="false">Offline</option>
+            </select>
+            <svg class="accordion-chevron" :class="{ open: editingProfessional === bp.id }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+          </div>
         </div>
 
         <div v-if="editingProfessional === bp.id" class="professional-card-admin__detail">
@@ -658,6 +658,18 @@ onMounted(loadSettings)
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.accordion-chevron {
+  width: 18px;
+  height: 18px;
+  color: #9ca3af;
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.accordion-chevron.open {
+  transform: rotate(180deg);
 }
 
 .detail-section h4 {

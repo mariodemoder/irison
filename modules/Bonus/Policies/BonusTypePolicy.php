@@ -1,11 +1,14 @@
 <?php
 
-namespace App\Policies;
+declare(strict_types=1);
 
-use App\Models\Bonus;
+namespace Modules\Bonus\Policies;
+
 use App\Models\User;
+use App\Policies\BasePolicy;
+use Modules\Bonus\Models\BonusType;
 
-class PackPolicy extends BasePolicy
+class BonusTypePolicy extends BasePolicy
 {
     public function viewAny(User $user): bool
     {
@@ -15,10 +18,5 @@ class PackPolicy extends BasePolicy
     public function create(User $user): bool
     {
         return (bool) $user->clinic_id && $user->hasFullAccess();
-    }
-
-    public function issueInvoice(User $user, Bonus $bonus): bool
-    {
-        return $this->sameClinic($user, $bonus) && $user->hasFullAccess();
     }
 }

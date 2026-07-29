@@ -81,13 +81,7 @@ Route::middleware(['auth:sanctum', 'clinic', 'check.subscription'])->group(funct
     Route::put('patients/{patient}/images/{image}', [\App\Http\Controllers\Api\PatientImageController::class, 'update']);
     Route::delete('patients/{patient}/images/{image}', [\App\Http\Controllers\Api\PatientImageController::class, 'destroy']);
 
-    // Bonos: endpoints mínimos (list/create for patient + resource actions)
-    Route::get('patients/{patient}/bonuses', [\App\Http\Controllers\Api\BonusController::class, 'forPatient']);
-    Route::post('patients/{patient}/bonuses', [\App\Http\Controllers\Api\BonusController::class, 'storeForPatient']);
-    // Listado compacto para UI: pacientes con bonos con 1 sesión restante
-    Route::get('bonuses/expiring', [\App\Http\Controllers\Api\BonusController::class, 'expiring']);
-    Route::apiResource('bonuses', \App\Http\Controllers\Api\BonusController::class)->only(['index','show','update','destroy']);
-    Route::post('bonuses/{bonus}/invoice', [\App\Http\Controllers\Api\BonusController::class, 'issueInvoice']);
+    // Bonos: rutas movidas a modules/Bonus/Routes/api.php
 
     // Citas: CRUD multitenant
     Route::get('appointments/form-bootstrap', [AppointmentController::class, 'formBootstrap']);

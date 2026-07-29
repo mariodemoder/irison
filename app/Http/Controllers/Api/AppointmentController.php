@@ -5,7 +5,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Appointments\StoreAppointmentRequest;
 use App\Http\Requests\Appointments\UpdateAppointmentRequest;
 use App\Models\Appointment;
-use App\Models\Bonus;
 use App\Models\CreditUsage;
 use App\Models\Patient;
 use App\Models\Payment;
@@ -15,6 +14,7 @@ use App\Models\User;
 use App\Support\ActivityLogger;
 use App\Services\Validation\RequestValidationOrchestrator;
 use App\Services\Documents\InvoicingService;
+use Modules\Bonus\Services\BonusAppointmentOrchestrator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
 
@@ -23,16 +23,19 @@ class AppointmentController extends Controller
     protected AppointmentService $appointmentService;
     protected RequestValidationOrchestrator $requestValidationOrchestrator;
     protected InvoicingService $invoicingService;
+    protected BonusAppointmentOrchestrator $bonusOrchestrator;
 
     public function __construct(
         AppointmentService $appointmentService,
         RequestValidationOrchestrator $requestValidationOrchestrator,
-        InvoicingService $invoicingService
+        InvoicingService $invoicingService,
+        BonusAppointmentOrchestrator $bonusOrchestrator,
     )
     {
         $this->appointmentService = $appointmentService;
         $this->requestValidationOrchestrator = $requestValidationOrchestrator;
         $this->invoicingService = $invoicingService;
+        $this->bonusOrchestrator = $bonusOrchestrator;
     }
 
     public function index(Request $request)
@@ -114,11 +117,7 @@ class AppointmentController extends Controller
         $pendingCreditPayments = collect();
 
         if ($patientId > 0) {
-            $bonuses = Bonus::query()
-                ->where('clinic_id', $clinicId)
-                ->where('patient_id', $patientId)
-                ->orderByDesc('id')
-                ->get(['id', 'patient_id', 'name', 'total_sessions', 'remaining_sessions', 'price', 'invoice_id', 'expires_at']);
+            $bonuses = $this->bonusOrchestrator->getPatientBonuses($patientId, $clinicId);
 
             $pendingCreditPayments = Payment::query()
                 ->where('clinic_id', $clinicId)
@@ -178,10 +177,14 @@ class AppointmentController extends Controller
             ->values()
             ->toArray();
 
-        $professionals = User::where('clinic_id', $clinicId)
+        $professionals = User::with('schedules')
+            ->where('clinic_id', $clinicId)
             ->where('allow_manage_agenda', true)
             ->orderBy('name')
             ->get(['id', 'name']);
+
+        $clinic = currentClinic();
+        $businessHours = $clinic?->business_hours ?? [];
 
         return response()->json([
             'data' => [
@@ -191,6 +194,7 @@ class AppointmentController extends Controller
                 'pending_credit_payments' => $pendingCreditPayments,
                 'appointment_types' => $appointmentTypes,
                 'professionals' => $professionals,
+                'business_hours' => $businessHours,
             ],
         ]);
     }
@@ -239,7 +243,8 @@ class AppointmentController extends Controller
 
     public function agendaProfessionals(): JsonResponse
     {
-        $users = User::where('clinic_id', currentClinicId())
+        $users = User::with('schedules')
+            ->where('clinic_id', currentClinicId())
             ->where('allow_manage_agenda', true)
             ->orderBy('name')
             ->get(['id', 'name']);

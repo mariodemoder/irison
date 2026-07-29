@@ -23,7 +23,6 @@ use App\Policies\{
     PatientPolicy,
     AppointmentPolicy,
     ClinicalRecordPolicy,
-    PackPolicy,
     PaymentPolicy,
     ReminderPolicy,
     DocumentPolicy,
@@ -34,13 +33,18 @@ use App\Policies\{
     SubscriptionRequestPolicy,
 };
 
+use Modules\Bonus\Models\BonusType as BonusTypeModel;
+use Modules\Bonus\Policies\BonusPolicy;
+use Modules\Bonus\Policies\BonusTypePolicy;
+
 class AuthServiceProvider extends ServiceProvider
 {
     protected $policies = [
         Patient::class        => PatientPolicy::class,
         Appointment::class    => AppointmentPolicy::class,
         ClinicalRecord::class => ClinicalRecordPolicy::class,
-        Bonus::class          => PackPolicy::class,
+        Bonus::class          => BonusPolicy::class,
+        BonusTypeModel::class => BonusTypePolicy::class,
         Payment::class        => PaymentPolicy::class,
         Reminder::class       => ReminderPolicy::class,
         Document::class       => DocumentPolicy::class,

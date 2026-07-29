@@ -5,12 +5,17 @@ declare(strict_types=1);
 namespace App\Services\Appointments;
 
 use App\Models\Appointment;
+use Modules\Bonus\Services\BonusAppointmentOrchestrator;
 
 class AppointmentPendingPaymentService
 {
+    public function __construct(
+        private readonly BonusAppointmentOrchestrator $bonusOrchestrator,
+    ) {}
+
     public function calculatePendingAmount(Appointment $appointment): float
     {
-        if (!empty($appointment->bonus_id)) {
+        if ($this->bonusOrchestrator->isCoveredByBonus($appointment)) {
             return 0.0;
         }
 
@@ -27,7 +32,7 @@ class AppointmentPendingPaymentService
 
     public function syncPaymentStatus(Appointment $appointment): void
     {
-        if ($appointment->payment_type === 'bonus' || !empty($appointment->bonus_id)) {
+        if ($this->bonusOrchestrator->isCoveredByBonus($appointment)) {
             if ($appointment->payment_status !== 'covered_by_pack') {
                 $appointment->update(['payment_status' => 'covered_by_pack']);
             }

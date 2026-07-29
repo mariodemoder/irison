@@ -21,6 +21,9 @@ Router rápido para cargar solo el skill que necesitas.
 ## Appointments
 - `appointments/index.md` — Form, availability, date/time pitfalls, overlap, bonus/credit
 
+## Bonos
+- `bonus/index.md` — Multi-type sessions, BonusService, consumption flow, backward compatibility, session lines
+
 ## Consentimientos
 - `consent.md` — Templates, digital signature, remote signing, PDF generation, patient embed layout
 

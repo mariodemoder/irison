@@ -60,6 +60,19 @@ class Bonus extends Model
         return $this->hasMany(BonusUsage::class);
     }
 
+    public function sessionLines(): HasMany
+    {
+        return $this->hasMany(\Modules\Bonus\Models\BonusSessionLine::class);
+    }
+
+    /**
+     * Check if this bonus has per-type session lines (new multi-type system).
+     */
+    public function hasSessionLines(): bool
+    {
+        return $this->sessionLines()->exists();
+    }
+
     public function isExpired(): bool
     {
         if (!$this->expires_at) return false;
@@ -83,15 +96,34 @@ class Bonus extends Model
 
     /**
      * Consume sessions from this bonus. Returns the created BonusUsage.
+     * If the bonus has session lines, decrements the matching type.
      * Throws exception on insufficient sessions or expired.
      */
-    public function consume(int $count = 1, ?Appointment $appointment = null, ?string $notes = null)
+    public function consume(int $count = 1, ?Appointment $appointment = null, ?string $notes = null, ?int $appointmentTypeId = null)
     {
-        return DB::transaction(function () use ($count, $appointment, $notes) {
+        return DB::transaction(function () use ($count, $appointment, $notes, $appointmentTypeId) {
             $fresh = static::where('id', $this->id)->lockForUpdate()->first();
             if (!$fresh) throw new \Exception('Bono no encontrado');
             if ($fresh->isExpired()) throw new \Exception('Bono expirado');
             if ($fresh->remaining_sessions < $count) throw new \Exception('No quedan sesiones disponibles en el bono');
+
+            // Multi-type: decrement the matching session line
+            if ($fresh->hasSessionLines() && $appointmentTypeId) {
+                $line = $fresh->sessionLines()
+                    ->where('appointment_type_id', $appointmentTypeId)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$line) {
+                    throw new \Exception('Tipo de cita no incluido en este bono');
+                }
+                if ($line->remaining_quantity < $count) {
+                    throw new \Exception('No quedan sesiones de este tipo en el bono');
+                }
+
+                $line->remaining_quantity = $line->remaining_quantity - $count;
+                $line->save();
+            }
 
             $fresh->remaining_sessions = $fresh->remaining_sessions - $count;
             $fresh->save();
@@ -100,6 +132,7 @@ class Bonus extends Model
                 'appointment_id' => $appointment ? $appointment->id : null,
                 'used_at' => now(),
                 'notes' => $notes,
+                'appointment_type_id' => $appointmentTypeId,
             ]);
 
             return $usage;
@@ -108,6 +141,7 @@ class Bonus extends Model
 
     /**
      * Revert a usage (increase remaining_sessions and delete or mark usage).
+     * If the bonus has session lines, restores the matching type.
      */
     public function revertUsage(BonusUsage $usage): bool
     {
@@ -115,10 +149,22 @@ class Bonus extends Model
             $fresh = static::where('id', $this->id)->lockForUpdate()->first();
             if (!$fresh) throw new \Exception('Bono no encontrado');
 
+            // Multi-type: restore the matching session line
+            if ($fresh->hasSessionLines() && $usage->appointment_type_id) {
+                $line = $fresh->sessionLines()
+                    ->where('appointment_type_id', $usage->appointment_type_id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($line) {
+                    $line->remaining_quantity = $line->remaining_quantity + 1;
+                    $line->save();
+                }
+            }
+
             $fresh->remaining_sessions = $fresh->remaining_sessions + 1;
             $fresh->save();
 
-            // delete usage record (could mark reverted instead)
             $usage->delete();
 
             return true;

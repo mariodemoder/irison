@@ -35,6 +35,7 @@ See `.opencode/skills/index.md` for detailed routing. Key skills:
 - `frontend` — Error handling, buttons, popups
 - `billing` — Stripe, subscriptions, webhooks, backoffice sync
 - `appointments` — Form, availability, pitfalls
+- `bonus` — Multi-type sessions, BonusService, consumption flow, session lines
 - `booking` — Online booking engine, models, routes
 - `company-services` — Sessions, bonuses, booking settings page
 - `qa` — Testing strategies, delegation

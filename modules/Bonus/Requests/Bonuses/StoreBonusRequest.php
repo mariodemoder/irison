@@ -1,22 +1,21 @@
 <?php
 
-namespace App\Http\Requests\Bonuses;
+declare(strict_types=1);
 
-use Illuminate\Foundation\Http\FormRequest;
+namespace Modules\Bonus\Requests\Bonuses;
+
 use App\Rules\ValidateDateAfterNow;
 use App\Rules\ValidatePaymentAmount;
+use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class StoreBonusRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true; // Autorización manejada por Policy
+        return true;
     }
 
-    /**
-     * Reglas de validación para crear un bono (package).
-     */
     public function rules(): array
     {
         return [

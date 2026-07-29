@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use App\Rules\ValidateDateAfterNow;
+use App\Rules\ValidateProfessionalSchedule;
 use App\Rules\ValidateTimeRange;
 use App\Rules\ValidateSlotAvailability;
 
@@ -91,6 +92,17 @@ class UpdateAppointmentRequest extends FormRequest
 
             if ($this->input('kind') === 'custom' && !$this->input('custom_type')) {
                 $validator->errors()->add('custom_type', 'El tipo personalizado es requerido cuando kind es "custom".');
+            }
+
+            $professionalId = $this->input('professional_id');
+            $date = $this->input('date');
+            $startTime = $this->input('start_time');
+            $endTime = $this->input('end_time');
+            if ($professionalId && $date && $startTime && $endTime) {
+                $rule = new ValidateProfessionalSchedule($date, $startTime, $endTime);
+                $rule->validate('professional_id', $professionalId, function ($message) use ($validator) {
+                    $validator->errors()->add('professional_id', $message);
+                });
             }
         });
     }

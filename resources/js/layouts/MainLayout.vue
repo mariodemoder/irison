@@ -186,7 +186,6 @@ const navItems = [
   { path: '/appointments', label: 'Agenda' },
   { path: '/patients', label: 'Pacientes' },
   { path: '/products', label: 'Productos' },
-  { path: '/bonuses', label: 'Bonos' },
   { path: '/invoices', label: 'Facturación' },
   { path: '/payments', label: 'Pagos' },
   { path: '/notifications', label: 'Notificaciones' },

@@ -143,6 +143,9 @@ function resetBooking() {
 
 onMounted(loadPage)
 
+const showPrivacyModal = ref(false)
+const showTermsModal = ref(false)
+
 const currentYear = new Date().getFullYear()
 const faviconUrl = `${import.meta.env.BASE_URL}favicon.svg`
 </script>
@@ -153,6 +156,7 @@ const faviconUrl = `${import.meta.env.BASE_URL}favicon.svg`
       <header class="booking-header">
         <div v-if="pageData" class="booking-header__clinic">
           <h1>{{ pageData.clinic.name }}</h1>
+          <p v-if="pageData.settings.title" class="booking-header__tagline">{{ pageData.settings.title }}</p>
           <p v-if="pageData.clinic.address">{{ pageData.clinic.address }}</p>
         </div>
         <div v-if="!error && !loading" class="booking-steps">
@@ -233,6 +237,49 @@ const faviconUrl = `${import.meta.env.BASE_URL}favicon.svg`
         </div>
       </template>
 
+      <div v-if="showPrivacyModal" class="booking-modal-backdrop" @click.self="showPrivacyModal = false">
+        <div class="booking-modal">
+          <div class="booking-modal-header">
+            <h3>Política de Privacidad</h3>
+            <button class="booking-modal-close" @click="showPrivacyModal = false">✕</button>
+          </div>
+          <div class="booking-modal-body">
+            <p>En cumplimiento del Reglamento (UE) 2016/679 de Protección de Datos (RGPD) y la Ley Orgánica 3/2018 de Protección de Datos Personales y garantía de los derechos digitales (LOPDGDD), se informa al usuario de la presente política de privacidad.</p>
+            <h4>Responsable del tratamiento</h4>
+            <p><strong>{{ pageData?.clinic?.name }}</strong>, con domicilio en {{ pageData?.clinic?.address || 'el indicado en la ficha de la clínica' }} y correo electrónico de contacto {{ pageData?.clinic?.email || 'el indicado en la ficha de la clínica' }}.</p>
+            <h4>Finalidad del tratamiento</h4>
+            <p>Gestión de la reserva de citas online, comunicación con el paciente, y cumplimiento de obligaciones legales y sanitarias derivadas de la prestación de servicios.</p>
+            <h4>Legitimación</h4>
+            <p>Ejecución de un contrato de servicios y consentimiento del interesado al facilitar sus datos a través del formulario de reserva.</p>
+            <h4>Destinatarios</h4>
+            <p>Los datos no serán cedidos a terceros salvo obligación legal. Se utilizan servicios de alojamiento y comunicación con los estándares de seguridad exigidos por la normativa.</p>
+            <h4>Derechos</h4>
+            <p>Puede ejercer sus derechos de acceso, rectificación, supresión, limitación, portabilidad y oposición dirigiéndose al correo electrónico del responsable.</p>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="showTermsModal" class="booking-modal-backdrop" @click.self="showTermsModal = false">
+        <div class="booking-modal">
+          <div class="booking-modal-header">
+            <h3>Términos y Condiciones</h3>
+            <button class="booking-modal-close" @click="showTermsModal = false">✕</button>
+          </div>
+          <div class="booking-modal-body">
+            <p>Los siguientes términos y condiciones regulan el uso del servicio de reserva de citas online ofrecido por <strong>{{ pageData?.clinic?.name }}</strong>.</p>
+            <h4>Reserva de citas</h4>
+            <p>El usuario podrá reservar una cita a través del sistema online. La confirmación de la reserva queda sujeta a disponibilidad. Una vez confirmada, se enviará un resumen al correo electrónico facilitado.</p>
+            <h4>Cancelación</h4>
+            <p v-if="pageData?.settings?.cancellation_hours">El usuario puede cancelar su cita hasta {{ pageData.settings.cancellation_hours }} horas antes de la hora prevista sin coste alguno.</p>
+            <p v-else>El usuario puede cancelar su cita en cualquier momento antes de la hora prevista.</p>
+            <h4>Responsabilidad</h4>
+            <p>La clínica no se hace responsable por daños o perjuicios derivados del uso incorrecto del sistema de reservas o por causas de fuerza mayor que impidan la prestación del servicio.</p>
+            <h4>Modificaciones</h4>
+            <p>La clínica se reserva el derecho de modificar estos términos en cualquier momento, notificando los cambios a través de este mismo medio.</p>
+          </div>
+        </div>
+      </div>
+
       <footer class="booking-footer">
         <div class="booking-footer-inner">
           <div class="booking-footer-brand">
@@ -240,11 +287,17 @@ const faviconUrl = `${import.meta.env.BASE_URL}favicon.svg`
             <span class="booking-footer-name">Irison</span>
           </div>
 
-          <nav class="booking-footer-nav">
-            <a href="https://irison.es/privacy" class="booking-footer-link">Privacidad</a>
-            <a href="https://irison.es/terms" class="booking-footer-link">Términos</a>
-            <a href="mailto:hola@irison.es" class="booking-footer-link">Contacto</a>
-          </nav>
+          <div class="booking-footer-meta">
+            <p v-if="pageData?.settings?.cancellation_hours" class="booking-cancel-policy">
+              Política de cancelación: puedes cancelar hasta {{ pageData.settings.cancellation_hours }} horas antes de la cita.
+            </p>
+
+            <nav class="booking-footer-nav">
+              <button class="booking-footer-link" @click="showPrivacyModal = true">Privacidad</button>
+              <button class="booking-footer-link" @click="showTermsModal = true">Términos</button>
+              <a href="mailto:hola@irison.es" class="booking-footer-link">Contacto</a>
+            </nav>
+          </div>
 
           <p class="booking-footer-copy">&copy; {{ currentYear }} Irison. All rights reserved.</p>
           <p class="booking-footer-tagline">Simplify your time. Focus on what matters.</p>
@@ -290,6 +343,12 @@ const faviconUrl = `${import.meta.env.BASE_URL}favicon.svg`
 .booking-header__clinic p {
   margin: 4px 0 0;
   color: #556176;
+}
+
+.booking-header__tagline {
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: #6b7280;
 }
 
 .booking-steps {
@@ -400,16 +459,29 @@ const faviconUrl = `${import.meta.env.BASE_URL}favicon.svg`
   border-top: 1px solid rgba(0, 0, 0, 0.08);
   padding: 14px 16px;
   font-size: 13px;
-  opacity: 0.55;
+  opacity: 0.75;
   margin-top: 40px;
 }
 
 .booking-footer-inner {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
+  gap: 10px;
+}
+
+.booking-footer-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.booking-cancel-policy {
+  margin: 0;
+  font-size: 12px;
+  color: #6b7280;
+  text-align: center;
 }
 
 .booking-footer-brand {
@@ -440,11 +512,86 @@ const faviconUrl = `${import.meta.env.BASE_URL}favicon.svg`
 .booking-footer-link {
   color: #6b7280;
   text-decoration: none;
+  background: none;
+  border: none;
+  font: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  padding: 0;
   transition: color 0.15s;
 }
 
 .booking-footer-link:hover {
   color: #111827;
+}
+
+.booking-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+  padding: 24px;
+}
+
+.booking-modal {
+  background: #fff;
+  border-radius: 16px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+.booking-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 0;
+}
+
+.booking-modal-header h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.booking-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.booking-modal-close:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.booking-modal-body {
+  padding: 16px 24px 24px;
+  overflow-y: auto;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #374151;
+}
+
+.booking-modal-body h4 {
+  margin: 16px 0 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.booking-modal-body p {
+  margin: 0 0 8px;
 }
 
 .booking-footer-copy {

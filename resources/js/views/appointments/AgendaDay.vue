@@ -161,11 +161,12 @@
                 <!-- Hueco libre -->
                 <tr v-if="item._type === 'gap' && !isProfessional" class="gap-tr">
                   <td colspan="7">
-                    <div class="gap-row" role="button" tabindex="0" @click="goToNewWithGap(item)" @keydown.enter="goToNewWithGap(item)">
+                    <div class="gap-row" :class="{ 'gap-unavailable': !gapIsClickable(item) }" role="button" tabindex="0" @click="gapIsClickable(item) ? goToNewWithGap(item) : null" @keydown.enter="gapIsClickable(item) ? goToNewWithGap(item) : null">
                       <svg class="gap-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                       <span class="gap-time">{{ hhmm(item.from) }} – {{ hhmm(item.to) }}</span>
                       <span class="gap-dur">{{ item.duration }} min libres</span>
-                      <span class="gap-cta">+ Nueva cita</span>
+                      <span v-if="gapIsClickable(item)" class="gap-cta">+ Nueva cita</span>
+                      <span v-else class="gap-unavailable-label">No disponible</span>
                     </div>
                   </td>
                 </tr>
@@ -253,6 +254,11 @@ const statusFilter = ref('')
 const detailedFiltersOpen = ref(false)
 const agendaProfessionals = ref([])
 const professionalFilter = ref('')
+const selectedProfessionalSchedules = computed(() => {
+  if (!professionalFilter.value) return []
+  const prof = agendaProfessionals.value.find(p => String(p.id) === professionalFilter.value)
+  return prof?.schedules ?? []
+})
 const draftStatusFilter = ref('')
 const draftPaymentFilter = ref('')
 const pageSize = 10
@@ -691,6 +697,26 @@ function parseMin(dtStr) {
   return m ? Number(m[1]) * 60 + Number(m[2]) : 0
 }
 
+function isWithinProfessionalSchedule(minutes) {
+  if (!professionalFilter.value) return true
+  const schedules = selectedProfessionalSchedules.value
+  if (!schedules || schedules.length === 0) return true
+  const d = new Date(date.value + 'T12:00:00')
+  const dow = d.getDay()
+  const schedule = schedules.find(s => s.day_of_week === dow && s.enabled)
+  if (!schedule) return false
+  const startMin = parseMin(schedule.start_time)
+  const endMin = parseMin(schedule.end_time)
+  return minutes >= startMin && minutes <= endMin
+}
+
+function gapIsClickable(item) {
+  if (!canCreateAppointment.value) return false
+  if (isSelectedDateClosed.value) return false
+  if (!isWithinProfessionalSchedule(item.from) && !isWithinProfessionalSchedule(item.to)) return false
+  return true
+}
+
 function hhmm(totalMin) {
   return `${String(Math.floor(totalMin / 60)).padStart(2, '0')}:${String(totalMin % 60).padStart(2, '0')}`
 }
@@ -705,6 +731,11 @@ function goToNewWithGap(item) {
     toast.info('La clínica está cerrada en esta fecha')
     return
   }
+
+  if (!gapIsClickable(item)) {
+    return
+  }
+
   const pad = n => String(n).padStart(2, '0')
   const toISO = min => `${date.value}T${pad(Math.floor(min / 60))}:${pad(min % 60)}`
   router.push({ path: '/appointments/create', query: { start: toISO(item.from), end: toISO(item.to) } })
@@ -728,6 +759,11 @@ function createAppointmentFromHeader() {
 
   if (isAllMode.value) {
     router.push('/appointments/create')
+    return
+  }
+
+  if (professionalFilter.value && !isWithinProfessionalSchedule(9 * 60)) {
+    toast.info('El profesional no está disponible a las 09:00')
     return
   }
 
@@ -1051,6 +1087,8 @@ td.row-action { text-align:center; width:80px }
 /* Fila de hueco libre */
 .gap-row { display:flex; align-items:center; gap:8px; padding:7px 14px; border-radius:8px; background:#f0fdf4; border:1px dashed #86efac; color:#166534; font-size:13px; cursor:pointer; transition:background .12s }
 .gap-row:hover { background:#dcfce7; border-color:#4ade80 }
+.gap-unavailable { background:#f9fafb; border-color:#e5e7eb; color:#9ca3af; cursor:not-allowed }
+.gap-unavailable:hover { background:#f9fafb; border-color:#e5e7eb }
 .gap-icon { width:15px; height:15px; flex-shrink:0; opacity:.7 }
 .gap-time { font-weight:700; white-space:nowrap }
 .gap-dur { color:#16a34a; font-size:12px; margin-left:2px }

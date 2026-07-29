@@ -45,6 +45,7 @@ class PublicBookingPageController extends Controller
                 'name' => $p->user->name,
             ]),
             'settings' => [
+                'title' => $page->title,
                 'max_horizon_days' => $page->max_horizon_days,
                 'cancellation_hours' => $page->cancellation_hours,
             ],

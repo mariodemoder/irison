@@ -1,26 +1,23 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+declare(strict_types=1);
+
+namespace Modules\Bonus\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Bonuses\StoreBonusRequest;
-use App\Http\Requests\Bonuses\UpdateBonusRequest;
-use Illuminate\Http\Request;
-use App\Models\Patient;
 use App\Models\Bonus;
-use App\Services\Bonus\BonusService;
 use App\Services\Documents\InvoicingService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Modules\Bonus\Services\BonusService;
 
 class BonusController extends Controller
 {
     public function __construct(
         private readonly BonusService $bonusService,
         private readonly InvoicingService $invoicingService,
-    )
-    {
-    }
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -31,42 +28,26 @@ class BonusController extends Controller
         return response()->json($this->bonusService->index($request->all(), $clinicId));
     }
 
-    public function forPatient(Request $request, Patient $patient): JsonResponse
-    {
-        Gate::authorize('view', $patient);
-        Gate::authorize('viewAny', Bonus::class);
-
-        $clinicId = currentClinicId();
-        $activeOnly = $request->filled('active')
-            && in_array($request->input('active'), ['1', 'true', 'yes', 1, true], true);
-        $mapped = $this->bonusService->forPatient($patient->id, $clinicId, $activeOnly);
-
-        return response()->json(['data' => $mapped]);
-    }
-
-    public function storeForPatient(StoreBonusRequest $request, Patient $patient): JsonResponse
-    {
-        Gate::authorize('view', $patient);
-        Gate::authorize('create', Bonus::class);
-
-        $clinicId = currentClinicId();
-        $bonus = $this->bonusService->createForPatient($patient->id, $request->validated(), $clinicId);
-
-        return response()->json(['data' => $bonus], 201);
-    }
-
     public function show(Bonus $bonus): JsonResponse
     {
         Gate::authorize('view', $bonus);
 
-        return response()->json(['data' => $bonus]);
+        return response()->json(['data' => $bonus->load('sessionLines.appointmentType')]);
     }
 
-    public function update(UpdateBonusRequest $request, Bonus $bonus): JsonResponse
+    public function update(Request $request, Bonus $bonus): JsonResponse
     {
         Gate::authorize('update', $bonus);
 
-        $bonus = $this->bonusService->updateBonus($bonus, $request->validated());
+        $validated = $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'total_sessions' => 'sometimes|integer|min:1',
+            'remaining_sessions' => 'sometimes|integer|min:0',
+            'price' => 'sometimes|numeric|min:0',
+            'expires_at' => 'nullable|date',
+        ]);
+
+        $bonus = $this->bonusService->updateBonus($bonus, $validated);
 
         return response()->json(['data' => $bonus]);
     }
@@ -83,10 +64,6 @@ class BonusController extends Controller
         }
     }
 
-    /**
-     * Devuelve un listado compacto de bonos con 1 sesión restante.
-     * Formato: array de objetos { id: patient_id, patient_name, sessions_left, bonus_id }
-     */
     public function expiring(): JsonResponse
     {
         Gate::authorize('viewAny', Bonus::class);

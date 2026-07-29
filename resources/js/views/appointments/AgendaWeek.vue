@@ -65,9 +65,9 @@
                 <div
                   v-for="h in hours"
                   :key="h"
-                  :class="['hr-row', { 'hr-row-closed': day.isClosed, 'hr-row-disabled': !canCreateAppointment }]"
-                  :title="canCreateAppointment ? `Nueva cita ${String(h).padStart(2,'0')}:00` : 'Activa tu suscripcion para crear citas'"
-                  @click="isProfessional ? null : goToNewSlot(day.iso, h)"
+                  :class="['hr-row', { 'hr-row-closed': day.isClosed, 'hr-row-disabled': !canCreateAppointment || (professionalFilter && !isSlotAvailable(day.iso, h)), 'hr-row-unavailable': !isSlotAvailable(day.iso, h) }]"
+                  :title="slotTitle(day, h)"
+                  @click="isSlotAvailable(day.iso, h) && !isProfessional ? goToNewSlot(day.iso, h) : null"
                 ></div>
 
                 <div v-if="day.isClosed" class="day-closed-overlay">Día cerrado</div>
@@ -165,6 +165,11 @@ const clinicOwnerName = ref('')
 const subscriptionStatus = ref('blocked')
 const agendaProfessionals = ref([])
 const professionalFilter = ref('')
+const selectedProfessionalSchedules = computed(() => {
+  if (!professionalFilter.value) return []
+  const prof = agendaProfessionals.value.find(p => String(p.id) === professionalFilter.value)
+  return prof?.schedules ?? []
+})
 let   timerId    = null
 
 const canCreateAppointment = computed(() => {
@@ -317,10 +322,35 @@ function goToNewSlot(iso, hour) {
     toast.info('La clínica está cerrada en esa fecha')
     return
   }
+
+  if (!isSlotAvailable(iso, hour)) {
+    return
+  }
+
   const pad = n => String(n).padStart(2, '0')
   const start = `${iso}T${pad(hour)}:00`
   const end   = `${iso}T${pad(Math.min(hour + 1, hourRange.value.end))}:00`
   router.push({ path: '/appointments/create', query: { start, end } })
+}
+
+function isSlotAvailable(iso, hour) {
+  if (!professionalFilter.value) return true
+  const schedules = selectedProfessionalSchedules.value
+  if (!schedules || schedules.length === 0) return true
+  const d = new Date(iso + 'T12:00:00')
+  const dow = d.getDay()
+  const schedule = schedules.find(s => s.day_of_week === dow && s.enabled)
+  if (!schedule) return false
+  const startH = parseInt(schedule.start_time?.split(':')[0] || '0', 10)
+  const endH = parseInt(schedule.end_time?.split(':')[0] || '0', 10)
+  return hour >= startH && hour < endH
+}
+
+function slotTitle(day, hour) {
+  if (day.isClosed) return 'Día cerrado'
+  if (!canCreateAppointment.value) return 'Activa tu suscripcion para crear citas'
+  if (professionalFilter.value && !isSlotAvailable(day.iso, hour)) return 'No disponible'
+  return `Nueva cita ${String(hour).padStart(2,'0')}:00`
 }
 
 // ── Layout: columnas para solapamientos ───────────────
@@ -588,6 +618,10 @@ onUnmounted(() => {
   cursor: not-allowed;
   pointer-events: auto;
   opacity: 0.7;
+}
+.hr-row-unavailable {
+  cursor: not-allowed;
+  background: repeating-linear-gradient(45deg, transparent, transparent 4px, #f3f4f6 4px, #f3f4f6 8px);
 }
 .day-closed-overlay {
   position: absolute;

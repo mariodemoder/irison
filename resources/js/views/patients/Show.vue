@@ -46,27 +46,30 @@
           </div>
         </div>
         <br>
-        <div class="grid-display">
-          <div class="card">
-            <div class="card-row"><strong>Nombre: </strong>{{ patient?.counter ? `${patient.counter} · ` : '' }}{{ patient?.name ?? '—' }}</div>
-            <div v-if="activeBonusCount > 0" class="mini-badge">{{ activeBonusCount }} bono(s) activo(s)</div>
-          
+        <div class="patient-info-grid">
+          <div class="info-row-3">
+            <div class="card">
+              <div class="card-row"><strong>Nombre: </strong>{{ patient?.counter ? `${patient.counter} · ` : '' }}{{ patient?.name ?? '—' }}</div>
+              <div v-if="activeBonusCount > 0" class="mini-badge">{{ activeBonusCount }} bono(s) activo(s)</div>
+            </div>
+
+            <div class="card">
+              <div class="card-row"><strong>NIF: </strong>{{ patient?.nif ?? '—' }}</div>
+            </div>
+
+            <div class="card">
+              <div class="card-row"><strong>Edad: </strong>{{ patientAgeLabel }}</div>
+            </div>
           </div>
 
-          <div class="card">
-            <div class="card-row"><strong>NIF: </strong>{{ patient?.nif ?? '—' }}</div>
-          </div>
+          <div class="info-row-2">
+            <div class="card">
+              <div class="card-row"><strong>Teléfono: </strong>{{ patient?.phone ?? '—' }}</div>
+            </div>
 
-          <div class="card">
-            <div class="card-row"><strong>Teléfono: </strong>{{ patient?.phone ?? '—' }}</div>
-          </div>
-
-          <div class="card">
-            <div class="card-row"><strong>Email: </strong>{{ patient?.email ?? '—' }}</div>
-          </div>
-
-          <div class="card">
-            <div class="card-row"><strong>Edad: </strong>{{ patientAgeLabel }}</div>
+            <div class="card">
+              <div class="card-row"><strong>Email: </strong>{{ patient?.email ?? '—' }}</div>
+            </div>
           </div>
 
           <div class="card full">
@@ -819,7 +822,7 @@ async function confirmDelete() {
 <style scoped>
 /* Reusar estilos del formulario y mejorar visual */
 .form-wrapper { display:flex; justify-content:center; padding:24px }
-.form-card { width:100%; max-width:960px; background: #fff; border-radius:12px; box-shadow: 0 10px 30px rgba(2,6,23,0.06); padding:24px }
+.form-card { width:100%; background: #fff; border-radius:12px; box-shadow: 0 10px 30px rgba(2,6,23,0.06); padding:24px }
 .form-header h1 { margin:0; font-size:22px }
 .header-actions { display:flex; gap:8px; align-items:center }
 .quick-trigger { padding:11px 12px; display:inline-flex; align-items:center; justify-content:center }
@@ -830,7 +833,9 @@ async function confirmDelete() {
 .quick-item:hover { background:#f9fafb }
 .quick-item.danger { color:#b91c1c }
 
-.grid-display { display:grid; grid-template-columns: repeat(2,1fr); gap:12px }
+.patient-info-grid { display:flex; flex-direction:column; gap:12px }
+.info-row-3 { display:grid; grid-template-columns: repeat(3,1fr); gap:12px }
+.info-row-2 { display:grid; grid-template-columns: repeat(2,1fr); gap:12px }
 .card { background:#fafafa; padding:5px; border-radius:10px; border:1px solid #eef2ff22 }
 .card.full { grid-column:1 / -1 }
 .card-row { margin-bottom:6px }
@@ -877,7 +882,8 @@ async function confirmDelete() {
 
 @media (max-width: 900px) {
   .history-grid { grid-template-columns: 1fr }
-  .grid-display { grid-template-columns: 1fr }
+  .info-row-3 { grid-template-columns: 1fr }
+  .info-row-2 { grid-template-columns: 1fr }
 }
 
 .mini-badge { display:inline-block; margin-top:6px; padding:6px 10px; background:#ecfdf5; color:#065f46; border-radius:9999px; font-size:13px; font-weight:700 }

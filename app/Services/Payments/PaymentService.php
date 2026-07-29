@@ -7,7 +7,7 @@ use App\Models\Bonus;
 use App\Models\CreditUsage;
 use App\Models\Patient;
 use App\Models\Payment;
-use App\Services\Bonus\BonusService;
+use Modules\Bonus\Services\BonusService;
 use App\Services\Appointments\AppointmentPendingPaymentService;
 use DomainException;
 use Illuminate\Pagination\LengthAwarePaginator;

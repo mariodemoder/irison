@@ -2,9 +2,14 @@
   <MainLayout>
     <div>
       <div class="page-header">
-        <div>
-          <h1>Servicios</h1>
-          <div class="form-sub">Gestiona sesiones, bonos y reserva online</div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <button v-if="returnTo" type="button" class="btn btn-sm" style="padding:6px 12px;font-size:13px" @click="router.push(returnTo)">
+            ← Volver
+          </button>
+          <div>
+            <h1>Servicios</h1>
+            <div class="form-sub">Gestiona sesiones, bonos y reserva online</div>
+          </div>
         </div>
       </div>
 
@@ -110,51 +115,63 @@
                 </div>
 
                 <div class="bonus-list" style="margin-top:14px">
-                  <div v-for="item in bonusTypes" :key="item.id ?? item._key" class="bonus-card">
-                    <div class="bonus-pack-top">
-                      <div class="bonus-top-actions">
-                        <button class="btn btn-sm bonus-top-btn" type="button" @click.prevent="addBonusLine(item)">+ Sesión</button>
-                        <BtnTrash class="bonus-top-btn" @click.prevent="removeBonusType(item)">Eliminar Bono</BtnTrash>
+                  <div v-for="item in bonusTypes" :key="item.id ?? item._key" class="bonus-card" :class="{ 'accordion-collapsed': item.id && expandedBonusKey !== (item.id ?? item._key) }">
+                    <!-- Accordion header -->
+                    <div class="bonus-accordion-header" :class="{ clickable: !!item.id }" @click="item.id && toggleBonusAccordion(item.id ?? item._key)">
+                      <div class="accordion-header-info">
+                        <strong>{{ item.description || 'Sin nombre' }}</strong>
+                        <span class="accordion-meta">{{ bonusTotalSessions(item) }} sesiones · {{ bonusDetailsTotal(item).toFixed(2) }}€</span>
                       </div>
-
-                      <div class="bonus-field-inline">
-                        <label class="label bonus-inline-label">Nombre</label>
-                        <input class="input counter-input" v-model="item.description" placeholder="Ej: Pack bienestar" />
-                      </div>
-                      <div class="bonus-field-inline bonus-field-inline-price">
-                        <label class="label bonus-inline-label">Precio final</label>
-                        <input class="input counter-input" type="number" min="0" step="0.01" v-model.number="item.price" />
+                      <div class="accordion-header-actions">
+                        <div v-if="!item.id || expandedBonusKey === (item.id ?? item._key)" class="bonus-top-actions">
+                          <button class="btn btn-sm bonus-top-btn" type="button" @click.stop="addBonusLine(item)">+ Sesión</button>
+                          <BtnTrash class="bonus-top-btn" @click.stop="removeBonusType(item)">Eliminar Bono</BtnTrash>
+                        </div>
+                        <svg v-if="item.id" class="accordion-chevron" :class="{ open: expandedBonusKey === (item.id ?? item._key) }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
                       </div>
                     </div>
 
-                    <div class="bonus-lines-wrap">
-                      <div class="bonus-lines-head">
-                        <span>Cantidad</span>
-                        <span>Sesión</span>
-                        <span>Precio</span>
-                        <span></span>
+                    <!-- Collapsible body -->
+                    <div v-if="!item.id || expandedBonusKey === (item.id ?? item._key)" class="bonus-accordion-body">
+                      <div class="bonus-pack-top">
+                        <div class="bonus-field-inline">
+                          <label class="label bonus-inline-label">Nombre</label>
+                          <input class="input counter-input" v-model="item.description" placeholder="Ej: Pack bienestar" />
+                        </div>
+                        <div class="bonus-field-inline bonus-field-inline-price">
+                          <label class="label bonus-inline-label">Precio final</label>
+                          <input class="input counter-input" type="number" min="0" step="0.01" v-model.number="item.price" />
+                        </div>
                       </div>
 
-                      <div v-for="(line, lineIndex) in item.lines" :key="line._key" class="bonus-line-row">
-                        <input class="input counter-input" type="number" min="1" step="1" v-model.number="line.quantity" @input="syncBonusAmount(item)" />
-                        <select class="input counter-input" v-model="line.cesion_key" @change="applyLineSessionPrice(item, line)">
-                          <option value="">Seleccionar sesión</option>
-                          <option v-for="(cesion, cesionIndex) in cesionTypes" :key="`bonus-opt-${item.id ?? item._key}-${line._key}-${cesion.id ?? cesionIndex}`" :value="getCesionOptionValue(cesion, cesionIndex)">
-                            {{ cesion.description || `Sesión ${cesionIndex + 1}` }}
-                          </option>
-                        </select>
-                        <input class="input counter-input" type="number" min="0" step="0.01" v-model.number="line.unit_price" @input="syncBonusAmount(item)" />
-                        <BtnTrash @click.prevent="removeBonusLine(item, lineIndex)"></BtnTrash>
+                      <div class="bonus-lines-wrap">
+                        <div class="bonus-lines-head">
+                          <span>Cantidad</span>
+                          <span>Sesión</span>
+                          <span>Precio</span>
+                          <span></span>
+                        </div>
+
+                        <div v-for="(line, lineIndex) in item.lines" :key="line._key" class="bonus-line-row">
+                          <input class="input counter-input" type="number" min="1" step="1" v-model.number="line.quantity" @input="syncBonusAmount(item)" />
+                          <select class="input counter-input" v-model="line.cesion_key" @change="applyLineSessionPrice(item, line)">
+                            <option value="">Seleccionar sesión</option>
+                            <option v-for="(cesion, cesionIndex) in cesionTypes" :key="`bonus-opt-${item.id ?? item._key}-${line._key}-${cesion.id ?? cesionIndex}`" :value="getCesionOptionValue(cesion, cesionIndex)">
+                              {{ cesion.description || `Sesión ${cesionIndex + 1}` }}
+                            </option>
+                          </select>
+                          <input class="input counter-input" type="number" min="0" step="0.01" v-model.number="line.unit_price" @input="syncBonusAmount(item)" />
+                          <BtnTrash @click.prevent="removeBonusLine(item, lineIndex)"></BtnTrash>
+                        </div>
                       </div>
 
-                    </div>
-
-                    <div class="bonus-summary">
-                      <span>Total de sesiones del pack:</span>
-                      <strong>{{ bonusTotalSessions(item) }}</strong>
-                      <span>·</span>
-                      <span>Total detalle:</span>
-                      <strong>{{ bonusDetailsTotal(item).toFixed(2) }}€</strong>
+                      <div class="bonus-summary">
+                        <span>Total de sesiones del pack:</span>
+                        <strong>{{ bonusTotalSessions(item) }}</strong>
+                        <span>·</span>
+                        <span>Total detalle:</span>
+                        <strong>{{ bonusDetailsTotal(item).toFixed(2) }}€</strong>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -186,6 +203,7 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import MainLayout from '../../layouts/MainLayout.vue'
 import AppLoading from '../../components/AppLoading.vue'
 import BtnTrash from '../../components/BtnTrash.vue'
@@ -197,12 +215,16 @@ import { meUser } from '../../shared/meCache'
 import { getLoadErrorMessage } from '../../shared/httpErrors'
 
 const toast = useToast()
+const route = useRoute()
+const router = useRouter()
+const returnTo = route.query.returnTo || null
 
 const loading = ref(true)
 const saving = ref(false)
 const activeTab = ref('sesiones')
 const cesionTypes = ref([])
 const bonusTypes = ref([])
+const expandedBonusKey = ref(null)
 const bookingSettingsRef = ref(null)
 const status = ref('active')
 
@@ -220,6 +242,9 @@ const themeColors = [
 ]
 
 onMounted(async () => {
+  if (route.query.tab && ['sesiones', 'bonos', 'booking'].includes(route.query.tab)) {
+    activeTab.value = route.query.tab
+  }
   await load()
 })
 
@@ -478,7 +503,13 @@ function removeBonusLine(item, lineIndex) {
 }
 
 function addBonusType() {
-  bonusTypes.value.push(makeBonusType())
+  const item = makeBonusType()
+  bonusTypes.value.push(item)
+  expandedBonusKey.value = item._key
+}
+
+function toggleBonusAccordion(key) {
+  expandedBonusKey.value = expandedBonusKey.value === key ? null : key
 }
 
 function removeBonusType(item) {
@@ -702,11 +733,80 @@ function removeCesionType(item) {
   display: grid;
   gap: 12px;
   background: #fff;
+  transition: box-shadow 0.2s;
+}
+
+.bonus-card.accordion-collapsed {
+  padding: 0;
+  gap: 0;
+}
+
+.bonus-accordion-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  min-height: 44px;
+}
+
+.bonus-accordion-header.clickable {
+  cursor: pointer;
+  border-radius: 12px;
+  user-select: none;
+}
+
+.bonus-accordion-header.clickable:hover {
+  background: #f9fafb;
+}
+
+.accordion-header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.accordion-header-info strong {
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.accordion-meta {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.accordion-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.accordion-chevron {
+  width: 18px;
+  height: 18px;
+  color: #9ca3af;
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.accordion-chevron.open {
+  transform: rotate(180deg);
+}
+
+.bonus-accordion-body {
+  padding: 0 12px 12px 12px;
+  display: grid;
+  gap: 12px;
 }
 
 .bonus-pack-top {
   display: grid;
-  grid-template-columns: minmax(380px, 1.5fr) minmax(140px, 0.45fr) auto;
+  grid-template-columns: minmax(380px, 1.5fr) minmax(140px, 0.45fr);
   gap: 10px;
   align-items: end;
 }

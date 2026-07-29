@@ -45,10 +45,10 @@
             <button type="button" class="tab-btn" :class="{ active: activeTab === 'session' }" @click="activeTab = 'session'">
               Sesión
             </button>
-            <button type="button" class="tab-btn" :class="{ active: activeTab === 'billing' && !appointmentInvoiceId }" @click="handleBillingTabClick">
+            <button type="button" class="tab-btn" v-if="!isBonusPaidMode" :class="{ active: activeTab === 'billing' && !appointmentInvoiceId }" @click="handleBillingTabClick">
               {{ appointmentInvoiceId ? 'Ver Factura' : 'Facturar' }}
             </button>
-            <button type="button" class="tab-btn" :class="[{ active: activeTab === 'payment' }, { 'tab-btn-success': isPaidAppointment }]" @click="activeTab = 'payment'">
+            <button type="button" class="tab-btn" v-if="!isBonusPaidMode" :class="[{ active: activeTab === 'payment' }, { 'tab-btn-success': isPaidAppointment }]" @click="activeTab = 'payment'">
               {{ isPaidAppointment ? 'Pago Realizado' : 'Registrar Pago' }}
             </button>
           </div>
@@ -63,6 +63,7 @@
                 <option value="">Selecciona un tipo</option>
                 <option value="__custom">Otro (escribir)</option>
                 <option value="__create">+ Crear tipo...</option>
+                <option value="__bonus">Bono asignado</option>
                 <option v-for="type in appointmentTypes" :key="type.id" :value="String(type.id)">
                   {{ type.description || `Tipo #${type.id}` }}
                 </option>
@@ -71,6 +72,42 @@
             </div>
             <div v-if="errors.app_type_id" class="field-error">{{ errors.app_type_id[0] }}</div>
           </div>
+
+          <template v-if="form.app_type_id === '__bonus'">
+          <div class="field full">
+            <label class="label">Seleccionar bono (pagado)</label>
+            <AppLoading v-if="bonusesLoading" compact message="Cargando bonos..." />
+            <div v-else>
+              <div v-if="paidBonuses.length === 0" class="alert-subtle">
+                <div>No hay bonos pagados disponibles para este paciente.</div>
+              </div>
+              <select v-model="form.use_bonus_id" class="input" style="width:100%">
+                <option value="">Selecciona un bono</option>
+                <option v-for="b in paidBonuses" :key="b.id" :value="b.id">
+                  {{ b.name ? (b.name + ' — ') : '' }}{{ b.total_sessions }} sesiones — {{ b.remaining_sessions }} restantes — {{ Number(b.price || 0).toFixed(2) }}€{{ b.expires_at ? (' — expira ' + formatDMY(b.expires_at)) : '' }}
+                </option>
+              </select>
+              <div v-if="errors.use_bonus_id || errors.bonus_id" class="field-error">{{ (errors.use_bonus_id || errors.bonus_id)[0] }}</div>
+            </div>
+          </div>
+
+          <div v-if="form.use_bonus_id && bonusSessionTypeOptions.length > 1" class="field full">
+            <label class="label">Tipo de sesión del bono</label>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <label
+                v-for="opt in bonusSessionTypeOptions"
+                :key="opt.appointment_type_id"
+                style="display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;border:1px solid #e5e7eb;cursor:pointer"
+                :class="{ 'selected-type-option': form.bonus_appointment_type_id === opt.appointment_type_id }"
+              >
+                <input type="radio" v-model="form.bonus_appointment_type_id" :value="opt.appointment_type_id" />
+                <span>{{ opt.appointment_type_name }}</span>
+                <span style="margin-left:auto;font-weight:600">{{ opt.remaining_quantity }}/{{ opt.quantity }}</span>
+              </label>
+            </div>
+          </div>
+          </template>
+
           <div class="field">
             <label class="label">Profesional</label>
             <select v-model="form.professional_id" class="input" :disabled="isCanceled && mode !== 'reprogram'">
@@ -79,6 +116,7 @@
                 {{ prof.name }}
               </option>
             </select>
+            <div v-if="errors.professional_id" class="field-error">{{ errors.professional_id[0] }}</div>
           </div>
           <div class="field" v-if="isCustomAppointmentType">
             <label class="label">Tipo personalizado</label>
@@ -91,7 +129,7 @@
               <input v-model="startDateModel" type="date" class="input" :disabled="isCanceled && mode !== 'reprogram'" />
               <select v-model="startTimeModel" class="input" :disabled="isCanceled && mode !== 'reprogram'">
                 <option value="" disabled>Hora</option>
-                <option v-for="opt in timeOptions" :key="'s'+opt" :value="opt">{{ opt }}</option>
+                <option v-for="opt in availableStartTimes" :key="'s'+opt" :value="opt">{{ opt }}</option>
               </select>
             </div>
             <div v-if="errors.start_time" class="field-error">{{ errors.start_time[0] }}</div>
@@ -103,10 +141,10 @@
           <div class="field">
             <label class="label">Fin</label>
             <div class="datetime-pair">
-              <input v-model="endDateModel" type="date" class="input" :disabled="isCanceled && mode !== 'reprogram'" />
-              <select v-model="endTimeModel" class="input" :disabled="isCanceled && mode !== 'reprogram'">
+              <input v-model="endDateModel" type="date" class="input" :disabled="isEndTimeLocked || (isCanceled && mode !== 'reprogram')" />
+              <select v-model="endTimeModel" class="input" :disabled="isEndTimeLocked || (isCanceled && mode !== 'reprogram')">
                 <option value="" disabled>Hora</option>
-                <option v-for="opt in timeOptions" :key="'e'+opt" :value="opt">{{ opt }}</option>
+                <option v-for="opt in availableEndTimes" :key="'e'+opt" :value="opt">{{ opt }}</option>
               </select>
             </div>
             <div v-if="errors.end_time" class="field-error">{{ errors.end_time[0] }}</div>
@@ -131,6 +169,7 @@
         <div class="field" v-if="hasSelectedPatient">
                     <label class="label">Precio</label>
                     <input v-model.number="form.price" type="number" min="0.01" step="0.01" class="input" style="max-width:220px" required />
+                    <div v-if="errors.price" class="field-error">{{ errors.price[0] }}</div>
                     <div v-if="isCustomAppointmentType" class="field-help">Precio manual para tipo no tipificado.</div>
                   </div>
           <div class="field full">
@@ -243,18 +282,8 @@
             <input :value="appointmentPendingPaymentAmount.toFixed(2)" type="number" step="0.01" class="input" disabled />
           </div>
 
-          <div class="field" v-if="hasSelectedPatient">
-            <label class="label">Forma de pago</label>
-              <div style="display:flex; gap:12px; align-items:center">
-              <label style="display:flex; align-items:center; gap:8px"><input type="radio" v-model="form.payment_type" value="single" /> Simple</label>
-              <label style="display:flex; align-items:center; gap:8px"><input type="radio" v-model="form.payment_type" value="bonus" :disabled="!hasAvailableBonuses" /> Usar bono</label>
-            </div>
-            <div v-if="form.patient_id && form.payment_type === 'bonus' && hasAvailableBonuses" class="inline-alert" style="margin-top:8px">
-              <div>Con bonos disponibles</div>
-            </div>
-            <div v-if="form.patient_id && form.patient_id !== '__create' && form.payment_type === 'single' && availableCredit <= 0" class="inline-alert" style="margin-top:8px">
-              <div>Sin adelantos pendientes</div>
-            </div>
+          <div v-if="form.patient_id && form.patient_id !== '__create' && availableCredit <= 0" class="inline-alert" style="margin-top:8px">
+            <div>Sin adelantos pendientes</div>
           </div>
           <div class="field full" v-if="form.payment_type === 'credit'">
             <label class="label">Adelanto pendiente</label>
@@ -353,31 +382,6 @@
                 <button type="button" style="align-self:flex-start; padding:8px 16px; background:#f59e0b; border:none; border-radius:8px; color:#fff; font-weight:600; cursor:pointer; font-size:14px" @click.prevent="confirmApplyCredit">Aplicar Crédito</button>
               </div>
             </div>
-          </div>
-
-          <div v-if="form.payment_type === 'bonus'" class="field full">
-            <label class="label">Bono</label>
-            <AppLoading v-if="bonusesLoading" compact message="Cargando bonos..." />
-            <div v-else>
-              <div v-if="selectableBonuses.length === 0" class="alert-subtle">
-                <div>No hay bonos activos para este paciente.</div>
-              </div>
-              <select v-model="form.use_bonus_id" @change="onBonusSelectChange" class="input" style="width:100%">
-                <option value="" disabled>Selecciona un bono</option>
-                <option value="__create_bonus">+ Crear bono...</option>
-                <option v-if="selectableBonuses.length === 0" value="" disabled>No hay bonos disponibles</option>
-                <option v-for="b in selectableBonuses" :key="b.id" :value="b.id">
-                  {{ b.name ? (b.name + ' — ') : '' }}{{ b.total_sessions }} sesiones — {{ b.remaining_sessions }} restantes — {{ Number(b.price || 0).toFixed(2) }}€{{ b.expires_at ? (' — expira ' + formatDMY(b.expires_at)) : '' }}
-                </option>
-              </select>
-              <div v-if="selectedBonus && selectedBonusSessionPrice > 0" class="hint-text" style="margin-top:6px;">
-                Precio por sesión aplicado: {{ selectedBonusSessionPrice.toFixed(2) }}€ ({{ Number(selectedBonus.price || 0).toFixed(2) }}€ / {{ selectedBonus.total_sessions }} sesiones)
-              </div>
-              <div v-if="errors.use_bonus_id || errors.bonus_id" class="field-error">{{ (errors.use_bonus_id || errors.bonus_id)[0] }}</div>
-            </div>
-
-            <label class="label" style="margin-top:8px">Notas (bono)</label>
-            <input v-model="form.bonus_notes" class="input" />
           </div>
 
           <div class="field" style="display:flex; justify-content:flex-end; gap:8px;">
@@ -482,7 +486,7 @@ const route = useRoute()
 const APPOINTMENT_SLOT_MINUTES = 15
 const isEdit = ref(false)
 const mode = ref(route.query.mode || null)
-const form = reactive({ patient_id: '', status: 'scheduled', start_time: '', end_time: '', notes: '', price: '', app_type_id: '', custom_type: '', use_bonus_id: '', use_credit_payment_id: '', bonus_notes: '', bonus_name: '', payment_type: 'single', apply_credit: false, apply_credit_mode: 'auto', apply_credit_amount: '', professional_id: '' })
+const form = reactive({ patient_id: '', status: 'scheduled', start_time: '', end_time: '', notes: '', price: '', app_type_id: '', custom_type: '', use_bonus_id: '', use_credit_payment_id: '', bonus_notes: '', bonus_name: '', payment_type: 'single', apply_credit: false, apply_credit_mode: 'auto', apply_credit_amount: '', professional_id: '', bonus_appointment_type_id: '' })
 const invoiceNotesDraft = ref('')
 const applyCreditConfirmed = ref(false)
 const sendWhatsapp = ref(false)
@@ -517,6 +521,7 @@ const calendarInfoMessage = ref('')
 const patients = ref([])
 const appointmentTypes = ref([])
 const professionals = ref([])
+const clinicBusinessHours = ref([])
 const overlapping = ref([])
 const hasScheduledOverlap = computed(() => overlapping.value.some(a => a.status === 'scheduled'))
 let overlapTimer = null
@@ -615,6 +620,22 @@ const selectableBonuses = computed(() => {
   return bonuses.value.filter(b => (b.remaining_sessions && b.remaining_sessions > 0) && !isExpiredLocal(b))
 })
 
+const paidBonuses = computed(() =>
+  selectableBonuses.value.filter(b => b.is_paid === true)
+)
+
+const isBonusPaidMode = computed(() => {
+  if (form.app_type_id !== '__bonus') return false
+  if (!form.use_bonus_id) return false
+  const b = bonuses.value.find(x => String(x.id) === String(form.use_bonus_id))
+  return b?.is_paid === true
+})
+
+const bonusSessionTypeOptions = computed(() => {
+  if (!selectedBonus.value?.session_lines?.length) return []
+  return selectedBonus.value.session_lines.filter(l => l.remaining_quantity > 0)
+})
+
 const hasPendingCreditPayments = computed(() => {
   return Array.isArray(pendingCreditPayments.value) && pendingCreditPayments.value.length > 0
 })
@@ -676,7 +697,11 @@ const appointmentTypeDurationLabel = computed(() => {
 })
 
 const isEndTimeLocked = computed(() => {
-  return !isEdit.value && hasSelectedAppointmentType.value
+  if (isEdit.value) return false
+  if (!selectedAppointmentType.value) return false
+  const hours = Number(selectedAppointmentType.value.estimated_hours || 0)
+  const minutes = Number(selectedAppointmentType.value.estimated_minutes || 0)
+  return (Math.max(hours, 0) * 60 + Math.max(minutes, 0)) > 0
 })
 
 const selectedPatient = computed(() => {
@@ -889,14 +914,34 @@ function formatAppointmentPaymentDate(value) {
   return `${dd}/${mm}/${yyyy} ${hh}:${min}`
 }
 
+// Clean bonus fields when switching away from __bonus mode
+watch(() => form.app_type_id, (val) => {
+  if (val !== '__bonus') {
+    form.use_bonus_id = ''
+    form.payment_type = 'single'
+    form.bonus_notes = ''
+    form.bonus_name = ''
+    form.bonus_appointment_type_id = ''
+  } else {
+    form.payment_type = 'bonus'
+  }
+})
+
 // Keep form.bonus_name in sync with selected bonus id
 watch(() => form.use_bonus_id, (id) => {
   if (!id) {
     form.bonus_name = ''
+    form.bonus_appointment_type_id = ''
     return
   }
   const b = bonuses.value.find(x => String(x.id) === String(id))
   form.bonus_name = b ? (b.name || (`Bono ${b.total_sessions} sesiones`)) : ''
+  // Auto-select session type if bonus has only one session line
+  if (b?.session_lines?.length === 1) {
+    form.bonus_appointment_type_id = b.session_lines[0].appointment_type_id
+  } else {
+    form.bonus_appointment_type_id = ''
+  }
 })
 
 // Cuando cambia el tipo de pago: si es 'bonus' habilitar selección, si es 'single' limpiar selección
@@ -1077,6 +1122,7 @@ async function loadFormBootstrap({ appointmentId = null, patientId = null } = {}
   patients.value = Array.isArray(data.patients) ? data.patients : []
   appointmentTypes.value = Array.isArray(data.appointment_types) ? data.appointment_types : []
   professionals.value = Array.isArray(data.professionals) ? data.professionals : []
+  clinicBusinessHours.value = Array.isArray(data.business_hours) ? data.business_hours : []
   bonuses.value = Array.isArray(data.bonuses) ? data.bonuses : []
   pendingCreditPayments.value = Array.isArray(data.pending_credit_payments) ? data.pending_credit_payments : []
 
@@ -1457,6 +1503,90 @@ const timeOptions = computed(() => {
   return opts
 })
 
+function parseHour(timeStr) {
+  const m = String(timeStr || '').match(/^(\d{2}):(\d{2})$/)
+  return m ? Number(m[1]) + Number(m[2]) / 60 : null
+}
+
+const professionalSchedulesMap = computed(() => {
+  const map = {}
+  for (const p of professionals.value) {
+    if (Array.isArray(p.schedules)) {
+      map[p.id] = p.schedules
+    }
+  }
+  return map
+})
+
+const selectedDateStr = computed(() => form.start_time ? form.start_time.slice(0, 10) : '')
+
+const selectedDayOfWeek = computed(() => {
+  if (!selectedDateStr.value) return null
+  try {
+    return new Date(selectedDateStr.value + 'T12:00:00').getDay()
+  } catch {
+    return null
+  }
+})
+
+const scheduleForSelectedDay = computed(() => {
+  const profId = form.professional_id
+  if (!profId || selectedDayOfWeek.value === null) return null
+  const schedules = professionalSchedulesMap.value[profId] || []
+  return schedules.find(s => s.day_of_week === selectedDayOfWeek.value && s.enabled) || null
+})
+
+const clinicHoursRange = computed(() => {
+  const arr = clinicBusinessHours.value
+  if (!Array.isArray(arr) || arr.length === 0) return null
+  let minStart = null
+  let maxEnd = null
+  for (const day of arr) {
+    if (!day.enabled) continue
+    if (day.start) {
+      const h = parseHour(day.start)
+      if (h !== null && (minStart === null || h < minStart)) minStart = h
+    }
+    if (day.end) {
+      const h = parseHour(day.end)
+      if (h !== null && (maxEnd === null || h > maxEnd)) maxEnd = h
+    }
+  }
+  if (minStart === null || maxEnd === null) return null
+  return { start: minStart, end: maxEnd }
+})
+
+const availableTimeRange = computed(() => {
+  if (scheduleForSelectedDay.value) {
+    const start = parseHour(scheduleForSelectedDay.value.start_time)
+    const end = parseHour(scheduleForSelectedDay.value.end_time)
+    if (start !== null && end !== null) return { start, end }
+  }
+  return clinicHoursRange.value
+})
+
+const availableStartTimes = computed(() => {
+  const range = availableTimeRange.value
+  if (!range) return timeOptions.value
+  return timeOptions.value.filter(t => {
+    const h = parseHour(t)
+    return h !== null && h >= range.start && h <= range.end
+  })
+})
+
+const availableEndTimes = computed(() => {
+  const range = availableTimeRange.value
+  if (!range) return timeOptions.value
+  const startH = startTimeModel.value ? parseHour(startTimeModel.value) : null
+  return timeOptions.value.filter(t => {
+    const h = parseHour(t)
+    if (h === null) return false
+    if (h < range.start || h > range.end) return false
+    if (startH !== null && h <= startH) return false
+    return true
+  })
+})
+
 const startDateModel = computed({
   get() {
     return form.start_time ? form.start_time.slice(0, 10) : ''
@@ -1464,6 +1594,19 @@ const startDateModel = computed({
   set(date) {
     const time = form.start_time ? form.start_time.slice(11, 16) : '00:00'
     form.start_time = date ? `${date}T${time}` : ''
+    if (selectedAppointmentType.value && form.start_time) {
+      const h = Number(selectedAppointmentType.value.estimated_hours || 0)
+      const m = Number(selectedAppointmentType.value.estimated_minutes || 0)
+      const totalMin = Math.max(h, 0) * 60 + Math.max(m, 0)
+      if (totalMin > 0) {
+        const d = new Date(form.start_time)
+        if (!Number.isNaN(d.getTime())) {
+          d.setMinutes(d.getMinutes() + totalMin)
+          form.end_time = toDatetimeLocalValue(d.toISOString())
+          normalizeDateTimeField('end_time')
+        }
+      }
+    }
   }
 })
 
@@ -1475,6 +1618,19 @@ const startTimeModel = computed({
     const date = form.start_time ? form.start_time.slice(0, 10) : new Date().toISOString().slice(0, 10)
     form.start_time = time ? `${date}T${time}` : ''
     normalizeDateTimeField('start_time')
+    if (selectedAppointmentType.value && form.start_time) {
+      const h = Number(selectedAppointmentType.value.estimated_hours || 0)
+      const m = Number(selectedAppointmentType.value.estimated_minutes || 0)
+      const totalMin = Math.max(h, 0) * 60 + Math.max(m, 0)
+      if (totalMin > 0) {
+        const d = new Date(form.start_time)
+        if (!Number.isNaN(d.getTime())) {
+          d.setMinutes(d.getMinutes() + totalMin)
+          form.end_time = toDatetimeLocalValue(d.toISOString())
+          normalizeDateTimeField('end_time')
+        }
+      }
+    }
   }
 })
 
@@ -1751,23 +1907,6 @@ watch(() => [form.start_time, form.end_time], () => {
   checkOverlap()
 })
 
-watch(() => form.start_time, (newVal, oldVal) => {
-  if (suppressTypeChangePrompt.value) return
-  if (!newVal || !oldVal) return
-  if (!selectedAppointmentType.value) return
-
-  const minutes = Number(selectedAppointmentType.value.estimated_minutes || 0)
-  const hours = Number(selectedAppointmentType.value.estimated_hours || 0)
-  const totalMinutes = Math.max(hours, 0) * 60 + Math.max(minutes, 0)
-  if (totalMinutes <= 0) return
-
-  const startIso = toIsoFromLocal(newVal)
-  if (!startIso) return
-  const endDate = new Date(startIso)
-  endDate.setMinutes(endDate.getMinutes() + totalMinutes)
-  form.end_time = toLocalFromIso(endDate.toISOString())
-})
-
 watch(() => form.app_type_id, () => {
   delete errors.app_type_id
   delete errors.custom_type
@@ -1797,12 +1936,6 @@ watch(() => form.app_type_id, () => {
 
 watch(() => form.custom_type, () => {
   delete errors.custom_type
-})
-
-watch(() => form.start_time, () => {
-  if (!isEdit.value && hasSelectedAppointmentType.value) {
-    applyAppointmentTypeDefaults()
-  }
 })
 
 watch(() => form.end_time, () => {
@@ -1925,7 +2058,9 @@ async function submit(payNow = false) {
       status: form.status,
       start_time: form.start_time,
       end_time: form.end_time,
-      app_type_id: (!isCustomAppointmentType.value && form.app_type_id) ? form.app_type_id : undefined,
+      app_type_id: form.app_type_id === '__bonus'
+        ? (form.bonus_appointment_type_id || undefined)
+        : (!isCustomAppointmentType.value && form.app_type_id ? form.app_type_id : undefined),
       custom_type: isCustomAppointmentType.value ? (form.custom_type || undefined) : undefined,
       notes: form.notes,
       price: Number(form.price || effectiveSessionPrice.value || 0) > 0
@@ -1961,6 +2096,19 @@ async function submit(payNow = false) {
       }
       router.push(`/appointments/${route.params.id}`)
     } else {
+      // Validate bonus mode: must select a bonus and a session type
+      if (form.app_type_id === '__bonus' && !form.use_bonus_id) {
+        errors.general = ['Debes seleccionar un bono']
+        submitting.value = false
+        return
+      }
+
+      if (form.app_type_id === '__bonus' && form.use_bonus_id && bonusSessionTypeOptions.value.length > 1 && !form.bonus_appointment_type_id) {
+        errors.general = ['Debes seleccionar el tipo de sesión del bono']
+        submitting.value = false
+        return
+      }
+
       // If user selected 'bonus' as payment type but there are no bonuses, block and show error
       if (form.payment_type === 'bonus' && selectableBonuses.value.length === 0 && !payload.bonus_id) {
         errors.general = ['No hay bonos activos disponibles para este paciente']
@@ -1998,6 +2146,7 @@ async function submit(payNow = false) {
       if (status === 400) {
         if (typeof serverError === 'string' && serverError.trim()) {
           calendarInfoMessage.value = serverError
+          errors.general = [serverError]
         }
         return
       }
@@ -2144,6 +2293,8 @@ async function submit(payNow = false) {
 
 .billing-preview-box { background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:10px; color:#92400e; font-size:13px }
 .billing-preview-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px 12px }
+
+.selected-type-option { border-color:#3b82f6 !important; background:#eff6ff !important }
 .billing-preview-detail { margin-top:10px }
 .billing-preview-amount { margin-top:8px; font-size:14px }
 

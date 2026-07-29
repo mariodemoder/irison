@@ -6,14 +6,12 @@ namespace App\Services\Appointments;
 use Some\Dependency;
 
 use App\Models\Appointment;
-use App\Models\Bonus;
-use App\Models\BonusUsage;
 use App\Models\Clinic;
 use App\Models\CreditUsage;
 use App\Models\Payment;
 use App\Models\Patient;
 use App\Services\Availability\CheckAvailability;
-use App\Services\Bonus\BonusService;
+use Modules\Bonus\Services\BonusAppointmentOrchestrator;
 use App\Services\Appointments\AppointmentPendingPaymentService;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -21,7 +19,10 @@ use DomainException;
 
 class AppointmentService
 {
-    public function __construct(private readonly AppointmentPendingPaymentService $appointmentPendingPaymentService)
+    public function __construct(
+        private readonly AppointmentPendingPaymentService $appointmentPendingPaymentService,
+        private readonly BonusAppointmentOrchestrator $bonusOrchestrator,
+    )
     {
     }
 
@@ -111,20 +112,13 @@ class AppointmentService
             }
             
             if (isset($data['use_bonus_id'])) {
-                $data['use_bonus_id'] = $this->normalizeBonusId($data['use_bonus_id']);
+                $data['use_bonus_id'] = $this->bonusOrchestrator->normalizeBonusId($data['use_bonus_id']);
                 $data['bonus_id'] = $data['use_bonus_id'];
             }
 
             $appointment = Appointment::create($data);
 
-            if (($data['payment_type'] ?? null) === 'bonus') {
-                app(BonusService::class)
-                    ->useBonusForAppointment(
-                        (int) $data['use_bonus_id'],
-                        $appointment,
-                        $data['bonus_notes'] ?? null
-                    );
-            }
+            $this->bonusOrchestrator->consumeOnCreate($appointment, $data);
 
             $this->applyCreditUsage($appointment, $data, 'usage_on_create');
             $this->syncPendingCreditPaymentUsage($appointment, $data);
@@ -139,8 +133,8 @@ class AppointmentService
         // If use_bonus_id requested, try to apply via BonusService
         if (!empty($params['use_bonus_id'])) {
             try {
-                $bonusId = $this->normalizeBonusId($params['use_bonus_id']);
-                $usage = app(BonusService::class)
+                $bonusId = $this->bonusOrchestrator->normalizeBonusId($params['use_bonus_id']);
+                $usage = app(\Modules\Bonus\Services\BonusService::class)
                     ->useBonusForAppointment(
                         (int) $bonusId,
                         $appointment,
@@ -156,17 +150,7 @@ class AppointmentService
 
         $appointment->load(['bonus', 'patient', 'creditUsages', 'payments', 'appointmentType', 'professional']);
 
-        $bonusPayments = collect();
-        if ((string) $appointment->payment_status === 'covered_by_pack' && !empty($appointment->bonus_id)) {
-            $bonusPayments = Payment::query()
-                ->where('clinic_id', (int) $appointment->clinic_id)
-                ->where('patient_id', (int) $appointment->patient_id)
-                ->where('concept', 'package')
-                ->where('package_id', (int) $appointment->bonus_id)
-                ->orderByDesc('paid_at')
-                ->orderByDesc('id')
-                ->get();
-        }
+        $bonusPayments = $this->bonusOrchestrator->getBonusPaymentsForAppointment($appointment);
 
         $appointment->setAttribute('bonus_payments', $bonusPayments->values());
         return $this->attachPendingPaymentAmount($appointment);
@@ -187,9 +171,8 @@ class AppointmentService
 
             // switching from bonus -> single: restore usage
             if ($oldPaymentType === 'bonus' && $newPaymentType === 'single') {
-                // update appointment first (clear bonus reference)
                 $appointment->update(array_merge($data, ['payment_type' => 'single', 'bonus_id' => null]));
-                app(BonusService::class)->restoreBonusIfCancelled($appointment);
+                $this->bonusOrchestrator->restoreAndDetachBonus($appointment);
                 $this->syncPendingCreditPaymentUsage($appointment, $data);
                 $this->appointmentPendingPaymentService->syncPaymentStatus($appointment);
 
@@ -198,44 +181,9 @@ class AppointmentService
 
             // switching to bonus (consume or change)
             if ($newPaymentType === 'bonus') {
-                $targetBonusId = array_key_exists('use_bonus_id', $data)
-                    ? $this->normalizeBonusId($data['use_bonus_id'])
-                    : ($appointment->bonus_id ? (int) $appointment->bonus_id : null);
+                $this->validateBonusForUpdate($appointment, $data);
 
-                if (empty($targetBonusId)) {
-                    throw new DomainException('Debe seleccionar un bono al cambiar a payment_type=bonus');
-                }
-
-                $targetStatus = array_key_exists('status', $data)
-                    ? (string) $data['status']
-                    : (string) ($appointment->status ?? '');
-
-                $this->validateBonusForAppointment($targetBonusId, $appointment, $targetStatus);
-
-                $bonusService = app(BonusService::class);
-
-                // If previously bonus with different bonus -> restore old usage first
-                if ($oldPaymentType === 'bonus' && $appointment->bonus_id && $appointment->bonus_id != $targetBonusId) {
-                    $bonusService->restoreBonusIfCancelled($appointment);
-                }
-
-                // persist new bonus_id and payment_type before attempting consumption
-                $appointment->update(array_merge($data, ['payment_type' => 'bonus', 'bonus_id' => $targetBonusId]));
-
-                // if an existing usage exists for this appointment and bonus, reuse it
-                $existing = BonusUsage::where('bonus_id', $targetBonusId)
-                    ->where('appointment_id', $appointment->id)
-                    ->first();
-
-                if ($existing) {
-                    $usage = $existing;
-                } else {
-                    $usage = $bonusService->useBonusForAppointment(
-                        $targetBonusId,
-                        $appointment,
-                        $data['bonus_notes'] ?? null
-                    );
-                }
+                $usage = $this->bonusOrchestrator->consumeOrChangeBonus($appointment, $data);
 
                 // Bonus and pending-credit-payment cannot coexist
                 $this->restorePendingCreditPaymentUsage($appointment);
@@ -246,7 +194,7 @@ class AppointmentService
 
             // default: regular update
             if (isset($data['use_bonus_id'])) {
-                $data['use_bonus_id'] = $this->normalizeBonusId($data['use_bonus_id']);
+                $data['use_bonus_id'] = $this->bonusOrchestrator->normalizeBonusId($data['use_bonus_id']);
                 $data['bonus_id'] = $data['use_bonus_id'];
             }
 
@@ -265,13 +213,8 @@ class AppointmentService
         return DB::transaction(function () use ($appointment) {
             $appointment->update(['status' => 'canceled']);
 
-            if ($appointment->payment_type === 'bonus' || $appointment->bonus_id) {
-                app(BonusService::class)->restoreBonusIfCancelled($appointment);
-
-                $appointment->update([
-                    'bonus_id' => null,
-                    'payment_type' => 'single'
-                ]);
+            if ($this->bonusOrchestrator->isCoveredByBonus($appointment)) {
+                $this->bonusOrchestrator->restoreOnCancel($appointment);
             }
 
             $this->restoreCreditOnCancel($appointment);
@@ -402,30 +345,7 @@ private function resolveClinic(array $data)
             return;
         }
 
-        if (empty($data['use_bonus_id'])) {
-            throw new DomainException('Debe seleccionar un bono');
-        }
-
-        $bonusId = $this->normalizeBonusId($data['use_bonus_id']);
-        $bonus = Bonus::find($bonusId);
-
-        if (!$bonus) {
-            throw new DomainException('Bono no encontrado');
-        }
-
-        if ($bonus->clinic_id != $clinicId) {
-            throw new DomainException('Bono no pertenece a esta clínica');
-        }
-
-        if ($this->shouldValidateBonusAvailabilityForStatus($targetStatus)) {
-            if ($bonus->remaining_sessions <= 0) {
-                throw new DomainException('El bono seleccionado no está disponible');
-            }
-
-            if ($bonus->isExpired()) {
-                throw new DomainException('Bono expirado');
-            }
-        }
+        $this->bonusOrchestrator->validateBonusPaymentRule($data, $clinicId);
     }
 
     private function validatePendingCreditPayment(int $paymentId, int $clinicId, ?int $patientId): Payment
@@ -454,22 +374,21 @@ private function resolveClinic(array $data)
         return $payment;
     }
 
-    private function normalizeBonusId($bonusId): ?int
+    private function validateBonusForUpdate(Appointment $appointment, array $data): void
     {
-        if ($bonusId === null || $bonusId === '') {
-            return null;
+        $targetStatus = array_key_exists('status', $data)
+            ? (string) $data['status']
+            : (string) ($appointment->status ?? '');
+
+        $targetBonusId = array_key_exists('use_bonus_id', $data)
+            ? $this->bonusOrchestrator->normalizeBonusId($data['use_bonus_id'])
+            : ($appointment->bonus_id ? (int) $appointment->bonus_id : null);
+
+        if (empty($targetBonusId)) {
+            throw new DomainException('Debe seleccionar un bono al cambiar a payment_type=bonus');
         }
 
-        if (!is_numeric($bonusId)) {
-            throw new DomainException('Bono inválido');
-        }
-
-        $normalized = (int) $bonusId;
-        if ($normalized <= 0) {
-            throw new DomainException('Bono inválido');
-        }
-
-        return $normalized;
+        $this->bonusOrchestrator->validateForAppointment($targetBonusId, $appointment, $targetStatus);
     }
 
     private function syncPendingCreditPaymentUsage(Appointment $appointment, array $data): void
@@ -687,39 +606,6 @@ private function resolveClinic(array $data)
         return false;
     }
 
-    private function validateBonusForAppointment($bonusId, Appointment $appointment, ?string $targetStatus = null)
-    {
-        $bonus = Bonus::find($bonusId);
-
-        if (!$bonus) {
-            throw new DomainException('Bono no encontrado');
-        }
-
-        if ($bonus->patient_id != $appointment->patient_id) {
-            throw new DomainException('El bono no pertenece a este paciente');
-        }
-
-        $clinicId = $this->resolveClinic(['clinic_id' => $appointment->clinic_id]);
-        if ($bonus->clinic_id != $clinicId) {
-            throw new DomainException('El bono no pertenece a esta clínica');
-        }
-
-        $normalizedStatus = strtolower(trim((string) ($targetStatus ?? $appointment->status ?? '')));
-        if ($this->shouldValidateBonusAvailabilityForStatus($normalizedStatus)) {
-            if ($bonus->remaining_sessions <= 0) {
-                throw new DomainException('El bono seleccionado no está disponible');
-            }
-
-            if ($bonus->isExpired()) {
-                throw new DomainException('Bono expirado');
-            }
-        }
-    }
-
-    private function shouldValidateBonusAvailabilityForStatus(string $status): bool
-    {
-        return !in_array($status, ['completed', 'canceled', 'cancelled'], true);
-    }
 
     private function shouldApplyCredit(array $data): bool
     {
