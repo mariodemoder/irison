@@ -3,12 +3,14 @@
     <div>
       <div class="entity-card">
         <div class="page-header agenda-page-header">
-        <div>
-          <h1>Agenda</h1>
-          <div class="form-sub">Visualiza y gestiona tus citas</div>
+          <div>
+            <h1>Agenda</h1>
+            <div class="form-sub">Visualiza y gestiona tus citas</div>
+          </div>
+          <div class="header-actions">
+            <button class="help-btn" @click="showHelp = true" title="Ayuda">?</button>
+          </div>
         </div>
-
-      </div>
 
       <CalendarHeader
         view="day"
@@ -216,6 +218,7 @@
         </div>
       </div>
       </div>
+    <AgendaHelpModal v-if="showHelp" @close="showHelp = false" />
     </div>
   </MainLayout>
 </template>
@@ -232,6 +235,9 @@ import { statusLabel, timeClass, formatTimeCalendar, getContrastColor } from '..
 import { isDateClosed, normalizeClosedDays } from '../../shared/clinicCalendar'
 import { useToast } from 'vue-toastification'
 import { isProfessional } from '../../shared/meCache'
+import AgendaHelpModal from '../../components/agenda/AgendaHelpModal.vue'
+
+const showHelp = ref(false)
 
 const router = useRouter()
 const route = useRoute()
@@ -824,6 +830,9 @@ watch(totalPages, (pages) => {
 .agenda-page-header {
   padding: 0 16px;
 }
+.help-btn { width: 32px; height: 32px; border-radius: 50%; border: 1px solid #d1d5db; background: #fff; cursor: pointer; font-size: 16px; font-weight: 700; color: #6b7280; display: flex; align-items: center; justify-content: center; line-height: 1; }
+.help-btn:hover { background: #f3f4f6; color: #374151; }
+.header-actions { display: flex; gap: 8px; align-items: center; }
 
 .header-secondary { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; flex-wrap:wrap }
 .header-secondary-left { display:flex; align-items:center; gap:12px; flex-wrap:wrap }

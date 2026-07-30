@@ -10,6 +10,10 @@
           <button type="button" class="muted back-btn" @click.prevent="cancel">Volver</button>
         </div>
 
+        <div v-if="mode === 'reprogram'" class="reprogram-notice">
+          Modo reprogramación — solo puedes cambiar la fecha y hora
+        </div>
+
         <form class="grid-form" @submit.prevent="submit">
           <div class="field">
             <label class="label">Paciente</label>
@@ -32,7 +36,7 @@
           <div class="field">
             <label class="label">Estado</label>
             <div class="status-select-wrap">
-              <select v-model="form.status" class="input" :disabled="isCanceled && mode !== 'reprogram'">
+              <select v-model="form.status" class="input" :disabled="mode === 'reprogram' || (isCanceled && mode !== 'reprogram')">
                 <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">{{ statusOptionDot(opt.value) }} {{ opt.label }}</option>
               </select>
             </div>
@@ -45,10 +49,10 @@
             <button type="button" class="tab-btn" :class="{ active: activeTab === 'session' }" @click="activeTab = 'session'">
               Sesión
             </button>
-            <button type="button" class="tab-btn" v-if="!isBonusPaidMode" :class="{ active: activeTab === 'billing' && !appointmentInvoiceId }" @click="handleBillingTabClick">
+            <button type="button" class="tab-btn" v-if="mode !== 'reprogram' && !isBonusPaidMode" :class="{ active: activeTab === 'billing' && !appointmentInvoiceId }" @click="handleBillingTabClick">
               {{ appointmentInvoiceId ? 'Ver Factura' : 'Facturar' }}
             </button>
-            <button type="button" class="tab-btn" v-if="!isBonusPaidMode" :class="[{ active: activeTab === 'payment' }, { 'tab-btn-success': isPaidAppointment }]" @click="activeTab = 'payment'">
+            <button type="button" class="tab-btn" v-if="mode !== 'reprogram' && !isBonusPaidMode" :class="[{ active: activeTab === 'payment' }, { 'tab-btn-success': isPaidAppointment }]" @click="activeTab = 'payment'">
               {{ isPaidAppointment ? 'Pago Realizado' : 'Registrar Pago' }}
             </button>
           </div>
@@ -59,7 +63,7 @@
           <div class="field" v-if="activeTab === 'session'">
             <label class="label">Tipo</label>
             <div style="display:flex;align-items:center;gap:8px">
-              <select v-model="form.app_type_id" class="input" :disabled="isCanceled && mode !== 'reprogram'" @change="onAppTypeChange" style="flex:1">
+              <select v-model="form.app_type_id" class="input" :disabled="mode === 'reprogram' || (isCanceled && mode !== 'reprogram')" @change="onAppTypeChange" style="flex:1">
                 <option value="">Selecciona un tipo</option>
                 <option value="__custom">Otro (escribir)</option>
                 <option value="__create">+ Crear tipo...</option>
@@ -81,7 +85,7 @@
               <div v-if="paidBonuses.length === 0" class="alert-subtle">
                 <div>No hay bonos pagados disponibles para este paciente.</div>
               </div>
-              <select v-model="form.use_bonus_id" class="input" style="width:100%">
+              <select v-model="form.use_bonus_id" class="input" style="width:100%" :disabled="mode === 'reprogram'">
                 <option value="">Selecciona un bono</option>
                 <option v-for="b in paidBonuses" :key="b.id" :value="b.id">
                   {{ b.name ? (b.name + ' — ') : '' }}{{ b.total_sessions }} sesiones — {{ b.remaining_sessions }} restantes — {{ Number(b.price || 0).toFixed(2) }}€{{ b.expires_at ? (' — expira ' + formatDMY(b.expires_at)) : '' }}
@@ -91,7 +95,7 @@
             </div>
           </div>
 
-          <div v-if="form.use_bonus_id && bonusSessionTypeOptions.length > 1" class="field full">
+          <div v-if="form.use_bonus_id && bonusSessionTypeOptions.length >= 1" class="field full">
             <label class="label">Tipo de sesión del bono</label>
             <div style="display:flex;flex-direction:column;gap:6px">
               <label
@@ -100,7 +104,7 @@
                 style="display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;border:1px solid #e5e7eb;cursor:pointer"
                 :class="{ 'selected-type-option': form.bonus_appointment_type_id === opt.appointment_type_id }"
               >
-                <input type="radio" v-model="form.bonus_appointment_type_id" :value="opt.appointment_type_id" />
+                <input type="radio" v-model="form.bonus_appointment_type_id" :value="opt.appointment_type_id" :disabled="mode === 'reprogram'" />
                 <span>{{ opt.appointment_type_name }}</span>
                 <span style="margin-left:auto;font-weight:600">{{ opt.remaining_quantity }}/{{ opt.quantity }}</span>
               </label>
@@ -110,7 +114,7 @@
 
           <div class="field">
             <label class="label">Profesional</label>
-            <select v-model="form.professional_id" class="input" :disabled="isCanceled && mode !== 'reprogram'">
+            <select v-model="form.professional_id" class="input" :disabled="mode === 'reprogram' || (isCanceled && mode !== 'reprogram')">
               <option value="">Sin asignar</option>
               <option v-for="prof in professionals" :key="prof.id" :value="String(prof.id)">
                 {{ prof.name }}
@@ -120,7 +124,7 @@
           </div>
           <div class="field" v-if="isCustomAppointmentType">
             <label class="label">Tipo personalizado</label>
-            <input v-model="form.custom_type" type="text" class="input" placeholder="Ej: Seguimiento post-operatorio" :disabled="isCanceled && mode !== 'reprogram'" />
+            <input v-model="form.custom_type" type="text" class="input" placeholder="Ej: Seguimiento post-operatorio" :disabled="mode === 'reprogram' || (isCanceled && mode !== 'reprogram')" />
             <div v-if="errors.custom_type" class="field-error">{{ errors.custom_type[0] }}</div>
           </div>
           <div class="field">
@@ -168,13 +172,13 @@
           </div>
         <div class="field" v-if="hasSelectedPatient">
                     <label class="label">Precio</label>
-                    <input v-model.number="form.price" type="number" min="0.01" step="0.01" class="input" style="max-width:220px" required />
+                    <input v-model.number="form.price" type="number" min="0.01" step="0.01" class="input" style="max-width:220px" required :disabled="mode === 'reprogram'" />
                     <div v-if="errors.price" class="field-error">{{ errors.price[0] }}</div>
                     <div v-if="isCustomAppointmentType" class="field-help">Precio manual para tipo no tipificado.</div>
                   </div>
           <div class="field full">
             <label class="label">Notas</label>
-            <textarea v-model="form.notes" class="textarea" rows="4" :disabled="isCanceled && mode !== 'reprogram'"></textarea>
+            <textarea v-model="form.notes" class="textarea" rows="4" :disabled="mode === 'reprogram' || (isCanceled && mode !== 'reprogram')"></textarea>
             <div v-if="errors.notes" class="field-error">{{ errors.notes[0] }}</div>
           </div>
 
@@ -438,11 +442,12 @@
           <div class="actions full action-row">
             <div class="left-actions">
               <button class="primary" type="submit" :disabled="submitting || !canSaveAppointment" :is-loading="submitting">{{ submitting ? 'Guardando...' : 'Guardar' }}</button>
-              <button v-if="isEdit && isFutureAppointment" type="button" class="muted" @click.prevent="startReprogram" :disabled="submitting">Reprogramar</button>
+              <button v-if="isEdit && isFutureAppointment && mode !== 'reprogram'" type="button" class="muted" @click.prevent="startReprogram" :disabled="submitting">Reprogramar</button>
+              <button v-if="mode === 'reprogram'" type="button" class="muted" @click.prevent="exitReprogram">Volver a editar</button>
             </div>
 
             <div class="right-actions">
-              <button v-if="isEdit && !isCanceled && !isCompletedAppointment" type="button" class="muted" @click.prevent="appointmentCancel" :disabled="cancelling">
+              <button v-if="isEdit && !isCanceled && !isCompletedAppointment && mode !== 'reprogram'" type="button" class="muted" @click.prevent="appointmentCancel" :disabled="cancelling">
                 <IconCancel />
                 Cancelar Cita
               </button>
@@ -673,6 +678,13 @@ const selectedAppointmentType = computed(() => {
   return appointmentTypes.value.find((item) => String(item.id) === String(form.app_type_id)) || null
 })
 
+const effectiveAppointmentType = computed(() => {
+  if (form.app_type_id === '__bonus' && form.bonus_appointment_type_id) {
+    return appointmentTypes.value.find((item) => String(item.id) === String(form.bonus_appointment_type_id)) || null
+  }
+  return selectedAppointmentType.value
+})
+
 const isCustomAppointmentType = computed(() => form.app_type_id === '__custom')
 
 const appointmentTypeBillingLabel = computed(() => {
@@ -685,12 +697,12 @@ const appointmentTypeBillingLabel = computed(() => {
   return selectedTypeName || ''
 })
 
-const hasSelectedAppointmentType = computed(() => !!selectedAppointmentType.value)
+const hasSelectedAppointmentType = computed(() => !!effectiveAppointmentType.value)
 
 const appointmentTypeDurationLabel = computed(() => {
-  if (!selectedAppointmentType.value) return '—'
-  const hours = Number(selectedAppointmentType.value.estimated_hours || 0)
-  const minutes = Number(selectedAppointmentType.value.estimated_minutes || 0)
+  if (!effectiveAppointmentType.value) return '—'
+  const hours = Number(effectiveAppointmentType.value.estimated_hours || 0)
+  const minutes = Number(effectiveAppointmentType.value.estimated_minutes || 0)
   const safeHours = Number.isFinite(hours) ? Math.max(hours, 0) : 0
   const safeMinutes = Number.isFinite(minutes) ? Math.max(minutes, 0) : 0
   return `${safeHours}h ${safeMinutes}min`
@@ -698,9 +710,9 @@ const appointmentTypeDurationLabel = computed(() => {
 
 const isEndTimeLocked = computed(() => {
   if (isEdit.value) return false
-  if (!selectedAppointmentType.value) return false
-  const hours = Number(selectedAppointmentType.value.estimated_hours || 0)
-  const minutes = Number(selectedAppointmentType.value.estimated_minutes || 0)
+  if (!effectiveAppointmentType.value) return false
+  const hours = Number(effectiveAppointmentType.value.estimated_hours || 0)
+  const minutes = Number(effectiveAppointmentType.value.estimated_minutes || 0)
   return (Math.max(hours, 0) * 60 + Math.max(minutes, 0)) > 0
 })
 
@@ -936,11 +948,29 @@ watch(() => form.use_bonus_id, (id) => {
   }
   const b = bonuses.value.find(x => String(x.id) === String(id))
   form.bonus_name = b ? (b.name || (`Bono ${b.total_sessions} sesiones`)) : ''
-  // Auto-select session type if bonus has only one session line
-  if (b?.session_lines?.length === 1) {
-    form.bonus_appointment_type_id = b.session_lines[0].appointment_type_id
+  // Auto-select session type if only one session line has remaining quantity
+  const availableLines = (b?.session_lines || []).filter(l => l.remaining_quantity > 0)
+  if (availableLines.length === 1) {
+    form.bonus_appointment_type_id = availableLines[0].appointment_type_id
   } else {
     form.bonus_appointment_type_id = ''
+  }
+})
+
+// Auto-calcular end_time al seleccionar tipo de sesión del bono
+watch(() => form.bonus_appointment_type_id, (id) => {
+  if (!id || !form.start_time) return
+  const type = effectiveAppointmentType.value
+  if (!type) return
+  const hours = Number(type.estimated_hours || 0)
+  const minutes = Number(type.estimated_minutes || 0)
+  const totalMin = Math.max(hours, 0) * 60 + Math.max(minutes, 0)
+  if (totalMin <= 0) return
+  const d = new Date(form.start_time)
+  if (!Number.isNaN(d.getTime())) {
+    d.setMinutes(d.getMinutes() + totalMin)
+    form.end_time = toDatetimeLocalValue(d.toISOString())
+    normalizeDateTimeField('end_time')
   }
 })
 
@@ -1185,6 +1215,11 @@ async function applyAppointmentData(data) {
   if (bid) {
     form.use_bonus_id = bid
     selectBonus.value = true
+    form.bonus_appointment_type_id = form.app_type_id ? String(form.app_type_id) : ''
+    suppressTypeChangePrompt.value = true
+    form.app_type_id = '__bonus'
+    await nextTick()
+    suppressTypeChangePrompt.value = false
   }
 
   if (data.payment_type) {
@@ -1594,9 +1629,9 @@ const startDateModel = computed({
   set(date) {
     const time = form.start_time ? form.start_time.slice(11, 16) : '00:00'
     form.start_time = date ? `${date}T${time}` : ''
-    if (selectedAppointmentType.value && form.start_time) {
-      const h = Number(selectedAppointmentType.value.estimated_hours || 0)
-      const m = Number(selectedAppointmentType.value.estimated_minutes || 0)
+    if (effectiveAppointmentType.value && form.start_time) {
+      const h = Number(effectiveAppointmentType.value.estimated_hours || 0)
+      const m = Number(effectiveAppointmentType.value.estimated_minutes || 0)
       const totalMin = Math.max(h, 0) * 60 + Math.max(m, 0)
       if (totalMin > 0) {
         const d = new Date(form.start_time)
@@ -1618,9 +1653,9 @@ const startTimeModel = computed({
     const date = form.start_time ? form.start_time.slice(0, 10) : new Date().toISOString().slice(0, 10)
     form.start_time = time ? `${date}T${time}` : ''
     normalizeDateTimeField('start_time')
-    if (selectedAppointmentType.value && form.start_time) {
-      const h = Number(selectedAppointmentType.value.estimated_hours || 0)
-      const m = Number(selectedAppointmentType.value.estimated_minutes || 0)
+    if (effectiveAppointmentType.value && form.start_time) {
+      const h = Number(effectiveAppointmentType.value.estimated_hours || 0)
+      const m = Number(effectiveAppointmentType.value.estimated_minutes || 0)
       const totalMin = Math.max(h, 0) * 60 + Math.max(m, 0)
       if (totalMin > 0) {
         const d = new Date(form.start_time)
@@ -1757,6 +1792,13 @@ function startReprogram() {
   // enable reprogram mode in the route so form respects reprogram behavior
   startReprogramShared(router, route)
 }
+
+function exitReprogram() {
+  const q = { ...route.query }
+  delete q.mode
+  router.push({ query: q })
+}
+
 async function loadForEdit(id) {
   loading.value = true
   try {
@@ -1765,6 +1807,16 @@ async function loadForEdit(id) {
     await applyAppointmentData(data)
     if (form.patient_id) {
       await loadPatientCollections(form.patient_id, true)
+      // Re-sync bonus fields now that fresh bonus data is loaded
+      if (form.use_bonus_id) {
+        const tmp = form.use_bonus_id
+        const savedTypeId = form.bonus_appointment_type_id
+        form.use_bonus_id = ''
+        await nextTick()
+        form.use_bonus_id = tmp
+        await nextTick()
+        if (savedTypeId) form.bonus_appointment_type_id = savedTypeId
+      }
     }
   } catch (e) {
     appointmentPayments.value = []
@@ -1953,20 +2005,22 @@ async function submit(payNow = false) {
   const isCustomTypeSelected = form.app_type_id === '__custom'
   const customTypeName = String(form.custom_type || '').trim()
 
-  if (!hasTypedAppointmentType && !isCustomTypeSelected) {
-    errors.app_type_id = ['Debes seleccionar un tipo de cita o indicar un nombre.']
-    submitting.value = false
-    return
-  }
+  if (mode.value !== 'reprogram') {
+    if (!hasTypedAppointmentType && !isCustomTypeSelected) {
+      errors.app_type_id = ['Debes seleccionar un tipo de cita o indicar un nombre.']
+      submitting.value = false
+      return
+    }
 
-  if (isCustomTypeSelected && !customTypeName) {
-    errors.custom_type = ['Debes indicar un nombre para la cita si no seleccionas un tipo.']
-    submitting.value = false
-    return
-  }
+    if (isCustomTypeSelected && !customTypeName) {
+      errors.custom_type = ['Debes indicar un nombre para la cita si no seleccionas un tipo.']
+      submitting.value = false
+      return
+    }
 
-  if (isCustomTypeSelected) {
-    form.custom_type = customTypeName
+    if (isCustomTypeSelected) {
+      form.custom_type = customTypeName
+    }
   }
 
   const intendedStatus = mode.value === 'reprogram' ? 'rescheduled' : String(form.status || '')
@@ -1992,47 +2046,49 @@ async function submit(payNow = false) {
     return
   }
 
-  if (form.payment_type === 'single' && applyCreditConfirmed.value && availableCredit.value <= 0) {
-    errors.general = ['El paciente no tiene crédito disponible']
-    submitting.value = false
-    return
-  }
-
-  if (form.payment_type === 'single' && applyCreditConfirmed.value && form.apply_credit_mode === 'manual') {
-    const manualAmount = Number(form.apply_credit_amount || 0)
-    if (!manualAmount || manualAmount <= 0) {
-      errors.general = ['Indica un importe de crédito válido']
+  if (mode.value !== 'reprogram') {
+    if (form.payment_type === 'single' && applyCreditConfirmed.value && availableCredit.value <= 0) {
+      errors.general = ['El paciente no tiene crédito disponible']
       submitting.value = false
       return
     }
 
-    if (manualAmount > availableCredit.value) {
-      errors.general = ['El importe de crédito supera el saldo disponible']
-      submitting.value = false
-      return
+    if (form.payment_type === 'single' && applyCreditConfirmed.value && form.apply_credit_mode === 'manual') {
+      const manualAmount = Number(form.apply_credit_amount || 0)
+      if (!manualAmount || manualAmount <= 0) {
+        errors.general = ['Indica un importe de crédito válido']
+        submitting.value = false
+        return
+      }
+
+      if (manualAmount > availableCredit.value) {
+        errors.general = ['El importe de crédito supera el saldo disponible']
+        submitting.value = false
+        return
+      }
     }
-  }
 
-  if (form.payment_type === 'credit' && !form.use_credit_payment_id) {
-    errors.use_credit_payment_id = ['Debes seleccionar un adelanto pendiente.']
-    submitting.value = false
-    return
-  }
-
-  if (form.payment_type === 'credit') {
-    const sessionAmount = Number(form.price || 0)
-    const pendingAmount = Number(selectedPendingCreditRemainingAmount.value || 0)
-
-    if (!sessionAmount || sessionAmount <= 0) {
-      errors.price = ['Debes indicar el precio de la sesión.']
+    if (form.payment_type === 'credit' && !form.use_credit_payment_id) {
+      errors.use_credit_payment_id = ['Debes seleccionar un adelanto pendiente.']
       submitting.value = false
       return
     }
 
-    if (sessionAmount > pendingAmount) {
-      errors.price = ['El importe de la sesión no puede superar el importe a favor pendiente.']
-      submitting.value = false
-      return
+    if (form.payment_type === 'credit') {
+      const sessionAmount = Number(form.price || 0)
+      const pendingAmount = Number(selectedPendingCreditRemainingAmount.value || 0)
+
+      if (!sessionAmount || sessionAmount <= 0) {
+        errors.price = ['Debes indicar el precio de la sesión.']
+        submitting.value = false
+        return
+      }
+
+      if (sessionAmount > pendingAmount) {
+        errors.price = ['El importe de la sesión no puede superar el importe a favor pendiente.']
+        submitting.value = false
+        return
+      }
     }
   }
 
@@ -2053,7 +2109,9 @@ async function submit(payNow = false) {
       // comprobar solapamiento antes de enviar (muestra aviso, pero no bloquea)
       await checkOverlap()
     const toast = useToast()
-    const payload = {
+    const payload = mode.value === 'reprogram'
+      ? { start_time: form.start_time, end_time: form.end_time, status: 'rescheduled' }
+      : {
       patient_id: form.patient_id,
       status: form.status,
       start_time: form.start_time,
@@ -2078,11 +2136,6 @@ async function submit(payNow = false) {
       apply_credit_amount: form.payment_type === 'single' && applyCreditConfirmed.value && form.apply_credit_mode === 'manual'
         ? form.apply_credit_amount
         : undefined,
-    }
-
-    // If reprogramming (mode=reprogram) force status -> reprogrammed
-    if (mode.value === 'reprogram') {
-      payload.status = 'rescheduled'
     }
 
     if (isEdit.value && route.params.id) {
@@ -2205,6 +2258,16 @@ async function submit(payNow = false) {
   width:100%;
   padding:16px;
   box-sizing:border-box;
+}
+.reprogram-notice {
+  padding: 10px 16px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  color: #92400e;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 12px;
 }
 .form-card {
   width:min(100%, 980px);

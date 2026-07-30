@@ -3,11 +3,14 @@
     <div>
       <div class="entity-card">
         <div class="page-header">
-        <div>
-          <h1>Agenda</h1>
-          <div class="form-sub">Visualiza y gestiona tus citas</div>
+          <div>
+            <h1>Agenda</h1>
+            <div class="form-sub">Visualiza y gestiona tus citas</div>
+          </div>
+          <div class="header-actions">
+            <button class="help-btn" @click="showHelp = true" title="Ayuda">?</button>
+          </div>
         </div>
-      </div>
       <CalendarHeader
         view="week"
         :label="weekRangeLabel"
@@ -109,6 +112,8 @@
       </div>
 
     </div>
+
+    <AgendaHelpModal v-if="showHelp" @close="showHelp = false" />
   </MainLayout>
 </template>
 
@@ -121,6 +126,9 @@ import CalendarHeader from '../../components/calendar/CalendarHeader.vue'
 import { isDateClosed, normalizeClosedDays } from '../../shared/clinicCalendar'
 import { useToast } from 'vue-toastification'
 import { isProfessional } from '../../shared/meCache'
+import AgendaHelpModal from '../../components/agenda/AgendaHelpModal.vue'
+
+const showHelp = ref(false)
 
 const router = useRouter()
 const toast = useToast()
@@ -731,6 +739,10 @@ onUnmounted(() => {
 .appt-completed   { background: #dcfce7; color: #166534; border-left: 3px solid #22c55e }
 .appt-rescheduled { background: #fef3c7; color: #92400e; border-left: 3px solid #f59e0b }
 .appt-canceled    { background: #fee2e2; color: #991b1b; border-left: 3px solid #ef4444; opacity: .65 }
+
+.help-btn { width: 32px; height: 32px; border-radius: 50%; border: 1px solid #d1d5db; background: #fff; cursor: pointer; font-size: 16px; font-weight: 700; color: #6b7280; display: flex; align-items: center; justify-content: center; line-height: 1; }
+.help-btn:hover { background: #f3f4f6; color: #374151; }
+.header-actions { display: flex; gap: 8px; align-items: center; }
 
 .professional-select {
   padding: 6px 10px;

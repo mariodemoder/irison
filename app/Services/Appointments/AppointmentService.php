@@ -185,6 +185,13 @@ class AppointmentService
 
                 $usage = $this->bonusOrchestrator->consumeOrChangeBonus($appointment, $data);
 
+                // Save non-bonus field changes (professional, start/end, status, notes, etc.)
+                $bonusKeys = ['use_bonus_id', 'bonus_id', 'bonus_notes', 'payment_type', 'bonus_name'];
+                $nonBonusData = array_diff_key($data, array_flip($bonusKeys));
+                if (!empty($nonBonusData)) {
+                    $appointment->fill($nonBonusData)->save();
+                }
+
                 // Bonus and pending-credit-payment cannot coexist
                 $this->restorePendingCreditPaymentUsage($appointment);
                 $this->appointmentPendingPaymentService->syncPaymentStatus($appointment);
