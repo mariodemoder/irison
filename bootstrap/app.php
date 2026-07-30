@@ -8,8 +8,8 @@ use App\Http\Middleware\EnsureAdminRole;
 use App\Http\Middleware\SetActiveClinic;
 use App\Console\Commands\ProcessTrialLifecycle;
 use App\Console\Commands\PurgeExpiredClinics;
-use App\Jobs\SendAppointmentReminder24h;
-use App\Jobs\SendAppointmentReminder2h;
+use Modules\Notifications\Application\Jobs\SendAppointmentReminder24hJob;
+use Modules\Notifications\Application\Jobs\SendAppointmentReminder2hJob;
 use App\Support\ActivityLogger;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
@@ -73,13 +73,13 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withSchedule(function (Schedule $schedule): void {
         $schedule
-            ->job(new SendAppointmentReminder24h())
+            ->job(new SendAppointmentReminder24hJob())
             ->name('appointments:reminders-24h')
             ->everyMinute()
             ->withoutOverlapping();
 
         $schedule
-            ->job(new SendAppointmentReminder2h())
+            ->job(new SendAppointmentReminder2hJob())
             ->name('appointments:reminders-2h')
             ->everyMinute()
             ->withoutOverlapping();

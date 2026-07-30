@@ -24,7 +24,6 @@ use App\Policies\{
     AppointmentPolicy,
     ClinicalRecordPolicy,
     PaymentPolicy,
-    ReminderPolicy,
     DocumentPolicy,
     ProductPolicy,
     ConsentCategoryPolicy,
@@ -32,6 +31,8 @@ use App\Policies\{
     PatientConsentPolicy,
     SubscriptionRequestPolicy,
 };
+
+use Modules\Notifications\Infrastructure\Policies\ReminderPolicy;
 
 use Modules\Bonus\Models\BonusType as BonusTypeModel;
 use Modules\Bonus\Policies\BonusPolicy;

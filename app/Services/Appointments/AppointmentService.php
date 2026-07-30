@@ -13,6 +13,9 @@ use App\Models\Patient;
 use App\Services\Availability\CheckAvailability;
 use Modules\Bonus\Services\BonusAppointmentOrchestrator;
 use App\Services\Appointments\AppointmentPendingPaymentService;
+use App\Events\AppointmentCancelled;
+use App\Events\AppointmentCreated;
+use App\Events\AppointmentUpdated;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use DomainException;
@@ -124,7 +127,11 @@ class AppointmentService
             $this->syncPendingCreditPaymentUsage($appointment, $data);
             $this->appointmentPendingPaymentService->syncPaymentStatus($appointment);
 
-            return $appointment->load(['patient', 'bonus', 'appointmentType']);
+            $appointment->load(['patient', 'bonus', 'appointmentType']);
+
+            AppointmentCreated::dispatch($appointment);
+
+            return $appointment;
         });
     }
 
@@ -205,13 +212,20 @@ class AppointmentService
                 $data['bonus_id'] = $data['use_bonus_id'];
             }
 
+            $changed = $appointment->getDirty();
             $appointment->update($data);
 
             $this->applyCreditUsage($appointment, $data, 'usage_on_update', true);
             $this->syncPendingCreditPaymentUsage($appointment, $data);
             $this->appointmentPendingPaymentService->syncPaymentStatus($appointment);
 
-            return $appointment->load(['patient', 'bonus']);
+            $appointment->load(['patient', 'bonus']);
+
+            if (!empty($changed)) {
+                AppointmentUpdated::dispatch($appointment, $changed);
+            }
+
+            return $appointment;
         });
     }
 
@@ -226,6 +240,8 @@ class AppointmentService
 
             $this->restoreCreditOnCancel($appointment);
             $this->restorePendingCreditPaymentUsage($appointment);
+
+            AppointmentCancelled::dispatch($appointment, 'manual');
 
             return $appointment;
         });

@@ -154,6 +154,61 @@ For focused tests, regression, HTTP validation, or risk hardening → delegate t
 - **Subscription upgrade proration**: Trial→paid upgrades must charge the FULL price of the new plan (no credit). Basic-paid→PRO uses Stripe's native proration. See `backoffice/upgrade-flow.md` for details.
 - **Price ID resolution**: Each plan has its own Stripe product. `resolvePriceIdForPlan()` only falls back to `STRIPE_PRICE_ID` for the `basic` plan. Trial→paid checkout passes `price_id` explicitly to avoid incorrect fallback.
 
+## Notifications Module
+
+Organized as a modular bounded context under `modules/Notifications/` with two subdomains:
+
+- **Patient/** — Appointment status notifications (created/updated/cancelled via `SendAppointmentStatusNotification` listener), consent email (`SendConsentEmail` listener via `Mail::to()`).
+- **Backoffice/** — Subscription/billing notifications (`SubscriptionUpgradeRequestedNotification`, `SubscriptionUpgradedNotification`, `PaymentCompletedNotification`, `CheckoutLinkGeneratedNotification`) with corresponding listeners.
+
+Events: `App\Events\AppointmentCreated`, `AppointmentUpdated`, `AppointmentCancelled` dispatched from `AppointmentService` and `PublicBookingService`.
+
+Key model requirements: `Patient` uses `Notifiable` trait; `Clinic` has `getAdmins()` method.
+
+### Catálogo completo de notificaciones
+
+#### A Pacientes (email)
+
+| # | Nombre | Motivo | Contenido | From | To |
+|---|---|---|---|---|---|
+| 1 | **BookingConfirmation** | Reserva online | Confirmación con fecha, hora, profesional, clínica + enlace cancelación | Clínica | Email paciente |
+| 2 | **AppointmentCreatedNotification** | Cita creada manualmente | Aviso de nueva cita con fecha y hora | Clínica | Email paciente |
+| 3 | **AppointmentUpdatedNotification** | Cita modificada | Cambios realizados + nueva fecha/hora | Clínica | Email paciente |
+| 4 | **AppointmentCancelledNotification** | Cita cancelada | Cancelación con fecha original | Clínica | Email paciente |
+| 5 | **AppointmentReminderNotification** | Job 2h/24h o reenvío manual | Recordatorio: fecha, hora, dirección, teléfono | Clínica | Email paciente |
+| 6 | **ConsentSignRequestMail** | Clínica envía consentimiento | Enlace para firmar (expira 72h) | Clínica | Email paciente |
+| 7 | **ResetPasswordNotificationEs** | Solicitud restablecer contraseña | Enlace restablecer (expira N min) | Irison | Email usuario |
+
+#### A Clínica/Propietarios (email)
+
+| # | Nombre | Motivo | Contenido | From | To |
+|---|---|---|---|---|---|
+| 8 | **NewOnlineBooking** | Nueva reserva online | Datos paciente (nombre, email, teléfono), fecha, hora, notas | Irison | Owners clínica |
+| 9 | **SubscriptionActivatedMail** | Nueva suscripción activada | Bienvenida, plan, fecha activación, enlace factura | Irison | Owner/admin |
+| 10 | **CheckoutLinkGeneratedNotification** | Enlace de pago generado para upgrade | Enlace Stripe para completar pago | Irison | Owner/admin |
+| 11 | **PaymentCompletedNotification** | Pago de upgrade completado | Confirmación de pago, plan actualizado | Irison | Owner/admin |
+| 12 | **SubscriptionUpgradedNotification** | Upgrade completado | Plan actualizado, bienvenida | Irison | Owner/admin |
+| 13 | **SubscriptionUpgradedNotificationMail** | (Fallback) Confirmación upgrade | Mismo contenido que #12, enviado directo desde controlador | Irison | Owner/admin |
+| 14 | **InvoicePaymentFailedMail** | Pago factura falló (webhook) | Aviso pago pendiente, monto, próximo intento | Irison | Email clínica + owner |
+| 15 | **ResendInvoiceMail** | Admin reenvía factura | Enlace factura + mensaje personalizado | Irison | Email destinatario |
+
+#### Internas / Backoffice (email)
+
+| # | Nombre | Motivo | Contenido | From | To |
+|---|---|---|---|---|---|
+| 16 | **SubscriptionCanceledInternalMail** | Suscripción cancelada | Datos clínica + IDs Stripe | Irison | `cancellation_notification_to` |
+| 17 | **ContactMail** | Formulario de contacto | Nombre, email, asunto, mensaje | Usuario | `CONTACT_EMAIL` |
+| 18 | **AccountActivationMail** | Nuevo registro | Enlace activar cuenta + trial | Irison | Email registrado |
+| 19 | **TrialLifecycleMail** | Hitos trial (día 1,7,20,27,30) | Mensajes según milestone, enlace facturación | Irison | Email owner |
+
+#### Solo Database (bandeja interna)
+
+| # | Nombre | Motivo | Contenido | From | To |
+|---|---|---|---|---|---|
+| 20 | **SubscriptionUpgradeRequestedNotification** | Solicitud upgrade de plan | Plan solicitado, clínica, solicitante | Sistema | Admins clínica |
+
+Tests en `tests/Feature/Mail/EmailDispatchTest.php` y `tests/Feature/Notifications/NotificationsTest.php`.
+
 ## High-Value References
 
 - `bootstrap/app.php` — Middleware aliases, scheduler

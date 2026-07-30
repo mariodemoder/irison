@@ -9,14 +9,10 @@ use App\Mail\AppointmentReminderMail;
 use App\Mail\ContactMail;
 use App\Mail\ConsentSignRequestMail;
 use App\Mail\InvoicePaymentFailedMail;
-use App\Mail\PaymentCompletedMail;
 use App\Mail\SubscriptionActivatedMail;
 use App\Mail\SubscriptionCanceledInternalMail;
-use App\Mail\SubscriptionRequestMail;
-use App\Mail\SubscriptionStatusMail;
 use App\Mail\SubscriptionUpgradedNotificationMail;
 use App\Mail\TrialLifecycleMail;
-use App\Mail\UpgradeCheckoutLinkMail;
 use App\Models\Appointment;
 use App\Models\Clinic;
 use App\Models\ConsentTemplate;
@@ -26,7 +22,6 @@ use App\Models\SubscriptionRequest;
 use App\Models\User;
 use Modules\Booking\Notifications\BookingConfirmation;
 use Modules\Booking\Notifications\NewOnlineBooking;
-use App\Notifications\CheckoutLinkGenerated;
 use App\Notifications\ResetPasswordNotificationEs;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -144,18 +139,6 @@ class EmailDispatchTest extends TestCase
         Notification::assertSentTo($this->owner, ResetPasswordNotificationEs::class);
     }
 
-    public function test_checkout_link_generated_notification_is_sent(): void
-    {
-        Notification::fake();
-        $request = $this->createSubscriptionRequest([
-            'status' => 'waiting_payment',
-            'checkout_url' => 'https://checkout.stripe.com/test',
-            'stripe_checkout_session_id' => 'cs_test',
-        ]);
-        $this->owner->notify(new CheckoutLinkGenerated($request));
-        Notification::assertSentTo($this->owner, CheckoutLinkGenerated::class);
-    }
-
     public function test_booking_confirmation_notification_is_sent(): void
     {
         Notification::fake();
@@ -189,16 +172,6 @@ class EmailDispatchTest extends TestCase
     {
         $mail = (new ResetPasswordNotificationEs('test-token'))->toMail($this->owner);
         $this->assertHasIrisonLogo($this->renderMailMessage($mail), 'ResetPasswordNotificationEs');
-    }
-
-    public function test_checkout_link_generated_notification_renders_irison_logo(): void
-    {
-        $request = $this->createSubscriptionRequest([
-            'status' => 'waiting_payment',
-            'checkout_url' => 'https://checkout.stripe.com/test',
-        ]);
-        $mail = (new CheckoutLinkGenerated($request))->toMail($this->owner);
-        $this->assertHasIrisonLogo($this->renderMailMessage($mail), 'CheckoutLinkGenerated');
     }
 
     public function test_booking_confirmation_notification_renders_irison_logo(): void
@@ -238,49 +211,6 @@ class EmailDispatchTest extends TestCase
         );
         $this->assertStringContainsString('Activa tu cuenta', $rendered);
         $this->assertStringContainsString('Nuevo Usuario', $rendered);
-    }
-
-    public function test_subscription_request_mail_renders_and_contains_expected_content(): void
-    {
-        $request = $this->createSubscriptionRequest(['comments' => 'Necesitamos mas usuarios']);
-        $rendered = $this->renderMailable(new SubscriptionRequestMail($request));
-        $this->assertStringContainsString('upgrade', strtolower($rendered));
-        $this->assertStringContainsString('Clinica Irison Test', $rendered);
-    }
-
-    public function test_subscription_status_mail_approved_renders(): void
-    {
-        $request = $this->createSubscriptionRequest(['status' => 'approved']);
-        $rendered = $this->renderMailable(new SubscriptionStatusMail($request));
-        $this->assertStringContainsString('aprobada', $rendered);
-    }
-
-    public function test_subscription_status_mail_rejected_renders(): void
-    {
-        $request = $this->createSubscriptionRequest(['status' => 'rejected']);
-        $rendered = $this->renderMailable(new SubscriptionStatusMail($request));
-        $this->assertStringContainsString('rechazada', $rendered);
-    }
-
-    public function test_upgrade_checkout_link_mail_renders(): void
-    {
-        $request = $this->createSubscriptionRequest([
-            'status' => 'waiting_payment',
-            'checkout_url' => 'https://checkout.stripe.com/pay/cs_test',
-            'stripe_checkout_session_id' => 'cs_test',
-        ]);
-        $rendered = $this->renderMailable(new UpgradeCheckoutLinkMail($request));
-        $this->assertStringContainsString('checkout', strtolower($rendered));
-    }
-
-    public function test_payment_completed_mail_renders(): void
-    {
-        $request = $this->createSubscriptionRequest([
-            'status' => 'completed',
-            'completed_at' => now(),
-        ]);
-        $rendered = $this->renderMailable(new PaymentCompletedMail($request));
-        $this->assertStringContainsString('confirmado', strtolower($rendered));
     }
 
     public function test_subscription_canceled_internal_mail_renders(): void

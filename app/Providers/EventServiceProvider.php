@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use App\Events\AppointmentCancelled;
+use App\Events\AppointmentCreated;
+use App\Events\AppointmentUpdated;
 use App\Events\ConsentCreated;
 use App\Events\ConsentRevoked;
 use App\Events\ConsentSent;
@@ -11,11 +14,12 @@ use App\Events\CheckoutCreated;
 use App\Events\PaymentCompleted;
 use App\Events\SubscriptionUpgraded;
 use App\Listeners\LogConsentActivity;
-use App\Listeners\SendConsentEmail;
-use App\Listeners\SendCheckoutEmail;
-use App\Listeners\SendPaymentConfirmationEmail;
-use App\Listeners\SendUpgradeRequestNotification;
-use App\Listeners\UpgradeSubscription;
+use Modules\Notifications\Patient\Listeners\SendConsentEmail;
+use Modules\Notifications\Patient\Listeners\SendAppointmentStatusNotification;
+use Modules\Notifications\Backoffice\Listeners\SendCheckoutEmail;
+use Modules\Notifications\Backoffice\Listeners\SendPaymentConfirmationEmail;
+use Modules\Notifications\Backoffice\Listeners\SendUpgradeRequestNotification;
+use Modules\Notifications\Backoffice\Listeners\UpgradeSubscription;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
 class EventServiceProvider extends ServiceProvider
@@ -33,6 +37,16 @@ class EventServiceProvider extends ServiceProvider
         ],
         ConsentRevoked::class => [
             [LogConsentActivity::class, 'handleRevoked'],
+        ],
+
+        AppointmentCreated::class => [
+            [SendAppointmentStatusNotification::class, 'handleAppointmentCreated'],
+        ],
+        AppointmentUpdated::class => [
+            [SendAppointmentStatusNotification::class, 'handleAppointmentUpdated'],
+        ],
+        AppointmentCancelled::class => [
+            [SendAppointmentStatusNotification::class, 'handleAppointmentCancelled'],
         ],
 
         UpgradeRequested::class => [

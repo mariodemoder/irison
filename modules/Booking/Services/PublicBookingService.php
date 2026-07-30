@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Booking\Services;
 
+use App\Events\AppointmentCancelled;
 use App\Models\Appointment;
 use App\Models\Patient;
 use App\Models\User;
@@ -167,6 +168,8 @@ class PublicBookingService
             'status' => 'canceled',
             'confirmation_token' => null,
         ]);
+
+        AppointmentCancelled::dispatch($appointment, 'booking');
 
         return $appointment;
     }

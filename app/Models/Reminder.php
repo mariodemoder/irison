@@ -2,14 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Models\Concerns\BelongsToClinic;
+use Modules\Notifications\Infrastructure\Persistence\ReminderEloquentModel;
 
-class Reminder extends Model
+class Reminder extends ReminderEloquentModel
 {
-    use BelongsToClinic;
-    
     protected $fillable = [
         'clinic_id',
         'appointment_id',
@@ -20,18 +16,4 @@ class Reminder extends Model
         'sent_at',
         'status',
     ];
-
-    protected $casts = [
-        'sent_at' => 'datetime:Y-m-d H:i:s',
-    ];
-
-    public function clinic(): BelongsTo
-    {
-        return $this->belongsTo(Clinic::class);
-    }
-
-    public function appointment(): BelongsTo
-    {
-        return $this->belongsTo(Appointment::class);
-    }
 }

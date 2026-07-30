@@ -1,7 +1,7 @@
 <?php
 
-use App\Jobs\SendAppointmentReminder24h;
-use App\Jobs\SendAppointmentReminder2h;
+use Modules\Notifications\Application\Jobs\SendAppointmentReminder24hJob;
+use Modules\Notifications\Application\Jobs\SendAppointmentReminder2hJob;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
@@ -34,12 +34,12 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Artisan::command('reminders:send-24h', function (): void {
-    app(SendAppointmentReminder24h::class)->handle();
+    app(SendAppointmentReminder24hJob::class)->handle();
     $this->info('Recordatorios 24h procesados.');
 })->purpose('Send 24-hour appointment reminders');
 
 Artisan::command('reminders:send-2h', function (): void {
-    app(SendAppointmentReminder2h::class)->handle();
+    app(SendAppointmentReminder2hJob::class)->handle();
     $this->info('Recordatorios 2h procesados.');
 })->purpose('Send 2-hour appointment reminders');
 

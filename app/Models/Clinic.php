@@ -100,6 +100,11 @@ class Clinic extends Model
         return $this->hasOne(User::class)->where('role', 'owner')->orderBy('id');
     }
 
+    public function getAdmins()
+    {
+        return $this->users()->whereIn('role', ['owner', 'admin'])->get();
+    }
+
     public function currentSubscription()
     {
         // Preferir suscripción activa; si no existe, devolver la más reciente

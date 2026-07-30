@@ -17,6 +17,9 @@
         <testsuite name="Bonus">
             <directory>modules/Bonus/tests</directory>
         </testsuite>
+        <testsuite name="Notifications">
+            <directory>modules/Notifications/Tests</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>

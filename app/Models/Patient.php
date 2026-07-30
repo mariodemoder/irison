@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Notifications\Notifiable;
 use App\Models\Concerns\BelongsToClinic;
 use App\Models\Bonus;
 use App\Models\CreditUsage;
@@ -13,7 +14,7 @@ use App\Services\Counters\CounterService;
 
 class Patient extends Model
 {
-    use BelongsToClinic, SoftDeletes;
+    use BelongsToClinic, SoftDeletes, Notifiable;
       
     protected $fillable = [
         'clinic_id', 'first_name', 'last_name', 'phone', 'email',
