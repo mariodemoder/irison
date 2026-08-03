@@ -34,6 +34,8 @@ import ImpersonateEntry from '../views/ImpersonateEntry.vue'
 import Team from '../views/team/Team.vue'
 import TeamUserForm from '../views/team/TeamUserForm.vue'
 import CompanyServices from '../views/company-services/Index.vue'
+import FinanceIndex from '../views/finance/Index.vue'
+import ActivityIndex from '../views/settings/Activity.vue'
 
 const routes = [
   { path: '/', component: Landing, meta: { publicLanding: true } },
@@ -69,6 +71,7 @@ const routes = [
   { path: '/team', component: Team, meta: { auth: true } },
   { path: '/team/users/create', component: TeamUserForm, meta: { auth: true } },
   { path: '/team/users/:id/edit', component: TeamUserForm, meta: { auth: true } },
+  { path: '/finance', component: FinanceIndex, meta: { auth: true } },
   { path: '/appointments', redirect: '/appointments/day', meta: { auth: true } },
   { path: '/appointments/day', component: AgendaDay, meta: { auth: true } },
   { path: '/appointments/week', component: AgendaWeek, meta: { auth: true } },
@@ -81,6 +84,7 @@ const routes = [
   { path: '/consent-templates/:id/edit', component: () => import('../views/consents/ConsentTemplatesForm.vue'), meta: { auth: true } },
   { path: '/sign/:token', component: () => import('../views/consents/ConsentSignPublic.vue') },
   { path: '/settings/subscription', component: () => import('../views/settings/Subscription.vue'), meta: { auth: true } },
+  { path: '/settings/activity', component: ActivityIndex, meta: { auth: true } },
   { path: '/privacy', component: Privacy },
   { path: '/terms', component: Terms },
 ]

@@ -64,6 +64,10 @@
               <rect x="2" y="4" width="20" height="16" rx="2"></rect>
               <path d="M8 12h8M12 8v8"></path>
             </svg>
+            <svg v-else-if="item.path === '/settings/activity'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 6h12M8 12h12M8 18h12"></path>
+              <path d="M3 6h.01M3 12h.01M3 18h.01"></path>
+            </svg>
             <svg v-else-if="item.path === '/settings'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="11.5" cy="10.3" r="3"></circle>
               <path d="M12 2a1.5 1.5 0 0 1 1.5 1.5v1.1a7 7 0 0 1 1.77.73l.78-.78a1.5 1.5 0 1 1 2.12 2.12l-.78.78A7 7 0 0 1 18.4 9.5h1.1a1.5 1.5 0 0 1 0 3h-1.1a7 7 0 0 1-.73 1.77l.78.78a1.5 1.5 0 1 1-2.12 2.12l-.78-.78a7 7 0 0 1-1.77.73v1.1a1.5 1.5 0 0 1-3 0v-1.1a7 7 0 0 1-1.77-.73l-.78.78a1.5 1.5 0 1 1-2.12-2.12l.78-.78A7 7 0 0 1 4.6 12.5H3.5a1.5 1.5 0 0 1 0-3h1.1a7 7 0 0 1 .73-1.77l-.78-.78a1.5 1.5 0 1 1 2.12-2.12l.78.78A7 7 0 0 1 9.5 4.6V3.5A1.5 1.5 0 0 1 12 2z"></path>
@@ -163,6 +167,11 @@ import {
   meReadOnlyNoTransactions,
   meCanTransact,
   isProfessional,
+  isReceptionist,
+  isFullAccess,
+  hasOperationalAccess,
+  isPro,
+  isEnterprise,
   mePlan,
   planLabel,
   ensureMeLoaded,
@@ -188,20 +197,34 @@ const navItems = [
   { path: '/products', label: 'Productos' },
   { path: '/invoices', label: 'Facturación' },
   { path: '/payments', label: 'Pagos' },
+  { path: '/finance', label: 'Finanzas' },
   { path: '/notifications', label: 'Notificaciones' },
   { path: '/team', label: 'Equipo' },
   { path: '/company-services', label: 'Servicios' },
   { path: '/consent-templates', label: 'Consentimientos' },
   { path: '/settings/subscription', label: 'Suscripción' },
+  { path: '/settings/activity', label: 'Registro de actividad' },
   { path: '/settings', label: 'Configuración' },
 ]
 
 const professionalPaths = ['/appointments', '/patients']
 
+const receptionPaths = ['/appointments', '/patients', '/invoices', '/payments', '/products']
+
+const showFinance = computed(() => isFullAccess.value && (isPro.value || isEnterprise.value))
+
 const filteredNavItems = computed(() => {
   let items = navItems
   if (isProfessional.value) {
     items = items.filter(item => professionalPaths.includes(item.path))
+  } else if (isReceptionist.value) {
+    items = items.filter(item => receptionPaths.includes(item.path))
+  }
+  if (!showFinance.value) {
+    items = items.filter(item => item.path !== '/finance')
+  }
+  if (!isFullAccess.value) {
+    items = items.filter(item => item.path !== '/settings/activity')
   }
   if (meStatus.value === 'trial') {
     items = items.filter(item => item.path !== '/settings/subscription')

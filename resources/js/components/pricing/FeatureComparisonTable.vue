@@ -13,9 +13,9 @@
       <tbody>
         <tr v-for="row in features" :key="row.label">
           <td class="feature-label">{{ row.label }}</td>
-          <td><span v-if="row.basic === true" class="check">✓</span><span v-else-if="row.basic === false" class="cross">—</span><span v-else class="val">{{ row.basic }}</span></td>
-          <td><span v-if="row.pro === true" class="check">✓</span><span v-else-if="row.pro === false" class="cross">—</span><span v-else class="val">{{ row.pro }}</span></td>
-          <td><span v-if="row.enterprise === true" class="check">✓</span><span v-else-if="row.enterprise === false" class="cross">—</span><span v-else class="val">{{ row.enterprise }}</span></td>
+          <td><span v-if="row.basic === true" class="check">✓</span><span v-else-if="row.basic === false" class="cross">—</span><span v-else class="val">{{ resolveCount('basic', row) }}</span></td>
+          <td><span v-if="row.pro === true" class="check">✓</span><span v-else-if="row.pro === false" class="cross">—</span><span v-else class="val">{{ resolveCount('pro', row) }}</span></td>
+          <td><span v-if="row.enterprise === true" class="check">✓</span><span v-else-if="row.enterprise === false" class="cross">—</span><span v-else class="val">{{ resolveCount('enterprise', row) }}</span></td>
         </tr>
       </tbody>
     </table>
@@ -23,8 +23,12 @@
 </template>
 
 <script setup>
+const props = defineProps({
+  allPlans: { type: Object, default: () => ({}) },
+})
+
 const features = [
-  { label: 'Usuarios', basic: '1', pro: '10', enterprise: 'Ilimitados' },
+  { label: 'Usuarios', basic: 'users', pro: 'users', enterprise: 'users' },
   { label: 'Pacientes e historia clínica', basic: true, pro: true, enterprise: true },
   { label: 'Agenda de citas', basic: true, pro: true, enterprise: true },
   { label: 'Booking online', basic: true, pro: true, enterprise: true },
@@ -42,6 +46,13 @@ const features = [
   { label: 'White Label', basic: false, pro: false, enterprise: true },
   { label: 'Soporte', basic: 'Email', pro: 'Prioritario', enterprise: 'Dedicado' },
 ]
+
+function resolveCount(planKey, row) {
+  if (row[planKey] !== 'users') return row[planKey]
+  const plan = props.allPlans[planKey]
+  const users = plan?.users ?? 0
+  return users > 0 ? `${users} usuarios` : 'Ilimitados'
+}
 </script>
 
 <style scoped>

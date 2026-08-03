@@ -248,7 +248,7 @@ class StripeWebhookControllerTest extends TestCase
 
         $clinic->refresh();
         $this->assertSame('pro', $clinic->plan);
-        $this->assertSame(10, $clinic->max_users);
+        $this->assertSame(5, $clinic->max_users);
         $this->assertSame('active', $clinic->subscription_status);
 
         $subRequest->refresh();
@@ -305,7 +305,7 @@ class StripeWebhookControllerTest extends TestCase
 
         $clinic->refresh();
         $this->assertSame('pro', $clinic->plan);
-        $this->assertSame(10, $clinic->max_users);
+        $this->assertSame(5, $clinic->max_users);
     }
 
     public function test_webhook_finds_subscription_request_by_clinic_id_fallback(): void
@@ -368,7 +368,7 @@ class StripeWebhookControllerTest extends TestCase
 
         $clinic->refresh();
         $this->assertSame('pro', $clinic->plan);
-        $this->assertSame(10, $clinic->max_users);
+        $this->assertSame(5, $clinic->max_users);
 
         $subRequest->refresh();
         $this->assertSame('completed', $subRequest->status);

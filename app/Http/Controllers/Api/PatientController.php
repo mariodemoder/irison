@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use App\Services\Patients\PatientsServices;
+use App\Support\ActivityLogger;
 use DomainException;
 
 class PatientController extends BaseController
@@ -47,6 +48,15 @@ class PatientController extends BaseController
         $clinicId = (int) Auth::user()->clinic_id;
         $result = $this->patientsServices->store($request->validated(), $clinicId);
 
+        ActivityLogger::log(
+            tenantId: $clinicId,
+            userId: (int) Auth::user()->id,
+            event: 'patient.created',
+            description: 'Paciente creado',
+            metadata: ['entity' => 'patient', 'entity_id' => (int) ($result['payload']['id'] ?? 0)],
+            ip: $request->ip(),
+        );
+
         return response()->json($result['payload'], $result['status']);
     }
 
@@ -76,6 +86,15 @@ class PatientController extends BaseController
         $clinicId = (int) Auth::user()->clinic_id;
         $result = $this->patientsServices->update($patient, $request->validated(), $clinicId);
 
+        ActivityLogger::log(
+            tenantId: $clinicId,
+            userId: (int) Auth::user()->id,
+            event: 'patient.updated',
+            description: 'Paciente modificado',
+            metadata: ['entity' => 'patient', 'entity_id' => (int) $patient->id],
+            ip: $request->ip(),
+        );
+
         return response()->json($result['payload'], $result['status']);
     }
 
@@ -99,6 +118,14 @@ class PatientController extends BaseController
 
         try {
             $this->patientsServices->destroy($patient);
+            ActivityLogger::log(
+                tenantId: (int) Auth::user()->clinic_id,
+                userId: (int) Auth::user()->id,
+                event: 'patient.deleted',
+                description: 'Paciente eliminado',
+                metadata: ['entity' => 'patient', 'entity_id' => (int) $patient->id],
+                ip: $request->ip(),
+            );
             return response()->noContent();
         } catch (DomainException $exception) {
             return response()->json([

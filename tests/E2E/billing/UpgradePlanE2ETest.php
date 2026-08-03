@@ -96,7 +96,7 @@ class UpgradePlanE2ETest extends TestCase
         $response = $this->actingAs($this->user)
             ->postJson('/api/settings/subscription/request', [
                 'requested_plan' => 'pro',
-                'comments' => 'Necesitamos 10 usuarios para nuestra clínica.',
+                'comments' => 'Necesitamos 5 usuarios para nuestra clínica.',
             ]);
 
         $response->assertCreated();
@@ -135,7 +135,7 @@ class UpgradePlanE2ETest extends TestCase
         $this->subscriptionRequest->refresh();
 
         $this->assertSame('pro', (string) $this->clinic->plan);
-        $this->assertSame(10, $this->clinic->max_users);
+        $this->assertSame(5, $this->clinic->max_users);
         $this->assertSame('active', $this->clinic->subscription_status);
         $this->assertSame('waiting_payment', $this->subscriptionRequest->status);
         $this->assertNotNull($this->subscriptionRequest->checkout_url);

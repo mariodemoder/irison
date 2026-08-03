@@ -32,6 +32,7 @@
             <option value="appointment">Cita individual</option>
             <option value="package">Compra de bono</option>
             <option value="credit">Adelanto</option>
+            <option value="other">Otro concepto</option>
           </select>
         </div>
 
@@ -137,7 +138,7 @@ const hasActiveFilters = computed(() => {
 function applyQueryFilters() {
   const allowedStatus = ['completed', 'pending']
   const allowedMethod = ['cash', 'card', 'transfer']
-  const allowedConcept = ['appointment', 'package', 'credit']
+  const allowedConcept = ['appointment', 'package', 'credit', 'other']
 
   const queryQ = String(route.query.q || '').trim()
   const queryStatus = String(route.query.status || '').trim()
@@ -192,6 +193,7 @@ function conceptLabel(concept) {
   if (concept === 'appointment') return 'Cita individual'
   if (concept === 'package') return 'Compra de bono'
   if (concept === 'credit') return 'Adelanto'
+  if (concept === 'other') return 'Otro concepto'
   return concept || '—'
 }
 

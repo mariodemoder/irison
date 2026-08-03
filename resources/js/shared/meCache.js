@@ -12,7 +12,12 @@ export const meReadOnlyNoTransactions = ref(false)
 export const meCanTransact = ref(false)
 
 export const isProfessional = computed(() => meUser.value?.profile?.slug === 'professional')
-export const isFullAccess = computed(() => !isProfessional.value)
+export const isReceptionist = computed(() => meUser.value?.profile?.slug === 'reception')
+export const isFullAccess = computed(() => {
+  const slug = meUser.value?.profile?.slug
+  return meUser.value?.role === 'owner' || slug === 'admin' || slug === 'manager'
+})
+export const hasOperationalAccess = computed(() => isFullAccess.value || isReceptionist.value)
 
 export const mePlan = computed(() => meClinic.value?.plan || 'basic')
 export const isBasic = computed(() => mePlan.value === 'basic')

@@ -5,6 +5,7 @@ use App\Http\Middleware\EnsureClinicIsActive;
 use App\Http\Middleware\CheckSubscriptionAccess;
 use App\Http\Middleware\EnsureAdminIsActive;
 use App\Http\Middleware\EnsureAdminRole;
+use App\Http\Middleware\EnsureProAccess;
 use App\Http\Middleware\SetActiveClinic;
 use App\Console\Commands\ProcessTrialLifecycle;
 use App\Console\Commands\PurgeExpiredClinics;
@@ -33,6 +34,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'check.subscription' => CheckSubscriptionAccess::class,
             'admin.active' => EnsureAdminIsActive::class,
             'admin.role' => EnsureAdminRole::class,
+            'pro.access' => EnsureProAccess::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

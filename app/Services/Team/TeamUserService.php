@@ -3,6 +3,7 @@
 namespace App\Services\Team;
 
 use App\Models\Clinic;
+use App\Models\Profile;
 use App\Models\User;
 use Modules\Booking\Models\BookingProfessional;
 use Illuminate\Support\Facades\Hash;
@@ -17,7 +18,7 @@ class TeamUserService
         $perPage = (int) ($filters['per_page'] ?? 15);
         $q = strtolower(trim((string) ($filters['q'] ?? '')));
 
-        $query = User::with(['profile:id,name,slug', 'profession:id,name'])
+        $query = User::with(['profile:id,name,slug', 'profession:id,name', 'professionalRate'])
             ->where('clinic_id', $clinicId)
             ->orderBy('role', 'desc')
             ->orderBy('name');
@@ -54,6 +55,7 @@ class TeamUserService
             'schedules',
             'scheduleExceptions',
             'bookingProfessional',
+            'professionalRate',
         ]);
 
         return $this->map($user);
@@ -75,6 +77,7 @@ class TeamUserService
             'profession_id' => 'nullable|integer|exists:professions,id',
             'allow_online_booking' => 'nullable|boolean',
             'allow_manage_agenda' => 'nullable|boolean',
+            'cost_per_hour' => 'nullable|numeric|min:0|max:999999.99',
             'schedules' => 'nullable|array',
             'schedules.*.day_of_week' => 'required|integer|between:0,6',
             'schedules.*.enabled' => 'required|boolean',
@@ -86,6 +89,8 @@ class TeamUserService
             'schedule_exceptions.*.end_time' => 'nullable|string',
             'schedule_exceptions.*.reason' => 'nullable|string|max:255',
         ])->validate();
+
+        $this->assertProfileAllowedByPlan((int) $data['profile_id'], $clinic);
 
         $currentCount = User::where('clinic_id', $clinicId)->count();
         if ($clinic->max_users > 0 && $currentCount >= $clinic->max_users) {
@@ -108,6 +113,7 @@ class TeamUserService
         $this->syncSchedules($user, $data['schedules'] ?? null, $clinic);
         $this->syncScheduleExceptions($user, $data['schedule_exceptions'] ?? []);
         $this->syncBookingProfessional($user, $data['allow_online_booking'] ?? false, $clinicId);
+        $this->syncProfessionalRate($user, $clinicId, $data['cost_per_hour'] ?? null);
 
         return ['status' => 201, 'payload' => $this->show($user)];
     }
@@ -129,6 +135,7 @@ class TeamUserService
             'profession_id' => 'nullable|integer|exists:professions,id',
             'allow_online_booking' => 'nullable|boolean',
             'allow_manage_agenda' => 'nullable|boolean',
+            'cost_per_hour' => 'nullable|numeric|min:0|max:999999.99',
             'schedules' => 'nullable|array',
             'schedules.*.day_of_week' => 'required|integer|between:0,6',
             'schedules.*.enabled' => 'required|boolean',
@@ -140,6 +147,10 @@ class TeamUserService
             'schedule_exceptions.*.end_time' => 'nullable|string',
             'schedule_exceptions.*.reason' => 'nullable|string|max:255',
         ])->validate();
+
+        if (array_key_exists('profile_id', $data)) {
+            $this->assertProfileAllowedByPlan((int) $data['profile_id'], $clinic);
+        }
 
         $payload = [];
 
@@ -176,6 +187,10 @@ class TeamUserService
             $this->syncBookingProfessional($user, $data['allow_online_booking'], $clinicId);
         }
 
+        if (array_key_exists('cost_per_hour', $data)) {
+            $this->syncProfessionalRate($user, $clinicId, $data['cost_per_hour'] ?? null);
+        }
+
         return ['status' => 200, 'payload' => $this->show($user->fresh())];
     }
 
@@ -192,6 +207,15 @@ class TeamUserService
         $user->delete();
 
         return ['status' => 200, 'payload' => ['message' => 'Usuario eliminado.']];
+    }
+
+    private function assertProfileAllowedByPlan(int $profileId, Clinic $clinic): void
+    {
+        $slug = Profile::find($profileId)?->slug;
+
+        if ($slug === 'reception' && ! $clinic->hasProFeatures()) {
+            abort(403, 'El perfil de Recepcionista solo está disponible en los planes PRO o Enterprise.');
+        }
     }
 
     private function syncSchedules(User $user, ?array $schedules, Clinic $clinic): void
@@ -263,6 +287,20 @@ class TeamUserService
         }
     }
 
+    private function syncProfessionalRate(User $user, int $clinicId, ?float $costPerHour): void
+    {
+        if ($costPerHour !== null && $costPerHour > 0) {
+            \Modules\Finance\Infrastructure\Persistence\ProfessionalRateEloquentModel::updateOrCreate(
+                ['clinic_id' => $clinicId, 'user_id' => $user->id],
+                ['cost_per_hour' => round($costPerHour, 2)],
+            );
+        } else {
+            \Modules\Finance\Infrastructure\Persistence\ProfessionalRateEloquentModel::where('clinic_id', $clinicId)
+                ->where('user_id', $user->id)
+                ->delete();
+        }
+    }
+
     private function map(User $u): array
     {
         return [
@@ -272,6 +310,7 @@ class TeamUserService
             'role' => $u->role,
             'allow_online_booking' => (bool) $u->allow_online_booking,
             'allow_manage_agenda' => (bool) $u->allow_manage_agenda,
+            'cost_per_hour' => $u->professionalRate ? (float) $u->professionalRate->cost_per_hour : 0.0,
             'profile' => $u->profile ? ['id' => $u->profile->id, 'name' => $u->profile->name, 'slug' => $u->profile->slug] : null,
             'profession' => $u->profession ? ['id' => $u->profession->id, 'name' => $u->profession->name] : null,
             'schedules' => $u->schedules ? $u->schedules->map(fn ($s) => [

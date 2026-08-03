@@ -15,9 +15,18 @@ class Clinic extends Model
 
     public const PLAN_USER_LIMITS = [
         'basic' => 1,
-        'pro' => 10,
+        'pro' => 5,
         'enterprise' => -1,
     ];
+
+    /**
+     * Determina si el plan de la clínica desbloquea las funcionalidades PRO
+     * (rol de recepción, control de gastos, dashboard de beneficios, etc.).
+     */
+    public function hasProFeatures(): bool
+    {
+        return in_array($this->plan, ['pro', 'enterprise'], true);
+    }
 
     protected $fillable = [
         'name', 'slug', 'legal_name', 'email', 'phone', 'address', 'nif', 'locality', 'province', 'country', 'zip', 'timezone', 'business_hours', 'closed_days', 'max_users', 'trial_ends_at', 'subscription_status', 'status', 'plan', 'stripe_customer_id', 'suspended_at', 'churned_at', 'last_activity_at', 'subscribed_at', 'subscription_provider', 'subscription_reference', 'invoice_background_path', 'theme_color', 'stripe_id', 'pm_type', 'pm_last_four'

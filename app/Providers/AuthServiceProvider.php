@@ -40,6 +40,16 @@ use Modules\Bonus\Models\BonusType as BonusTypeModel;
 use Modules\Bonus\Policies\BonusPolicy;
 use Modules\Bonus\Policies\BonusTypePolicy;
 
+use Modules\Finance\Infrastructure\Persistence\ExpenseEloquentModel;
+use Modules\Finance\Infrastructure\Persistence\ExpenseCategoryEloquentModel;
+use Modules\Finance\Infrastructure\Persistence\ProfessionalRateEloquentModel;
+use Modules\Finance\Infrastructure\Policies\ExpensePolicy;
+use Modules\Finance\Infrastructure\Policies\ExpenseCategoryPolicy;
+use Modules\Finance\Infrastructure\Policies\ProfessionalRatePolicy;
+
+use Modules\Activity\Infrastructure\Persistence\ActivityLogQueryModel;
+use Modules\Activity\Infrastructure\Policies\ActivityPolicy;
+
 class AuthServiceProvider extends ServiceProvider
 {
     protected $policies = [
@@ -57,6 +67,10 @@ class AuthServiceProvider extends ServiceProvider
         PatientConsent::class  => PatientConsentPolicy::class,
         SubscriptionRequest::class => SubscriptionRequestPolicy::class,
         EmailLog::class         => EmailLogPolicy::class,
+        ExpenseEloquentModel::class => ExpensePolicy::class,
+        ExpenseCategoryEloquentModel::class => ExpenseCategoryPolicy::class,
+        ProfessionalRateEloquentModel::class => ProfessionalRatePolicy::class,
+        ActivityLogQueryModel::class => ActivityPolicy::class,
     ];
 
     public function boot(): void

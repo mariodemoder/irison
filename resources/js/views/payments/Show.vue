@@ -43,6 +43,8 @@
           <div class="field"><label class="label">Concepto</label><div class="value">{{ conceptLabel(paymentData.concept) }}</div></div>
           <div class="field"><label class="label">Metodo</label><div class="value">{{ methodLabel(paymentData.method) }}</div></div>
 
+          <div class="field" v-if="paymentData.professional?.name"><label class="label">Profesional</label><div class="value">{{ paymentData.professional.name }}</div></div>
+
           <div class="field"><label class="label">Importe</label><div class="value">{{ formatCurrency(paymentData.amount) }}</div></div>
           <div class="field"><label class="label">Estado</label><div class="value"><span class="status" :class="paymentData.status">{{ statusLabel(paymentData.status) }}</span></div></div>
 
@@ -94,6 +96,7 @@ function conceptLabel(concept) {
   if (concept === 'appointment') return 'Cita individual'
   if (concept === 'package') return 'Compra de bono'
   if (concept === 'credit') return 'Adelanto'
+  if (concept === 'other') return 'Otro concepto'
   return concept || '—'
 }
 

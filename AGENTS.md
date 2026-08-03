@@ -141,6 +141,7 @@ See `.opencode/skills/index.md` for detailed routing. Key skills:
 - `deployment` — Production checklist, queues
 - `backoffice` — Tenant management, invoices
 - `consent` — Consentimientos informados, plantillas, firma digital, envío remoto
+- `activity` — Registro de actividad, cap de logins (3 por usuario/clínica), logins ocultos al SPA
 
 ## QA Delegation Rule
 

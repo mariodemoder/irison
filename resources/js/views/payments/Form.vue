@@ -34,6 +34,7 @@
               <option value="appointment">🧾 Pago de cita individual</option>
               <option value="package">🎁 Compra de bono</option>
               <option value="credit">💰 Adelanto (crédito a favor)</option>
+              <option value="other">📌 Otro concepto (ingreso manual)</option>
             </select>
           </div>
 
@@ -97,6 +98,19 @@
           <div class="field full" v-if="form.concept === 'credit'">
             <div class="help-text">
               Este pago se registrará como adelanto y quedará como saldo a favor del paciente.
+            </div>
+          </div>
+
+          <div class="field full" v-if="form.concept === 'other'">
+            <label class="label">Profesional (opcional)</label>
+            <select v-model="form.professional_id" class="input">
+              <option value="">Sin profesional</option>
+              <option v-for="prof in professionals" :key="prof.id" :value="String(prof.id)">
+                {{ prof.name }}
+              </option>
+            </select>
+            <div class="help-text">
+              Se usará para atribuir el ingreso en el dashboard de beneficios.
             </div>
           </div>
           
@@ -231,10 +245,22 @@ const form = reactive({
   paid_at: '',
   appointment_id: '',
   package_id: '',
+  professional_id: '',
   notes: '',
 })
 const amountInputFocused = ref(false)
 const amountInputDraft = ref('')
+
+const professionals = ref([])
+async function loadProfessionals() {
+  try {
+    const res = await api.get('/agenda/professionals')
+    const list = Array.isArray(res.data?.data) ? res.data.data : []
+    professionals.value = list.map(u => ({ id: u.id, name: u.name || u.email }))
+  } catch {
+    professionals.value = []
+  }
+}
 
 const filteredAppointmentOptions = computed(() => {
   const q = (appointmentQuery.value || '').toLowerCase().trim()
@@ -359,6 +385,7 @@ async function loadForEdit(id) {
     form.paid_at = toDateTimeLocal(data.paid_at)
     form.appointment_id = data.appointment_id ? String(data.appointment_id) : ''
     form.package_id = data.package_id ? String(data.package_id) : ''
+    form.professional_id = data.professional_id ? String(data.professional_id) : ''
     form.notes = data.notes || ''
 
     if (form.patient_id) {
@@ -726,6 +753,7 @@ function normalizePaymentConcept(concept, appointmentId = null, packageId = null
   if (raw === 'appointment' || raw === 'cita') return 'appointment'
   if (raw === 'package' || raw === 'pack' || raw === 'bonus' || raw === 'bono' || raw === 'abono') return 'package'
   if (raw === 'credit' || raw === 'adelanto' || raw === 'advance') return 'credit'
+  if (raw === 'other' || raw === 'otro' || raw === 'otro concepto') return 'other'
 
   if (Number.isFinite(packageIdNumber) && packageIdNumber > 0) return 'package'
   if (Number.isFinite(appointmentIdNumber) && appointmentIdNumber > 0) return 'appointment'
@@ -766,6 +794,7 @@ async function submit() {
     paid_at: form.paid_at || null,
     appointment_id: form.concept === 'appointment' && form.appointment_id ? Number(form.appointment_id) : null,
     package_id: form.concept === 'package' && form.package_id ? Number(form.package_id) : null,
+    professional_id: form.concept === 'other' && form.professional_id ? Number(form.professional_id) : null,
   }
 
   try {
@@ -804,6 +833,7 @@ function cancel() {
 
 onMounted(async () => {
   await loadPatients()
+  loadProfessionals()
 
   const hasPatientQuery = !!route.query.patient_id
 

@@ -16,6 +16,16 @@ class PatientConsentPolicy extends BasePolicy
         return $this->sameClinic($user, $model);
     }
 
+    public function create(User $user): bool
+    {
+        return (bool) $user->clinic_id && $user->hasOperationalAccess();
+    }
+
+    public function update(User $user, $model): bool
+    {
+        return $this->sameClinic($user, $model) && $user->hasOperationalAccess();
+    }
+
     public function signPresential(User $user, $model): bool
     {
         return $this->sameClinic($user, $model);

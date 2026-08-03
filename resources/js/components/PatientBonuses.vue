@@ -164,20 +164,11 @@
               <span>Factura</span>
             </button>
 
-            <button
+<BtnTrash
               @click="confirmDeleteBonus(b)"
-              class="action-btn"
               :title="b.invoice_id ? 'No se puede eliminar: bono facturado' : 'Eliminar bono'"
               :disabled="Boolean(b.invoice_id)"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="btn-icon">
-                <path d="M3 6h18"></path>
-                <path d="M8 6V4h8v2"></path>
-                <path d="M19 6l-1 14H6L5 6"></path>
-                <path d="M10 11v6M14 11v6"></path>
-              </svg>
-              <span>Eliminar</span>
-            </button>
+            >Eliminar</BtnTrash>
           </div>
         </div>
       </div>
@@ -195,6 +186,7 @@ import { useToast } from 'vue-toastification'
 import { formatDMY } from '../shared/dateHelpers'
 import { isProfessional } from '../shared/meCache'
 import EntitySearchSelect from './EntitySearchSelect.vue'
+import BtnTrash from './BtnTrash.vue'
 
 const props = defineProps({ patientId: { type: [String, Number], required: true } })
 const emit = defineEmits(['active-bonus-count'])

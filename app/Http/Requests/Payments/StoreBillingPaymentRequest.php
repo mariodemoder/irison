@@ -26,7 +26,12 @@ class StoreBillingPaymentRequest extends FormRequest
                 'integer',
                 Rule::exists('patients', 'id')->where('clinic_id', $clinicId),
             ],
-            'concept' => ['required', Rule::in(['appointment', 'package', 'credit'])],
+            'concept' => ['required', Rule::in(['appointment', 'package', 'credit', 'other'])],
+            'professional_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('users', 'id')->where('clinic_id', $clinicId),
+            ],
             'amount' => [
                 'required',
                 'numeric',
@@ -55,12 +60,27 @@ class StoreBillingPaymentRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
-            // Al menos uno de appointment_id o package_id debe estar presente
-            if (!$this->input('appointment_id') && !$this->input('package_id')) {
-                $validator->errors()->add(
-                    'appointment_id',
-                    'Debe especificar una cita o un paquete para asociar el pago.'
-                );
+            $concept = $this->input('concept');
+
+            if (in_array($concept, ['appointment', 'package'], true)) {
+                if (!$this->input('appointment_id') && !$this->input('package_id')) {
+                    $validator->errors()->add(
+                        'appointment_id',
+                        'Debe especificar una cita o un paquete para asociar el pago.'
+                    );
+                }
+            }
+
+            if ($concept === 'appointment' && $this->input('package_id')) {
+                $validator->errors()->add('package_id', 'Un pago de cita no puede asociarse a un bono.');
+            }
+
+            if ($concept === 'package' && $this->input('appointment_id')) {
+                $validator->errors()->add('appointment_id', 'Un pago de bono no puede asociarse a una cita.');
+            }
+
+            if (in_array($concept, ['credit', 'other'], true) && ($this->input('appointment_id') || $this->input('package_id'))) {
+                $validator->errors()->add('concept', 'Este tipo de pago no puede asociarse ni a cita ni a bono.');
             }
         });
     }

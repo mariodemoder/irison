@@ -13,7 +13,7 @@ class Payment extends Model
     use BelongsToClinic;
 
     protected $fillable = [
-        'clinic_id', 'patient_id', 'appointment_id',
+        'clinic_id', 'patient_id', 'professional_id', 'appointment_id',
         'package_id', 'concept', 'amount', 'method', 'status', 'counter', 'notes', 'paid_at'
     ];
 
@@ -47,6 +47,11 @@ class Payment extends Model
     public function patient(): BelongsTo
     {
         return $this->belongsTo(Patient::class);
+    }
+
+    public function professional(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'professional_id');
     }
 
     public function appointment(): BelongsTo

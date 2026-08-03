@@ -33,6 +33,9 @@ Router rápido para cargar solo el skill que necesitas.
 ## QA
 - `qa/index.md` — Testing strategies, coverage rules, delegation criteria
 
+## Actividad
+- `activity.md` — Registro de actividad (módulo DDD), cap de logins (3 por usuario/clínica) y ocultamiento de `login` al SPA
+
 ## Deployment
 - `deployment/index.md` — Production checklist, migrations, queues
 

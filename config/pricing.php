@@ -23,11 +23,11 @@ return [
     'pro' => [
         'name' => 'Pro',
         'price' => 89,
-        'users' => 10,
+        'users' => 5,
         'recommended' => true,
         'features' => [
             'Todo Basic +',
-            'Hasta 10 usuarios',
+            'Hasta 5 usuarios',
             'Rol de recepción',
             'Gestión financiera',
             'Control de gastos',

@@ -9,22 +9,22 @@ class PaymentPolicy extends BasePolicy
 {
     public function viewAny(User $user): bool
     {
-        return (bool) $user->clinic_id && $user->hasFullAccess();
+        return (bool) $user->clinic_id && $user->hasOperationalAccess();
     }
 
     public function view(User $user, $model): bool
     {
-        return $model instanceof Payment && $this->sameClinic($user, $model) && $user->hasFullAccess();
+        return $model instanceof Payment && $this->sameClinic($user, $model) && $user->hasOperationalAccess();
     }
 
     public function create(User $user): bool
     {
-        return (bool) $user->clinic_id && $user->hasFullAccess();
+        return (bool) $user->clinic_id && $user->hasOperationalAccess();
     }
 
     public function update(User $user, $model): bool
     {
-        if (!$user->hasFullAccess()) {
+        if (!$user->hasOperationalAccess()) {
             return false;
         }
 
@@ -45,7 +45,7 @@ class PaymentPolicy extends BasePolicy
 
     public function delete(User $user, $model): bool
     {
-        if (!$user->hasFullAccess()) {
+        if (!$user->hasOperationalAccess()) {
             return false;
         }
 

@@ -13,6 +13,7 @@ class ProfileSeeder extends Seeder
             ['name' => 'Administrador', 'slug' => 'admin'],
             ['name' => 'Gestor',        'slug' => 'manager'],
             ['name' => 'Profesional',   'slug' => 'professional'],
+            ['name' => 'Recepcionista', 'slug' => 'reception'],
         ];
 
         foreach ($profiles as $p) {

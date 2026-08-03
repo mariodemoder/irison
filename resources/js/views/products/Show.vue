@@ -27,14 +27,7 @@
                   </svg>
                 </button>
                 <div v-if="quickActionsOpen" class="quick-menu">
-                  <button
-                    type="button"
-                    class="quick-item danger"
-                    @click.prevent="runDelete"
-                    :disabled="deleting"
-                  >
-                    Eliminar
-                  </button>
+                  <BtnTrash class="quick-item danger" :disabled="deleting" @click.prevent="runDelete">{{ deleting ? 'Eliminando...' : 'Eliminar' }}</BtnTrash>
                 </div>
               </div>
             </div>
@@ -72,6 +65,7 @@ import { useToast } from 'vue-toastification'
 import Swal from 'sweetalert2'
 import MainLayout from '../../layouts/MainLayout.vue'
 import AppLoading from '../../components/AppLoading.vue'
+import BtnTrash from '../../components/BtnTrash.vue'
 import api from '../../services/api'
 import { getLoadErrorMessage } from '../../shared/httpErrors'
 import { goBackWithPriority } from '../../shared/navigationHelpers'

@@ -31,6 +31,7 @@ class UpdateUserRequest extends FormRequest
             'profession_id' => ['nullable', 'integer', 'exists:professions,id'],
             'allow_online_booking' => ['nullable', 'boolean'],
             'allow_manage_agenda' => ['nullable', 'boolean'],
+            'cost_per_hour' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
             'schedules' => ['nullable', 'array'],
             'schedules.*.day_of_week' => ['required', 'integer', 'between:0,6'],
             'schedules.*.enabled' => ['required', 'boolean'],

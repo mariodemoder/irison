@@ -11,6 +11,7 @@ return new class extends Migration
         ['name' => 'Administrador', 'slug' => 'admin'],
         ['name' => 'Gestor',        'slug' => 'manager'],
         ['name' => 'Profesional',   'slug' => 'professional'],
+        ['name' => 'Recepcionista', 'slug' => 'reception'],
     ];
 
     public function up(): void

@@ -81,6 +81,11 @@ class User extends Authenticatable
         return $this->hasOne(BookingProfessional::class);
     }
 
+    public function professionalRate(): HasOne
+    {
+        return $this->hasOne(\Modules\Finance\Infrastructure\Persistence\ProfessionalRateEloquentModel::class, 'user_id');
+    }
+
     public function sendPasswordResetNotification($token): void
     {
         $this->notify(new ResetPasswordNotificationEs($token));
@@ -106,9 +111,19 @@ class User extends Authenticatable
         return $this->profile?->slug === 'professional';
     }
 
+    public function isReceptionist(): bool
+    {
+        return $this->profile?->slug === 'reception';
+    }
+
     public function hasFullAccess(): bool
     {
         return $this->isOwner() || $this->isAdmin() || $this->isManager();
+    }
+
+    public function hasOperationalAccess(): bool
+    {
+        return $this->hasFullAccess() || $this->isReceptionist();
     }
 
     public function isViewer(): bool

@@ -51,6 +51,16 @@ class AppointmentController extends Controller
 
         try {
             $appointment = $this->appointmentService->create($request->validated());
+
+            ActivityLogger::log(
+                tenantId: (int) ($request->user()?->clinic_id ?? 0),
+                userId: (int) ($request->user()?->id ?? 0),
+                event: 'appointment.created',
+                description: 'Cita creada',
+                metadata: ['entity' => 'appointment', 'entity_id' => (int) $appointment->id],
+                ip: $request->ip(),
+            );
+
             return response()->json($appointment, 201);
         } catch (\DomainException $e) {
             $status = $this->resolveDomainExceptionStatus($e->getMessage());
@@ -212,19 +222,41 @@ class AppointmentController extends Controller
         }
 
         try {
-            return $this->appointmentService->update($appointment, $validated);
+            $result = $this->appointmentService->update($appointment, $validated);
+
+            ActivityLogger::log(
+                tenantId: (int) ($user?->clinic_id ?? 0),
+                userId: (int) ($user?->id ?? 0),
+                event: 'appointment.updated',
+                description: 'Cita modificada',
+                metadata: ['entity' => 'appointment', 'entity_id' => (int) $appointment->id],
+                ip: $request->ip(),
+            );
+
+            return $result;
         } catch (\DomainException $e) {
             $status = $this->resolveDomainExceptionStatus($e->getMessage());
             return response()->json(['error' => $e->getMessage()], $status);
         }
     }
 
-    public function cancel(Appointment $appointment)
+    public function cancel(Request $request, Appointment $appointment)
     {
         Gate::authorize('update', $appointment);
 
         try {
-            return $this->appointmentService->cancel($appointment);
+            $result = $this->appointmentService->cancel($appointment);
+
+            ActivityLogger::log(
+                tenantId: (int) ($request->user()?->clinic_id ?? 0),
+                userId: (int) ($request->user()?->id ?? 0),
+                event: 'appointment.canceled',
+                description: 'Cita cancelada',
+                metadata: ['entity' => 'appointment', 'entity_id' => (int) $appointment->id],
+                ip: $request->ip(),
+            );
+
+            return $result;
         } catch (\DomainException $e) {
             return response()->json(['error' => $e->getMessage()], 422);
         }
@@ -252,11 +284,21 @@ class AppointmentController extends Controller
         return response()->json(['data' => $users]);
     }
 
-    public function destroy(Appointment $appointment)
+    public function destroy(Request $request, Appointment $appointment)
     {
         Gate::authorize('delete', $appointment);
 
         $this->appointmentService->delete($appointment);
+
+        ActivityLogger::log(
+            tenantId: (int) ($request->user()?->clinic_id ?? 0),
+            userId: (int) ($request->user()?->id ?? 0),
+            event: 'appointment.deleted',
+            description: 'Cita eliminada',
+            metadata: ['entity' => 'appointment', 'entity_id' => (int) $appointment->id],
+            ip: $request->ip(),
+        );
+
         return response()->noContent();
     }
 

@@ -5,7 +5,7 @@
         <h1>Plantillas de Consentimientos</h1>
         <div class="header-actions">
           <button class="help-btn" @click="showHelp = true" title="Ayuda">?</button>
-          <button v-if="!isProfessional" class="primary" @click="goCreate">Nueva plantilla</button>
+          <button v-if="isFullAccess" class="primary" @click="goCreate">Nueva plantilla</button>
         </div>
       </div>
 
@@ -37,8 +37,8 @@
                 <span class="status-badge" :class="t.status">{{ t.status }}</span>
               </td>
               <td class="actions-cell">
-                <button class="action-btn" @click="goEdit(t.id)">Editar</button>
-                <button class="action-btn danger" @click="remove(t)">Eliminar</button>
+                <button v-if="isFullAccess" class="action-btn" @click="goEdit(t.id)">Editar</button>
+                <BtnTrash v-if="isFullAccess" @click="remove(t)" title="Eliminar plantilla" />
               </td>
             </tr>
           </tbody>
@@ -52,9 +52,11 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
+import Swal from 'sweetalert2'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
-import { isProfessional } from '../../shared/meCache'
+import BtnTrash from '../../components/BtnTrash.vue'
+import { isFullAccess } from '../../shared/meCache'
 import HelpModal from '../../components/consents/HelpModal.vue'
 
 const router = useRouter()
@@ -86,7 +88,26 @@ function goEdit(id) {
 }
 
 async function remove(t) {
-  if (!confirm(`¿Eliminar "${t.title}"?`)) return
+  const { isConfirmed } = await Swal.fire({
+    title: 'Eliminar plantilla',
+    text: `¿Eliminar "${t.title}"? Esta acción no se puede deshacer.`,
+    icon: 'warning',
+    iconColor: '#f97316',
+    width: '420px',
+    buttonsStyling: false,
+    customClass: {
+      popup: 'swal-popup-warning-card',
+      confirmButton: 'app-btn app-btn-warning',
+      cancelButton: 'app-btn app-btn-muted',
+      actions: 'swal-actions',
+    },
+    showCancelButton: true,
+    confirmButtonText: 'Sí, eliminar',
+    cancelButtonText: 'Cancelar',
+  })
+
+  if (!isConfirmed) return
+
   try {
     await api.delete(`/consent-templates/${t.id}`)
     templates.value = templates.value.filter(x => x.id !== t.id)

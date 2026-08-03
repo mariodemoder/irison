@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Clinic;
 use App\Models\User;
 use App\Support\ActivityLogger;
@@ -94,6 +95,8 @@ class AuthController extends Controller
             ip: $request->ip(),
         );
 
+        $this->pruneLoginLogs((int) $user->clinic_id, (int) $user->id);
+
         Log::info('auth.login.success', [
             'event' => 'auth.login',
             'result' => 'success',
@@ -150,5 +153,28 @@ class AuthController extends Controller
         }
 
         return response()->json(['message' => 'Logged out'], 200);
+    }
+
+    private function pruneLoginLogs(int $tenantId, int $userId): void
+    {
+        try {
+            $recentIds = ActivityLog::query()
+                ->where('tenant_id', $tenantId)
+                ->where('user_id', $userId)
+                ->where('event', 'login')
+                ->orderByDesc('created_at')
+                ->orderByDesc('id')
+                ->take(3)
+                ->pluck('id');
+
+            ActivityLog::query()
+                ->where('tenant_id', $tenantId)
+                ->where('user_id', $userId)
+                ->where('event', 'login')
+                ->whereNotIn('id', $recentIds)
+                ->delete();
+        } catch (\Throwable) {
+            // La poda nunca debe romper el flujo de login.
+        }
     }
 }

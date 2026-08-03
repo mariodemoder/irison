@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Payments\StoreBillingPaymentRequest;
 use App\Models\Payment;
 use App\Services\Payments\PaymentService;
+use App\Support\ActivityLogger;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -76,6 +77,20 @@ class PaymentController extends Controller
             $clinicId = (int) Auth::user()->clinic_id;
             $result = $this->paymentService->store($request->validated(), $clinicId);
 
+            ActivityLogger::log(
+                tenantId: $clinicId,
+                userId: (int) Auth::user()->id,
+                event: 'payment.created',
+                description: 'Pago registrado',
+                metadata: [
+                    'entity' => 'payment',
+                    'entity_id' => (int) ($result['payload']['id'] ?? 0),
+                    'concept' => (string) ($result['payload']['concept'] ?? ''),
+                    'amount' => (float) ($result['payload']['amount'] ?? 0),
+                ],
+                ip: $request->ip(),
+            );
+
             return response()->json($result['payload'], $result['status']);
         } catch (DomainException $exception) {
             return response()->json(['message' => $exception->getMessage()], 422);
@@ -96,6 +111,20 @@ class PaymentController extends Controller
         try {
             $clinicId = (int) Auth::user()->clinic_id;
             $result = $this->paymentService->update($payment, $request->all(), $clinicId);
+
+            ActivityLogger::log(
+                tenantId: $clinicId,
+                userId: (int) Auth::user()->id,
+                event: 'payment.updated',
+                description: 'Pago modificado',
+                metadata: [
+                    'entity' => 'payment',
+                    'entity_id' => (int) $payment->id,
+                    'concept' => (string) ($result['payload']['concept'] ?? ''),
+                    'amount' => (float) ($result['payload']['amount'] ?? 0),
+                ],
+                ip: $request->ip(),
+            );
 
             return response()->json($result['payload'], $result['status']);
         } catch (DomainException $exception) {

@@ -42,7 +42,9 @@
         "psr-4": {
             "Tests\\": "tests/",
             "Modules\\Booking\\Tests\\": "modules/Booking/tests/",
-        "Modules\\Notifications\\Tests\\": "modules/Notifications/Tests/"
+            "Modules\\Notifications\\Tests\\": "modules/Notifications/Tests/",
+            "Modules\\Finance\\Tests\\": "modules/Finance/Tests/",
+            "Modules\\Activity\\Tests\\": "modules/Activity/Tests/"
         }
     },
     "scripts": {

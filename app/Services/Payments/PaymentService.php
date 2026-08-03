@@ -131,7 +131,7 @@ class PaymentService
         $perPage = max(1, min($perPage, 100));
         $q = trim((string) ($filters['q'] ?? ''));
 
-        $query = Payment::with(['patient']);
+        $query = Payment::with(['patient', 'professional']);
 
         if (!empty($filters['patient_id'])) {
             $query->where('patient_id', (int) $filters['patient_id']);
@@ -149,7 +149,7 @@ class PaymentService
             $query->where('method', $filters['method']);
         }
 
-        if (!empty($filters['concept']) && in_array($filters['concept'], ['appointment', 'package', 'credit'], true)) {
+        if (!empty($filters['concept']) && in_array($filters['concept'], ['appointment', 'package', 'credit', 'other'], true)) {
             $query->where('concept', $filters['concept']);
         }
 
@@ -210,6 +210,7 @@ class PaymentService
         $payment = Payment::create([
             'clinic_id' => $clinicId,
             'patient_id' => (int) $data['patient_id'],
+            'professional_id' => $data['professional_id'] ?? null,
             'concept' => $data['concept'],
             'appointment_id' => $appointment?->id,
             'package_id' => $package?->id,
@@ -277,6 +278,7 @@ class PaymentService
 
         $payment->update([
             'patient_id' => (int) $data['patient_id'],
+            'professional_id' => $data['professional_id'] ?? null,
             'concept' => $data['concept'],
             'appointment_id' => $appointment?->id,
             'package_id' => $package?->id,
@@ -308,7 +310,8 @@ class PaymentService
     {
         $validator = Validator::make($input, [
             'patient_id' => 'required|integer|exists:patients,id',
-            'concept' => 'required|in:appointment,package,credit',
+            'concept' => 'required|in:appointment,package,credit,other',
+            'professional_id' => 'nullable|integer|exists:users,id',
             'appointment_id' => 'nullable|integer|exists:appointments,id',
             'package_id' => 'nullable|integer|exists:bonuses,id',
             'amount' => 'required|numeric|min:0',
@@ -345,6 +348,10 @@ class PaymentService
 
             if ($concept === 'credit' && ($hasAppointment || $hasPackage)) {
                 $validator->errors()->add('concept', 'Un adelanto no puede asociarse ni a cita ni a bono.');
+            }
+
+            if ($concept === 'other' && ($hasAppointment || $hasPackage)) {
+                $validator->errors()->add('concept', 'Un pago de otro concepto no puede asociarse ni a cita ni a bono.');
             }
         });
 
@@ -442,6 +449,11 @@ class PaymentService
             'concept' => $payment->concept,
             'appointment_id' => $payment->appointment_id,
             'package_id' => $payment->package_id,
+            'professional_id' => $payment->professional_id,
+            'professional' => $payment->professional ? [
+                'id' => $payment->professional->id,
+                'name' => $payment->professional->name,
+            ] : null,
             'amount' => (float) $payment->amount,
             'credit_used_amount' => $creditUsedAmount,
             'credit_pending_amount' => $creditPendingAmount,

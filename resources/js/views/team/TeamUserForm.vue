@@ -47,10 +47,11 @@
                 <label class="label">Perfil</label>
                 <select v-model.number="form.profile_id" class="input" :disabled="isOwner">
                   <option :value="null">Seleccionar perfil...</option>
-                  <option v-for="p in profiles" :key="p.id" :value="p.id">{{ p.name }}</option>
+                  <option v-for="p in visibleProfiles" :key="p.id" :value="p.id">{{ p.name }}</option>
                 </select>
                 <div v-if="errors.profile_id" class="field-error">{{ errors.profile_id[0] }}</div>
                 <div v-if="isOwner" class="field-help">El perfil del propietario no se puede cambiar.</div>
+                <div v-if="!canAssignReception" class="field-help">El perfil de Recepcionista está disponible en los planes PRO y Enterprise.</div>
               </div>
               <div class="field">
                 <label class="label">Profesión</label>
@@ -60,6 +61,12 @@
                   <option value="__create">+ Crear profesión...</option>
                 </select>
                 <div v-if="errors.profession_id" class="field-error">{{ errors.profession_id[0] }}</div>
+              </div>
+              <div class="field">
+                <label class="label">Coste por hora (€)</label>
+                <input v-model.number="form.cost_per_hour" type="number" min="0" step="0.5" class="input" :disabled="isOwner" />
+                <div v-if="errors.cost_per_hour" class="field-error">{{ errors.cost_per_hour[0] }}</div>
+                <div v-if="!isOwner" class="field-help">Se usa para calcular el coste laboral y el margen por cita en Finanzas.</div>
               </div>
             </div>
           </div>
@@ -172,13 +179,13 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import Swal from 'sweetalert2'
 import MainLayout from '../../layouts/MainLayout.vue'
 import api from '../../services/api'
-import { isBasic } from '../../shared/meCache'
+import { isBasic, isPro, isEnterprise } from '../../shared/meCache'
 import { openCreateProfessionPopup } from '../../shared/formHelpers'
 
 const route = useRoute()
@@ -192,6 +199,13 @@ const errors = reactive({})
 
 const profiles = ref([])
 const professions = ref([])
+
+const canAssignReception = computed(() => isPro.value || isEnterprise.value)
+
+const visibleProfiles = computed(() => {
+  if (canAssignReception.value) return profiles.value
+  return profiles.value.filter(p => p.slug !== 'reception')
+})
 
 const dayLabels = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
@@ -213,6 +227,7 @@ const form = reactive({
   password: '',
   profile_id: null,
   profession_id: null,
+  cost_per_hour: null,
   allow_online_booking: false,
   allow_manage_agenda: false,
 })
@@ -268,6 +283,7 @@ async function loadForEdit(id) {
     form.profile_id = data.profile?.id ?? null
     form.profession_id = data.profession?.id ?? null
     previousProfessionId.value = form.profession_id
+    form.cost_per_hour = Number(data.cost_per_hour ?? 0)
     form.allow_online_booking = !!data.allow_online_booking
     form.allow_manage_agenda = !!data.allow_manage_agenda
     isOwner.value = data.role === 'owner'
@@ -340,6 +356,7 @@ function normalizePayload() {
     password: form.password || undefined,
     profile_id: form.profile_id || undefined,
     profession_id: form.profession_id || null,
+    cost_per_hour: form.cost_per_hour ?? null,
     allow_online_booking: !!form.allow_online_booking,
     allow_manage_agenda: !!form.allow_manage_agenda,
     schedules: schedules.value.map(s => ({

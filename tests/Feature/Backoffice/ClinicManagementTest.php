@@ -212,7 +212,7 @@ class ClinicManagementTest extends TestCase
 
         $clinic->refresh();
         $this->assertSame('pro', (string) $clinic->plan);
-        $this->assertSame(10, $clinic->max_users);
+        $this->assertSame(5, $clinic->max_users);
         $this->assertSame('active', $clinic->subscription_status);
     }
 

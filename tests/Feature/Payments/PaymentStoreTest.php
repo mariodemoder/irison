@@ -84,4 +84,66 @@ class PaymentStoreTest extends TestCase
             'status' => 'completed',
         ]);
     }
+
+    public function test_store_other_concept_payment_with_professional(): void
+    {
+        $clinic = Clinic::create(['name' => 'Clinica Other']);
+        app()->instance('activeClinic', $clinic);
+
+        $owner = User::create([
+            'name' => 'Owner',
+            'email' => 'other.owner@example.com',
+            'email_verified_at' => now(),
+            'password' => Hash::make('password'),
+            'clinic_id' => $clinic->id,
+            'role' => 'owner',
+        ]);
+
+        $professional = User::create([
+            'name' => 'Dra. Ana',
+            'email' => 'other.prof@example.com',
+            'email_verified_at' => now(),
+            'password' => Hash::make('password'),
+            'clinic_id' => $clinic->id,
+            'role' => 'user',
+        ]);
+
+        $patient = Patient::create([
+            'clinic_id' => $clinic->id,
+            'first_name' => 'Paciente',
+            'last_name' => 'Other',
+            'counter' => 'PC-000002',
+        ]);
+
+        $this->actingAs($owner, 'sanctum');
+        $this->withoutMiddleware(EnsureClinic::class);
+        $this->withoutMiddleware(EnsureClinicIsActive::class);
+        $this->withoutMiddleware(CheckSubscriptionAccess::class);
+
+        $payload = [
+            'patient_id' => $patient->id,
+            'concept' => 'other',
+            'professional_id' => $professional->id,
+            'amount' => 250,
+            'method' => 'transfer',
+            'status' => 'completed',
+            'notes' => 'Ingreso manual',
+            'paid_at' => now()->format('Y-m-d\TH:i'),
+        ];
+
+        $response = $this->postJson('/api/payments', $payload);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('concept', 'other')
+            ->assertJsonPath('professional_id', $professional->id)
+            ->assertJsonPath('amount', 250);
+
+        $this->assertDatabaseHas('payments', [
+            'clinic_id' => $clinic->id,
+            'patient_id' => $patient->id,
+            'concept' => 'other',
+            'professional_id' => $professional->id,
+            'status' => 'completed',
+        ]);
+    }
 }
