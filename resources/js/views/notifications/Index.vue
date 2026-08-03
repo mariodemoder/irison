@@ -7,104 +7,112 @@
             <h1>Notificaciones</h1>
             <div class="form-sub">Historial de emails enviados y fallidos</div>
           </div>
+          <div class="header-actions">
+            <button class="help-btn" @click="showHelp = true" title="Ayuda">?</button>
+          </div>
         </div>
 
         <div class="filters">
-        <div class="search-wrapper">
-          <input v-model="filters.q" placeholder="Buscar por paciente o email" class="search-input" @input="debouncedReload" />
-        </div>
-        <select v-model="filters.status" @change="load(1)">
-          <option value="">Estado: todos</option>
-          <option value="sent">Enviado</option>
-          <option value="failed">Fallido</option>
-        </select>
-        <select v-model="filters.reminder_type" @change="load(1)">
-          <option value="">Tipo: todos</option>
-          <option value="24h">24h antes</option>
-          <option value="2h">2h antes</option>
-        </select>
-        <input v-model="filters.from_date" type="date" class="search-input" @change="load(1)" />
-        <input v-model="filters.to_date" type="date" class="search-input" @change="load(1)" />
-      </div>
-
-      <div class="summary">
-        <div><strong>{{ summary.count }}</strong> notificación(es)</div>
-        <div>Enviadas: <strong>{{ summary.sent_count }}</strong> · Fallidas: <strong>{{ summary.failed_count }}</strong></div>
-      </div>
-
-      <AppLoading v-if="loading" message="Cargando notificaciones..." />
-
-      <template v-else>
-        <div v-if="reminders.length > 0" class="entity-table-wrap">
-          <table class="entity-table">
-            <thead>
-              <tr>
-                <th class="col-min">Fecha</th>
-                <th class="col-max">Paciente</th>
-                <th class="col-min">Tipo</th>
-                <th class="col-mid">Email</th>
-                <th class="col-min">Estado</th>
-                <th class="col-max">Error</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="item in reminders"
-                :key="item.id"
-                class="entity-table-row"
-                role="button"
-                tabindex="0"
-                @click="goToShow(item.id)"
-                @keydown.enter.prevent="goToShow(item.id)"
-              >
-                <td class="col-min">{{ formatDate(item.sent_at || item.created_at) }}</td>
-                <td class="col-max">
-                  <div class="row-name">
-                    <router-link v-if="item.patient?.id" :to="`/patients/${item.patient.id}`" class="patient-link" @click.stop>
-                      {{ patientLabel(item) }}
-                    </router-link>
-                    <span v-else>{{ patientLabel(item) }}</span>
-                  </div>
-                </td>
-                <td class="col-min"><span class="type-chip">{{ typeLabel(item.reminder_type) }}</span></td>
-                <td class="col-mid">{{ item.recipient_email || '—' }}</td>
-                <td class="col-min"><span class="status" :class="item.status">{{ statusLabel(item.status) }}</span></td>
-                <td class="col-max">{{ item.error_message || '—' }}</td>
-                <td class="row-action">
-                  <button
-                    type="button"
-                    class="action-btn details"
-                    @click.stop="goToShow(item.id)"
-                  >
-                    Ver detalle
-                  </button>
-                  <button
-                    v-if="item.status === 'failed'"
-                    type="button"
-                    class="action-btn resend"
-                    :disabled="resendingId === item.id"
-                    @click="resend(item)"
-                  >
-                    {{ resendingId === item.id ? 'Reenviando...' : 'Reenviar' }}
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <EmptyIndexState v-else-if="!hasActiveFilters" />
-        <div v-else class="empty">No hay resultados para los filtros aplicados.</div>
-
-        <div v-if="meta" class="pagination">
-          <div class="pagination-info">Página {{ meta.current_page }} / {{ meta.last_page }} — {{ meta.total }} notificaciones</div>
-          <div class="pagination-actions">
-            <button :disabled="meta.current_page <= 1" @click="load(meta.current_page - 1)" class="icon-btn">‹</button>
-            <button :disabled="meta.current_page >= meta.last_page" @click="load(meta.current_page + 1)" class="icon-btn">›</button>
+          <div class="search-wrapper">
+            <input v-model="filters.q" placeholder="Buscar por email, asunto o paciente" class="search-input" @input="debouncedReload" />
           </div>
+          <select v-model="filters.status" @change="load(1)">
+            <option value="">Estado: todos</option>
+            <option value="sent">Enviado</option>
+            <option value="failed">Fallido</option>
+          </select>
+          <select v-model="filters.category" @change="load(1)">
+            <option value="">Categoría: todas</option>
+            <option v-for="option in categoryOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+          </select>
+          <input v-model="filters.from_date" type="date" class="search-input" @change="load(1)" />
+          <input v-model="filters.to_date" type="date" class="search-input" @change="load(1)" />
         </div>
-      </template>
+
+        <div class="summary">
+          <div><strong>{{ summary.count }}</strong> notificación(es)</div>
+          <div>Enviadas: <strong>{{ summary.sent_count }}</strong> · Fallidas: <strong>{{ summary.failed_count }}</strong></div>
+        </div>
+
+        <AppLoading v-if="loading" message="Cargando notificaciones..." />
+
+        <template v-else>
+          <div v-if="logs.length > 0" class="entity-table-wrap">
+            <table class="entity-table">
+              <thead>
+                <tr>
+                  <th class="col-min">Fecha</th>
+                  <th class="col-mid">Destinatario</th>
+                  <th class="col-max">Asunto</th>
+                  <th class="col-mid">Paciente</th>
+                  <th class="col-min">Estado</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="item in logs"
+                  :key="item.id"
+                  class="entity-table-row"
+                  role="button"
+                  tabindex="0"
+                  @click="goToShow(item.id)"
+                  @keydown.enter.prevent="goToShow(item.id)"
+                >
+                  <td class="col-min">{{ formatDate(item.sent_at || item.created_at) }}</td>
+                  <td class="col-mid">
+                    <div class="to-email">{{ item.to_email || '—' }}</div>
+                    <div v-if="item.from_email" class="from-email">de {{ item.from_email }}</div>
+                  </td>
+                  <td class="col-max">
+                    <div class="subject">{{ item.subject || '—' }}</div>
+                    <span class="type-chip">{{ item.category_label || item.category }}</span>
+                  </td>
+                  <td class="col-mid">
+                    <div class="row-name">
+                      <router-link v-if="item.patient?.id" :to="`/patients/${item.patient.id}`" class="patient-link" @click.stop>
+                        {{ patientLabel(item) }}
+                      </router-link>
+                      <span v-else>{{ patientLabel(item) }}</span>
+                    </div>
+                  </td>
+                  <td class="col-min"><span class="status" :class="item.status">{{ statusLabel(item.status) }}</span></td>
+                  <td class="row-action">
+                    <button
+                      type="button"
+                      class="action-btn details"
+                      @click.stop="goToShow(item.id)"
+                    >
+                      Ver detalle
+                    </button>
+                    <button
+                      v-if="canResend(item)"
+                      type="button"
+                      class="action-btn resend"
+                      :disabled="resendingId === item.id"
+                      @click="resend(item)"
+                    >
+                      {{ resendingId === item.id ? 'Reenviando...' : 'Reenviar' }}
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <EmptyIndexState v-else-if="!hasActiveFilters" />
+          <div v-else class="empty">No hay resultados para los filtros aplicados.</div>
+
+          <div v-if="meta" class="pagination">
+            <div class="pagination-info">Página {{ meta.current_page }} / {{ meta.last_page }} — {{ meta.total }} notificaciones</div>
+            <div class="pagination-actions">
+              <button :disabled="meta.current_page <= 1" @click="load(meta.current_page - 1)" class="icon-btn">‹</button>
+              <button :disabled="meta.current_page >= meta.last_page" @click="load(meta.current_page + 1)" class="icon-btn">›</button>
+            </div>
+          </div>
+        </template>
       </div>
+
+      <HelpModal v-if="showHelp" @close="showHelp = false" />
     </div>
   </MainLayout>
 </template>
@@ -116,22 +124,49 @@ import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
 import AppLoading from '../../components/AppLoading.vue'
 import EmptyIndexState from '../../components/EmptyIndexState.vue'
+import HelpModal from '../../components/notifications/HelpModal.vue'
 import { useToast } from 'vue-toastification'
 import { getLoadErrorMessage } from '../../shared/httpErrors'
 
 const toast = useToast()
 const router = useRouter()
 const loading = ref(false)
-const reminders = ref([])
+const logs = ref([])
 const meta = ref(null)
 const summary = ref({ count: 0, sent_count: 0, failed_count: 0 })
 const resendingId = ref(null)
+const showHelp = ref(false)
 let searchTimer = null
+
+const REMINDER_CATEGORIES = ['reminder_24h', 'reminder_2h']
+
+const categoryOptions = [
+  { value: 'reminder_24h', label: 'Recordatorio 24h' },
+  { value: 'reminder_2h', label: 'Recordatorio 2h' },
+  { value: 'appointment_created', label: 'Nueva cita' },
+  { value: 'appointment_updated', label: 'Cita modificada' },
+  { value: 'appointment_cancelled', label: 'Cita cancelada' },
+  { value: 'booking_confirmation', label: 'Reserva online' },
+  { value: 'new_online_booking', label: 'Nueva reserva online' },
+  { value: 'consent_sign_request', label: 'Firma de consentimiento' },
+  { value: 'subscription_activated', label: 'Suscripción activada' },
+  { value: 'checkout_link', label: 'Enlace de pago' },
+  { value: 'payment_completed', label: 'Pago completado' },
+  { value: 'subscription_upgraded', label: 'Suscripción actualizada' },
+  { value: 'invoice_payment_failed', label: 'Pago de factura fallido' },
+  { value: 'invoice_resend', label: 'Reenvío de factura' },
+  { value: 'subscription_canceled_internal', label: 'Suscripción cancelada (interno)' },
+  { value: 'contact', label: 'Contacto' },
+  { value: 'account_activation', label: 'Activación de cuenta' },
+  { value: 'trial_lifecycle', label: 'Hito de trial' },
+  { value: 'password_reset', label: 'Restablecer contraseña' },
+  { value: 'generic', label: 'Genérico' },
+]
 
 const filters = ref({
   q: '',
   status: '',
-  reminder_type: '',
+  category: '',
   from_date: '',
   to_date: '',
 })
@@ -139,16 +174,10 @@ const filters = ref({
 const hasActiveFilters = computed(() => {
   return Boolean(String(filters.value.q || '').trim())
     || Boolean(filters.value.status)
-    || Boolean(filters.value.reminder_type)
+    || Boolean(filters.value.category)
     || Boolean(filters.value.from_date)
     || Boolean(filters.value.to_date)
 })
-
-function typeLabel(type) {
-  if (type === '24h') return '24h antes'
-  if (type === '2h') return '2h antes'
-  return type || '—'
-}
 
 function statusLabel(status) {
   if (status === 'sent') return 'Enviado'
@@ -175,26 +204,34 @@ function patientLabel(item) {
   return 'Paciente sin datos'
 }
 
+function isReminderCategory(category) {
+  return REMINDER_CATEGORIES.includes(category)
+}
+
+function canResend(item) {
+  return item?.status === 'failed' && isReminderCategory(item?.category)
+}
+
 async function load(page = 1) {
   loading.value = true
   try {
-    const res = await api.get('/reminders', {
+    const res = await api.get('/notifications', {
       params: {
         page,
         per_page: 15,
         q: filters.value.q || undefined,
         status: filters.value.status || undefined,
-        reminder_type: filters.value.reminder_type || undefined,
+        category: filters.value.category || undefined,
         from_date: filters.value.from_date || undefined,
         to_date: filters.value.to_date || undefined,
       },
     })
 
-    reminders.value = Array.isArray(res.data?.data) ? res.data.data : []
+    logs.value = Array.isArray(res.data?.data) ? res.data.data : []
     meta.value = res.data?.meta ?? null
     summary.value = res.data?.summary ?? { count: 0, sent_count: 0, failed_count: 0 }
   } catch (e) {
-    reminders.value = []
+    logs.value = []
     meta.value = null
     summary.value = { count: 0, sent_count: 0, failed_count: 0 }
     toast.error(getLoadErrorMessage(e, 'notificaciones'))
@@ -218,7 +255,7 @@ async function resend(item) {
 
   resendingId.value = item.id
   try {
-    const res = await api.post(`/reminders/${item.id}/resend`)
+    const res = await api.post(`/notifications/${item.id}/resend`)
     toast.success(res.data?.message || 'Recordatorio reenviado')
     await load(meta.value?.current_page || 1)
   } catch (e) {
@@ -236,7 +273,11 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.filters { display: grid; grid-template-columns: 1.8fr 1fr 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px }
+.header-actions { display: flex; gap: 8px; align-items: center }
+.help-btn { width: 32px; height: 32px; border-radius: 50%; border: 1px solid #d1d5db; background: #fff; cursor: pointer; font-size: 16px; font-weight: 700; color: #6b7280; display: flex; align-items: center; justify-content: center; line-height: 1 }
+.help-btn:hover { background: #f3f4f6; color: #374151 }
+
+.filters { display: grid; grid-template-columns: 1.8fr 1fr 1.4fr 1fr 1fr; gap: 8px; margin-bottom: 16px }
 .filters select, .search-input { padding: 8px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 13px; width: 100% }
 
 .summary { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; color: #374151; font-size: 14px }
@@ -244,6 +285,10 @@ onMounted(async () => {
 .patient-link { color: var(--secondary); text-decoration: none; font-weight: 600 }
 .patient-link:hover { text-decoration: underline }
 
+.to-email { font-weight: 600; color: #111827 }
+.from-email { color: #9ca3af; font-size: 12px; margin-top: 2px; word-break: break-word }
+
+.subject { font-size: 13px; color: #374151; word-break: break-word; margin-bottom: 4px }
 .type-chip { display: inline-flex; align-items: center; padding: 4px 8px; border-radius: 9999px; background: #eff6ff; color: #1d4ed8; font-size: 12px; font-weight: 600 }
 
 .status { display: inline-flex; align-items: center; padding: 5px 8px; border-radius: 9999px; font-weight: 700; font-size: 11px }

@@ -36,7 +36,7 @@ class CheckoutLinkGeneratedNotification extends Notification implements ShouldQu
 
     public function toMail($notifiable): MailMessage
     {
-        return (new MailMessage)
+        $mail = (new MailMessage)
             ->subject('Enlace de pago para actualización de plan')
             ->view('emails.upgrade-checkout-link', [
                 'checkoutUrl' => $this->request->checkout_url,
@@ -47,5 +47,9 @@ class CheckoutLinkGeneratedNotification extends Notification implements ShouldQu
                 'clinicEmail' => $this->request->clinic->email ?? '',
                 'sessionId' => $this->request->stripe_checkout_session_id ?? '',
             ]);
+
+        $mail->viewData = array_merge($mail->viewData, ['request' => $this->request]);
+
+        return $mail;
     }
 }

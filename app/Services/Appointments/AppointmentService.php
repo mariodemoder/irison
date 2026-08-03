@@ -178,10 +178,16 @@ class AppointmentService
 
             // switching from bonus -> single: restore usage
             if ($oldPaymentType === 'bonus' && $newPaymentType === 'single') {
-                $appointment->update(array_merge($data, ['payment_type' => 'single', 'bonus_id' => null]));
+                $appointment->fill(array_merge($data, ['payment_type' => 'single', 'bonus_id' => null]));
+                $changed = $appointment->getDirty();
+                $appointment->save();
                 $this->bonusOrchestrator->restoreAndDetachBonus($appointment);
                 $this->syncPendingCreditPaymentUsage($appointment, $data);
                 $this->appointmentPendingPaymentService->syncPaymentStatus($appointment);
+
+                if (!empty($changed)) {
+                    AppointmentUpdated::dispatch($appointment, $changed);
+                }
 
                 return $appointment->load(['patient', 'bonus']);
             }
@@ -195,13 +201,20 @@ class AppointmentService
                 // Save non-bonus field changes (professional, start/end, status, notes, etc.)
                 $bonusKeys = ['use_bonus_id', 'bonus_id', 'bonus_notes', 'payment_type', 'bonus_name'];
                 $nonBonusData = array_diff_key($data, array_flip($bonusKeys));
+                $changed = [];
                 if (!empty($nonBonusData)) {
-                    $appointment->fill($nonBonusData)->save();
+                    $appointment->fill($nonBonusData);
+                    $changed = $appointment->getDirty();
+                    $appointment->save();
                 }
 
                 // Bonus and pending-credit-payment cannot coexist
                 $this->restorePendingCreditPaymentUsage($appointment);
                 $this->appointmentPendingPaymentService->syncPaymentStatus($appointment);
+
+                if (!empty($changed)) {
+                    AppointmentUpdated::dispatch($appointment, $changed);
+                }
 
                 return ['appointment' => $appointment->load(['patient', 'bonus']), 'bonus_usage' => $usage];
             }
@@ -212,8 +225,9 @@ class AppointmentService
                 $data['bonus_id'] = $data['use_bonus_id'];
             }
 
+            $appointment->fill($data);
             $changed = $appointment->getDirty();
-            $appointment->update($data);
+            $appointment->save();
 
             $this->applyCreditUsage($appointment, $data, 'usage_on_update', true);
             $this->syncPendingCreditPaymentUsage($appointment, $data);

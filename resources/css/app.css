@@ -272,6 +272,32 @@ body { background: var(--bg-app); color: var(--text-main); }
 .btn.btn-sm:hover { background: #eff6ff }
 .btn.btn-sm.small { padding:6px 10px; font-size:13px }
 
+/* Generic primary button — outline blue pill, shared by all forms across the app.
+   Single source of truth; previously duplicated in every form component. */
+.primary {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 10px 24px;
+	font-size: 14px;
+	border-radius: 9999px;
+	border: 2px solid #3b82f6;
+	color: #3b82f6;
+	background: #ffffff;
+	font-weight: 600;
+	line-height: 1.1;
+	white-space: nowrap;
+	cursor: pointer;
+}
+.primary:hover { background: #eff6ff }
+
+/* Save/submit buttons inside form action rows — double width.
+   Reusable: any form with <div class="actions">…<button class="primary"> gets it automatically. */
+.actions .primary,
+.qaf-actions .primary {
+	min-width: 200px;
+}
+
 /*
  * CRUD button patterns — reutilizables para listados internos
  *

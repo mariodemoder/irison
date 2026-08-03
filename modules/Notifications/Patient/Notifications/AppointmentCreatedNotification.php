@@ -28,7 +28,7 @@ class AppointmentCreatedNotification extends Notification implements ShouldQueue
         $clinic = $this->appointment->clinic;
         $patient = $this->appointment->patient;
 
-        return (new MailMessage)
+        $mail = (new MailMessage)
             ->subject("Nueva cita - {$clinic->name}")
             ->greeting("Hola {$patient->first_name},")
             ->line("Se ha creado una nueva cita en {$clinic->name}.")
@@ -36,5 +36,9 @@ class AppointmentCreatedNotification extends Notification implements ShouldQueue
             ->line("Hora: {$this->appointment->start_time->format('H:i')}")
             ->line("Por favor, confirma tu asistencia o contacta con la clínica si necesitas cambiar la cita.")
             ->salutation("Saludos, {$clinic->name}");
+
+        $mail->viewData = ['appointment' => $this->appointment];
+
+        return $mail;
     }
 }

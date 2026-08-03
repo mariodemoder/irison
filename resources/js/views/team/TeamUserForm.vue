@@ -464,12 +464,6 @@ select.input { cursor: pointer; }
 .chip-empty { color: #9ca3af; font-size: 13px; margin-top: 8px; }
 
 .actions { display: flex; gap: 12px; align-items: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e7eb; }
-.primary {
-  padding: 8px 16px; font-size: 14px; border-radius: 9999px;
-  border: 2px solid #3b82f6; color: #3b82f6; background: #fff; font-weight: 600; cursor: pointer;
-}
-.primary:hover { background: #eff6ff; }
-.primary:disabled { opacity: 0.5; cursor: not-allowed; }
 .muted {
   padding: 8px 16px; font-size: 14px; border-radius: 9999px;
   border: 1px solid #d1d5db; color: #374151; background: #fff; font-weight: 600; cursor: pointer;

@@ -417,7 +417,6 @@ onBeforeUnmount(() => {
 .actions { display:flex; gap:12px; margin-top:16px }
 .action-row { display:flex; justify-content:space-between; align-items:center }
 .left-actions { display:flex; gap:12px; align-items:center }
-.primary { padding: 8px 16px; font-size: 14px; border-radius: 9999px; border: 2px solid #3b82f6; color: #3b82f6; background: #ffffff; font-weight: 600 }
 .quick-trigger { padding:11px 12px; display:inline-flex; align-items:center; justify-content:center }
 .quick-trigger-icon { width:18px; height:18px; color:#4b5563 }
 .quick-actions { position:relative }

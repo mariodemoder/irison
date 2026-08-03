@@ -31,7 +31,11 @@ class ResendReminderCommand
 
         if ($result['sent'] && $appointment->patient?->email) {
             Notification::route('mail', $appointment->patient->email)
-                ->notify(new AppointmentReminderNotification($appointment, ReminderType::from((string) $reminder->reminder_type)));
+                ->notify(new AppointmentReminderNotification(
+                    $appointment,
+                    ReminderType::from((string) $reminder->reminder_type),
+                    $result['reminder']->id,
+                ));
         }
 
         return ReminderEloquentModel::findOrFail($reminder->id);

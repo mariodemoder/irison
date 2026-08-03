@@ -23,5 +23,6 @@ class NotificationsServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__ . '/../../Routes/api.php');
         $this->loadMigrationsFrom(__DIR__ . '/../../Database/Migrations');
         $this->mergeConfigFrom(__DIR__ . '/../../Config/notifications.php', 'notifications');
+        $this->mergeConfigFrom(__DIR__ . '/../../Config/email_logs.php', 'notifications.email_logs');
     }
 }

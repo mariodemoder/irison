@@ -198,10 +198,4 @@ onMounted(() => {
 .input { padding:10px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:14px; width:100%; box-sizing:border-box }
 .input:focus { outline:none; border-color:#3b82f6 }
 .field-error { color:#b91c1c; font-size:13px; margin-top:4px }
-.primary {
-  padding:10px 24px; font-size:14px; border-radius:9999px;
-  border:2px solid #3b82f6; color:#3b82f6; background:#fff; font-weight:700; cursor:pointer
-}
-.primary:hover:not(:disabled) { background:#eff6ff }
-.primary:disabled { opacity:.5; cursor:not-allowed }
 </style>

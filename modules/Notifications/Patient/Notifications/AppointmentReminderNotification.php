@@ -19,6 +19,7 @@ class AppointmentReminderNotification extends Notification implements ShouldQueu
     public function __construct(
         public readonly Appointment $appointment,
         private readonly ReminderType $reminderType,
+        private readonly ?int $reminderId = null,
     ) {}
 
     public function via($notifiable): array
@@ -42,6 +43,8 @@ class AppointmentReminderNotification extends Notification implements ShouldQueu
                 'timeText' => $this->appointment->start_time->format('H:i'),
                 'hoursBefore' => $hoursBefore,
                 'clinicAddress' => $clinic->address ?? '',
+                'reminder_type' => $this->reminderType->value,
+                'reminder_id' => $this->reminderId,
             ]);
     }
 }

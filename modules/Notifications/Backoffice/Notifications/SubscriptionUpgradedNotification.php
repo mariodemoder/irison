@@ -36,7 +36,7 @@ class SubscriptionUpgradedNotification extends Notification implements ShouldQue
 
     public function toMail($notifiable): MailMessage
     {
-        return (new MailMessage)
+        $mail = (new MailMessage)
             ->subject('Suscripción actualizada')
             ->view('emails.subscription-upgraded-notification', [
                 'clinicName' => $this->request->clinic->name ?? '',
@@ -45,5 +45,9 @@ class SubscriptionUpgradedNotification extends Notification implements ShouldQue
                 'completedAt' => $this->request->completed_at,
                 'reviewerComments' => $this->request->reviewer_comments ?? '',
             ]);
+
+        $mail->viewData = array_merge($mail->viewData, ['request' => $this->request]);
+
+        return $mail;
     }
 }

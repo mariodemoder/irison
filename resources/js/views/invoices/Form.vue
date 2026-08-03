@@ -575,9 +575,6 @@ onMounted(async () => {
 
 /* Acciones */
 .actions { display:flex; gap:12px; align-items:center; padding-top:8px }
-.primary { padding:10px 24px; font-size:14px; border-radius:9999px; border:2px solid #3b82f6; color:#3b82f6; background:#fff; font-weight:700; cursor:pointer }
-.primary:hover:not(:disabled) { background:#eff6ff }
-.primary:disabled { opacity:.5; cursor:not-allowed }
 .muted { padding:10px 16px; font-size:14px; border-radius:9999px; border:1px solid #e5e7eb; background:#fff; color:#6b7280; cursor:pointer }
 .muted:hover { background:#f9fafb }
 

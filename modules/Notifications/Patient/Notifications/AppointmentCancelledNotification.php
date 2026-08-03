@@ -28,11 +28,15 @@ class AppointmentCancelledNotification extends Notification implements ShouldQue
         $clinic = $this->appointment->clinic;
         $patient = $this->appointment->patient;
 
-        return (new MailMessage)
+        $mail = (new MailMessage)
             ->subject("Cita cancelada - {$clinic->name}")
             ->greeting("Hola {$patient->first_name},")
             ->line("Tu cita en {$clinic->name} del {$this->appointment->start_time->format('d/m/Y')} a las {$this->appointment->start_time->format('H:i')} ha sido cancelada.")
             ->line("Si deseas reagendar, por favor contacta con la clínica.")
             ->salutation("Saludos, {$clinic->name}");
+
+        $mail->viewData = ['appointment' => $this->appointment];
+
+        return $mail;
     }
 }

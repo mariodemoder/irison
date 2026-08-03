@@ -42,7 +42,7 @@ class AppointmentUpdatedNotification extends Notification implements ShouldQueue
 
         $changeText = !empty($changes) ? ' (' . implode(', ', $changes) . ')' : '';
 
-        return (new MailMessage)
+        $mail = (new MailMessage)
             ->subject("Cita actualizada - {$clinic->name}")
             ->greeting("Hola {$patient->first_name},")
             ->line("Tu cita en {$clinic->name} ha sido modificada{$changeText}.")
@@ -50,5 +50,9 @@ class AppointmentUpdatedNotification extends Notification implements ShouldQueue
             ->line("Nueva hora: {$this->appointment->start_time->format('H:i')}")
             ->line("Por favor, revisa los detalles y contacta con la clínica si tienes alguna duda.")
             ->salutation("Saludos, {$clinic->name}");
+
+        $mail->viewData = ['appointment' => $this->appointment];
+
+        return $mail;
     }
 }

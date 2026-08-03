@@ -26,7 +26,7 @@ class BookingConfirmation extends Notification
     {
         $cancelUrl = config('app.frontend_url') . '/booking/cancel/' . $this->appointment->confirmation_token;
 
-        return (new MailMessage)
+        $mail = (new MailMessage)
             ->subject('Confirmación de cita — ' . ($this->appointment->clinic->name ?? 'Irison'))
             ->greeting('Hola ' . $this->appointment->patient->first_name . ',')
             ->line('Tu cita ha sido confirmada.')
@@ -37,5 +37,9 @@ class BookingConfirmation extends Notification
             ->action('Cancelar cita', $cancelUrl)
             ->line('Si no puedes asistir, cancela con al menos 24 horas de antelación.')
             ->salutation('Gracias por confiar en ' . ($this->appointment->clinic->name ?? 'Irison'));
+
+        $mail->viewData = ['appointment' => $this->appointment];
+
+        return $mail;
     }
 }

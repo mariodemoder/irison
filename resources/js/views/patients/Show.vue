@@ -857,9 +857,6 @@ async function confirmDelete() {
 .status.reprogrammed { background:#fffbeb; color:#b45309 }
 .status.completed { background:#dcfce7; color:#166534 }
 
-.primary { padding:8px 14px; border-radius:9999px; border:2px solid #3b82f6; color:#3b82f6; background:#fff; font-weight:600 }
-.primary:hover { background:#eff6ff }
-
 .toggle-canceled-btn {
   width:32px;
   height:32px;

@@ -196,16 +196,6 @@ onMounted(async () => {
 .field-error { color:#b91c1c; font-size:13px; margin-top:6px }
 
 .actions { display:flex; gap:12px; align-items:center }
-.primary {
-  padding: 8px 16px;
-  font-size: 14px;
-  border-radius: 9999px;
-  border: 2px solid #3b82f6;
-  color: #3b82f6;
-  background: #ffffff;
-  font-weight: 600;
-}
-.primary:hover { background: #eff6ff }
 
 @media (max-width: 768px) {
   .grid-form { grid-template-columns: 1fr }

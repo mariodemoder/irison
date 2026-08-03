@@ -974,16 +974,6 @@ watch(
 .money-total { padding:12px; border:1px solid #e5e7eb; border-radius:8px; font-size:14px; font-weight:700; background:#f8fafc; color:#0f172a }
 
 .actions { display:flex; gap:12px; align-items:center }
-.primary {
-  padding: 8px 16px;
-  font-size: 14px;
-  border-radius: 9999px;
-  border: 2px solid #3b82f6;
-  color: #3b82f6;
-  background: #ffffff;
-  font-weight: 600;
-}
-.primary:hover { background: #eff6ff }
 
 @media (max-width: 768px) {
   .grid-form { grid-template-columns: 1fr }
@@ -1004,6 +994,6 @@ watch(
 .swal-card .create-row label { font-weight:600; text-align:left; color:#111827 }
 .swal-card .input { width:100%; padding:10px; border-radius:8px; border:1px solid #e5e7eb; box-sizing:border-box }
 .swal2-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:12px }
-.swal2-actions .primary, .primary { padding: 8px 16px; font-size: 14px; border-radius: 9999px; border: 2px solid #3b82f6; color: #3b82f6; background: #ffffff; font-weight: 600 }
-.swal2-actions .primary:hover, .primary:hover { background:#eff6ff }
+.swal2-actions .primary { padding: 8px 16px; font-size: 14px; border-radius: 9999px; border: 2px solid #3b82f6; color: #3b82f6; background: #ffffff; font-weight: 600 }
+.swal2-actions .primary:hover { background:#eff6ff }
 </style>

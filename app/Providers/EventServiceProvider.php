@@ -14,6 +14,8 @@ use App\Events\CheckoutCreated;
 use App\Events\PaymentCompleted;
 use App\Events\SubscriptionUpgraded;
 use App\Listeners\LogConsentActivity;
+use Illuminate\Mail\Events\MessageSent;
+use Modules\Notifications\Infrastructure\Listeners\LogSentMail;
 use Modules\Notifications\Patient\Listeners\SendConsentEmail;
 use Modules\Notifications\Patient\Listeners\SendAppointmentStatusNotification;
 use Modules\Notifications\Backoffice\Listeners\SendCheckoutEmail;
@@ -60,6 +62,10 @@ class EventServiceProvider extends ServiceProvider
         ],
         SubscriptionUpgraded::class => [
             [UpgradeSubscription::class, 'handle'],
+        ],
+
+        MessageSent::class => [
+            LogSentMail::class,
         ],
     ];
 

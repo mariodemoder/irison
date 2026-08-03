@@ -358,17 +358,6 @@ async function submit() {
 
 .actions { display:flex; gap:12px; align-items:center }
 .actions .muted { color:#6b7280; text-decoration:none }
-.primary {
-  /* Match Nuevo paciente button (outline blue, pill) */
-  padding: 8px 16px;
-  font-size: 14px;
-  border-radius: 9999px;
-  border: 2px solid #3b82f6;
-  color: #3b82f6;
-  background: #ffffff;
-  font-weight: 600;
-}
-.primary:hover { background: #eff6ff }
 
 @media (max-width: 768px) {
   .grid-form { grid-template-columns: 1fr }

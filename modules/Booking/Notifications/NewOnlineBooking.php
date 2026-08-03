@@ -24,7 +24,7 @@ class NewOnlineBooking extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)
+        $mail = (new MailMessage)
             ->subject('Nueva reserva online — ' . $this->appointment->patient->full_name ?? 'Paciente')
             ->greeting('Nueva reserva online')
             ->line('Se ha realizado una nueva reserva a través de la página de reserva online.')
@@ -35,5 +35,9 @@ class NewOnlineBooking extends Notification
             ->line('**Hora:** ' . $this->appointment->start_time->format('H:i') . ' - ' . $this->appointment->end_time->format('H:i'))
             ->line('**Notas:** ' . ($this->appointment->booking_notes ?? '—'))
             ->salutation('— Irison');
+
+        $mail->viewData = ['appointment' => $this->appointment];
+
+        return $mail;
     }
 }

@@ -33,7 +33,7 @@ class SendAppointmentReminder24hJob implements ShouldQueue
                 ])->save();
 
                 Notification::route('mail', $appointment->patient->email)
-                    ->notify(new AppointmentReminderNotification($appointment, ReminderType::TwentyFourHours));
+                    ->notify(new AppointmentReminderNotification($appointment, ReminderType::TwentyFourHours, $result['reminder']->id));
             }
         }
     }

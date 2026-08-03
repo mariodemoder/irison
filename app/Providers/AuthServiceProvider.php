@@ -17,6 +17,7 @@ use App\Models\{
     ConsentTemplate,
     PatientConsent,
     SubscriptionRequest,
+    EmailLog,
 };
 
 use App\Policies\{
@@ -30,6 +31,7 @@ use App\Policies\{
     ConsentTemplatePolicy,
     PatientConsentPolicy,
     SubscriptionRequestPolicy,
+    EmailLogPolicy,
 };
 
 use Modules\Notifications\Infrastructure\Policies\ReminderPolicy;
@@ -54,6 +56,7 @@ class AuthServiceProvider extends ServiceProvider
         ConsentTemplate::class => ConsentTemplatePolicy::class,
         PatientConsent::class  => PatientConsentPolicy::class,
         SubscriptionRequest::class => SubscriptionRequestPolicy::class,
+        EmailLog::class         => EmailLogPolicy::class,
     ];
 
     public function boot(): void

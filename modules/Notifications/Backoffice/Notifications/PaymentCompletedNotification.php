@@ -36,7 +36,7 @@ class PaymentCompletedNotification extends Notification implements ShouldQueue
 
     public function toMail($notifiable): MailMessage
     {
-        return (new MailMessage)
+        $mail = (new MailMessage)
             ->subject('Pago completado - Actualización de plan')
             ->view('emails.payment-completed', [
                 'clinicName' => $this->request->clinic->name ?? '',
@@ -44,5 +44,9 @@ class PaymentCompletedNotification extends Notification implements ShouldQueue
                 'requestedPlan' => ucfirst($this->request->requested_plan),
                 'completedAt' => $this->request->completed_at,
             ]);
+
+        $mail->viewData = array_merge($mail->viewData, ['request' => $this->request]);
+
+        return $mail;
     }
 }
