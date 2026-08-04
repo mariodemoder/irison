@@ -169,7 +169,7 @@
           </div>
 
           <div class="actions full">
-            <button class="primary" type="submit" :disabled="submitting">{{ submitting ? 'Guardando...' : 'Guardar' }}</button>
+            <SaveButton :disabled="submitting" :saving="submitting" />
             <button type="button" class="muted" @click.prevent="cancel">Cancelar</button>
           </div>
         </form>

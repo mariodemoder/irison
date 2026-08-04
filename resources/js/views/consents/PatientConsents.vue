@@ -2,9 +2,7 @@
   <div class="consent-section">
     <div class="section-header">
       <div>Consentimientos</div>
-      <button v-if="!isProfessional" class="primary" @click="openCreateModal" style="padding:6px 10px;font-size:13px">
-        Nuevo
-      </button>
+      <NewButton v-if="!isProfessional" label="Nuevo" class="small" @click="openCreateModal" />
     </div>
 
     <div v-if="loading" class="empty-card">Cargando...</div>

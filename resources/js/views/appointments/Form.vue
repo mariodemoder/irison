@@ -431,7 +431,7 @@
 
           <div class="actions full action-row">
             <div class="left-actions">
-              <button class="primary" type="submit" :disabled="submitting || !canSaveAppointment" :is-loading="submitting">{{ submitting ? 'Guardando...' : 'Guardar' }}</button>
+              <SaveButton type="submit" :disabled="submitting || !canSaveAppointment" :saving="submitting" />
               <button v-if="isEdit && isFutureAppointment && mode !== 'reprogram'" type="button" class="muted" @click.prevent="startReprogram" :disabled="submitting">Reprogramar</button>
               <button v-if="mode === 'reprogram'" type="button" class="muted" @click.prevent="exitReprogram">Volver a editar</button>
             </div>

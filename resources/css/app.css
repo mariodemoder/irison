@@ -253,27 +253,85 @@ body { background: var(--bg-app); color: var(--text-main); }
 .swal2-icon.swal2-warning .swal2-icon-content { color: #ffffff }
 .swal2-icon.swal2-warning { background-color: #f97316 !important }
 
-/* Global primary button used across the app (matches patients Index styling) */
+/* ==========================================================================
+   BUTTON SYSTEM — single source of truth
+   Base .btn already renders as the default "outline blue" pill, so existing
+   <button class="btn btn-sm"> keep their look. Semantic variants override.
+   Prefer the dedicated components (BaseButton, SaveButton, BtnTrash,
+   EditButton, NewButton) which rely on these classes.
+   ========================================================================== */
 .btn {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
+	gap: 6px;
 	text-decoration: none;
-}
-.btn.btn-sm {
-	padding: 6px 12px;
-	font-size: 13px;
-	border-radius: 9999px;
-	border: 2px solid #3b82f6; /* azul */
-	color: #3b82f6;
-	background: #ffffff;
+	white-space: nowrap;
+	cursor: pointer;
 	font-weight: 600;
+	line-height: 1.1;
+	border-radius: 9999px;
+	background: #ffffff;
+	color: #3b82f6;
+	border: 2px solid #3b82f6;
+	transition: transform .08s ease, background-color .15s ease, box-shadow .15s ease, opacity .15s ease;
 }
-.btn.btn-sm:hover { background: #eff6ff }
-.btn.btn-sm.small { padding:6px 10px; font-size:13px }
+.btn:hover { transform: translateY(-1px); background: #eff6ff }
+.btn:active { transform: translateY(0) }
 
-/* Generic primary button — outline blue pill, shared by all forms across the app.
-   Single source of truth; previously duplicated in every form component. */
+/* Sizes */
+.btn-sm { padding: 6px 12px; font-size: 13px; min-height: 28px }
+.btn-md { padding: 10px 24px; font-size: 14px; min-height: 40px }
+.btn-lg { padding: 12px 28px; font-size: 15px }
+
+/* Icons inside buttons */
+.btn-icon { width: 16px; height: 16px; flex-shrink: 0 }
+.btn-sm .btn-icon { width: 14px; height: 14px }
+
+/* Variants */
+
+/* Outline blue — default / create actions (same as base .btn, explicit) */
+.btn-outline {
+	background: #ffffff;
+	color: #3b82f6;
+	border-color: #3b82f6;
+}
+.btn-outline:hover { background: #eff6ff }
+
+/* Solid primary — save / submit main actions */
+.btn-primary {
+	background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+	color: #ffffff;
+	border-color: transparent;
+	box-shadow: 0 8px 24px rgba(2,6,23,0.08);
+}
+.btn-primary:hover { background: linear-gradient(135deg, var(--primary), var(--primary-hover)); opacity: 0.98 }
+
+/* Danger — destructive actions (delete header/encabezado) */
+.btn-danger {
+	background: #ffffff;
+	color: #b91c1c;
+	border-color: #fecaca;
+}
+.btn-danger:hover { background: #fff1f2 }
+
+/* Edit — soft blue for edit actions */
+.btn-edit {
+	background: #eff6ff;
+	color: #1d4ed8;
+	border-color: #bfdbfe;
+}
+.btn-edit:hover { background: #dbeafe }
+
+/* Ghost / muted — secondary actions */
+.btn-ghost {
+	background: #ffffff;
+	color: #374151;
+	border-color: #e5e7eb;
+}
+.btn-ghost:hover { background: #f9fafb }
+
+/* Aliases kept for backwards compatibility during migration */
 .primary {
 	display: inline-flex;
 	align-items: center;
@@ -294,8 +352,16 @@ body { background: var(--bg-app); color: var(--text-main); }
 /* Save/submit buttons inside form action rows — double width.
    Reusable: any form with <div class="actions">…<button class="primary"> gets it automatically. */
 .actions .primary,
-.qaf-actions .primary {
+.qaf-actions .primary,
+.actions .btn-primary,
+.qaf-actions .btn-primary {
 	min-width: 200px;
+}
+
+/* Save buttons in config-like screens: fixed width, responsive */
+.save-button { min-width: 200px; }
+@media (max-width: 480px) {
+	.save-button { min-width: 0; width: 100%; }
 }
 
 /*

@@ -7,7 +7,7 @@
             <h1>Paciente e Historial</h1>
           </div>
           <div class="header-actions">
-            <button v-if="!isProfessional" class="edit-btn" @click.prevent="goEdit">Editar</button>
+            <EditButton v-if="!isProfessional" @click.prevent="goEdit" />
             <div class="back-menu-group">
               <button class="muted back-btn" @click.prevent="goBack">Volver</button>
               <div class="quick-actions" ref="quickActionsRef">
@@ -93,7 +93,7 @@
                     <path d="M21 21l-4.3-4.3"></path>
                   </svg>
                 </button>
-                <button v-if="!isProfessional" class="primary" @click.prevent="createAppointment" style="padding:6px 10px;font-size:13px">Crear</button>
+                <NewButton v-if="!isProfessional" label="Nueva cita" class="small" @click.prevent="createAppointment" />
               </div>
             </div>
             <div v-if="filteredAppointments && filteredAppointments.length"> 
@@ -129,7 +129,7 @@
                     <path d="M21 21l-4.3-4.3"></path>
                   </svg>
                 </button>
-                <button v-if="!isProfessional" class="primary" @click.prevent="createPayment" style="padding:6px 10px;font-size:13px">Crear</button>
+                <NewButton v-if="!isProfessional" label="Nuevo pago" class="small" @click.prevent="createPayment" />
               </div>
             </div>
             <div v-if="sortedPayments && sortedPayments.length">
@@ -277,9 +277,7 @@
             >
               + Agregar archivo
             </button>
-            <button type="button" class="primary" :disabled="uploadingImages" @click="submitAttachImages">
-              {{ uploadingImages ? 'Subiendo...' : 'Subir archivos' }}
-            </button>
+            <SaveButton type="button" label="Subir archivos" :saving="uploadingImages" saving-text="Subiendo..." :disabled="uploadingImages" @click="submitAttachImages" />
           </div>
         </div>
       </div>

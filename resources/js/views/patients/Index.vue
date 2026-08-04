@@ -15,7 +15,7 @@
             </div>
           </div>
 
-          <router-link v-if="!isProfessional" to="/patients/create" class="btn btn-sm small">Nuevo paciente</router-link>
+          <NewButton v-if="!isProfessional" label="Nuevo paciente" to="/patients/create" />
         </div>
 
         <AppLoading v-if="loading" message="Cargando pacientes..." />
@@ -51,7 +51,7 @@
                   <td class="wide-min">{{ p.phone ?? '—' }}</td>
                   <td class="wide-mid">{{ p.email ?? '—' }}</td>
                   <td v-if="!isProfessional" class="row-action patients-action-col">
-                    <router-link :to="{ path: `/patients/${p.id}/edit`, query: { from: 'list' } }" class="action-btn datos" aria-label="Datos" @click.stop>✎ Editar</router-link>
+                    <EditButton :to="{ path: `/patients/${p.id}/edit`, query: { from: 'list' } }" aria-label="Datos" @click.stop />
                   </td>
                 </tr>
               </tbody>

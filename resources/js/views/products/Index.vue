@@ -20,7 +20,7 @@
             </div>
           </div>
 
-          <router-link to="/products/create" class="btn btn-sm small btn-nuevo-producto">Nuevo producto</router-link>
+          <NewButton label="Nuevo producto" to="/products/create" />
         </div>
 
         <AppLoading v-if="loading" message="Cargando productos..." />
@@ -45,7 +45,7 @@
                   <td class="col-min">{{ product.family || '—' }}</td>
                   <td class="col-min">{{ product.lot || '—' }}</td>
                   <td class="row-action products-action-col">
-                    <router-link :to="`/products/${product.id}/edit`" class="action-btn datos" @click.stop>✎ Editar</router-link>
+                    <EditButton :to="`/products/${product.id}/edit`" @click.stop />
                   </td>
                 </tr>
             </template>
@@ -162,18 +162,5 @@ onMounted(() => {
 
 @media (max-width: 900px) {
   .search-center { max-width: 100%; }
-  .btn-nuevo-producto { margin-left: 0 !important; }
-}
-.btn-nuevo-producto {
-  min-width: 0 !important;
-  max-width: 120px !important;
-  padding-left: 6px !important;
-  padding-right: 6px !important;
-  font-size: 13px !important;
-  margin-left: auto !important;
-  display: inline-flex !important;
-  justify-content: center !important;
-  align-items: center !important;
-  white-space: nowrap !important;
 }
 </style>

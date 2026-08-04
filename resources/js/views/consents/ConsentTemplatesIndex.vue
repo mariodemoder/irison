@@ -5,7 +5,7 @@
         <h1>Plantillas de Consentimientos</h1>
         <div class="header-actions">
           <button class="help-btn" @click="showHelp = true" title="Ayuda">?</button>
-          <button v-if="isFullAccess" class="primary" @click="goCreate">Nueva plantilla</button>
+          <NewButton v-if="isFullAccess" label="Nueva plantilla" @click="goCreate" />
         </div>
       </div>
 
@@ -37,7 +37,7 @@
                 <span class="status-badge" :class="t.status">{{ t.status }}</span>
               </td>
               <td class="actions-cell">
-                <button v-if="isFullAccess" class="action-btn" @click="goEdit(t.id)">Editar</button>
+                <EditButton v-if="isFullAccess" @click="goEdit(t.id)" />
                 <BtnTrash v-if="isFullAccess" @click="remove(t)" title="Eliminar plantilla" />
               </td>
             </tr>

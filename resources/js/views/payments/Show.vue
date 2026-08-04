@@ -8,7 +8,7 @@
             <p class="form-sub">Detalle del pago</p>
           </div>
           <div class="header-actions">
-            <router-link v-if="paymentData?.id" :to="`/payments/${paymentData.id}/edit`" class="edit-btn">Editar</router-link>
+            <EditButton v-if="paymentData?.id" :to="`/payments/${paymentData.id}/edit`" />
             <div class="back-menu-group">
               <button type="button" class="muted back-btn" @click="goBack">Volver</button>
               <div v-if="hasQuickActions" class="quick-actions" ref="quickActionsRef">

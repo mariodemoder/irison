@@ -1,4 +1,4 @@
-# Irison — SaaS de Gestión para Clínicas
+dd# Irison — SaaS de Gestión para Clínicas
 
 Plataforma web moderna para la gestión integral de clínicas y centros de salud. Multi-tenancy, backend Laravel API, frontend SPA Vue 3 y base de datos PostgreSQL.
 

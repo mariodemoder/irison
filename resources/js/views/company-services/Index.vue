@@ -27,9 +27,7 @@
               <div class="tab-panel tab-card" v-show="activeTab==='sesiones'">
                 <div class="section-head">
                   <h2>Sesiones</h2>
-                  <button v-if="canCreateWithSubscription" class="btn btn-sm session-create-btn" type="button" @click.prevent="addCesionType" title="Agregar tipo" aria-label="Agregar tipo">
-                    Nueva Sesión
-                  </button>
+                  <NewButton v-if="canCreateWithSubscription" label="Nueva Sesión" @click.prevent="addCesionType" title="Agregar tipo" aria-label="Agregar tipo" />
                 </div>
                 <div style="margin-top:8px;color:#6b7280;font-size:13px">
                   Crea todos los tipos que necesites para tu clinica.
@@ -105,9 +103,7 @@
               <div class="tab-panel tab-card" v-show="activeTab==='bonos'">
                 <div class="section-head">
                   <h2>Bonos</h2>
-                  <button v-if="canCreateWithSubscription" class="btn btn-sm session-create-btn" type="button" @click.prevent="addBonusType" title="Agregar bono" aria-label="Agregar bono">
-                    Nuevo Bono
-                  </button>
+                  <NewButton v-if="canCreateWithSubscription" label="Nuevo Bono" @click.prevent="addBonusType" title="Agregar bono" aria-label="Agregar bono" />
                 </div>
                 <div style="margin-top:8px;color:#6b7280;font-size:13px">
                   Arma paquete combinando sesiones existentes. Define cantidad por tipo de sesión y el precio final.
@@ -124,7 +120,7 @@
                       <div class="accordion-header-actions">
                         <div v-if="!item.id || expandedBonusKey === (item.id ?? item._key)" class="bonus-top-actions">
                           <button class="btn btn-sm bonus-top-btn" type="button" @click.stop="addBonusLine(item)">+ Sesión</button>
-                          <BtnTrash class="bonus-top-btn" @click.stop="removeBonusType(item)">Eliminar Bono</BtnTrash>
+                          <BtnTrash variant="danger" class="bonus-top-btn" @click.stop="removeBonusType(item)">Eliminar Bono</BtnTrash>
                         </div>
                         <svg v-if="item.id" class="accordion-chevron" :class="{ open: expandedBonusKey === (item.id ?? item._key) }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
                       </div>
@@ -616,11 +612,6 @@ function removeCesionType(item) {
   font-size: 18px;
   font-weight: 700;
   color: #111827;
-}
-
-.session-create-btn {
-  white-space: nowrap;
-  width: auto;
 }
 
 .counter-table-wrap {

@@ -174,9 +174,7 @@
 
         <!-- ACCIONES -->
         <section class="section actions">
-          <button type="button" class="primary" :disabled="saving" @click="submit">
-            {{ saving ? 'Guardando…' : 'Emitir Factura' }}
-          </button>
+          <SaveButton type="button" label="Emitir Factura" :saving="saving" saving-text="Guardando…" :disabled="saving" @click="submit" />
           <button type="button" class="muted" @click="goBack">Volver</button>
         </section>
 

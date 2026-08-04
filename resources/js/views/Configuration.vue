@@ -200,7 +200,7 @@
                   </div>
                   <div class="subscription-actions">
                     <button v-if="status !== 'active'" class="btn btn-primary allow-readonly-action" :disabled="!canActivatePaidPlan" @click.prevent="beginPaidPlanFake">Activar cuenta de pago</button>
-                    <button v-if="status==='blocked'" class="btn" :disabled="!canActivatePaidPlan" @click.prevent="subscribe">Activar plan (Stripe)</button>
+                    <button v-if="status==='blocked'" class="btn btn-primary" :disabled="!canActivatePaidPlan" @click.prevent="subscribe">Activar plan (Stripe)</button>
                     <div v-if="status==='active'" class="sub-menu-wrap">
                       <button class="btn sub-menu-trigger" @click.stop="showSubscriptionMenu = !showSubscriptionMenu" title="Opciones de suscripción">
                         &#8942;
@@ -354,7 +354,7 @@
                           </table>
                         </div>
                         <div class="confirm-modal-actions">
-                          <button class="btn" @click="showInvoicesModal=false">Cerrar</button>
+                          <button class="btn btn-ghost" @click="showInvoicesModal=false">Cerrar</button>
                         </div>
                       </div>
                     </div>
@@ -370,7 +370,7 @@
                       <h3>Cancelar suscripción</h3>
                       <p>Esta acción cancelará tu suscripción activa. ¿Deseas continuar?</p>
                       <div class="confirm-modal-actions">
-                        <button class="btn" :disabled="cancellingSubscription" @click.prevent="closeCancelSubscriptionModal">Volver</button>
+                        <button class="btn btn-ghost" :disabled="cancellingSubscription" @click.prevent="closeCancelSubscriptionModal">Volver</button>
                         <button class="btn subscription-cancel-btn" :disabled="cancellingSubscription" @click.prevent="confirmCancelSubscription">
                           {{ cancellingSubscription ? 'Cancelando...' : 'Sí, cancelar suscripción' }}
                         </button>
@@ -1722,12 +1722,6 @@ onBeforeUnmount(() => {
   font-size: 10px;
   line-height: 1;
   white-space: nowrap;
-}
-.session-create-btn {
-  width: 33.333%;
-  margin-left: auto;
-  justify-content: center;
-  text-align: center;
 }
 .bonus-grid-top {
   display: grid;

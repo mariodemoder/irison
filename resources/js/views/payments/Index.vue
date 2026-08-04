@@ -8,7 +8,7 @@
             <div class="form-sub">Listado y búsqueda de pagos</div>
           </div>
           <div>
-            <router-link to="/payments/create" class="btn btn-sm small">Nuevo pago</router-link>
+            <NewButton label="Nuevo pago" to="/payments/create" />
           </div>
         </div>
 
@@ -66,7 +66,7 @@
                   <span v-else>—</span>
                 </td>
                 <td class="row-action payments-action-col">
-                  <router-link :to="`/payments/${pay.id}/edit`" class="action-btn datos">✎ Editar</router-link>
+                  <EditButton :to="`/payments/${pay.id}/edit`" />
                 </td>
               </tr>
             </template>

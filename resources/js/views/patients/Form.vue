@@ -98,7 +98,7 @@
           </div>
 
           <div class="actions full">
-            <button class="primary" type="submit" :disabled="submitting || loading" :is-loading="submitting">{{ submitting ? 'Guardando...' : 'Guardar' }}</button>
+            <SaveButton :disabled="submitting || loading" :saving="submitting" />
           </div>
         </form>
       </div>

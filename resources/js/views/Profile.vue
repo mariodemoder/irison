@@ -57,7 +57,7 @@
 
             <div class="action-plane">
               <div v-if="activeTab==='datos'" class="action-row">
-                <button class="btn btn-sm save-button" type="button" :disabled="saving" @click.prevent="save">Guardar</button>
+                <SaveButton type="button" :disabled="saving" :saving="saving" @click.prevent="save" />
               </div>
 
               <div v-else-if="activeTab==='seguridad'" class="action-row">

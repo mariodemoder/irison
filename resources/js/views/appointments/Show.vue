@@ -10,7 +10,7 @@
           <div class="header-right">
             <div class="header-actions">
               <template v-if="appointment.status !== 'canceled' && !isProfessional">
-                <router-link :to="`/appointments/${appointment.id}/edit`" class="edit-btn">Editar</router-link>
+                <EditButton :to="`/appointments/${appointment.id}/edit`" />
               </template>
               <div class="back-menu-group">
                 <button class="muted back-btn" @click="back">Volver</button>

@@ -8,7 +8,7 @@
             <p class="form-sub">Detalle del producto</p>
           </div>
           <div class="header-actions">
-            <router-link v-if="product?.id" :to="`/products/${product.id}/edit`" class="edit-btn">Editar</router-link>
+            <EditButton v-if="product?.id" :to="`/products/${product.id}/edit`" />
             <div class="back-menu-group">
               <button type="button" class="muted back-btn" @click="goBack">Volver</button>
               <div v-if="product?.id" class="quick-actions" ref="quickActionsRef">

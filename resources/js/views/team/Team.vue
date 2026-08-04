@@ -45,7 +45,7 @@
                     <input v-model="userQuery" class="search-input" placeholder="Buscar usuario..." @input="debouncedLoadUsers" />
                   </div>
                 </div>
-                <router-link v-if="!isBasic" to="/team/users/create" class="btn btn-sm small btn-nuevo-usuario">+ Nuevo usuario</router-link>
+                <NewButton v-if="!isBasic" label="Nuevo usuario" to="/team/users/create" />
                 <span v-else class="basic-limit-msg">Plan Basic: 1 usuario incluido</span>
               </div>
 
@@ -106,7 +106,7 @@
         <div class="modal-card-body">
           <div class="team-section-head" style="margin-bottom:12px;">
             <div class="section-copy">Cada profesión puede asignarse a uno o varios usuarios.</div>
-            <button class="btn btn-sm btn-nueva-profesion" type="button" @click="addProfession">+ Nueva profesión</button>
+            <NewButton label="Nueva profesión" @click="addProfession" />
           </div>
 
           <div v-if="professionsLoading" style="text-align:center;padding:24px;color:#6b7280;">Cargando profesiones...</div>
@@ -117,7 +117,7 @@
                 <td class="col-min">{{ p.id }}</td>
                 <td class="col-mid name-col">{{ p.name }}</td>
                 <td class="row-action professions-action-col" @click.stop>
-                  <BtnTrash @click="deleteProfession(p)" />
+                  <BtnTrash variant="danger" @click="deleteProfession(p)" />
                 </td>
               </tr>
             </EntityTable>
@@ -382,16 +382,6 @@ onMounted(async () => {
 
 .basic-limit-msg { font-size: 13px; color: #6b7280; font-weight: 500; padding: 6px 0; }
 
-.btn-nuevo-usuario,
-.btn-nueva-profesion {
-  min-width: 0 !important;
-  max-width: 140px !important;
-  padding: 6px 12px !important;
-  font-size: 13px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  white-space: nowrap !important;
-}
 .section-copy {
   color: #6b7280;
   font-size: 14px;

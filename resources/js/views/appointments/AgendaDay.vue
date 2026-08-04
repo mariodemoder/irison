@@ -82,16 +82,14 @@
         </div>
 
         <div class="header-actions-right">
-          <button
+          <NewButton
             v-if="!isProfessional"
-            type="button"
-            class="btn btn-sm small compact header-create-btn"
+            label="Nueva cita"
+            class="small compact header-create-btn"
             :disabled="(isSelectedDateClosed && !isAllMode) || !canCreateAppointment"
             :title="canCreateAppointment ? 'Nueva cita' : 'Activa tu suscripción para crear citas'"
             @click.prevent="createAppointmentFromHeader"
-          >
-            Nueva cita
-          </button>
+          />
         </div>
       </div>
 
@@ -190,7 +188,7 @@
                     <span class="payment-status" :class="paymentStatusClass(item.payment_status)">{{ paymentStatusLabel(item.payment_status) }}</span>
                   </td>
                   <td v-if="!isProfessional" class="row-action">
-                    <router-link :to="`/appointments/${item.id}/edit`" class="action-btn datos" @click.stop>✎ Editar</router-link>
+                    <EditButton :to="`/appointments/${item.id}/edit`" @click.stop />
                   </td>
                 </tr>
 

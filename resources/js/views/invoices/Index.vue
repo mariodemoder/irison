@@ -8,7 +8,7 @@
             <div class="form-sub">Listado de facturas</div>
           </div>
           <div>
-            <router-link to="/invoices/create" class="btn btn-sm small">Nueva Factura</router-link>
+            <NewButton label="Nueva Factura" to="/invoices/create" />
           </div>
         </div>
 

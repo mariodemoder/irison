@@ -38,7 +38,7 @@
             </select>
             <div class="toolbar-actions">
               <button class="btn btn-sm small" @click="openCategoryModal">Categorías</button>
-              <button class="btn btn-sm small primary" @click="openExpenseModal()">Nuevo gasto</button>
+              <NewButton label="Nuevo gasto" @click="openExpenseModal()" />
             </div>
           </div>
 
@@ -76,7 +76,7 @@
                     <td class="total-cell">{{ formatMoney(e.total) }}</td>
                     <td>{{ paymentLabel(e.payment_method) }}</td>
                     <td class="row-action">
-                      <button class="action-btn" @click="openExpenseModal(e)">✎</button>
+                      <EditButton @click="openExpenseModal(e)" />
                       <BtnTrash @click="removeExpense(e)" title="Eliminar gasto" />
                     </td>
                   </tr>
@@ -305,7 +305,7 @@
             <textarea v-model="expenseForm.notes" class="input" rows="2"></textarea>
           </div>
           <div class="actions">
-            <button type="submit" class="primary" :disabled="savingExpense">{{ savingExpense ? 'Guardando...' : 'Guardar' }}</button>
+            <SaveButton type="submit" :disabled="savingExpense" :saving="savingExpense" />
             <button type="button" class="muted" @click="showExpenseModal = false">Cancelar</button>
           </div>
         </form>
@@ -317,13 +317,13 @@
           <span class="category-dot" :style="{ background: c.color || '#9ca3af' }"></span>
           <span class="cat-name">{{ c.name }}</span>
           <span class="cat-desc">{{ c.description || '' }}</span>
-          <BtnTrash @click="removeCategory(c)" title="Eliminar categoría" />
+          <BtnTrash variant="danger" @click="removeCategory(c)" title="Eliminar categoría" />
         </div>
 
         <form class="cat-new" @submit.prevent="saveCategory">
           <input v-model="categoryForm.name" class="input" placeholder="Nombre de la categoría" required />
           <input v-model="categoryForm.color" type="color" class="color-input" />
-          <button type="submit" class="btn btn-sm small primary" :disabled="savingCategory">Añadir</button>
+          <NewButton type="submit" label="Añadir" :disabled="savingCategory" />
         </form>
       </FormModal>
     </div>

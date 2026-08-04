@@ -286,7 +286,7 @@ onMounted(loadSettings)
     <div v-show="activeSubTab==='services'">
       <div class="section-head">
         <span class="section-head-title">Servicios</span>
-        <button class="btn btn-sm session-create-btn" type="button" @click="addServiceView">+ Nuevo servicio</button>
+        <NewButton label="Nuevo servicio" @click="addServiceView" />
         <a v-if="settings.slug"
            :href="`/booking/${settings.slug}`"
            target="_blank"
@@ -531,13 +531,6 @@ onMounted(loadSettings)
   font-size: 15px;
   font-weight: 700;
   color: #111827;
-}
-
-.session-create-btn {
-  width: 33.333%;
-  margin-left: auto;
-  justify-content: center;
-  text-align: center;
 }
 
 .counter-table-wrap {
