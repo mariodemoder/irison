@@ -4,6 +4,7 @@
       <div class="form-card">
         <div class="form-header">
           <h1>{{ isEditing ? 'Editar plantilla' : 'Nueva plantilla' }}</h1>
+          <button type="button" class="muted back-btn" @click="goBack">Volver</button>
         </div>
 
         <div class="form-body">
@@ -131,6 +132,7 @@ function goBack() {
 <style scoped>
 .consent-form { padding: 24px; max-width: 800px; margin: 0 auto; }
 .form-card { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.08); padding: 24px; }
+.form-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
 .form-header h1 { font-size: 20px; font-weight: 700; margin-bottom: 24px; }
 .form-body { display: flex; flex-direction: column; gap: 16px; }
 .field { display: flex; flex-direction: column; gap: 4px; }

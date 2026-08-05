@@ -91,6 +91,10 @@ class ClinicManagementService
             });
         }
 
+        $query->withExists([
+            'subscriptionRequests as has_pending_upgrade' => static fn ($relation) => $relation->where('status', 'pending'),
+        ]);
+
         return $query->paginate(20)->withQueryString();
     }
 
@@ -408,6 +412,8 @@ class ClinicManagementService
                 'admin_user_id' => (int) $admin->id,
             ],
         );
+
+        app(BackofficeAlertService::class)->subscriptionCancelled($clinic, $reason);
 
         return $clinic->fresh();
     }

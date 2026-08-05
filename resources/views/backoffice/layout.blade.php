@@ -24,6 +24,7 @@
                     <a class="hover:text-slate-200" href="{{ route('backoffice.clinics.index') }}">Clínicas</a>
                     <a class="hover:text-slate-200" href="{{ route('backoffice.subscription-requests.index') }}">Upgrades</a>
                     <a class="hover:text-slate-200" href="{{ route('backoffice.admin-users.index') }}">Admin Users</a>
+                    @include('backoffice.partials.notifications')
                     @if (session()->has('backoffice_impersonation'))
                         <form method="POST" action="{{ route('backoffice.impersonate.stop') }}">
                             @csrf

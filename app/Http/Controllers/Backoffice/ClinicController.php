@@ -17,6 +17,7 @@ use App\Models\Document;
 use App\Models\Payment;
 use App\Models\Reminder;
 use App\Models\User;
+use App\Services\Backoffice\BackofficeAlertService;
 use App\Services\Backoffice\ClinicManagementService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -29,12 +30,19 @@ use Throwable;
 
 class ClinicController extends Controller
 {
-    public function __construct(private readonly ClinicManagementService $clinicManagementService) {}
+    public function __construct(
+        private readonly ClinicManagementService $clinicManagementService,
+        private readonly BackofficeAlertService $backofficeAlertService,
+    ) {}
 
     public function index(Request $request): View
     {
+        $clinics = $this->clinicManagementService->listClinics($request->query());
+
+        $this->backofficeAlertService->reconcileMany($clinics->getCollection());
+
         return view('backoffice.clinics.index', [
-            'clinics' => $this->clinicManagementService->listClinics($request->query()),
+            'clinics' => $clinics,
             'filters' => [
                 'q' => (string) $request->query('q', ''),
                 'status' => (string) $request->query('status', ''),

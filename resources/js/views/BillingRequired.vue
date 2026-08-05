@@ -31,7 +31,7 @@
           </div>
 
           <div class="flex items-center gap-2">
-            <button type="submit" class="btn btn--solid" :disabled="loading">
+            <button type="submit" class="btn btn-primary" :disabled="loading">
               {{ loading ? 'Redirigiendo...' : 'Activar suscripción' }}
             </button>
             <button type="button" class="btn btn--ghost" :disabled="confirming" @click="confirmCheckoutReturn">

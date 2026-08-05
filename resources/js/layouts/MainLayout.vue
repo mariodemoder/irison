@@ -194,6 +194,7 @@ const navItems = [
   { path: '/dashboard', label: 'Dashboard' },
   { path: '/appointments', label: 'Agenda' },
   { path: '/patients', label: 'Pacientes' },
+  { path: '/consent-templates', label: 'Consentimientos' },
   { path: '/products', label: 'Productos' },
   { path: '/invoices', label: 'Facturación' },
   { path: '/payments', label: 'Pagos' },
@@ -201,7 +202,6 @@ const navItems = [
   { path: '/notifications', label: 'Notificaciones' },
   { path: '/team', label: 'Equipo' },
   { path: '/company-services', label: 'Servicios' },
-  { path: '/consent-templates', label: 'Consentimientos' },
   { path: '/settings/subscription', label: 'Suscripción' },
   { path: '/settings/activity', label: 'Registro de actividad' },
   { path: '/settings', label: 'Configuración' },
@@ -212,6 +212,7 @@ const professionalPaths = ['/appointments', '/patients']
 const receptionPaths = ['/appointments', '/patients', '/invoices', '/payments', '/products']
 
 const showFinance = computed(() => isFullAccess.value && (isPro.value || isEnterprise.value))
+const showActivity = computed(() => isFullAccess.value && meStatus.value !== 'trial' && (isPro.value || isEnterprise.value))
 
 const filteredNavItems = computed(() => {
   let items = navItems
@@ -223,7 +224,7 @@ const filteredNavItems = computed(() => {
   if (!showFinance.value) {
     items = items.filter(item => item.path !== '/finance')
   }
-  if (!isFullAccess.value) {
+  if (!showActivity.value) {
     items = items.filter(item => item.path !== '/settings/activity')
   }
   if (meStatus.value === 'trial') {

@@ -7,6 +7,7 @@ namespace App\Services\Trials;
 use App\Mail\TrialLifecycleMail;
 use App\Models\Clinic;
 use App\Models\TrialJourneyEvent;
+use App\Services\Backoffice\BackofficeAlertService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -151,6 +152,8 @@ class TrialLifecycleService
 
         $clinic->status = 'trial_read_only';
         $clinic->save();
+
+        app(BackofficeAlertService::class)->trialExpired($clinic);
 
         Log::info('trial.read_only_activated', [
             'event' => 'trial.read_only_activated',

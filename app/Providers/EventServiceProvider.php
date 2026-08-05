@@ -12,6 +12,7 @@ use App\Events\ConsentSigned;
 use App\Events\UpgradeRequested;
 use App\Events\CheckoutCreated;
 use App\Events\PaymentCompleted;
+use App\Events\SubscriptionRejected;
 use App\Events\SubscriptionUpgraded;
 use App\Listeners\LogConsentActivity;
 use Illuminate\Mail\Events\MessageSent;
@@ -20,7 +21,9 @@ use Modules\Notifications\Patient\Listeners\SendConsentEmail;
 use Modules\Notifications\Patient\Listeners\SendAppointmentStatusNotification;
 use Modules\Notifications\Backoffice\Listeners\SendCheckoutEmail;
 use Modules\Notifications\Backoffice\Listeners\SendPaymentConfirmationEmail;
+use Modules\Notifications\Backoffice\Listeners\SendSubscriptionRejectedNotification;
 use Modules\Notifications\Backoffice\Listeners\SendUpgradeRequestNotification;
+use Modules\Notifications\Backoffice\Listeners\SendUpgradeRequestNotificationToBackoffice;
 use Modules\Notifications\Backoffice\Listeners\UpgradeSubscription;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
@@ -53,6 +56,7 @@ class EventServiceProvider extends ServiceProvider
 
         UpgradeRequested::class => [
             [SendUpgradeRequestNotification::class, 'handle'],
+            [SendUpgradeRequestNotificationToBackoffice::class, 'handle'],
         ],
         CheckoutCreated::class => [
             [SendCheckoutEmail::class, 'handle'],
@@ -62,6 +66,9 @@ class EventServiceProvider extends ServiceProvider
         ],
         SubscriptionUpgraded::class => [
             [UpgradeSubscription::class, 'handle'],
+        ],
+        SubscriptionRejected::class => [
+            [SendSubscriptionRejectedNotification::class, 'handle'],
         ],
 
         MessageSent::class => [

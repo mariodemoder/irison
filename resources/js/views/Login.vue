@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import AuthLayout from '../layouts/AuthLayout.vue'
 import BaseInput from '../components/BaseInput.vue'
 import BaseButton from '../components/BaseButton.vue'
+import SpinnerCircleIcon from '../components/icons/SpinnerCircleIcon.vue'
 import ErrorAlert from '../components/ErrorAlert.vue'
 import axios from 'axios'
 
@@ -83,7 +84,7 @@ async function submit() {
 <template>
   <AuthLayout>
     <div class="login-column">
-      <h2 class="text-2xl font-semibold mb-2">Hola!</h2>
+      <h2 class="text-3xl font-semibold mb-2 text-main login-title">Hola!</h2>
 
       <div
         v-if="activationCard.show"
@@ -103,7 +104,12 @@ async function submit() {
           <router-link to="/forgot-password" class="link text-sm text-gray-600">¿Has olvidado la contraseña?</router-link>
         </div>
 
-        <BaseButton :type="'submit'">{{ loading ? 'Entrando...' : 'Iniciar sesión' }}</BaseButton>
+        <BaseButton :type="'submit'" variant="primary" size="md" class="login-submit">
+          <span v-if="loading" class="btn-icon save-button__spinner">
+            <SpinnerCircleIcon />
+          </span>
+          {{ loading ? 'Entrando...' : 'Iniciar sesión' }}
+        </BaseButton>
       </form>
 
       <p class="footer text-sm mt-4">
@@ -118,6 +124,17 @@ async function submit() {
 
 <style scoped>
 .footer { text-align: center }
+
+.login-title { text-align: center }
+
+.login-submit {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.save-button__spinner {
+  display: inline-flex;
+}
 
 .activation-card {
   margin: 10px 0 16px 0;

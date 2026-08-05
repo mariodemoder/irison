@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Backoffice;
 
+use App\Events\SubscriptionRejected;
 use App\Http\Controllers\Controller;
 use App\Models\SubscriptionRequest;
 use App\Services\PaymentProvider\Resolver;
@@ -95,7 +96,7 @@ class SubscriptionRequestController extends Controller
         $subscriptionRequest->reviewer_comments = $data['reviewer_comments'] ?? null;
         $subscriptionRequest->save();
 
-        $this->sendStatusMail($subscriptionRequest);
+        SubscriptionRejected::dispatch($subscriptionRequest);
 
         return redirect()->route('backoffice.subscription-requests.index')
             ->with('status', 'Solicitud rechazada.');

@@ -6,6 +6,8 @@ Este directorio centraliza la documentacion oficial del backend y operaciones.
 
 - `backend/`: flujos de autenticación, autorización y lógica de negocio del API.
 - `backoffice/`: arquitectura y operacion del panel interno.
+- `backoffice/subscriptions.md`: comportamiento del ciclo de suscripcion y alertas internas.
+- `backoffice/notificaciones-internas.md`: alertas internas de backoffice (tipos, reconciliacion, UI).
 - `backoffice/usuario/`: manuales para usuarios internos de backoffice.
 - `cliente/`: guias para cliente final (clinicas de Irison).
 - `deployment/`: despliegue e infraestructura.

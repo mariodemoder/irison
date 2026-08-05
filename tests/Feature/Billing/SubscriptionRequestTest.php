@@ -3,15 +3,15 @@
 namespace Tests\Feature\Billing;
 
 use App\Mail\SubscriptionUpgradedNotificationMail;
-use App\Mail\SubscriptionRequestMail;
 use App\Models\Clinic;
 use App\Models\Subscription;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Sanctum;
+use Modules\Notifications\Backoffice\Notifications\SubscriptionUpgradeRequestedNotification;
 use Tests\TestCase;
 
 class SubscriptionRequestTest extends TestCase
@@ -27,7 +27,7 @@ class SubscriptionRequestTest extends TestCase
     public function test_create_upgrade_request_from_basic_to_pro(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-05-18 10:00:00'));
-        Mail::fake();
+        Notification::fake();
 
         $clinic = Clinic::create([
             'name' => 'Clinica Basic',
@@ -66,15 +66,13 @@ class SubscriptionRequestTest extends TestCase
             'requested_by' => $user->id,
         ]);
 
-        Mail::assertSent(SubscriptionRequestMail::class, function (SubscriptionRequestMail $mail) use ($user) {
-            return $mail->hasTo($user->email);
-        });
+        Notification::assertSentTo($user, SubscriptionUpgradeRequestedNotification::class);
     }
 
     public function test_create_upgrade_request_from_pro_to_enterprise(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-05-18 10:00:00'));
-        Mail::fake();
+        Notification::fake();
 
         $clinic = Clinic::create([
             'name' => 'Clinica Pro',
@@ -111,9 +109,7 @@ class SubscriptionRequestTest extends TestCase
             'status' => 'pending',
         ]);
 
-        Mail::assertSent(SubscriptionRequestMail::class, function (SubscriptionRequestMail $mail) use ($user) {
-            return $mail->hasTo($user->email);
-        });
+        Notification::assertSentTo($user, SubscriptionUpgradeRequestedNotification::class);
     }
 
     public function test_cannot_create_self_downgrade_request(): void
@@ -181,7 +177,6 @@ class SubscriptionRequestTest extends TestCase
     public function test_auto_detects_current_plan_when_not_provided(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-05-18 10:00:00'));
-        Mail::fake();
 
         $clinic = Clinic::create([
             'name' => 'Clinica Pro',

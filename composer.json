@@ -44,7 +44,8 @@
             "Modules\\Booking\\Tests\\": "modules/Booking/tests/",
             "Modules\\Notifications\\Tests\\": "modules/Notifications/Tests/",
             "Modules\\Finance\\Tests\\": "modules/Finance/Tests/",
-            "Modules\\Activity\\Tests\\": "modules/Activity/Tests/"
+            "Modules\\Activity\\Tests\\": "modules/Activity/Tests/",
+            "Modules\\Subscriptions\\Tests\\": "modules/Subscriptions/Tests/"
         }
     },
     "scripts": {

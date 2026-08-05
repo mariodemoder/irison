@@ -4,9 +4,6 @@ namespace Tests\Feature\Billing;
 
 use App\Events\PaymentCompleted;
 use App\Events\SubscriptionUpgraded;
-use App\Listeners\SendPaymentConfirmationEmail;
-use App\Listeners\UpgradeSubscription;
-use App\Mail\PaymentCompletedMail;
 use App\Mail\SubscriptionActivatedMail;
 use App\Mail\SubscriptionUpgradedNotificationMail;
 use App\Models\Clinic;
@@ -16,7 +13,10 @@ use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Notifications\Messages\MailMessage;
 use Laravel\Sanctum\Sanctum;
+use Modules\Notifications\Backoffice\Notifications\PaymentCompletedNotification;
 use Tests\TestCase;
 
 class PlanChangeEmailTest extends TestCase
@@ -166,7 +166,7 @@ class PlanChangeEmailTest extends TestCase
 
     public function test_basic_to_pro_sends_payment_completed_email(): void
     {
-        Mail::fake();
+        Notification::fake();
 
         $clinic = Clinic::create([
             'name' => 'Clinica Pago',
@@ -194,20 +194,17 @@ class PlanChangeEmailTest extends TestCase
             'requested_by' => $user->id,
         ]);
 
-        Mail::to($user->email)->queue(
-            new PaymentCompletedMail($request, 'https://invoice.stripe.com/test789')
-        );
+        $recipient = $clinic->ownerUser()->first();
 
-        Mail::assertQueued(PaymentCompletedMail::class, function (PaymentCompletedMail $mail) use ($user) {
-            return $mail->hasTo($user->email);
-        });
+        $recipient->notify(new PaymentCompletedNotification($request));
 
-        $rendered = $this->renderMailable(
-            new PaymentCompletedMail($request, 'https://invoice.stripe.com/test789')
-        );
+        Notification::assertSentTo($recipient, PaymentCompletedNotification::class);
 
+        $mail = (new PaymentCompletedNotification($request))->toMail($recipient);
+        $rendered = $this->renderMailMessage($mail);
+
+        $this->assertStringContainsString('Pago completado', $mail->subject);
         $this->assertStringContainsString('confirmado', strtolower($rendered));
-        $this->assertStringContainsString('Ver factura', $rendered);
     }
 
     public function test_basic_to_pro_listener_dispatches_upgraded_notification(): void
@@ -289,5 +286,10 @@ class PlanChangeEmailTest extends TestCase
     private function renderMailable($mailable): string
     {
         return (string) $mailable->render();
+    }
+
+    private function renderMailMessage(MailMessage $message): string
+    {
+        return (string) $message->render();
     }
 }

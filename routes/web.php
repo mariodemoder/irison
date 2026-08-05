@@ -28,6 +28,7 @@ Route::get('/hash-test', function () { return Hash::make('HOLISholis123'); });
 use App\Http\Controllers\Backoffice\Auth\LoginController as BackofficeLoginController;
 use App\Http\Controllers\Backoffice\ClinicController;
 use App\Http\Controllers\Backoffice\DashboardController as BackofficeDashboardController;
+use App\Http\Controllers\Backoffice\NotificationController;
 use App\Http\Controllers\Backoffice\SubscriptionRequestController as BackofficeSubscriptionRequestController;
 use App\Http\Controllers\BillingController;
 use Illuminate\Http\Request;
@@ -126,6 +127,9 @@ $backofficeRoutes->as('backoffice.')->group(function () {
         Route::get('/', BackofficeDashboardController::class)->name('dashboard');
         Route::get('/dashboard', BackofficeDashboardController::class);
         Route::post('/logout', [BackofficeLoginController::class, 'destroy'])->name('logout');
+
+        Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
+        Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
 
         Route::middleware('admin.role:super_admin,support,billing,readonly')->group(function () {
             Route::get('/clinics', [ClinicController::class, 'index'])->name('clinics.index');

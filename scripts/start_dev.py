@@ -49,6 +49,7 @@ cmds = [
     'npm run dev',
     'php artisan serve --host=127.0.0.1 --port=8000 --no-reload',
     'php artisan queue:work --verbose --sleep=3 --tries=3',
+    'php artisan schedule:work',
 ]
 
 titles = {}

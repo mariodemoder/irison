@@ -6,6 +6,7 @@ use App\Mail\SubscriptionActivatedMail;
 use App\Mail\SubscriptionCanceledInternalMail;
 use App\Http\Controllers\Controller;
 use App\Models\BillingPayment;
+use App\Services\Backoffice\BackofficeAlertService;
 use App\Support\ActivityLogger;
 use App\Services\PaymentProvider\Resolver;
 use App\Services\PaymentProvider\StripePaymentProvider;
@@ -137,6 +138,10 @@ class BillingController extends Controller
                     ],
                     ip: $request->ip(),
                 );
+
+                if (in_array($previousSubscriptionStatus, ['trial', 'trial_warning'], true)) {
+                    app(BackofficeAlertService::class)->trialConverted($clinic);
+                }
 
                 // Enviar email de activación de plan (solo nueva suscripción)
                 if ($previousSubscriptionStatus !== 'active') {
@@ -435,6 +440,8 @@ class BillingController extends Controller
             ],
             ip: $request->ip(),
         );
+
+        app(BackofficeAlertService::class)->subscriptionCancelled($clinic);
 
         $this->notifyCancellationMail($clinic, $subscription->stripe_subscription_id);
 

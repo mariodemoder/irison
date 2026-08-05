@@ -3,8 +3,11 @@
     <div class="form-wrapper">
       <div class="form-card">
         <div class="form-header">
-          <h1>{{ isEdit ? 'Editar producto' : 'Nuevo producto' }}</h1>
-          <p class="form-sub">{{ isEdit ? 'Actualiza los datos del producto.' : 'Crea un producto para facturación.' }}</p>
+          <div>
+            <h1>{{ isEdit ? 'Editar producto' : 'Nuevo producto' }}</h1>
+            <p class="form-sub">{{ isEdit ? 'Actualiza los datos del producto.' : 'Crea un producto para facturación.' }}</p>
+          </div>
+          <button type="button" class="muted back-btn" @click.prevent="cancel">Volver</button>
         </div>
 
         <form class="grid-form" @submit.prevent="submit">
@@ -186,6 +189,7 @@ onMounted(async () => {
 <style scoped>
 .form-wrapper { display:flex; justify-content:center; padding:24px }
 .form-card { width:100%; max-width:760px; background: #fff; border-radius:12px; box-shadow: 0 10px 30px rgba(2,6,23,0.06); padding:24px }
+.form-header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px }
 .form-header h1 { margin:0; font-size:22px }
 
 .grid-form { display:grid; grid-template-columns: repeat(2, 1fr); gap:12px }

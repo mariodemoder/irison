@@ -160,7 +160,7 @@ For focused tests, regression, HTTP validation, or risk hardening → delegate t
 Organized as a modular bounded context under `modules/Notifications/` with two subdomains:
 
 - **Patient/** — Appointment status notifications (created/updated/cancelled via `SendAppointmentStatusNotification` listener), consent email (`SendConsentEmail` listener via `Mail::to()`).
-- **Backoffice/** — Subscription/billing notifications (`SubscriptionUpgradeRequestedNotification`, `SubscriptionUpgradedNotification`, `PaymentCompletedNotification`, `CheckoutLinkGeneratedNotification`) with corresponding listeners.
+- **Backoffice/** — Subscription/billing notifications (`SubscriptionUpgradeRequestedNotification`, `BackofficeAlertNotification`, `SubscriptionRejectedNotification`, `SubscriptionUpgradedNotification`, `PaymentCompletedNotification`, `CheckoutLinkGeneratedNotification`) with corresponding listeners.
 
 Events: `App\Events\AppointmentCreated`, `AppointmentUpdated`, `AppointmentCancelled` dispatched from `AppointmentService` and `PublicBookingService`.
 
@@ -192,6 +192,7 @@ Key model requirements: `Patient` uses `Notifiable` trait; `Clinic` has `getAdmi
 | 13 | **SubscriptionUpgradedNotificationMail** | (Fallback) Confirmación upgrade | Mismo contenido que #12, enviado directo desde controlador | Irison | Owner/admin |
 | 14 | **InvoicePaymentFailedMail** | Pago factura falló (webhook) | Aviso pago pendiente, monto, próximo intento | Irison | Email clínica + owner |
 | 15 | **ResendInvoiceMail** | Admin reenvía factura | Enlace factura + mensaje personalizado | Irison | Email destinatario |
+| 21 | **SubscriptionRejectedNotification** | Upgrade rechazado | Rechazo con comentarios del admin, plan solicitado | Irison | Email owner |
 
 #### Internas / Backoffice (email)
 
@@ -207,8 +208,13 @@ Key model requirements: `Patient` uses `Notifiable` trait; `Clinic` has `getAdmi
 | # | Nombre | Motivo | Contenido | From | To |
 |---|---|---|---|---|---|
 | 20 | **SubscriptionUpgradeRequestedNotification** | Solicitud upgrade de plan | Plan solicitado, clínica, solicitante | Sistema | Admins clínica |
+| 22 | **BackofficeAlertNotification** | Alertas internas de suscripción (`backoffice_upgrade_requested`, `trial_expired`, `trial_converted`, `subscription_cancelled`) | `type`, clínica, mensaje + extras según tipo | Sistema | Admins backoffice activos |
+
+> Nota: `BackofficeAlertNotification` se reconcilia en cada carga del índice de clínicas (`ClinicController@index` → `BackofficeAlertService::reconcileMany`). Es idempotente (dedupe `type|clinic_id|admin_id`) y deriva alertas del estado actual, sin backfill retroactivo.
 
 Tests en `tests/Feature/Mail/EmailDispatchTest.php` y `tests/Feature/Notifications/NotificationsTest.php`.
+
+Detalle de comportamiento: `docs/backoffice/subscriptions.md` (ciclo de suscripción) y `docs/backoffice/notificaciones-internas.md` (alertas internas de backoffice).
 
 ## High-Value References
 

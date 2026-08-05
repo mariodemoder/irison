@@ -3,8 +3,11 @@
     <div class="form-wrapper">
       <div class="form-card">
         <div class="form-header">
-          <h1>{{ isEdit ? 'Editar usuario' : 'Nuevo usuario' }}</h1>
-          <p class="form-sub">{{ isEdit ? 'Actualiza los datos del usuario.' : 'Añade un nuevo usuario al equipo.' }}</p>
+          <div>
+            <h1>{{ isEdit ? 'Editar usuario' : 'Nuevo usuario' }}</h1>
+            <p class="form-sub">{{ isEdit ? 'Actualiza los datos del usuario.' : 'Añade un nuevo usuario al equipo.' }}</p>
+          </div>
+          <button type="button" class="muted back-btn" @click.prevent="cancel">Volver</button>
         </div>
 
         <form class="user-form" @submit.prevent="submit">
@@ -426,6 +429,7 @@ onMounted(async () => {
 <style scoped>
 .form-wrapper { display: flex; justify-content: center; padding: 24px; }
 .form-card { width: 100%; max-width: 860px; background: #fff; border-radius: 12px; box-shadow: 0 10px 30px rgba(2,6,23,0.06); padding: 24px; }
+.form-header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px }
 .form-header h1 { margin: 0; font-size: 22px; }
 .form-section { margin-top: 24px; padding-top: 20px; border-top: 1px solid #e5e7eb; }
 .form-section-title { font-size: 16px; font-weight: 700; margin: 0 0 12px; color: #111827; }

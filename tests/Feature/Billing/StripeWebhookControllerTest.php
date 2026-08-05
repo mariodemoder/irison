@@ -185,7 +185,7 @@ class StripeWebhookControllerTest extends TestCase
 
         $response->assertOk();
 
-        Mail::assertSent(InvoicePaymentFailedMail::class, function (InvoicePaymentFailedMail $mail) {
+        Mail::assertQueued(InvoicePaymentFailedMail::class, function (InvoicePaymentFailedMail $mail) {
             return $mail->hasTo('clinica@test.com') && $mail->hasTo('owner@test.com');
         });
     }

@@ -15,6 +15,7 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Hash;
 use Modules\Notifications\Backoffice\Notifications\CheckoutLinkGeneratedNotification;
 use Modules\Notifications\Backoffice\Notifications\PaymentCompletedNotification;
+use Modules\Notifications\Backoffice\Notifications\SubscriptionRejectedNotification;
 use Modules\Notifications\Backoffice\Notifications\SubscriptionUpgradeRequestedNotification;
 use Modules\Notifications\Backoffice\Notifications\SubscriptionUpgradedNotification;
 use Modules\Notifications\Domain\Enums\ReminderType;
@@ -294,6 +295,42 @@ class NotificationsTest extends TestCase
 
         $this->assertStringContainsString('Suscripción actualizada', $mail->subject);
         $this->assertStringContainsString('plan ha sido actualizado', $rendered);
+        $this->assertStringContainsString('Clinica Irison Test', $rendered);
+    }
+
+    // ===============================================================
+    //  BACKOFFICE NOTIFICATIONS — Subscription rejected
+    // ===============================================================
+
+    public function test_subscription_rejected_notification_to_database(): void
+    {
+        $request = $this->createSubscriptionRequest([
+            'status' => 'rejected',
+            'reviewer_comments' => 'Rechazado por validación de datos',
+        ]);
+        $notification = new SubscriptionRejectedNotification($request);
+        $msg = $notification->toDatabase($this->owner);
+
+        $this->assertInstanceOf(DatabaseMessage::class, $msg);
+        $this->assertSame('subscription_rejected', $msg->data['type']);
+        $this->assertSame($request->id, $msg->data['request_id']);
+        $this->assertSame($request->requested_plan, $msg->data['plan']);
+        $this->assertStringContainsString('rechazada', strtolower($msg->data['message']));
+    }
+
+    public function test_subscription_rejected_notification_to_mail(): void
+    {
+        $request = $this->createSubscriptionRequest([
+            'status' => 'rejected',
+            'reviewer_comments' => 'Rechazado por validación de datos',
+        ]);
+        $notification = new SubscriptionRejectedNotification($request);
+        $mail = $notification->toMail($this->owner);
+        $rendered = $this->renderMailMessage($mail);
+
+        $this->assertStringContainsString('ha sido rechazada', $mail->subject);
+        $this->assertStringContainsString('rechazada', $rendered);
+        $this->assertStringContainsString('Rechazado por validación de datos', $rendered);
         $this->assertStringContainsString('Clinica Irison Test', $rendered);
     }
 }

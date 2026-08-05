@@ -199,7 +199,7 @@
                     <span>{{ subscriptionState.label }}</span>
                   </div>
                   <div class="subscription-actions">
-                    <button v-if="status !== 'active'" class="btn btn-primary allow-readonly-action" :disabled="!canActivatePaidPlan" @click.prevent="beginPaidPlanFake">Activar cuenta de pago</button>
+                    <button v-if="status !== 'active' && status !== 'trial'" class="btn btn-primary allow-readonly-action" :disabled="!canActivatePaidPlan" @click.prevent="beginPaidPlanFake">Activar cuenta de pago</button>
                     <button v-if="status==='blocked'" class="btn btn-primary" :disabled="!canActivatePaidPlan" @click.prevent="subscribe">Activar plan (Stripe)</button>
                     <div v-if="status==='active'" class="sub-menu-wrap">
                       <button class="btn sub-menu-trigger" @click.stop="showSubscriptionMenu = !showSubscriptionMenu" title="Opciones de suscripción">
@@ -1373,17 +1373,17 @@ onBeforeUnmount(() => {
   .trial-warning-cta {
     border:none;
     border-radius:10px;
-    background:linear-gradient(180deg, #ea580c 0%, #c2410c 100%);
+    background:linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
     color:#ffffff;
     font-size:14px;
     font-weight:700;
     padding:10px 16px;
-    box-shadow:0 10px 18px rgba(194, 65, 12, 0.26);
+    box-shadow:0 10px 18px rgba(37, 99, 235, 0.26);
     transition:transform 0.14s ease, box-shadow 0.14s ease, filter 0.14s ease;
   }
   .trial-warning-cta:hover {
     transform:translateY(-1px);
-    box-shadow:0 14px 24px rgba(194, 65, 12, 0.3);
+    box-shadow:0 14px 24px rgba(37, 99, 235, 0.3);
     filter:brightness(1.02);
   }
   .trial-warning-cta:active {

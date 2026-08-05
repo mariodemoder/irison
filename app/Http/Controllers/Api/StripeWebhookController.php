@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Clinic;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Services\Backoffice\BackofficeAlertService;
 use App\Support\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -128,6 +129,10 @@ class StripeWebhookController extends Controller
 
                 // Enviar email de activación de plan (solo nueva suscripción, no upgrades)
                 if ($previousSubscriptionStatus !== 'active') {
+                    if (in_array($previousSubscriptionStatus, ['trial', 'trial_warning'], true)) {
+                        app(BackofficeAlertService::class)->trialConverted($clinic);
+                    }
+
                     try {
                         $invoiceUrl = \App\Mail\SubscriptionActivatedMail::resolveInvoiceUrl(
                             ! empty($session->invoice) ? (string) $session->invoice : null
@@ -298,6 +303,8 @@ class StripeWebhookController extends Controller
                         $clinic->subscription_status = 'canceled';
                         $clinic->subscribed_at = null;
                         $clinic->save();
+
+                        app(BackofficeAlertService::class)->subscriptionCancelled($clinic);
 
                         ActivityLogger::log(
                             tenantId: (int) $clinic->id,

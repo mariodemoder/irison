@@ -16,7 +16,14 @@ class BillingCancellationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_cancel_subscription_sets_read_only_grace_period_and_sends_internal_email(): void
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
+    }
+
+    public function test_cancel_subscription_keeps_paid_access_then_enforces_read_only_and_sends_internal_email(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-05-14 10:00:00'));
         Mail::fake();
@@ -64,17 +71,28 @@ class BillingCancellationTest extends TestCase
         $this->assertSame('canceled', $subscription->status);
         $this->assertTrue($subscription->current_period_end?->equalTo(now()->addDays(7)));
 
-        Mail::assertSent(SubscriptionCanceledInternalMail::class, function (SubscriptionCanceledInternalMail $mail) {
+        Mail::assertQueued(SubscriptionCanceledInternalMail::class, function (SubscriptionCanceledInternalMail $mail) {
             return $mail->hasTo('qa-billing@test.local');
         });
 
+        // Tras cancelar, la clínica conserva acceso completo durante el periodo pagado (7 días de gracia)
         $meResponse = $this->getJson('/api/me');
         $meResponse
             ->assertOk()
             ->assertJsonPath('status', 'canceled')
-            ->assertJsonPath('read_only_no_transactions', true)
-            ->assertJsonPath('can_transact', false)
+            ->assertJsonPath('read_only_no_transactions', false)
+            ->assertJsonPath('can_transact', true)
             ->assertJsonPath('cancellation_days_left', 7);
+
+        // Al expirar el periodo pagado entra en modo solo lectura
+        Carbon::setTestNow(now()->addDays(8));
+
+        $readOnlyResponse = $this->getJson('/api/me');
+        $readOnlyResponse
+            ->assertOk()
+            ->assertJsonPath('status', 'canceled')
+            ->assertJsonPath('read_only_no_transactions', true)
+            ->assertJsonPath('can_transact', false);
 
         $updateResponse = $this->putJson('/api/me', [
             'name' => 'Cambio bloqueado',

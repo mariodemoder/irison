@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Http\View\Composers\BackofficeNotificationsComposer;
 use App\Models\CashierSubscription;
 use App\Models\Clinic;
 use App\Models\User;
@@ -10,6 +11,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Cashier\Cashier;
 
@@ -31,6 +33,8 @@ class AppServiceProvider extends ServiceProvider
         Cashier::useCustomerModel(Clinic::class);
         Cashier::useSubscriptionModel(CashierSubscription::class);
         Schema::defaultStringLength(191);
+
+        View::composer('backoffice.layout', BackofficeNotificationsComposer::class);
 
         ResetPassword::createUrlUsing(function (object $user, string $token): string {
             $frontendUrl = rtrim((string) config('app.frontend_url', config('app.url')), '/');

@@ -92,11 +92,25 @@
                             || in_array($operationalStatus, ['trial_read_only', 'churned'], true)
                             || ! $isGreenStatus;
                         $isExpired = $tenantStatus === 'expired';
+                        $alertBadges = [
+                            'backoffice_upgrade_requested' => ['label' => 'Upgrade pendiente', 'class' => 'bg-amber-100 text-amber-800'],
+                            'trial_expired' => ['label' => 'Trial vencido', 'class' => 'bg-rose-100 text-rose-700'],
+                            'trial_converted' => ['label' => 'Trial a pago', 'class' => 'bg-emerald-100 text-emerald-700'],
+                            'subscription_cancelled' => ['label' => 'Susc. cancelada', 'class' => 'bg-rose-100 text-rose-700'],
+                        ];
+                        $backofficeAlerts = $clinic->backoffice_alerts ?? [];
                     @endphp
                     <tr class="border-t border-slate-100">
                         <td class="px-3 py-2">{{ $clinic->id }}</td>
                         <td class="px-3 py-2">
-                            <div class="text-lg font-semibold leading-tight">{{ $clinic->name }}</div>
+                            <div class="text-lg font-semibold leading-tight">
+                                {{ $clinic->name }}
+                                @foreach ($backofficeAlerts as $alertKey)
+                                    @if (isset($alertBadges[$alertKey]))
+                                        <span class="ml-2 inline-block rounded px-2 py-0.5 align-middle text-xs font-medium {{ $alertBadges[$alertKey]['class'] }}" title="{{ $alertBadges[$alertKey]['label'] }}">{{ $alertBadges[$alertKey]['label'] }}</span>
+                                    @endif
+                                @endforeach
+                            </div>
                             <div class="mt-1 text-base text-slate-600">{{ $clinic->email ?: 'Sin email de contacto' }}</div>
                         </td>
                         <td class="px-3 py-2">{{ $clinic->slug ?: '-' }}</td>

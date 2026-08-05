@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Mail\SubscriptionActivatedMail;
+use App\Services\Backoffice\BackofficeAlertService;
 use App\Support\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -65,6 +66,10 @@ class SubscribeController extends Controller
 
         // Enviar email de activación de plan (solo nueva suscripción)
         if ($previousSubscriptionStatus !== 'active') {
+            if (in_array($previousSubscriptionStatus, ['trial', 'trial_warning'], true)) {
+                app(BackofficeAlertService::class)->trialConverted($clinic);
+            }
+
             try {
                 $invoiceUrl = SubscriptionActivatedMail::resolveInvoiceUrl(
                     ! empty($subscription->latest_invoice) ? (string) $subscription->latest_invoice : null
