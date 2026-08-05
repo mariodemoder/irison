@@ -12,7 +12,7 @@ Router rápido para cargar solo el skill que necesitas.
 - `backend/index.md` — Business logging, soft deletes
 
 ## Frontend
-- `frontend/index.md` — Error handling, button/popup styling, toast
+- `frontend/index.md` — Error handling, button/popup styling, toast, date picker protocol
 - `frontend/menu-routing.md` — Menu nav items, `isActive()` rules, adding new items
 
 ## Billing

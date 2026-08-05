@@ -152,7 +152,7 @@
 
           <div class="field">
             <label class="label">Fecha de pago</label>
-            <input v-model="form.paid_at" type="datetime-local" class="input" />
+            <input v-model="form.paid_at" type="datetime-local" class="date-field-input" aria-label="Fecha y hora de pago" />
           </div>
 
 

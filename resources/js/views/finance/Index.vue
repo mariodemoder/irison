@@ -137,11 +137,11 @@
           <div class="finance-toolbar">
             <label class="date-field">
               <span>Desde</span>
-              <input v-model="fromDate" type="date" class="input" />
+              <input v-model="fromDate" type="date" class="filter-date" aria-label="Desde" />
             </label>
             <label class="date-field">
               <span>Hasta</span>
-              <input v-model="toDate" type="date" class="input" />
+              <input v-model="toDate" type="date" class="filter-date" aria-label="Hasta" />
             </label>
             <button class="btn btn-sm small primary" @click="loadBenefits" :disabled="benefitsLoading">{{ benefitsLoading ? 'Calculando...' : 'Calcular' }}</button>
           </div>
@@ -278,7 +278,7 @@
           <div class="grid-2">
             <div class="field">
               <label class="label">Fecha</label>
-              <input v-model="expenseForm.date" type="date" class="input" />
+              <input v-model="expenseForm.date" type="date" class="date-field-input" aria-label="Fecha del gasto" />
             </div>
             <div class="field">
               <label class="label">Forma de pago</label>

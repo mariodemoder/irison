@@ -74,3 +74,119 @@
 @media (max-width: 768px) {
   .sub-banner { padding: 8px 10px; gap: 8px }
 }
+
+/* ── Date / Time Picker — Standardized Styles ── */
+
+/* Form inputs inside .input-group (BaseInput wraps here) */
+.input-group input[type="date"],
+.input-group input[type="datetime-local"],
+.input-group input[type="time"] {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  min-height: 46px;
+}
+
+/* Standalone form date inputs (no .input-group wrapper) */
+input[type="date"].date-field-input,
+input[type="datetime-local"].date-field-input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  font-size: 15px;
+  cursor: pointer;
+  min-height: 46px;
+  transition: box-shadow .15s ease, border-color .15s ease;
+}
+input[type="date"].date-field-input:focus,
+input[type="datetime-local"].date-field-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
+}
+
+/* Filter date inputs (compact — agenda, billing, activity, invoices) */
+input[type="date"].filter-date {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  font-size: 13px;
+  cursor: pointer;
+  min-height: 36px;
+  transition: box-shadow .15s ease, border-color .15s ease;
+}
+input[type="date"].filter-date:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
+}
+
+/* Wrappers with stacked visible label for date inputs (filters & inline forms).
+   Native date inputs do NOT support placeholder → every date field needs a
+   visible label so "dd/mm/aaaa" never appears without context. */
+.filter-date-field,
+.mini-date-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.filter-date-field .filter-date,
+.filter-date-field input[type="date"],
+.mini-date-field input[type="date"],
+.mini-date-field input[type="datetime-local"] {
+  width: 100%;
+}
+
+/* Time inputs in schedule grids (compact, table cells) */
+input[type="time"].time-grid-input {
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  font-size: 13px;
+  cursor: pointer;
+  min-height: 34px;
+  transition: box-shadow .15s ease, border-color .15s ease;
+}
+input[type="time"].time-grid-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
+}
+
+/* SweetAlert popup date inputs */
+.swal-popup-card input[type="date"],
+.swal-popup-card input[type="datetime-local"] {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  font-size: 15px;
+  cursor: pointer;
+  min-height: 46px;
+  transition: box-shadow .15s ease, border-color .15s ease;
+}
+.swal-popup-card input[type="date"]:focus,
+.swal-popup-card input[type="datetime-local"]:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
+}
+
+/* Calendar icon — consistent sizing */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: .6;
+}
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}

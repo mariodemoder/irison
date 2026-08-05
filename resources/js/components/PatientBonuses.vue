@@ -65,7 +65,7 @@
             </div>
             <div class="create-row">
               <label>Expira (opcional)</label>
-              <input v-model="form.expires_at" type="date" />
+              <input v-model="form.expires_at" type="date" class="date-field-input" aria-label="Fecha de expiración del bono" />
             </div>
           </div>
 

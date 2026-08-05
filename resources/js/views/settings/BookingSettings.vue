@@ -425,13 +425,13 @@ onMounted(loadSettings)
                   <tr>
                     <td class="hours-row-label">Desde</td>
                     <td v-for="s in (scheduleGrid[bp.id] || [])" :key="'start-'+s.day_of_week" class="hours-cell-center">
-                      <input class="input counter-input" type="time" step="300" v-model="s.start_time" :disabled="!s.enabled" />
+                       <input class="time-grid-input" type="time" step="300" v-model="s.start_time" :disabled="!s.enabled" :aria-label="'Hora de entrada ' + (dayLabels[s.day_of_week] || '')" />
                     </td>
                   </tr>
                   <tr>
                     <td class="hours-row-label">Hasta</td>
                     <td v-for="s in (scheduleGrid[bp.id] || [])" :key="'end-'+s.day_of_week" class="hours-cell-center">
-                      <input class="input counter-input" type="time" step="300" v-model="s.end_time" :disabled="!s.enabled" />
+                       <input class="time-grid-input" type="time" step="300" v-model="s.end_time" :disabled="!s.enabled" :aria-label="'Hora de salida ' + (dayLabels[s.day_of_week] || '')" />
                     </td>
                   </tr>
                 </tbody>

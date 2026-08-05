@@ -130,7 +130,7 @@
           <div class="field">
             <label class="label">Inicio</label>
             <div class="datetime-pair">
-              <input v-model="startDateModel" type="date" class="input" :disabled="isCanceled && mode !== 'reprogram'" />
+              <input v-model="startDateModel" type="date" class="date-field-input" aria-label="Fecha de inicio" :disabled="isCanceled && mode !== 'reprogram'" />
               <select v-model="startTimeModel" class="input" :disabled="isCanceled && mode !== 'reprogram'">
                 <option value="" disabled>Hora</option>
                 <option v-for="opt in availableStartTimes" :key="'s'+opt" :value="opt">{{ opt }}</option>
@@ -145,7 +145,7 @@
           <div class="field">
             <label class="label">Fin</label>
             <div class="datetime-pair">
-              <input v-model="endDateModel" type="date" class="input" :disabled="isEndTimeLocked || (isCanceled && mode !== 'reprogram')" />
+              <input v-model="endDateModel" type="date" class="date-field-input" aria-label="Fecha de fin" :disabled="isEndTimeLocked || (isCanceled && mode !== 'reprogram')" />
               <select v-model="endTimeModel" class="input" :disabled="isEndTimeLocked || (isCanceled && mode !== 'reprogram')">
                 <option value="" disabled>Hora</option>
                 <option v-for="opt in availableEndTimes" :key="'e'+opt" :value="opt">{{ opt }}</option>

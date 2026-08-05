@@ -47,3 +47,27 @@ Cambios en `resources/css/app.css:446-489` para que las tablas index de producto
 - Flex nowrap en toda la línea.
 - Backend: `app/Services/Patients/PatientsServices.php:96-109` eager load `appointments.appointmentType` y `appointments.professional`.
 - Response: `appointment_type.description` y `professional.name`.
+
+## Date Picker Protocol
+
+All date/time inputs must use standardized CSS classes defined in `resources/css/theme.css`.
+
+### Classes
+
+| Class | Context | Size |
+|---|---|---|
+| `.date-field-input` | Form inputs (data entry) | Full — `padding:12px 14px`, `border-radius:10px`, `font-size:15px` |
+| `.filter-date` | Filter/search bars (date ranges) | Compact — `padding:8px 12px`, `border-radius:8px`, `font-size:13px` |
+| `.time-grid-input` | Schedule grid time cells | Tiny — `padding:6px 8px`, `border-radius:8px`, `font-size:13px` |
+
+### Rules
+1. Never use raw `<input type="date">` without a styling class.
+2. **Every date/time input MUST have a visible label** (`<label class="filter-date-field">` for filters, `<label class="mini-date-field">` for cards) AND an `aria-label`. Native date inputs ignore `placeholder` — without a label the field shows a bare "dd/mm/aaaa".
+3. Use `.date-field-input` for data entry (forms, dialogs, popups).
+4. Use `.filter-date` for list filters (agenda, billing, activity, invoices, notifications).
+5. Use `.time-grid-input` for time-of-day in schedule tables.
+6. SweetAlert date inputs: no class change needed — `.swal-popup-card input[type="date"]` handles it.
+7. `BaseInput.vue` supports `type="date"`, `"time"`, `"datetime-local"` with `min`, `max`, `step`, `placeholder`, `disabled`, `required` props.
+8. Use `BaseInput` when the input has a standalone label; use raw input with the class when inside complex layouts.
+
+Full reference: `docs/frontend/date-picker-protocol.md`

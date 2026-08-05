@@ -31,7 +31,7 @@
     <div class="qaf-grid qaf-grid-3">
       <div class="field">
         <label class="label">Fecha</label>
-        <input v-model="form.date" type="date" class="input" required />
+        <input v-model="form.date" type="date" class="date-field-input" aria-label="Fecha de la cita" required />
         <div v-if="errors.date" class="field-error">{{ errors.date }}</div>
       </div>
       <div class="field">

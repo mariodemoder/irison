@@ -6,7 +6,13 @@ const props = defineProps({
   modelValue: [String, Number],
   type: { type: String, default: 'text' },
   autocomplete: { type: String, default: 'off' },
-  showPasswordToggle: { type: Boolean, default: false }
+  showPasswordToggle: { type: Boolean, default: false },
+  min: String,
+  max: String,
+  step: [String, Number],
+  placeholder: String,
+  disabled: Boolean,
+  required: Boolean,
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -32,6 +38,12 @@ function hidePassword() {
         :value="modelValue"
         @input="e => emit('update:modelValue', e.target.value)"
         :autocomplete="autocomplete"
+        :min="min"
+        :max="max"
+        :step="step"
+        :placeholder="placeholder"
+        :disabled="disabled"
+        :required="required"
         class="input-field"
       />
       <button

@@ -115,13 +115,13 @@
                   <tr>
                     <td class="hours-row-label">Desde</td>
                     <td v-for="s in schedules" :key="'start-'+s.day_of_week" class="hours-cell-center">
-                      <input class="input counter-input" type="time" step="300" v-model="s.start_time" :disabled="!s.enabled" />
+                       <input class="time-grid-input" type="time" step="300" v-model="s.start_time" :disabled="!s.enabled" :aria-label="'Hora de entrada ' + (dayLabels[s.day_of_week] || '')" />
                     </td>
                   </tr>
                   <tr>
                     <td class="hours-row-label">Hasta</td>
                     <td v-for="s in schedules" :key="'end-'+s.day_of_week" class="hours-cell-center">
-                      <input class="input counter-input" type="time" step="300" v-model="s.end_time" :disabled="!s.enabled" />
+                       <input class="time-grid-input" type="time" step="300" v-model="s.end_time" :disabled="!s.enabled" :aria-label="'Hora de salida ' + (dayLabels[s.day_of_week] || '')" />
                     </td>
                   </tr>
                 </tbody>
@@ -138,7 +138,7 @@
               <div class="closed-card">
                 <label class="label">Individual</label>
                 <div class="closed-row">
-                  <input v-model="newExceptionDate" class="input" type="date" />
+                   <label class="mini-date-field"><span>Fecha</span><input v-model="newExceptionDate" class="date-field-input" type="date" /></label>
                   <button class="btn btn-sm" type="button" @click="addException">+</button>
                 </div>
                 <div v-if="exceptions.length" class="chip-list">
@@ -153,8 +153,8 @@
               <div class="closed-card">
                 <label class="label">Rango</label>
                 <div class="closed-row">
-                  <input v-model="rangeStart" class="input" type="date" />
-                  <input v-model="rangeEnd" class="input" type="date" />
+                   <label class="mini-date-field"><span>Desde</span><input v-model="rangeStart" class="date-field-input" type="date" /></label>
+                   <label class="mini-date-field"><span>Hasta</span><input v-model="rangeEnd" class="date-field-input" type="date" /></label>
                   <button class="btn btn-sm" type="button" @click="addExceptionRange">+</button>
                 </div>
                 <div v-if="exceptions.filter(e => e.isRange).length" class="chip-list">

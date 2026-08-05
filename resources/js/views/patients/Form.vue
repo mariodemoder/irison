@@ -57,7 +57,7 @@
 
           <div class="field">
             <label class="label">Fecha de nacimiento</label>
-            <input v-model="form.birth_date" type="date" class="input" />
+            <input v-model="form.birth_date" type="date" class="date-field-input" aria-label="Fecha de nacimiento" />
             <div v-if="errors.birth_date" class="field-error">{{ errors.birth_date[0] }}</div>
           </div>
 

@@ -22,8 +22,8 @@
             <option value="draft">Pendiente</option>
             <option value="cancelled">Cancelado</option>
           </select>
-          <input v-model="filters.from_date" type="date" class="search-input" @change="load(1)" />
-          <input v-model="filters.to_date" type="date" class="search-input" @change="load(1)" />
+          <label class="filter-date-field"><span>Desde</span><input v-model="filters.from_date" type="date" class="filter-date" @change="load(1)" /></label>
+          <label class="filter-date-field"><span>Hasta</span><input v-model="filters.to_date" type="date" class="filter-date" @change="load(1)" /></label>
         </div>
 
         <div class="summary">

@@ -131,7 +131,7 @@ If the feature is substantial or has multiple flows, follow a richer structure s
 See `.opencode/skills/index.md` for detailed routing. Key skills:
 - `core` — Setup, architecture, conventions, auth recovery
 - `backend` — Logging, soft deletes, DB pitfalls
-- `frontend` — Error handling, buttons, popups
+- `frontend` — Error handling, buttons, popups, date picker protocol
 - `billing` — Stripe, subscriptions, webhooks, backoffice sync
 - `appointments` — Form, availability, pitfalls
 - `bonus` — Multi-type sessions, BonusService, consumption flow, session lines

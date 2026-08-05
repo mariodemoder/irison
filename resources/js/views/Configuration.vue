@@ -121,13 +121,13 @@
                       <tr>
                         <td class="hours-row-label">Desde</td>
                         <td v-for="row in businessHours" :key="`start-${row.day}`" class="hours-cell-center">
-                          <input class="input counter-input" type="time" step="300" v-model="row.start" :disabled="!row.enabled" />
+                           <input class="time-grid-input" type="time" step="300" v-model="row.start" :disabled="!row.enabled" :aria-label="'Hora de apertura ' + (dayLabels[row.day] || '')" />
                         </td>
                       </tr>
                       <tr>
                         <td class="hours-row-label">Hasta</td>
                         <td v-for="row in businessHours" :key="`end-${row.day}`" class="hours-cell-center">
-                          <input class="input counter-input" type="time" step="300" v-model="row.end" :disabled="!row.enabled" />
+                           <input class="time-grid-input" type="time" step="300" v-model="row.end" :disabled="!row.enabled" :aria-label="'Hora de cierre ' + (dayLabels[row.day] || '')" />
                         </td>
                       </tr>
                     </tbody>
@@ -146,7 +146,7 @@
                     <div class="closed-cal-card">
                       <label class="label">Individual</label>
                       <div class="closed-controls-row closed-controls-row-single">
-                        <input v-model="newClosedDay" class="input closed-day-input" type="date" />
+                        <label class="mini-date-field"><span>Fecha</span><input v-model="newClosedDay" class="date-field-input closed-day-input" type="date" /></label>
                         <div class="closed-card-actions">
                           <button v-if="canCreateWithSubscription" class="btn btn-sm" type="button" @click.prevent="addClosedDay">+</button>
                           <BtnTrash :disabled="individualClosedDays.length === 0" @click="clearIndividualClosedDays" />
@@ -168,8 +168,8 @@
                     <div class="closed-cal-card">
                       <label class="label">Rango</label>
                       <div class="closed-controls-row closed-controls-row-range">
-                        <input v-model="closedRangeStart" class="input closed-day-input" type="date" />
-                        <input v-model="closedRangeEnd" class="input closed-day-input" type="date" />
+                        <label class="mini-date-field"><span>Desde</span><input v-model="closedRangeStart" class="date-field-input closed-day-input" type="date" /></label>
+                        <label class="mini-date-field"><span>Hasta</span><input v-model="closedRangeEnd" class="date-field-input closed-day-input" type="date" /></label>
                         <div class="closed-card-actions">
                           <button v-if="canCreateWithSubscription" class="btn btn-sm" type="button" @click.prevent="addClosedDayRange">+</button>
                           <BtnTrash :disabled="rangeClosedDays.length === 0" @click="clearRangeClosedDays" />

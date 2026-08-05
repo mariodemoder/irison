@@ -27,7 +27,7 @@
         <section class="section grid-form">
           <div class="field">
             <label class="label">Fecha</label>
-            <input v-model="form.date" type="date" class="input" />
+            <input v-model="form.date" type="date" class="date-field-input" aria-label="Fecha de la factura" />
           </div>
           <div class="field">
             <label class="label">Notas (opcional)</label>

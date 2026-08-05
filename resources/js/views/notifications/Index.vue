@@ -25,8 +25,8 @@
             <option value="">Categoría: todas</option>
             <option v-for="option in categoryOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
           </select>
-          <input v-model="filters.from_date" type="date" class="search-input" @change="load(1)" />
-          <input v-model="filters.to_date" type="date" class="search-input" @change="load(1)" />
+          <label class="filter-date-field"><span>Desde</span><input v-model="filters.from_date" type="date" class="filter-date" @change="load(1)" /></label>
+          <label class="filter-date-field"><span>Hasta</span><input v-model="filters.to_date" type="date" class="filter-date" @change="load(1)" /></label>
         </div>
 
         <div class="summary">
