@@ -50,7 +50,7 @@ Read-only en trial vencido o cancelado. Backoffice monitorea, no duplica lógica
 - Idempotencia obligatoria: cada hito se envía una sola vez
 - Conversión a `active` cancela hitos pendientes
 - Scheduler `php artisan schedule:work` para detectar vencimientos, enviar emails, suspender, marcar churn
-- `trial_grace_days` configurable en `config/billing.php`
+- `trial_grace_days` configurable en `modules/Subscriptions/Config/billing.php`
 
 ## Checklist antes de cerrar cambio
 1. Verificar permisos por rol.

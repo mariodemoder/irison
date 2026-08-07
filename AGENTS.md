@@ -22,7 +22,12 @@ All agents MUST read this file at the start of every session before planning or 
 - If the plan agent is unsure about the approach, risk level, or delegation target → ask the user before proceeding.
 - Never make irreversible changes (billing, tenant data, destructive DB ops) without user confirmation.
 
-### 4. Delegation policy
+### 4. Docs-after-approval rule
+- Every time the user approves a plan, updating the documentation in `docs/` is part of the plan.
+- The plan must include a "docs" task that reflects the executed changes (routes, flows, architecture, module/class names), and it is completed in the same workflow, not deferred.
+- The plan agent validates that the docs task is done before marking the plan complete.
+
+### 5. Delegation policy
 - Backend changes → **Backend** agent.
 - Frontend/UI changes → **Frontend** agent.
 - Billing/Stripe/subscription flows → **Billing** agent.
@@ -46,8 +51,7 @@ This project is organized in 5 layers:
    - Domain specialists handle focused implementation work.
    - Each specialist owns one slice of the product: backend, frontend, billing, backoffice, QA, or deploy.
    - Dedicated agents for **Opencode** (`.opencode/agents/`): `@backend`, `@frontend`, `@qa`, `@billing`, `@backoffice`, `@deploy`.
-   - Dedicated agents for **Copilot / VS Code** (`.github/agents/`): **Backend**, **Frontend**, **QA**, **Billing**, **Backoffice**, **Deploy**.
-   - Both share the same skill files in `.opencode/skills/agents/`.
+   - Skill files in `.opencode/skills/agents/`.
 
 4. Knowledge layer
    - Skills in `.opencode/skills/index.md` provide technical context and domain know-how.
@@ -125,6 +129,7 @@ If the feature is substantial or has multiple flows, follow a richer structure s
 3. Keep public webhooks public — Stripe/billing webhooks stay accessible without auth.
 4. Preserve reminder scheduling — verify jobs, schedule, and artisan commands together when touching reminders.
 5. Never make irreversible billing or tenant changes without validation and review.
+6. Every approved plan must update `docs/` in the same workflow (see Operating Model → Docs-after-approval rule).
 
 ## Skill Index (load on demand, saves tokens)
 
@@ -154,6 +159,7 @@ For focused tests, regression, HTTP validation, or risk hardening → delegate t
 - Queue defaults to `database`; use process supervision and restart queues on deploy.
 - **Subscription upgrade proration**: Trial→paid upgrades must charge the FULL price of the new plan (no credit). Basic-paid→PRO uses Stripe's native proration. See `backoffice/upgrade-flow.md` for details.
 - **Price ID resolution**: Each plan has its own Stripe product. `resolvePriceIdForPlan()` only falls back to `STRIPE_PRICE_ID` for the `basic` plan. Trial→paid checkout passes `price_id` explicitly to avoid incorrect fallback.
+- **Modo solo lectura post-trial**: tras el fin del trial (o del periodo pagado de una cancelación) la clínica solo puede ver datos, activar la cuenta de pago y descargar el backup XLSX. Toda escritura —incluidas las rutas admin de Booking (`check.subscription` en `modules/Booking/Routes/api.php`) y la reserva online pública (`PublicBookingService::ensureClinicCanBeBooked()`)— se bloquea. Enforcement: middleware `check.subscription`, guarda axios (`api.js`), CSS `.readonly-mode` + `allow-readonly-action`. Detalle: `docs/backend/read-only-policy.md`.
 
 ## Notifications Module
 

@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Modules\Subscriptions\Tests\E2E;
 
-use App\Events\PaymentCompleted;
-use App\Events\SubscriptionUpgraded;
 use App\Models\AdminUser;
 use App\Models\Clinic;
 use App\Models\SubscriptionRequest;
@@ -13,6 +11,8 @@ use App\Models\User;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
+use Modules\Subscriptions\Domain\Events\PaymentCompleted;
+use Modules\Subscriptions\Domain\Events\SubscriptionUpgraded;
 use Modules\Subscriptions\Tests\TestCase;
 
 class UpgradePlanE2ETest extends TestCase

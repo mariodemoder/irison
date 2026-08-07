@@ -1,7 +1,7 @@
 import axios from 'axios'
 import router from '../router'
 import logout from '../utils/logout'
-import { resetMeCache } from '../shared/meCache'
+import { resetMeCache, meStatus, meReadOnlyNoTransactions, meCanTransact } from '../shared/meCache'
 import { clearGlobalHttpError, showGlobalHttpError } from '../shared/globalHttpError'
 
 function ensureErrorPayload(error, fallbackMessage) {
@@ -31,8 +31,56 @@ api.interceptors.request.use(config => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
+
+  const method = String(config.method || 'get').toUpperCase()
+  if (method !== 'GET' && isClientSideReadOnly()) {
+    const path = String(config.url || '')
+    const allowed = READONLY_WRITE_WHITELIST.some(p => path.includes(p))
+
+    if (!allowed) {
+      const error = {
+        config,
+        response: {
+          status: 403,
+          data: {
+            message: 'Modo solo lectura: durante esta semana no se permiten transacciones.',
+            code: 'CLINIC_READ_ONLY_NO_TRANSACTIONS',
+          },
+        },
+      }
+
+      showGlobalHttpError({
+        variant: 'warning',
+        status: 403,
+        title: 'Modo solo lectura',
+        message: 'Durante esta semana no se permiten transacciones.',
+      })
+
+      return Promise.reject(error)
+    }
+  }
+
   return config
 })
+
+const READONLY_WRITE_WHITELIST = [
+  '/billing/checkout',
+  '/billing/confirm',
+  '/stripe/checkout',
+  '/subscribe/fake',
+]
+
+function isClientSideReadOnly() {
+  if (meStatus.value === 'trial_read_only' || meReadOnlyNoTransactions.value) {
+    return true
+  }
+
+  if ((meStatus.value === 'canceled' || meStatus.value === 'cancelled') && !meCanTransact.value) {
+    return true
+  }
+
+  return false
+}
 
 api.interceptors.response.use(
   response => {

@@ -225,7 +225,7 @@
                 </div>
                 
                 <div class="subscription-meta">
-                  <div class="subscription-meta-item">
+                  <div v-if="status !== 'trial'" class="subscription-meta-item">
                     <span class="subscription-meta-label">Modo de pago</span>
                     <strong class="subscription-meta-value">{{ paymentModeLabel }}</strong>
                   </div>
@@ -1379,12 +1379,13 @@ onBeforeUnmount(() => {
     font-weight:700;
     padding:10px 16px;
     box-shadow:0 10px 18px rgba(37, 99, 235, 0.26);
-    transition:transform 0.14s ease, box-shadow 0.14s ease, filter 0.14s ease;
+    transition:transform 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
   }
   .trial-warning-cta:hover {
     transform:translateY(-1px);
-    box-shadow:0 14px 24px rgba(37, 99, 235, 0.3);
-    filter:brightness(1.02);
+    box-shadow:0 14px 24px rgba(107, 114, 128, 0.35);
+    background:#6b7280;
+    filter:none;
   }
   .trial-warning-cta:active {
     transform:translateY(0);

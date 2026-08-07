@@ -41,7 +41,7 @@ Route::prefix('api')->group(function () {
     });
 
     // Reserva online — rutas de configuración (admin, auth). Deben ir ANTES de /booking/{slug}
-    Route::middleware(['auth:sanctum', 'clinic'])->group(function () {
+    Route::middleware(['auth:sanctum', 'clinic', 'check.subscription'])->group(function () {
         Route::get('/booking/settings', [BookingSettingsController::class, 'show']);
         Route::put('/booking/settings', [BookingSettingsController::class, 'update']);
         Route::get('/booking/slug-check', [BookingSettingsController::class, 'checkSlug']);

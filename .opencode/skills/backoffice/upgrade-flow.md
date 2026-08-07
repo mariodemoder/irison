@@ -72,16 +72,16 @@ Webhook checkout.session.completed (hardened):
 
 ## Archivos clave (orden de lectura)
 
-1. `app/Services/PaymentProvider/PaymentProviderInterface.php`
-2. `app/Services/PaymentProvider/StripePaymentProvider.php` — métodos `previewUpgrade()` y `upgradeSubscription()`
-3. `app/Services/PaymentProvider/FakePaymentProvider.php` — métodos `previewUpgrade()` y `upgradeSubscription()`
-4. `app/Services/Subscription/SubscriptionUpgradeService.php` — orquestador
-5. `app/Http/Controllers/Backoffice/SubscriptionRequestController.php` — ruta `previewUpgrade`
+1. `modules/Subscriptions/Domain/Contracts/PaymentProviderInterface.php`
+2. `modules/Subscriptions/Infrastructure/Payment/StripePaymentProvider.php` — métodos `previewUpgrade()` y `upgradeSubscription()`
+3. `modules/Subscriptions/Infrastructure/Payment/FakePaymentProvider.php` — métodos `previewUpgrade()` y `upgradeSubscription()`
+4. `modules/Subscriptions/Application/Services/SubscriptionUpgradeService.php` — orquestador
+5. `modules/Subscriptions/Infrastructure/Controllers/Backoffice/SubscriptionRequestController.php` — ruta `previewUpgrade`
 6. `routes/web.php` — ruta GET `subscription-requests/{sr}/preview-upgrade`
 7. `resources/views/backoffice/subscription_requests/index.blade.php` — modal con Alpine.js
-8. `app/Http/Controllers/Api/StripeWebhookController.php`
-9. `app/Listeners/SendCheckoutEmail.php`
-10. `app/Listeners/SendPaymentConfirmationEmail.php`
+8. `modules/Subscriptions/Infrastructure/Payment/StripeWebhookHandler.php` — webhook único (`POST /api/billing/webhook`)
+9. `modules/Notifications/Backoffice/Listeners/SendCheckoutEmail.php`
+10. `modules/Notifications/Backoffice/Listeners/SendPaymentConfirmationEmail.php`
 11. `resources/js/views/Configuration.vue`
 
 ## Estados esperados de `subscription_requests`

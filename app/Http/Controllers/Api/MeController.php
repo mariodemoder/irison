@@ -42,7 +42,9 @@ class MeController
                 $readOnlyNoTransactions = $clinic->isInReadOnlyNoTransactionsWindow();
                 $clinicStatus = strtolower(trim((string) ($clinic->subscription_status ?? 'inactive')));
 
-                if ($tenantStatus === 'trial_read_only') {
+                if ($clinicStatus === 'active') {
+                    $status = 'active';
+                } elseif ($tenantStatus === 'trial_read_only') {
                     $readOnlyNoTransactions = true;
                     $status = 'trial_read_only';
                 } elseif ($tenantStatus === 'churned') {

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Modules\Notifications\Backoffice\Listeners;
 
-use App\Events\PaymentCompleted;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -12,6 +11,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Modules\Notifications\Backoffice\Notifications\PaymentCompletedNotification;
+use Modules\Subscriptions\Domain\Events\PaymentCompleted;
 
 class SendPaymentConfirmationEmail implements ShouldQueue
 {

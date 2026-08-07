@@ -38,7 +38,7 @@ class CheckSubscriptionAccess
         }
 
         // 5. Semana de gracia en solo lectura -> permitir consultar datos existentes
-        if ($clinic->isInReadOnlyNoTransactionsWindow() || $tenantStatus === 'trial_read_only') {
+        if ($clinic->isReadOnlyNoTransactionsMode()) {
             if ($request->isMethodSafe() || $this->canStartPaidPlanWhileReadOnly($request)) {
                 return $next($request);
             }

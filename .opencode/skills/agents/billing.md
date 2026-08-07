@@ -10,8 +10,8 @@ Dominio: facturas (Document), pagos (Payment, BillingPayment), suscripciones, St
 - `BillingPayment` — pagos de suscripción (Stripe/fake)
 - `InvoicingService` (`app/Services/Documents/InvoicingService.php`) — creación/gestión de facturas
 - `PaymentService` (`app/Services/Payments/PaymentService.php`) — pagos a pacientes
-- `PaymentProviderInterface` + `Resolver` + `FakePaymentProvider` — abstracción de proveedor
-- Controllers: `BillingController`, `PaymentController`, `StripeCheckoutController`, `StripeWebhookController`, `DocumentController`
+- `PaymentProviderInterface` + `Resolver` + `FakePaymentProvider` + `StripePaymentProvider` — abstracción de proveedor (`modules/Subscriptions/Infrastructure/Payment/`)
+- Controllers: `BillingController`, `PaymentController`, `StripeCheckoutController`, `StripeWebhookHandler`, `DocumentController` (billing en `modules/Subscriptions/Infrastructure/Controllers/`)
 - Policies: `PaymentPolicy`, `DocumentPolicy`
 
 ### Frontend

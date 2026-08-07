@@ -8,6 +8,7 @@ Antes de ejecutar, lee `AGENTS.md` para contexto del proyecto, convenciones y ag
 1. Leer `AGENTS.md` al inicio de cada conversación.
 2. Consultar al agente especializado antes de ejecutar cambios en su dominio.
 3. No ejecutar cambios sin un plan claro — primero planificar, luego ejecutar.
+4. Cada vez que el usuario apruebe un plan, actualizar la documentación en `docs/` que refleje los cambios ejecutados (rutas, flujos, arquitectura, nombres de módulos/clases). La actualización de docs forma parte del plan aprobado y se hace en el mismo flujo, no después.
 
 ## Agentes disponibles (opencode — invocar con @ o Task tool)
 - `@backend` (`.opencode/agents/backend.md`) — backend Laravel, APIs, multi-tenancy

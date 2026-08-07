@@ -19,6 +19,10 @@ Definidos en `app/Models/Clinic.php`:
 - Solo para `basic` usa `STRIPE_PRICE_ID` como fallback.
 - Para upgrade trial→paid, se pasa `price_id` explícito al checkout para evitar que caiga al precio de Basic.
 
+### Trampa: status operativo obsoleto tras activación
+- Al activar una suscripción, **normalizar siempre** `status='active'`, `churned_at=null`, `plan` y `max_users` (ver `SubscriptionActivationService::activateClinic()`, `FakeSubscribeController`, `SubscribeController`, `SubscriptionUpgradeService::upgradeClinic()`).
+- Si una clínica muestra "trial vencido" pero tiene `subscription_status='active'`, el `status` operativo quedó como `trial_read_only`/`churned` (residuo). `MeController` trata `subscription_status='active'` como autoritativo y `Clinic::backofficeStatusColor()` fuerza verde en el backoffice. Detalle: `docs/backoffice/subscriptions.md`.
+
 ## Restricción de usuarios por plan
 
 - `clinics.max_users` default: 3 (basic)
@@ -28,9 +32,9 @@ Definidos en `app/Models/Clinic.php`:
 - Frontend muestra "X / Y usuarios" en `resources/js/views/team/Team.vue`
 
 ## Stripe Error Handling
-- Unreachable Stripe → backend returns `503` with `code=STRIPE_UNREACHABLE` from `app/Http/Controllers/BillingController.php`
+- Unreachable Stripe → backend returns `503` with `code=STRIPE_UNREACHABLE` from `modules/Subscriptions/Infrastructure/Controllers/BillingController.php`
 - UI fallback in `resources/js/views/BillingRequired.vue` (local activation in dev only)
-- Local fallback: `POST /api/subscribe/fake` (`app/Http/Controllers/Api/FakeSubscribeController.php`)
+- Local fallback: `POST /api/subscribe/fake` (`modules/Subscriptions/Infrastructure/Controllers/Api/FakeSubscribeController.php`)
 
 ## Stripe Customer Sync
 Mandatory for Backoffice visibility. Persist on clinic:
@@ -38,15 +42,17 @@ Mandatory for Backoffice visibility. Persist on clinic:
 - `clinics.stripe_customer_id`
 
 Write points (must keep synced):
-- `app/Http/Controllers/BillingController.php` — `confirmCheckout`
-- `app/Http/Controllers/Api/StripeWebhookController.php` — `checkout.session.completed`
+- `modules/Subscriptions/Infrastructure/Controllers/BillingController.php` — `confirmCheckout`
+- `modules/Subscriptions/Infrastructure/Payment/StripeWebhookHandler.php` — `checkout.session.completed`
 
 ## `clinic.subscribed_at` — Must Set on Activation
 Set to now on:
-- `POST /api/subscribe` (`SubscribeController.php`)
-- `POST /api/subscribe/fake` (`FakeSubscribeController.php`)
-- `POST /api/billing/confirm` (`BillingController.php`)
-- Stripe webhook `checkout.session.completed` (`StripeWebhookController.php`)
+- `POST /api/subscribe` (`modules/Subscriptions/Infrastructure/Controllers/Api/SubscribeController.php`)
+- `POST /api/subscribe/fake` (`modules/Subscriptions/Infrastructure/Controllers/Api/FakeSubscribeController.php`)
+- `POST /api/billing/confirm` (`modules/Subscriptions/Infrastructure/Controllers/BillingController.php`)
+- Stripe webhook `checkout.session.completed` (`modules/Subscriptions/Infrastructure/Payment/StripeWebhookHandler.php`)
+
+Toda activación de suscripción (fake o Stripe, webhook o confirm) pasa por `SubscriptionActivationService::activateClinic()` (`modules/Subscriptions/Application/Services/SubscriptionActivationService.php`), que centraliza `subscribed_at`, estado de clínica, `ActivityLogger`, `trial_converted` y el email de activación.
 
 Webhook hardening: support fallback by `metadata.clinic_id` and by Stripe customer ID (not just `customer_email`).
 
@@ -61,9 +67,15 @@ Frontend guard: `resources/js/views/Configuration.vue` (disabled buttons + toast
 - Trial expired (`blocked` / `trial_read_only`): show urgency copy
 - Trial active: positive onboarding copy + days left if available
 
+## Modo solo lectura post-trial (política)
+
+- Tras el fin del trial (o del periodo pagado de una cancelación) la clínica entra en solo lectura: **solo puede ver datos, activar la cuenta de pago y descargar el backup XLSX**. Nada de guardados.
+- Enforcement: middleware `check.subscription` (permite GET + lista blanca de checkout), **rutas admin de Booking también bajo `check.subscription`** (`modules/Booking/Routes/api.php`), guarda axios en `api.js`, CSS `.readonly-mode` con `allow-readonly-action`, y bloqueo de la reserva pública en `PublicBookingService::ensureClinicCanBeBooked()`.
+- Detalle completo: `docs/backend/read-only-policy.md`. Tests: `tests/Feature/Booking/BookingReadOnlyPolicyTest.php`.
+
 ## Backup Export (.xlsx) — Configuración → Suscripción
 
-Button en `resources/js/views/settings/Subscription.vue:82-86` que descarga un Excel multi-hoja con todos los datos de la clínica.
+Button en `resources/js/views/settings/Subscription.vue:94` (clase `allow-readonly-action` para que siga visible en solo lectura) que descarga un Excel multi-hoja con todos los datos de la clínica.
 
 ### Backend
 - `app/Exports/XlsxWriter.php` — Generador XLSX ligero vía `ZipArchive` + XML nativo (sin dependencias Composer). Cada hoja escribe a `php://temp` y se vuelca al ZIP al final.
@@ -78,10 +90,12 @@ Button en `resources/js/views/settings/Subscription.vue:82-86` que descarga un E
   8. **Historias clínicas** — `Appointment::where('status', 'completed')->whereNotNull('notes')` (NO usa `ClinicalRecord`), una fila por cita
   9. **Adjuntos** — `PatientImage::where('clinic_id', ...)` con `patient:id,counter,first_name,last_name`
 - `app/Http/Controllers/Api/SubscriptionBackupController.php` — `download()` genera XLSX en `sys_get_temp_dir()`, retorna `StreamedResponse` y elimina el temporal.
-- `routes/api.php:173` — `GET /api/settings/subscription/backup` (protegida por `auth:sanctum` + `clinic` + `check.subscription`)
+- `routes/api.php:116` — `GET /api/settings/subscription/backup` (protegida por `auth:sanctum` + `clinic` + `check.subscription`)
+- `modules/Subscriptions/Routes/api.php` — Rutas del módulo (pricing, billing/webhook, stripe/checkout, subscribe*, settings/subscription, billing/checkout|confirm|cancel) cargadas vía `SubscriptionsServiceProvider::loadRoutesFrom()`. Requieren `Route::prefix('api')` porque `loadRoutesFrom()` no hereda el prefijo automático de `routes/api.php` (Laravel 12).
 
 ### Frontend
 - Sección "Backup de datos" en Subscription.vue con botón "📥 Generar backup (.xlsx)" y estado `backupping`.
+- El botón lleva la clase `allow-readonly-action` para no ser ocultado por `.readonly-mode` en el estado de solo lectura.
 - Llamada con `api.get('/settings/subscription/backup', { responseType: 'blob' })` + `URL.createObjectURL` + descarga tipo Blob.
 
 ### Consideraciones

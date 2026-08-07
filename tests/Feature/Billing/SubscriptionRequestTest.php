@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Billing;
 
-use App\Mail\SubscriptionUpgradedNotificationMail;
 use App\Models\Clinic;
 use App\Models\Subscription;
 use App\Models\User;
@@ -12,6 +11,7 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Sanctum;
 use Modules\Notifications\Backoffice\Notifications\SubscriptionUpgradeRequestedNotification;
+use Modules\Subscriptions\Infrastructure\Mail\SubscriptionUpgradedNotificationMail;
 use Tests\TestCase;
 
 class SubscriptionRequestTest extends TestCase
@@ -67,6 +67,36 @@ class SubscriptionRequestTest extends TestCase
         ]);
 
         Notification::assertSentTo($user, SubscriptionUpgradeRequestedNotification::class);
+    }
+
+    public function test_active_basic_clinic_with_stale_trial_status_can_request_pro(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-05-18 10:00:00'));
+        Notification::fake();
+
+        $clinic = Clinic::create([
+            'name' => 'Clinica Basic Stale',
+            'email' => 'clinic-basic-stale@test.local',
+            'subscription_status' => 'active',
+            'status' => 'trial_read_only',
+            'plan' => 'basic',
+            'subscribed_at' => now(),
+            'subscription_provider' => 'fake',
+        ]);
+
+        $user = User::create([
+            'clinic_id' => $clinic->id,
+            'name' => 'Owner Basic Stale',
+            'email' => 'owner-basic-stale@test.local',
+            'password' => 'password',
+            'role' => 'owner',
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/settings/subscription/request', [
+            'requested_plan' => 'pro',
+        ])->assertCreated();
     }
 
     public function test_create_upgrade_request_from_pro_to_enterprise(): void

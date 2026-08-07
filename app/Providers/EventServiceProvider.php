@@ -9,11 +9,6 @@ use App\Events\ConsentCreated;
 use App\Events\ConsentRevoked;
 use App\Events\ConsentSent;
 use App\Events\ConsentSigned;
-use App\Events\UpgradeRequested;
-use App\Events\CheckoutCreated;
-use App\Events\PaymentCompleted;
-use App\Events\SubscriptionRejected;
-use App\Events\SubscriptionUpgraded;
 use App\Listeners\LogConsentActivity;
 use Illuminate\Mail\Events\MessageSent;
 use Modules\Notifications\Infrastructure\Listeners\LogSentMail;
@@ -25,6 +20,11 @@ use Modules\Notifications\Backoffice\Listeners\SendSubscriptionRejectedNotificat
 use Modules\Notifications\Backoffice\Listeners\SendUpgradeRequestNotification;
 use Modules\Notifications\Backoffice\Listeners\SendUpgradeRequestNotificationToBackoffice;
 use Modules\Notifications\Backoffice\Listeners\UpgradeSubscription;
+use Modules\Subscriptions\Domain\Events\CheckoutCreated;
+use Modules\Subscriptions\Domain\Events\PaymentCompleted;
+use Modules\Subscriptions\Domain\Events\SubscriptionRejected;
+use Modules\Subscriptions\Domain\Events\SubscriptionUpgraded;
+use Modules\Subscriptions\Domain\Events\UpgradeRequested;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
 class EventServiceProvider extends ServiceProvider

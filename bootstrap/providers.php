@@ -8,4 +8,5 @@ return [
     Modules\Notifications\Infrastructure\Providers\NotificationsServiceProvider::class,
     Modules\Finance\Infrastructure\Providers\FinanceServiceProvider::class,
     Modules\Activity\Infrastructure\Providers\ActivityServiceProvider::class,
+    Modules\Subscriptions\Infrastructure\Providers\SubscriptionsServiceProvider::class,
 ];

@@ -59,6 +59,74 @@ class BillingLifecycleTest extends TestCase
             ->assertJsonPath('can_transact', true);
     }
 
+    public function test_expired_trial_activation_normalizes_stale_trial_status(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-05-18 10:00:00'));
+        config()->set('billing.provider', 'fake');
+
+        [$clinic, $user] = $this->createClinicAndOwner([
+            'subscription_status' => 'trial',
+            'status' => 'trial_read_only',
+            'trial_ends_at' => now()->subDay(),
+        ]);
+
+        Subscription::create([
+            'clinic_id' => $clinic->id,
+            'status' => 'trial',
+            'trial_ends_at' => now()->subDay(),
+            'current_period_end' => now()->addDays(6),
+            'stripe_subscription_id' => 'trial_sub_004',
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/billing/checkout')->assertOk();
+
+        $clinic->refresh();
+
+        $this->assertSame('active', $clinic->subscription_status);
+        $this->assertSame('active', $clinic->status);
+        $this->assertSame('basic', $clinic->plan);
+        $this->assertSame(1, $clinic->max_users);
+        $this->assertNull($clinic->churned_at);
+        $this->assertNull($clinic->trial_ends_at);
+
+        $this->getJson('/api/me')
+            ->assertOk()
+            ->assertJsonPath('status', 'active')
+            ->assertJsonPath('read_only_no_transactions', false)
+            ->assertJsonPath('can_transact', true);
+    }
+
+    public function test_active_subscription_overrides_stale_trial_read_only_status_in_me(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-05-18 10:00:00'));
+
+        [$clinic, $user] = $this->createClinicAndOwner([
+            'subscription_status' => 'active',
+            'status' => 'trial_read_only',
+            'trial_ends_at' => null,
+            'subscribed_at' => now(),
+            'plan' => 'basic',
+        ]);
+
+        Subscription::create([
+            'clinic_id' => $clinic->id,
+            'status' => 'active',
+            'trial_ends_at' => null,
+            'current_period_end' => now()->addDays(30),
+            'stripe_subscription_id' => 'sub_active_stale_001',
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/me')
+            ->assertOk()
+            ->assertJsonPath('status', 'active')
+            ->assertJsonPath('read_only_no_transactions', false)
+            ->assertJsonPath('can_transact', true);
+    }
+
     public function test_expired_trial_enters_read_only_state_before_the_grace_window_expires(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-05-18 10:00:00'));

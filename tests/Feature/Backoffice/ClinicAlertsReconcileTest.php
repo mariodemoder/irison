@@ -154,6 +154,43 @@ class ClinicAlertsReconcileTest extends TestCase
         $this->assertEmpty($clinics->first()->backoffice_alerts ?? []);
     }
 
+    public function test_active_clinic_with_stale_trial_status_renders_green_badge(): void
+    {
+        $admin = $this->createAdmin();
+        $this->createClinic([
+            'name' => 'Activa Stale',
+            'subscription_status' => 'active',
+            'status' => 'trial_read_only',
+            'plan' => 'basic',
+            'trial_ends_at' => now()->subDays(3),
+        ]);
+
+        $this->actingAs($admin, 'admin');
+
+        $response = $this->get(route('backoffice.clinics.index'));
+
+        $response->assertOk();
+        $response->assertSee('text-emerald-700');
+    }
+
+    public function test_genuine_trial_read_only_clinic_renders_red_badge(): void
+    {
+        $admin = $this->createAdmin();
+        $this->createClinic([
+            'name' => 'Trial Vencido Rojo',
+            'subscription_status' => 'trial',
+            'status' => 'trial_read_only',
+            'trial_ends_at' => now()->subDay(),
+        ]);
+
+        $this->actingAs($admin, 'admin');
+
+        $response = $this->get(route('backoffice.clinics.index'));
+
+        $response->assertOk();
+        $response->assertSee('text-rose-700');
+    }
+
     private function createAdmin(array $overrides = []): AdminUser
     {
         return AdminUser::create(array_merge([

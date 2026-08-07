@@ -2,18 +2,26 @@
 
 namespace Tests\Feature\Billing;
 
-use App\Mail\InvoicePaymentFailedMail;
 use App\Models\Clinic;
 use App\Models\Subscription;
 use App\Models\SubscriptionRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
+use Modules\Subscriptions\Infrastructure\Mail\InvoicePaymentFailedMail;
 use Tests\TestCase;
 
 class StripeWebhookControllerTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config()->set('billing.provider', 'stripe');
+        config()->set('services.stripe.secret', 'sk_test_webhook_placeholder');
+    }
 
     public function test_checkout_session_completed_persists_customer_id_on_clinic(): void
     {
@@ -383,7 +391,7 @@ class StripeWebhookControllerTest extends TestCase
 
         return $this->call(
             'POST',
-            '/api/stripe/webhook',
+            '/api/billing/webhook',
             [],
             [],
             [],

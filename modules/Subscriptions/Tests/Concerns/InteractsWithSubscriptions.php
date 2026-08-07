@@ -80,6 +80,9 @@ trait InteractsWithSubscriptions
 
     protected function postStripeWebhook(array $payload, string $secret = 'whsec_test_secret')
     {
+        config()->set('billing.provider', 'stripe');
+        config()->set('services.stripe.secret', 'sk_test_webhook_placeholder');
+
         $json = json_encode($payload, JSON_THROW_ON_ERROR);
         $timestamp = time();
         $signedPayload = $timestamp . '.' . $json;
@@ -88,7 +91,7 @@ trait InteractsWithSubscriptions
 
         return $this->call(
             'POST',
-            '/api/stripe/webhook',
+            '/api/billing/webhook',
             [],
             [],
             [],

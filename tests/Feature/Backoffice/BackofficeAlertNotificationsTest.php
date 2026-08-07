@@ -183,6 +183,9 @@ class BackofficeAlertNotificationsTest extends TestCase
 
     private function postStripeWebhook(string $payload, string $secret)
     {
+        config()->set('billing.provider', 'stripe');
+        config()->set('services.stripe.secret', 'sk_test_webhook_placeholder');
+
         $timestamp = time();
         $signedPayload = $timestamp . '.' . $payload;
         $signature = hash_hmac('sha256', $signedPayload, $secret);
@@ -190,7 +193,7 @@ class BackofficeAlertNotificationsTest extends TestCase
 
         return $this->call(
             'POST',
-            '/api/stripe/webhook',
+            '/api/billing/webhook',
             [],
             [],
             [],

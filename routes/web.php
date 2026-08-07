@@ -29,11 +29,11 @@ use App\Http\Controllers\Backoffice\Auth\LoginController as BackofficeLoginContr
 use App\Http\Controllers\Backoffice\ClinicController;
 use App\Http\Controllers\Backoffice\DashboardController as BackofficeDashboardController;
 use App\Http\Controllers\Backoffice\NotificationController;
-use App\Http\Controllers\Backoffice\SubscriptionRequestController as BackofficeSubscriptionRequestController;
-use App\Http\Controllers\BillingController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
+use Modules\Subscriptions\Infrastructure\Controllers\Backoffice\SubscriptionRequestController as BackofficeSubscriptionRequestController;
+use Modules\Subscriptions\Infrastructure\Controllers\BillingController;
 
 // Rutas públicas/auxiliares para billing (fake provider local)
 Route::get('/billing/fake-success', [BillingController::class, 'fakeSuccess'])->name('billing.fake.success');

@@ -2,10 +2,6 @@
 
 namespace Tests\Feature\Billing;
 
-use App\Events\PaymentCompleted;
-use App\Events\SubscriptionUpgraded;
-use App\Mail\SubscriptionActivatedMail;
-use App\Mail\SubscriptionUpgradedNotificationMail;
 use App\Models\Clinic;
 use App\Models\SubscriptionRequest;
 use App\Models\User;
@@ -17,6 +13,10 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Notifications\Messages\MailMessage;
 use Laravel\Sanctum\Sanctum;
 use Modules\Notifications\Backoffice\Notifications\PaymentCompletedNotification;
+use Modules\Subscriptions\Domain\Events\PaymentCompleted;
+use Modules\Subscriptions\Domain\Events\SubscriptionUpgraded;
+use Modules\Subscriptions\Infrastructure\Mail\SubscriptionActivatedMail;
+use Modules\Subscriptions\Infrastructure\Mail\SubscriptionUpgradedNotificationMail;
 use Tests\TestCase;
 
 class PlanChangeEmailTest extends TestCase

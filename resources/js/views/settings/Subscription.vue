@@ -91,7 +91,7 @@
           <h2>Backup de datos</h2>
           <div class="backup-card">
             <p class="backup-desc">Descarga un archivo Excel con todos los datos de tu clínica para tu seguridad o migración.</p>
-            <button class="btn btn-primary backup-btn" :disabled="backupping" @click="downloadBackup">
+            <button class="btn btn-primary backup-btn allow-readonly-action" :disabled="backupping" @click="downloadBackup">
               <span v-if="backupping">Generando...</span>
               <span v-else>📥 Generar backup (.xlsx)</span>
             </button>

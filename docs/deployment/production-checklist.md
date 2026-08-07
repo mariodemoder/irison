@@ -32,7 +32,7 @@ Checklist operativo para preparar y desplegar Irison en producción con riesgo c
 - [ ] `STRIPE_WEBHOOK_SECRET` real (`whsec_...`)
 - [ ] `STRIPE_PRICE_ID` válido
 - [ ] `BILLING_PROVIDER=stripe`
-- [ ] Webhook apuntando a `POST /api/stripe/webhook`
+- [ ] Webhook apuntando a `POST /api/billing/webhook` (webhook único; se verifica firma en `StripeWebhookHandler`)
 
 ### 1.5 Queue y scheduler
 
@@ -60,7 +60,7 @@ php artisan queue:restart
 
 - [ ] `GET /up` responde 200
 - [ ] Login responde códigos esperados (422/401 en credenciales inválidas)
-- [ ] `POST /api/stripe/webhook` responde error de firma inválida (no 401)
+- [ ] `POST /api/billing/webhook` responde error de firma inválida (no 401)
 - [ ] `php artisan schedule:list` muestra tareas esperadas
 - [ ] `supervisorctl status` muestra workers `RUNNING`
 - [ ] Sin errores críticos en logs

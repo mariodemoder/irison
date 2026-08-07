@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Modules\Notifications\Backoffice\Listeners;
 
-use App\Events\SubscriptionUpgraded;
 use Illuminate\Bus\Queueable;
+use Modules\Subscriptions\Domain\Events\SubscriptionUpgraded;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;

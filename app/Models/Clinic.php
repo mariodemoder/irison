@@ -193,6 +193,19 @@ class Clinic extends Model
         return $now->lessThanOrEqualTo($trialEndsAt->addDays($graceDays));
     }
 
+    public function isReadOnlyNoTransactionsMode(?Carbon $currentDate = null): bool
+    {
+        if ($this->isInReadOnlyNoTransactionsWindow($currentDate)) {
+            return true;
+        }
+
+        return in_array(
+            strtolower(trim((string) $this->status)),
+            ['trial_read_only'],
+            true
+        );
+    }
+
     public function isInCancellationGracePeriod(?Carbon $currentDate = null): bool
     {
         return $this->isInCancellationPaidWindow($currentDate);
@@ -333,5 +346,29 @@ class Clinic extends Model
             'past_due' => 'past_due',
             default => 'expired',
         };
+    }
+
+    /**
+     * Color del badge de estado en el índice de clínicas del backoffice.
+     * Una suscripción activa siempre es verde, aunque el status operativo
+     * conserve residuos de trial (trial_read_only / churned).
+     *
+     * @return string green|red|blue
+     */
+    public function backofficeStatusColor(): string
+    {
+        $subscriptionStatus = strtolower(trim((string) ($this->subscription_status ?? 'inactive')));
+        $operationalStatus = strtolower(trim((string) ($this->status ?? '')));
+        $isGreenStatus = in_array($subscriptionStatus, ['trial', 'trial_warning', 'active'], true);
+
+        $isRedStatus = in_array($subscriptionStatus, ['canceled', 'cancelled'], true)
+            || ($subscriptionStatus !== 'active' && in_array($operationalStatus, ['trial_read_only', 'churned'], true))
+            || ! $isGreenStatus;
+
+        if ($this->tenantStatus() === 'expired') {
+            return 'blue';
+        }
+
+        return $isRedStatus ? 'red' : 'green';
     }
 }

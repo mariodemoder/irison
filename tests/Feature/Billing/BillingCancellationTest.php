@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Billing;
 
-use App\Mail\SubscriptionCanceledInternalMail;
 use App\Models\Clinic;
 use App\Models\Subscription;
 use App\Models\User;
@@ -10,6 +9,7 @@ use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Laravel\Sanctum\Sanctum;
+use Modules\Subscriptions\Infrastructure\Mail\SubscriptionCanceledInternalMail;
 use Tests\TestCase;
 
 class BillingCancellationTest extends TestCase

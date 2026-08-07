@@ -297,7 +297,7 @@ Delegación QA:
 
 ## Última modificación (2026-06-02): ETAPA 3 Fase 1 (Hardening)
 
-- Se parametrizó la gracia de trial en `config/billing.php` (`trial_grace_days`, default 7).
+- Se parametrizó la gracia de trial en `modules/Subscriptions/Config/billing.php` (`trial_grace_days`, default 7).
 - Se añadió columna `clinics.churned_at` para trazabilidad operativa del churn.
 - `TrialLifecycleService` ahora:
   - actualiza `status=trial_warning` junto a `subscription_status` en hitos d20/d27,

@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\Notifications\Backoffice\Listeners;
 
-use App\Events\UpgradeRequested;
 use App\Services\Backoffice\BackofficeAlertService;
 use Illuminate\Bus\Queueable;
+use Modules\Subscriptions\Domain\Events\UpgradeRequested;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;

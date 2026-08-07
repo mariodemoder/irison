@@ -56,15 +56,8 @@ Route::middleware('throttle:30,1')->prefix('consent')->group(function () {
     Route::post('/sign/{token}', [\App\Http\Controllers\Api\ConsentSignController::class, 'sign']);
 });
 
-// Precios de planes (público para la landing, se usa cacheable)
-Route::get('/pricing', [\App\Http\Controllers\Api\PricingController::class, 'index']);
-
-// Webhooks (Stripe, billing) deben ser públicos y verificarse por firma
-// Stripe webhook (recibe eventos desde Stripe)
-Route::post('/stripe/webhook', [\App\Http\Controllers\Api\StripeWebhookController::class, 'handle']);
-
-// Billing webhook (desde proveedor de pagos)
-Route::post('/billing/webhook', [\App\Http\Controllers\BillingController::class, 'webhook']);
+// Subscriptions module: rutas movidas a modules/Subscriptions/Routes/api.php
+// (pricing, billing/webhook, stripe/checkout, subscribe*, settings/subscription, billing/checkout|confirm|cancel)
 
 
 // -----------------------------
@@ -117,17 +110,9 @@ Route::middleware(['auth:sanctum', 'clinic', 'check.subscription'])->group(funct
     Route::apiResource('documents', \App\Http\Controllers\Api\DocumentController::class)
         ->only(['index', 'show']);
 
-    // Checkout con Stripe (inicia flujo de pago desde UI autenticada)
-    Route::post('/stripe/checkout', \App\Http\Controllers\Api\StripeCheckoutController::class);
+    // Checkout con Stripe, suscripción y settings: movidos a modules/Subscriptions/Routes/api.php
 
-    // Endpoint de testing para marcar clínica como suscrita (dev)
-    Route::post('/subscribe/fake', \App\Http\Controllers\Api\FakeSubscribeController::class);
-
-    // Suscripción: plan actual, historial y solicitud de upgrade
-    Route::get('/settings/subscription', [\App\Http\Controllers\Api\SubscriptionController::class, 'show']);
-    Route::get('/settings/subscription/history', [\App\Http\Controllers\Api\SubscriptionController::class, 'history']);
-    Route::post('/settings/subscription/request', [\App\Http\Controllers\Api\SubscriptionRequestController::class, 'store']);
-    Route::post('/settings/subscription/confirm-upgrade', [\App\Http\Controllers\Api\SubscriptionRequestController::class, 'confirmUpgrade']);
+    // Backup de suscripción (export XLSX multi-hoja)
     Route::get('/settings/subscription/backup', [\App\Http\Controllers\Api\SubscriptionBackupController::class, 'download']);
 
     // Logout: revoca el token actual
@@ -136,14 +121,12 @@ Route::middleware(['auth:sanctum', 'clinic', 'check.subscription'])->group(funct
     // Cambiar contraseña del usuario autenticado
     Route::post('/me/password', [\App\Http\Controllers\Api\ProfilePasswordController::class, 'update']);
 
-    // Billing: iniciar checkout desde la app (usuario autenticado)
-    Route::post('/billing/checkout', [\App\Http\Controllers\BillingController::class, 'createCheckout']);
+    // Billing checkout: movido a modules/Subscriptions/Routes/api.php
 
     // Cancelar cita (acción sobre recurso protegido)
     Route::post('appointments/{appointment}/cancel', [\App\Http\Controllers\Api\AppointmentController::class, 'cancel']);
     Route::post('appointments/{appointment}/invoice', [\App\Http\Controllers\Api\AppointmentController::class, 'issueInvoice']);
-    // payment subscribe
-    Route::post('/subscribe', \App\Http\Controllers\Api\SubscribeController::class);
+    // payment subscribe (legacy): movido a modules/Subscriptions/Routes/api.php
 
     // Equipo: gestión de usuarios, perfiles, profesiones y horarios
     Route::prefix('team')->group(function () {
@@ -190,7 +173,6 @@ Route::middleware(['auth:sanctum', 'clinic', 'check.subscription'])->post('/me/i
 Route::middleware(['auth:sanctum', 'clinic', 'check.subscription'])->delete('/me/invoice-background', [\App\Http\Controllers\Api\MeController::class, 'deleteInvoiceBackground']);
 Route::middleware(['auth:sanctum', 'clinic'])->get('/me/stripe-invoices', [\App\Http\Controllers\Api\MeController::class, 'stripeInvoices']);
 Route::middleware(['auth:sanctum', 'clinic'])->post('/me/invoice-background/preview-pdf', [\App\Http\Controllers\Api\MeController::class, 'previewInvoiceBackgroundPdf']);
-Route::middleware(['auth:sanctum', 'clinic'])->post('/billing/confirm', [\App\Http\Controllers\BillingController::class, 'confirmCheckout']);
-Route::middleware(['auth:sanctum', 'clinic'])->post('/billing/cancel', [\App\Http\Controllers\BillingController::class, 'cancelSubscription']);
+// Billing confirm/cancel: movidos a modules/Subscriptions/Routes/api.php
 
 

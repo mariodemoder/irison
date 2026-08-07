@@ -77,8 +77,8 @@ Renderiza un badge por cada clave en `$clinic->backoffice_alerts`.
 - `modules/Notifications/Backoffice/Notifications/BackofficeAlertNotification.php`
 - `modules/Notifications/Backoffice/Notifications/SubscriptionRejectedNotification.php`
 - `app/Http/Controllers/Backoffice/ClinicController.php`
-- `app/Http/Controllers/Backoffice/SubscriptionRequestController.php`
-- `app/Events/SubscriptionRejected.php`
+- `modules/Subscriptions/Infrastructure/Controllers/Backoffice/SubscriptionRequestController.php`
+- `modules/Subscriptions/Domain/Events/SubscriptionRejected.php`
 - `modules/Notifications/Backoffice/Listeners/SendSubscriptionRejectedNotification.php`
 - `resources/views/backoffice/partials/notifications.blade.php`
 - `resources/views/backoffice/clinics/index.blade.php`

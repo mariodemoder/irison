@@ -84,14 +84,8 @@
             <tbody>
                 @forelse ($clinics as $clinic)
                     @php
-                        $subscriptionStatus = strtolower((string) ($clinic->subscription_status ?? 'inactive'));
-                        $operationalStatus = strtolower((string) ($clinic->status ?? ''));
                         $tenantStatus = $clinic->tenantStatus();
-                        $isGreenStatus = in_array($subscriptionStatus, ['trial', 'trial_warning', 'active'], true);
-                        $isRedStatus = in_array($subscriptionStatus, ['canceled', 'cancelled'], true)
-                            || in_array($operationalStatus, ['trial_read_only', 'churned'], true)
-                            || ! $isGreenStatus;
-                        $isExpired = $tenantStatus === 'expired';
+                        $badgeColor = $clinic->backofficeStatusColor();
                         $alertBadges = [
                             'backoffice_upgrade_requested' => ['label' => 'Upgrade pendiente', 'class' => 'bg-amber-100 text-amber-800'],
                             'trial_expired' => ['label' => 'Trial vencido', 'class' => 'bg-rose-100 text-rose-700'],
@@ -116,7 +110,7 @@
                         <td class="px-3 py-2">{{ $clinic->slug ?: '-' }}</td>
                         <td class="px-3 py-2">{{ $clinic->plan ?: 'basic' }}</td>
                         <td class="px-3 py-2">
-                            <span class="text-base font-semibold {{ $isExpired ? 'text-blue-700' : ($isRedStatus ? 'text-rose-700' : 'text-emerald-700') }}">
+                            <span class="text-base font-semibold {{ $badgeColor === 'blue' ? 'text-blue-700' : ($badgeColor === 'red' ? 'text-rose-700' : 'text-emerald-700') }}">
                                 {{ $tenantStatus }}
                             </span>
                         </td>

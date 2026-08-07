@@ -6,6 +6,7 @@ namespace Modules\Booking\Services;
 
 use App\Events\AppointmentCancelled;
 use App\Models\Appointment;
+use App\Models\Clinic;
 use App\Models\Patient;
 use App\Models\User;
 use Modules\Booking\Notifications\BookingConfirmation;
@@ -48,6 +49,8 @@ class PublicBookingService
     ): Appointment {
         $page = $this->resolveBookingPage($slug);
         $clinicId = $page->clinic_id;
+
+        $this->ensureClinicCanBeBooked($clinicId);
 
         $service = BookingService::where('clinic_id', $clinicId)
             ->where('id', $serviceId)
@@ -160,6 +163,8 @@ class PublicBookingService
             throw new \DomainException('Token de cancelación no válido.');
         }
 
+        $this->ensureClinicCanBeBooked($appointment->clinic_id);
+
         if ($appointment->start_time->isPast()) {
             throw new \DomainException('No se puede cancelar una cita que ya ha pasado.');
         }
@@ -185,5 +190,14 @@ class PublicBookingService
         }
 
         return $appointment;
+    }
+
+    private function ensureClinicCanBeBooked(int $clinicId): void
+    {
+        $clinic = Clinic::find($clinicId);
+
+        if ($clinic && $clinic->isReadOnlyNoTransactionsMode()) {
+            throw new \DomainException('La clínica está temporalmente en modo solo lectura. Contacta con la clínica para más información.');
+        }
     }
 }

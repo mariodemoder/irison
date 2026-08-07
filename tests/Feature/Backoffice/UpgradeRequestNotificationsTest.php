@@ -8,10 +8,10 @@ use App\Models\AdminUser;
 use App\Models\Clinic;
 use App\Models\SubscriptionRequest;
 use App\Models\User;
-use App\Services\Subscription\SubscriptionRequestService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Modules\Notifications\Backoffice\Notifications\BackofficeAlertNotification;
+use Modules\Subscriptions\Application\Services\SubscriptionRequestService;
 use Tests\TestCase;
 
 class UpgradeRequestNotificationsTest extends TestCase
