@@ -88,6 +88,7 @@
                         $badgeColor = $clinic->backofficeStatusColor();
                         $alertBadges = [
                             'backoffice_upgrade_requested' => ['label' => 'Upgrade pendiente', 'class' => 'bg-amber-100 text-amber-800'],
+                            'backoffice_reactivation_requested' => ['label' => 'Reactivación pendiente', 'class' => 'bg-sky-100 text-sky-800'],
                             'trial_expired' => ['label' => 'Trial vencido', 'class' => 'bg-rose-100 text-rose-700'],
                             'trial_converted' => ['label' => 'Trial a pago', 'class' => 'bg-emerald-100 text-emerald-700'],
                             'subscription_cancelled' => ['label' => 'Susc. cancelada', 'class' => 'bg-rose-100 text-rose-700'],

@@ -10,8 +10,13 @@ class SubscriptionRequest extends Model
 {
     use BelongsToClinic;
 
+    public const TYPE_PLAN_CHANGE = 'plan_change';
+
+    public const TYPE_REACTIVATION = 'reactivation';
+
     protected $fillable = [
         'clinic_id',
+        'type',
         'current_plan',
         'requested_plan',
         'status',
@@ -24,6 +29,11 @@ class SubscriptionRequest extends Model
         'stripe_checkout_session_id',
         'checkout_url',
     ];
+
+    public function isReactivation(): bool
+    {
+        return ($this->type ?? self::TYPE_PLAN_CHANGE) === self::TYPE_REACTIVATION;
+    }
 
     protected function casts(): array
     {

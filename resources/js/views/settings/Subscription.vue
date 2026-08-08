@@ -65,6 +65,7 @@
             <thead>
               <tr>
                 <th>Fecha</th>
+                <th>Tipo</th>
                 <th>Desde</th>
                 <th>Hacia</th>
                 <th>Estado</th>
@@ -74,8 +75,9 @@
             <tbody>
               <tr v-for="r in history" :key="r.id">
                 <td>{{ fmtDate(r.created_at) }}</td>
-                <td>{{ r.current_plan }}</td>
-                <td>{{ r.requested_plan }}</td>
+                <td>{{ r.type === 'reactivation' ? 'Reactivación' : 'Upgrade' }}</td>
+                <td>{{ r.type === 'reactivation' ? '—' : r.current_plan }}</td>
+                <td>{{ r.type === 'reactivation' ? '—' : r.requested_plan }}</td>
                 <td><span class="req-status" :class="'req-' + r.status">{{ statusLabel(r.status) }}</span></td>
                 <td>
                   <a v-if="r.status === 'waiting_payment' && r.checkout_url" :href="r.checkout_url" target="_blank" rel="noopener" class="pay-link">Ir a pagar</a>
@@ -91,9 +93,22 @@
           <h2>Backup de datos</h2>
           <div class="backup-card">
             <p class="backup-desc">Descarga un archivo Excel con todos los datos de tu clínica para tu seguridad o migración.</p>
-            <button class="btn btn-primary backup-btn allow-readonly-action" :disabled="backupping" @click="downloadBackup">
-              <span v-if="backupping">Generando...</span>
-              <span v-else>📥 Generar backup (.xlsx)</span>
+            <button class="btn btn-md btn-primary save-button backup-btn allow-readonly-action" :disabled="backupping" @click="downloadBackup">
+              <span v-if="backupping" class="btn-icon save-button__spinner">
+                <SpinnerCircleIcon />
+              </span>
+              <span>{{ backupping ? 'Generando...' : '📥 Generar backup (.xlsx)' }}</span>
+            </button>
+          </div>
+        </section>
+
+        <!-- Reactivación de cuenta -->
+        <section v-if="meStatus === 'canceled'" class="sub-section">
+          <h2>Reactivar cuenta</h2>
+          <div class="backup-card">
+            <p class="backup-desc">¿Quieres volver a activar tu cuenta? Envía una solicitud con el motivo y el equipo de Irison la revisará.</p>
+            <button class="btn btn-md btn-primary save-button backup-btn allow-readonly-action" @click="showReactivationModal = true">
+              Solicitar reactivación
             </button>
           </div>
         </section>
@@ -135,6 +150,9 @@
           </div>
         </div>
       </div>
+
+      <!-- Modal solicitud de reactivación -->
+      <ReactivationRequestModal :open="showReactivationModal" @close="showReactivationModal = false" />
     </div>
   </MainLayout>
 </template>
@@ -146,8 +164,10 @@ import { useToast } from 'vue-toastification'
 import Swal from 'sweetalert2'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
-import { mePlan, meStatus, meReadOnlyNoTransactions, planLabel, isBasic, isPro, isEnterprise } from '../../shared/meCache'
+import { mePlan, meStatus, planLabel, isBasic, isPro, isEnterprise } from '../../shared/meCache'
 import SaveButton from '../../components/SaveButton.vue'
+import SpinnerCircleIcon from '../../components/icons/SpinnerCircleIcon.vue'
+import ReactivationRequestModal from '../../components/ReactivationRequestModal.vue'
 
 const toast = useToast()
 const route = useRoute()
@@ -157,6 +177,7 @@ const sub = ref(null)
 const history = ref([])
 const showModal = ref(false)
 const showBasicFeaturesModal = ref(false)
+const showReactivationModal = ref(false)
 const sending = ref(false)
 const backupping = ref(false)
 const form = ref({ requested_plan: '', comments: '' })
@@ -197,7 +218,7 @@ const nextFeatures = computed(() => {
 
 const canBackup = computed(() => {
   return meStatus.value === 'trial_read_only'
-    || (meStatus.value === 'canceled' && meReadOnlyNoTransactions.value)
+    || meStatus.value === 'canceled'
 })
 
 onMounted(async () => {
@@ -390,6 +411,7 @@ textarea.input { resize: vertical; }
 .backup-desc { margin: 0; font-size: 14px; color: #6b7280; }
 .backup-btn { white-space: nowrap; }
 .backup-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.save-button__spinner { display: inline-flex; }
 .plan-link { color: #4338ca; text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px; cursor: pointer; font-weight: 600; }
 .plan-link:hover { text-decoration-style: solid; }
 .plan-modal-features { list-style: none; padding: 0; margin: 0; }

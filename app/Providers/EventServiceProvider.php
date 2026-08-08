@@ -16,12 +16,16 @@ use Modules\Notifications\Patient\Listeners\SendConsentEmail;
 use Modules\Notifications\Patient\Listeners\SendAppointmentStatusNotification;
 use Modules\Notifications\Backoffice\Listeners\SendCheckoutEmail;
 use Modules\Notifications\Backoffice\Listeners\SendPaymentConfirmationEmail;
+use Modules\Notifications\Backoffice\Listeners\SendReactivationApprovedNotification;
+use Modules\Notifications\Backoffice\Listeners\SendReactivationRequestNotificationToBackoffice;
 use Modules\Notifications\Backoffice\Listeners\SendSubscriptionRejectedNotification;
 use Modules\Notifications\Backoffice\Listeners\SendUpgradeRequestNotification;
 use Modules\Notifications\Backoffice\Listeners\SendUpgradeRequestNotificationToBackoffice;
 use Modules\Notifications\Backoffice\Listeners\UpgradeSubscription;
 use Modules\Subscriptions\Domain\Events\CheckoutCreated;
 use Modules\Subscriptions\Domain\Events\PaymentCompleted;
+use Modules\Subscriptions\Domain\Events\ReactivationApproved;
+use Modules\Subscriptions\Domain\Events\ReactivationRequested;
 use Modules\Subscriptions\Domain\Events\SubscriptionRejected;
 use Modules\Subscriptions\Domain\Events\SubscriptionUpgraded;
 use Modules\Subscriptions\Domain\Events\UpgradeRequested;
@@ -57,6 +61,12 @@ class EventServiceProvider extends ServiceProvider
         UpgradeRequested::class => [
             [SendUpgradeRequestNotification::class, 'handle'],
             [SendUpgradeRequestNotificationToBackoffice::class, 'handle'],
+        ],
+        ReactivationRequested::class => [
+            [SendReactivationRequestNotificationToBackoffice::class, 'handle'],
+        ],
+        ReactivationApproved::class => [
+            [SendReactivationApprovedNotification::class, 'handle'],
         ],
         CheckoutCreated::class => [
             [SendCheckoutEmail::class, 'handle'],

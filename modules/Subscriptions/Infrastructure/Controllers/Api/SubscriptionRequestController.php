@@ -65,6 +65,37 @@ class SubscriptionRequestController extends Controller
         }
     }
 
+    public function reactivate(Request $request): JsonResponse
+    {
+        $requestData = $request->validate([
+            'comments' => 'required|string|max:2000',
+        ]);
+
+        $clinic = $request->user()?->clinic;
+
+        if (! $clinic || ! in_array(strtolower(trim((string) $clinic->subscription_status)), ['canceled', 'cancelled'], true)) {
+            return response()->json([
+                'message' => 'Solo las clínicas con suscripción cancelada pueden solicitar la reactivación.',
+            ], 422);
+        }
+
+        try {
+            $subscriptionRequest = $this->requestService->createReactivationRequest(
+                clinicId: (int) $clinic->id,
+                requestedBy: (int) ($request->user()?->id ?? 0),
+                comments: trim((string) $requestData['comments']),
+                currentPlan: (string) ($clinic->plan ?? 'basic'),
+            );
+
+            return response()->json([
+                'message' => 'Solicitud de reactivación enviada correctamente.',
+                'id' => $subscriptionRequest->id,
+            ], 201);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'Error al crear la solicitud de reactivación: ' . $e->getMessage()], 500);
+        }
+    }
+
     public function approve(int $id): JsonResponse
     {
         $request = SubscriptionRequest::findOrFail($id);

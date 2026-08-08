@@ -30,12 +30,18 @@
             </select>
           </div>
 
-          <div class="flex items-center gap-2">
-            <button type="submit" class="btn btn-primary" :disabled="loading">
-              {{ loading ? 'Redirigiendo...' : 'Activar suscripción' }}
+          <div class="flex flex-col gap-3">
+            <button type="submit" class="btn btn-md btn-primary save-button w-full" :disabled="loading">
+              <span v-if="loading" class="btn-icon save-button__spinner">
+                <SpinnerCircleIcon />
+              </span>
+              <span>{{ loading ? 'Redirigiendo...' : 'Activar suscripción' }}</span>
             </button>
-            <button type="button" class="btn btn--ghost" :disabled="confirming" @click="confirmCheckoutReturn">
-              {{ confirming ? 'Verificando...' : 'Ya pagué, verificar estado' }}
+            <button type="button" class="btn btn-md btn--ghost w-full" :disabled="confirming" @click="confirmCheckoutReturn">
+              <span v-if="confirming" class="btn-icon save-button__spinner">
+                <SpinnerCircleIcon />
+              </span>
+              <span>{{ confirming ? 'Verificando...' : 'Ya pagué, verificar estado' }}</span>
             </button>
           </div>
 
@@ -43,8 +49,11 @@
           <ErrorAlert v-if="error" class="mt-1 text-left" title="No se pudo activar la suscripción" :message="error" />
 
           <div v-if="showLocalFallbackAction" class="fallback-actions">
-            <button type="button" class="btn btn-primary" :disabled="activatingLocal" @click="activateLocalFallback">
-              {{ activatingLocal ? 'Activando...' : 'Activar en modo local' }}
+            <button type="button" class="btn btn-md btn-primary save-button w-full" :disabled="activatingLocal" @click="activateLocalFallback">
+              <span v-if="activatingLocal" class="btn-icon save-button__spinner">
+                <SpinnerCircleIcon />
+              </span>
+              <span>{{ activatingLocal ? 'Activando...' : 'Activar en modo local' }}</span>
             </button>
           </div>
         </form>
@@ -59,6 +68,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Swal from 'sweetalert2'
 import ErrorAlert from '../components/ErrorAlert.vue'
+import SpinnerCircleIcon from '../components/icons/SpinnerCircleIcon.vue'
 import api from '../services/api'
 import { ensureMeLoaded } from '../shared/meCache'
 
@@ -279,5 +289,9 @@ onMounted(async () => {
 
 .fallback-actions {
   margin-top: 10px;
+}
+
+.save-button__spinner {
+  display: inline-flex;
 }
 </style>

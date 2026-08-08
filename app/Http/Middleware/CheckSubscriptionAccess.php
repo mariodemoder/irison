@@ -76,6 +76,8 @@ class CheckSubscriptionAccess
             || $request->is('api/stripe/checkout')
             || $request->is('stripe/checkout')
             || $request->is('api/subscribe/fake')
-            || $request->is('subscribe/fake');
+            || $request->is('subscribe/fake')
+            || $request->is('api/settings/subscription/reactivate')
+            || $request->is('settings/subscription/reactivate');
     }
 }

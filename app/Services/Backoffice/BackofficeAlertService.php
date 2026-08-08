@@ -50,11 +50,26 @@ class BackofficeAlertService
 
         $hasPendingUpgrade = (bool) ($clinic->has_pending_upgrade ?? false);
         if (! $hasPendingUpgrade && $pendingRequests !== null) {
-            $hasPendingUpgrade = $pendingRequests->contains('clinic_id', (int) $clinic->id);
+            $hasPendingUpgrade = $pendingRequests->contains(static function ($request) use ($clinic): bool {
+                return (int) $request->clinic_id === (int) $clinic->id
+                    && ($request->type ?? SubscriptionRequest::TYPE_PLAN_CHANGE) === SubscriptionRequest::TYPE_PLAN_CHANGE;
+            });
         }
 
         if ($hasPendingUpgrade) {
             $keys[] = 'backoffice_upgrade_requested';
+        }
+
+        $hasPendingReactivation = (bool) ($clinic->has_pending_reactivation ?? false);
+        if (! $hasPendingReactivation && $pendingRequests !== null) {
+            $hasPendingReactivation = $pendingRequests->contains(static function ($request) use ($clinic): bool {
+                return (int) $request->clinic_id === (int) $clinic->id
+                    && ($request->type ?? SubscriptionRequest::TYPE_PLAN_CHANGE) === SubscriptionRequest::TYPE_REACTIVATION;
+            });
+        }
+
+        if ($hasPendingReactivation) {
+            $keys[] = 'backoffice_reactivation_requested';
         }
 
         if ($trialEnded) {
@@ -144,6 +159,20 @@ class BackofficeAlertService
         );
     }
 
+    public function reactivationRequested(Clinic $clinic, int $requestId, ?string $requesterName = null, ?string $motive = null): void
+    {
+        $this->notify(
+            type: 'backoffice_reactivation_requested',
+            clinic: $clinic,
+            message: 'La clínica '.($clinic->name ?? '').' solicita la reactivación de su cuenta.'
+                .($motive !== null && trim($motive) !== '' ? ' Motivo: '.$motive.'.' : ''),
+            extra: [
+                'request_id' => $requestId,
+                'requester_name' => $requesterName ?? '',
+            ],
+        );
+    }
+
     public function trialConverted(Clinic $clinic): void
     {
         $this->notify(
@@ -192,7 +221,10 @@ class BackofficeAlertService
     {
         switch ($key) {
             case 'backoffice_upgrade_requested':
-                $request = $pendingRequests->firstWhere('clinic_id', (int) $clinic->id);
+                $request = $pendingRequests->first(static function ($pending) use ($clinic): bool {
+                    return (int) $pending->clinic_id === (int) $clinic->id
+                        && ($pending->type ?? SubscriptionRequest::TYPE_PLAN_CHANGE) === SubscriptionRequest::TYPE_PLAN_CHANGE;
+                });
                 $this->sendToAdmin(
                     type: $key,
                     clinic: $clinic,
@@ -200,6 +232,25 @@ class BackofficeAlertService
                     extra: [
                         'request_id' => (int) ($request->id ?? 0),
                         'requested_plan' => (string) ($request->requested_plan ?? ''),
+                        'requester_name' => $request?->requester?->name ?? '',
+                    ],
+                    admin: $admin,
+                );
+
+                break;
+
+            case 'backoffice_reactivation_requested':
+                $request = $pendingRequests->first(static function ($pending) use ($clinic): bool {
+                    return (int) $pending->clinic_id === (int) $clinic->id
+                        && ($pending->type ?? SubscriptionRequest::TYPE_PLAN_CHANGE) === SubscriptionRequest::TYPE_REACTIVATION;
+                });
+                $this->sendToAdmin(
+                    type: $key,
+                    clinic: $clinic,
+                    message: 'La clínica '.($clinic->name ?? '').' solicita la reactivación de su cuenta.'
+                        .(($request?->comments ?? '') !== '' ? ' Motivo: '.$request->comments.'.' : ''),
+                    extra: [
+                        'request_id' => (int) ($request->id ?? 0),
                         'requester_name' => $request?->requester?->name ?? '',
                     ],
                     admin: $admin,

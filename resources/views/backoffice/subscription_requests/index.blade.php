@@ -3,7 +3,7 @@
 @section('content')
 <div class="rounded bg-white p-4 shadow-sm">
     <div class="mb-4 flex items-center justify-between">
-        <h2 class="text-lg font-semibold">Solicitudes de upgrade</h2>
+        <h2 class="text-lg font-semibold">Solicitudes de suscripci&oacute;n</h2>
 
         <div class="flex gap-2">
             <a href="{{ route('backoffice.subscription-requests.index') }}"
@@ -45,13 +45,16 @@
                 <tbody>
                     @foreach ($requests as $sr)
                         <tr class="border-b hover:bg-slate-50">
-                            <td class="py-2 pr-4 font-medium">
+            <td class="py-2 pr-4 font-medium">
                                 <a href="{{ route('backoffice.clinics.show', $sr->clinic_id) }}" class="text-indigo-600 hover:underline">
                                     {{ $sr->clinic->name ?? '-' }}
                                 </a>
+                                @if ($sr->isReactivation())
+                                    <span class="ml-2 inline-block rounded bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-800">Reactivaci&oacute;n</span>
+                                @endif
                             </td>
-                            <td class="py-2 pr-4 capitalize">{{ $sr->current_plan }}</td>
-                            <td class="py-2 pr-4 capitalize">{{ $sr->requested_plan }}</td>
+                            <td class="py-2 pr-4">{{ $sr->isReactivation() ? '—' : $sr->current_plan }}</td>
+                            <td class="py-2 pr-4">{{ $sr->isReactivation() ? '—' : $sr->requested_plan }}</td>
                             <td class="max-w-xs truncate py-2 pr-4 text-slate-500" title="{{ $sr->comments ?? '' }}">
                                 {{ $sr->comments ?: '-' }}
                             </td>
@@ -74,8 +77,8 @@
                             </td>
                             <td class="py-2">
                                 @if ($sr->status === 'pending')
-                                    <div x-data="{ open: false, action: 'approve', preview: null, loadingPreview: false, previewError: false }" class="flex gap-1">
-                                        <button @click="action = 'approve'; open = true; loadingPreview = true; previewError = false; preview = null; fetch('{{ route('backoffice.subscription-requests.preview-upgrade', $sr) }}').then(r => r.json()).then(d => { if (d.success === false) { previewError = true; } else { preview = d; } loadingPreview = false; }).catch(() => { previewError = true; loadingPreview = false; })"
+                                    <div x-data="{ open: false, action: 'approve', type: '{{ $sr->type }}', preview: null, loadingPreview: false, previewError: false }" class="flex gap-1">
+                                        <button @click="action = 'approve'; open = true; loadingPreview = true; previewError = false; preview = null; if (type === 'reactivation') { loadingPreview = false; } else { fetch('{{ route('backoffice.subscription-requests.preview-upgrade', $sr) }}').then(r => r.json()).then(d => { if (d.success === false) { previewError = true; } else { preview = d; } loadingPreview = false; }).catch(() => { previewError = true; loadingPreview = false; }) }"
                                                 class="rounded bg-emerald-600 px-2 py-1 text-xs text-white hover:bg-emerald-500">
                                             Aprobar
                                         </button>
@@ -90,14 +93,17 @@
                                              @click.away="open = false">
                                             <div class="w-full max-w-lg rounded bg-white p-6 shadow-xl">
                                                 <h3 class="mb-3 text-base font-semibold" x-text="action === 'approve' ? 'Aprobar solicitud' : 'Rechazar solicitud'"></h3>
-                                                <p class="mb-3 text-sm text-slate-600">
+                                                <p class="mb-3 text-sm text-slate-600" x-show="type !== 'reactivation'">
                                                     {{ $sr->clinic->name ?? '-' }} solicita pasar de <strong>{{ $sr->current_plan }}</strong> a <strong>{{ $sr->requested_plan }}</strong>.
+                                                </p>
+                                                <p class="mb-3 text-sm text-slate-600" x-show="type === 'reactivation'">
+                                                    {{ $sr->clinic->name ?? '-' }} solicita la reactivaci&oacute;n de su cuenta.
                                                 </p>
                                                 @if ($sr->comments)
                                                     <p class="mb-3 text-sm text-slate-500"><strong>Comentarios:</strong> {{ $sr->comments }}</p>
                                                 @endif
 
-                                                <div x-show="action === 'approve'" class="mb-4">
+                                                <div x-show="action === 'approve' && type !== 'reactivation'" class="mb-4">
                                                     <div x-show="loadingPreview" class="flex items-center gap-2 rounded bg-slate-50 p-3 text-sm text-slate-500">
                                                         <svg class="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                                         Calculando vista previa de facturaci&oacute;n...
@@ -140,6 +146,10 @@
                                                             </p>
                                                         </div>
                                                     </template>
+                                                </div>
+
+                                                <div x-show="action === 'approve' && type === 'reactivation'" class="mb-4 rounded bg-sky-50 p-3 text-sm text-sky-800">
+                                                    La aprobaci&oacute;n notificar&aacute; a la cl&iacute;nica. La reactivaci&oacute;n operativa se realizar&aacute; manualmente desde el backoffice.
                                                 </div>
 
                                                 <form method="POST"

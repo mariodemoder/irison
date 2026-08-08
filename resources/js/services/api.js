@@ -68,6 +68,7 @@ const READONLY_WRITE_WHITELIST = [
   '/billing/confirm',
   '/stripe/checkout',
   '/subscribe/fake',
+  '/settings/subscription/reactivate',
 ]
 
 function isClientSideReadOnly() {

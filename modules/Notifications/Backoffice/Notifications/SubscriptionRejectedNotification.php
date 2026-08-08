@@ -26,6 +26,14 @@ class SubscriptionRejectedNotification extends Notification implements ShouldQue
 
     public function toDatabase($notifiable): DatabaseMessage
     {
+        if ($this->request->isReactivation()) {
+            return new DatabaseMessage([
+                'type' => 'subscription_rejected',
+                'request_id' => $this->request->id,
+                'message' => 'Tu solicitud de reactivación de la cuenta ha sido rechazada.',
+            ]);
+        }
+
         return new DatabaseMessage([
             'type' => 'subscription_rejected',
             'request_id' => $this->request->id,
@@ -36,6 +44,16 @@ class SubscriptionRejectedNotification extends Notification implements ShouldQue
 
     public function toMail($notifiable): MailMessage
     {
+        if ($this->request->isReactivation()) {
+            return (new MailMessage)
+                ->subject('Tu solicitud de reactivación ha sido rechazada')
+                ->view('emails.reactivation-status', [
+                    'clinicName' => $this->request->clinic->name ?? '',
+                    'status' => 'rechazada',
+                    'comments' => $this->request->reviewer_comments ?? '-',
+                ]);
+        }
+
         return (new MailMessage)
             ->subject('Tu solicitud de upgrade ha sido rechazada')
             ->view('emails.subscription-status', [

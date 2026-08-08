@@ -3,6 +3,7 @@
 namespace Modules\Subscriptions\Application\Services;
 
 use App\Models\SubscriptionRequest;
+use Modules\Subscriptions\Domain\Events\ReactivationRequested;
 use Modules\Subscriptions\Domain\Events\UpgradeRequested;
 
 class SubscriptionRequestService
@@ -19,6 +20,23 @@ class SubscriptionRequestService
         ]);
 
         event(new UpgradeRequested($request));
+
+        return $request;
+    }
+
+    public function createReactivationRequest(int $clinicId, int $requestedBy, string $comments, string $currentPlan = 'basic'): SubscriptionRequest
+    {
+        $request = SubscriptionRequest::create([
+            'clinic_id' => $clinicId,
+            'type' => SubscriptionRequest::TYPE_REACTIVATION,
+            'current_plan' => $currentPlan,
+            'requested_plan' => '',
+            'comments' => $comments,
+            'requested_by' => $requestedBy,
+            'status' => 'pending',
+        ]);
+
+        event(new ReactivationRequested($request));
 
         return $request;
     }

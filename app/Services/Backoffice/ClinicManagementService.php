@@ -8,6 +8,7 @@ use App\Models\AdminUser;
 use App\Models\BackofficeClinicActivity;
 use App\Models\Clinic;
 use App\Models\Subscription;
+use App\Models\SubscriptionRequest;
 use App\Models\User;
 use App\Support\ActivityLogger;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -92,7 +93,12 @@ class ClinicManagementService
         }
 
         $query->withExists([
-            'subscriptionRequests as has_pending_upgrade' => static fn ($relation) => $relation->where('status', 'pending'),
+            'subscriptionRequests as has_pending_upgrade' => static fn ($relation) => $relation
+                ->where('status', 'pending')
+                ->where('type', SubscriptionRequest::TYPE_PLAN_CHANGE),
+            'subscriptionRequests as has_pending_reactivation' => static fn ($relation) => $relation
+                ->where('status', 'pending')
+                ->where('type', SubscriptionRequest::TYPE_REACTIVATION),
         ]);
 
         return $query->paginate(20)->withQueryString();

@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 use Modules\Subscriptions\Application\Services\SubscriptionUpgradeService;
+use Modules\Subscriptions\Domain\Events\ReactivationApproved;
 use Modules\Subscriptions\Domain\Events\SubscriptionRejected;
 use Modules\Subscriptions\Infrastructure\Payment\Resolver;
 
@@ -29,7 +30,10 @@ class SubscriptionRequestController extends Controller
             $status = (string) $request->query('status');
 
             if ($status === 'approved') {
-                $query->whereIn('status', ['waiting_payment', 'paid', 'completed']);
+                $query->where(function ($q): void {
+                    $q->whereIn('status', ['waiting_payment', 'paid', 'completed'])
+                        ->orWhere('status', 'approved');
+                });
             } else {
                 $query->where('status', $status);
             }
@@ -52,6 +56,22 @@ class SubscriptionRequestController extends Controller
             $data = $request->validate([
                 'reviewer_comments' => 'nullable|string|max:2000',
             ]);
+
+            // Solicitud de reactivación: solo se registra y se notifica a la clínica.
+            // La reactivación operativa se realiza manualmente desde el backoffice.
+            if ($subscriptionRequest->isReactivation()) {
+                $subscriptionRequest->status = 'approved';
+                $subscriptionRequest->reviewed_by = $request->user('admin')->id;
+                $subscriptionRequest->reviewed_at = now();
+                $subscriptionRequest->reviewer_comments = $data['reviewer_comments'] ?? null;
+                $subscriptionRequest->save();
+
+                ReactivationApproved::dispatch($subscriptionRequest);
+
+                return redirect()->route('backoffice.subscription-requests.index')
+                    ->with('status', 'Solicitud de reactivación aprobada. La clínica ha sido notificada.');
+            }
+
             $result = $this->upgradeService->approveAndGenerateCheckout(
                 $subscriptionRequest,
                 $request->user('admin')->id,
@@ -68,7 +88,7 @@ class SubscriptionRequestController extends Controller
             return redirect()->route('backoffice.subscription-requests.index')
                 ->with('status', 'Solicitud aprobada. Se ha generado el enlace de pago para la clínica.');
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('Error al aprobar solicitud de upgrade', [
+            \Illuminate\Support\Facades\Log::error('Error al aprobar solicitud', [
                 'request_id' => $subscriptionRequest->id,
                 'clinic_id' => $subscriptionRequest->clinic_id,
                 'error' => $e->getMessage(),

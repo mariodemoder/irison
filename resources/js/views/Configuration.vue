@@ -199,8 +199,8 @@
                     <span>{{ subscriptionState.label }}</span>
                   </div>
                   <div class="subscription-actions">
-                    <button v-if="status !== 'active' && status !== 'trial'" class="btn btn-primary allow-readonly-action" :disabled="!canActivatePaidPlan" @click.prevent="beginPaidPlanFake">Activar cuenta de pago</button>
-                    <button v-if="status==='blocked'" class="btn btn-primary" :disabled="!canActivatePaidPlan" @click.prevent="subscribe">Activar plan (Stripe)</button>
+                    <button v-if="status !== 'active' && status !== 'trial'" class="btn btn-md btn-primary save-button allow-readonly-action" :disabled="!canActivatePaidPlan" @click.prevent="beginPaidPlanFake">Activar cuenta de pago</button>
+                    <button v-if="status==='blocked'" class="btn btn-md btn-primary" :disabled="!canActivatePaidPlan" @click.prevent="subscribe">Activar plan (Stripe)</button>
                     <div v-if="status==='active'" class="sub-menu-wrap">
                       <button class="btn sub-menu-trigger" @click.stop="showSubscriptionMenu = !showSubscriptionMenu" title="Opciones de suscripción">
                         &#8942;

@@ -30,6 +30,7 @@ return [
 
         Modules\Notifications\Backoffice\Notifications\SubscriptionUpgradedNotification::class => 'subscription_upgraded',
         Modules\Notifications\Backoffice\Notifications\SubscriptionRejectedNotification::class => 'subscription_rejected',
+        Modules\Notifications\Backoffice\Notifications\ReactivationApprovedNotification::class => 'reactivation_approved',
         Modules\Notifications\Backoffice\Notifications\PaymentCompletedNotification::class => 'payment_completed',
         Modules\Notifications\Backoffice\Notifications\CheckoutLinkGeneratedNotification::class => 'checkout_link',
 

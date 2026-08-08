@@ -50,6 +50,9 @@ Route::prefix('api')->group(function () {
         Route::post('/settings/subscription/request', [SubscriptionRequestController::class, 'store']);
         Route::post('/settings/subscription/confirm-upgrade', [SubscriptionRequestController::class, 'confirmUpgrade']);
 
+        // Solicitud de reactivación (clínicas canceladas, disponible también en modo solo lectura)
+        Route::post('/settings/subscription/reactivate', [SubscriptionRequestController::class, 'reactivate']);
+
         // Billing: iniciar checkout desde la app (usuario autenticado)
         Route::post('/billing/checkout', [BillingController::class, 'createCheckout']);
 

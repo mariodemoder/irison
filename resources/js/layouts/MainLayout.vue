@@ -101,17 +101,32 @@
         </div>
       </header>
 
-      <div v-if="showCanceledPaidBanner" class="subscription-warning-banner">
-        <strong>Suscripción cancelada.</strong>
-        Tu cuenta está activa hasta completar el periodo ya pagado.
-        <span v-if="cancellationDaysLeftLabel" class="banner-days">Quedan {{ cancellationDaysLeftLabel }} de acceso total.</span>
-        Luego pasará a modo solo lectura durante 7 días extra. Al finalizar este periodo tus datos seran eliminados de forma permanente.
+      <div v-if="showCanceledPaidBanner" class="subscription-warning-banner subscription-canceled-banner--action">
+        <div class="subscription-banner-copy">
+          <strong>Suscripción cancelada.</strong>
+          Tu cuenta está activa hasta completar el periodo ya pagado.
+          <span v-if="cancellationDaysLeftLabel" class="banner-days">Quedan {{ cancellationDaysLeftLabel }} de acceso total.</span>
+          Luego pasará a modo solo lectura durante 7 días extra. Al finalizar este periodo tus datos seran eliminados de forma permanente.
+        </div>
+        <button type="button" class="btn btn-md btn-primary save-button subscription-banner-action" @click="showReactivationModal = true">
+          Solicitar reactivación
+        </button>
       </div>
 
-      <div v-if="showCanceledReadOnlyBanner" class="subscription-canceled-banner">
-        <strong>Suscripción finalizada.</strong>
-        Tu cuenta está en modo solo lectura. Si no reactivas, tus datos se eliminarán próximamente de forma permanente.
-        <span v-if="cancellationReadOnlyDaysLeftLabel" class="banner-days">Quedan {{ cancellationReadOnlyDaysLeftLabel }} de gracia.</span>
+      <div v-if="showCanceledReadOnlyBanner" class="subscription-canceled-banner subscription-canceled-banner--action">
+        <div class="subscription-banner-copy">
+          <strong>Suscripción finalizada.</strong>
+          Tu cuenta está en modo solo lectura. Si no reactivas, tus datos se eliminarán próximamente de forma permanente.
+          <span v-if="cancellationReadOnlyDaysLeftLabel" class="banner-days">Quedan {{ cancellationReadOnlyDaysLeftLabel }} de gracia.</span>
+        </div>
+        <div class="subscription-banner-actions">
+          <button type="button" class="btn btn-md btn-primary save-button allow-readonly-action subscription-banner-action" @click="showReactivationModal = true">
+            Solicitar reactivación
+          </button>
+          <button type="button" class="btn btn-md btn-primary save-button allow-readonly-action subscription-banner-action" @click.prevent="beginPaidPlanFromBanner">
+            Activar cuenta de pago
+          </button>
+        </div>
       </div>
 
       <div v-if="showTrialReadOnlyBanner" class="subscription-canceled-banner subscription-canceled-banner--action">
@@ -119,7 +134,7 @@
           <strong>Trial finalizado.</strong>
           Dispones de una semana adicional en modo solo lectura. Puedes consultar datos, pero no crear ni editar transacciones.
         </div>
-        <button type="button" class="btn btn-primary allow-readonly-action subscription-banner-action" @click.prevent="beginPaidPlanFromBanner">
+        <button type="button" class="btn btn-md btn-primary save-button allow-readonly-action subscription-banner-action" @click.prevent="beginPaidPlanFromBanner">
           Activar cuenta de pago
         </button>
       </div>
@@ -146,6 +161,8 @@
         </div>
       </footer>
     </div>
+
+    <ReactivationRequestModal :open="showReactivationModal" @close="showReactivationModal = false" />
   </div>
 </template>
 
@@ -157,6 +174,7 @@ import api from '../services/api'
 import logoCompact from '../assets/logoini.svg'
 import logoFull from '../assets/logonameviolet.svg'
 import logout from '../utils/logout'
+import ReactivationRequestModal from '../components/ReactivationRequestModal.vue'
 import {
   meUser,
   meClinic,
@@ -184,6 +202,7 @@ const MOBILE_BREAKPOINT = 768
 const open = ref(true)
 const compactMode = ref(false)
 const isMobile = ref(false)
+const showReactivationModal = ref(false)
 const currentYear = new Date().getFullYear()
 const faviconUrl = `${import.meta.env.BASE_URL}favicon.svg`
 
@@ -581,6 +600,15 @@ async function openContactForm() {
 
 .subscription-banner-action {
   white-space: nowrap;
+}
+
+.subscription-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .banner-days {

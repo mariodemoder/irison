@@ -42,6 +42,7 @@
                     $requestedPlan = (string) ($data['requested_plan'] ?? '');
                     $labels = [
                         'backoffice_upgrade_requested' => 'Upgrade solicitado',
+                        'backoffice_reactivation_requested' => 'Reactivación solicitada',
                         'trial_converted' => 'Trial a pago',
                         'trial_expired' => 'Trial vencido',
                         'subscription_cancelled' => 'Suscripci&oacute;n cancelada',
