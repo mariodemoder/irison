@@ -1,7 +1,7 @@
 ﻿<?php
 require_once "vendor/autoload.php";
 require_once "bootstrap/app.php";
-
+//hey
 use Illuminate\Contracts\Console\Kernel;
 use App\Models\Clinic;
 use App\Models\Appointment;
