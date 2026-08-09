@@ -36,11 +36,30 @@
                                     <td style="padding:12px 14px;font-size:13px;font-weight:700;" align="right">{{ optional($completedAt)->format('d/m/Y H:i') ?? now()->format('d/m/Y H:i') }}</td>
                                 </tr>
                             </table>
-                            @if(!empty($invoiceUrl))
+                            @if(!empty($invoiceUrl) && !empty($receiptUrl))
+                                <table role="presentation" cellspacing="0" cellpadding="0" style="margin:20px 0 0;">
+                                    <tr>
+                                        <td style="background:linear-gradient(135deg,#059669,#0f766e);border-radius:10px;padding-right:6px;">
+                                            <a href="{{ $invoiceUrl }}" style="display:inline-block;padding:13px 22px;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;white-space:nowrap;">Descargar factura</a>
+                                        </td>
+                                        <td style="background:linear-gradient(135deg,#059669,#0f766e);border-radius:10px;padding-left:6px;">
+                                            <a href="{{ $receiptUrl }}" style="display:inline-block;padding:13px 22px;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;white-space:nowrap;">Descargar recibo</a>
+                                        </td>
+                                    </tr>
+                                </table>
+                            @elseif(!empty($invoiceUrl))
                                 <table role="presentation" cellspacing="0" cellpadding="0" style="margin:20px 0 0;">
                                     <tr>
                                         <td style="background:linear-gradient(135deg,#059669,#0f766e);border-radius:10px;">
-                                            <a href="{{ $invoiceUrl }}" style="display:inline-block;padding:13px 22px;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;">Ver factura</a>
+                                            <a href="{{ $invoiceUrl }}" style="display:inline-block;padding:13px 22px;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;">Descargar factura</a>
+                                        </td>
+                                    </tr>
+                                </table>
+                            @elseif(!empty($receiptUrl))
+                                <table role="presentation" cellspacing="0" cellpadding="0" style="margin:20px 0 0;">
+                                    <tr>
+                                        <td style="background:linear-gradient(135deg,#059669,#0f766e);border-radius:10px;">
+                                            <a href="{{ $receiptUrl }}" style="display:inline-block;padding:13px 22px;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;">Descargar recibo</a>
                                         </td>
                                     </tr>
                                 </table>

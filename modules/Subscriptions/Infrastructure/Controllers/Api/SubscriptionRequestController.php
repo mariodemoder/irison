@@ -11,7 +11,6 @@ use Illuminate\Support\Facades\Mail;
 use Modules\Subscriptions\Application\Services\SubscriptionRequestService;
 use Modules\Subscriptions\Application\Services\SubscriptionUpgradeService;
 use Modules\Subscriptions\Infrastructure\Mail\SubscriptionUpgradedNotificationMail;
-use Modules\Subscriptions\Infrastructure\Payment\Resolver;
 use Stripe\StripeClient;
 
 class SubscriptionRequestController extends Controller
@@ -96,42 +95,6 @@ class SubscriptionRequestController extends Controller
         }
     }
 
-    public function approve(int $id): JsonResponse
-    {
-        $request = SubscriptionRequest::findOrFail($id);
-
-        if ($request->status !== 'pending') {
-            return response()->json(['message' => 'Esta solicitud ya ha sido procesada.'], 422);
-        }
-
-        try {
-            $this->upgradeService->approveAndGenerateCheckout($request);
-
-            return response()->json(['message' => 'Solicitud aprobada. Enlace de pago generado.'], 200);
-        } catch (\Throwable $e) {
-            return response()->json(['message' => 'Error al aprobar solicitud: ' . $e->getMessage()], 500);
-        }
-    }
-
-    public function reject(int $id, Request $request): JsonResponse
-    {
-        $requestData = $request->validate([
-            'reviewer_comments' => 'nullable|string|max:2000',
-        ]);
-
-        $subscriptionRequest = SubscriptionRequest::findOrFail($id);
-
-        if ($subscriptionRequest->status !== 'pending') {
-            return response()->json(['message' => 'Esta solicitud ya ha sido procesada.'], 422);
-        }
-
-        $subscriptionRequest->status = 'rejected';
-        $subscriptionRequest->reviewer_comments = $requestData['reviewer_comments'] ?? null;
-        $subscriptionRequest->save();
-
-        return response()->json(['message' => 'Solicitud rechazada.'], 200);
-    }
-
     public function confirmUpgrade(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -165,20 +128,18 @@ class SubscriptionRequestController extends Controller
             return response()->json(['message' => 'No se encontró una solicitud de upgrade pendiente.'], 404);
         }
 
-        // Si ya está completada, solo resolver la factura
+        // Si ya está completada, solo resolver los enlaces de pago
         if ($subscriptionRequest->status === 'completed') {
-            $invoiceUrl = $this->resolveInvoiceUrl($subscriptionRequest, $sessionId);
+            $links = $this->resolvePaymentLinks($subscriptionRequest, $sessionId);
 
             return response()->json([
-                'invoice_url' => $invoiceUrl,
+                'invoice_url' => $links['invoice_url'],
                 'plan' => $subscriptionRequest->requested_plan,
                 'clinic_name' => $subscriptionRequest->clinic->name ?? '-',
             ]);
         }
 
         // Procesar el upgrade si aún no se ha completado
-        $wasAlreadyCompleted = $subscriptionRequest->status === 'completed';
-
         try {
             $this->upgradeService->handlePaymentCompleted($subscriptionRequest, [
                 'provider' => 'stripe',
@@ -194,21 +155,21 @@ class SubscriptionRequestController extends Controller
         // Refrescar el modelo después del procesamiento
         $subscriptionRequest->refresh();
 
-        $invoiceUrl = $this->resolveInvoiceUrl($subscriptionRequest, $sessionId);
+        $links = $this->resolvePaymentLinks($subscriptionRequest, $sessionId);
 
         // Enviar email SOLO si esta llamada completó el upgrade (evitar duplicados con webhook)
-        if (! $wasAlreadyCompleted && $subscriptionRequest->status === 'completed') {
-            $this->sendUpgradeEmailBackup($subscriptionRequest, $invoiceUrl);
+        if ($subscriptionRequest->status === 'completed') {
+            $this->sendUpgradeEmailBackup($subscriptionRequest, $links['invoice_url'], $links['receipt_url']);
         }
 
         return response()->json([
-            'invoice_url' => $invoiceUrl,
+            'invoice_url' => $links['invoice_url'],
             'plan' => $subscriptionRequest->requested_plan,
             'clinic_name' => $subscriptionRequest->clinic->name ?? '-',
         ]);
     }
 
-    private function sendUpgradeEmailBackup(SubscriptionRequest $subscriptionRequest, ?string $invoiceUrl): void
+    private function sendUpgradeEmailBackup(SubscriptionRequest $subscriptionRequest, ?string $invoiceUrl, ?string $receiptUrl = null): void
     {
         try {
             $recipient = $subscriptionRequest->clinic->ownerUser()->first()
@@ -216,7 +177,7 @@ class SubscriptionRequestController extends Controller
 
             if ($recipient && filter_var((string) $recipient->email, FILTER_VALIDATE_EMAIL)) {
                 Mail::to($recipient->email)->send(
-                    new SubscriptionUpgradedNotificationMail($subscriptionRequest, $invoiceUrl)
+                    new SubscriptionUpgradedNotificationMail($subscriptionRequest, $invoiceUrl, $receiptUrl)
                 );
             }
         } catch (\Throwable $e) {
@@ -227,7 +188,7 @@ class SubscriptionRequestController extends Controller
         }
     }
 
-    private function resolveInvoiceUrl(SubscriptionRequest $request, string $sessionId): ?string
+    private function resolvePaymentLinks(SubscriptionRequest $request, string $sessionId): array
     {
         try {
             $stripe = new StripeClient(config('services.stripe.secret'));
@@ -237,7 +198,11 @@ class SubscriptionRequestController extends Controller
                 $session = $stripe->checkout->sessions->retrieve($request->stripe_checkout_session_id);
                 if (! empty($session->invoice)) {
                     $invoice = $stripe->invoices->retrieve($session->invoice);
-                    return $invoice->hosted_invoice_url ?? null;
+
+                    return [
+                        'invoice_url' => $invoice->hosted_invoice_url ?? null,
+                        'receipt_url' => $this->resolveReceiptFromPaymentIntent($stripe, $session->payment_intent ?? null),
+                    ];
                 }
             }
 
@@ -246,7 +211,11 @@ class SubscriptionRequestController extends Controller
                 $session = $stripe->checkout->sessions->retrieve($sessionId);
                 if (! empty($session->invoice)) {
                     $invoice = $stripe->invoices->retrieve($session->invoice);
-                    return $invoice->hosted_invoice_url ?? null;
+
+                    return [
+                        'invoice_url' => $invoice->hosted_invoice_url ?? null,
+                        'receipt_url' => $this->resolveReceiptFromPaymentIntent($stripe, $session->payment_intent ?? null),
+                    ];
                 }
             }
 
@@ -255,17 +224,39 @@ class SubscriptionRequestController extends Controller
             if ($customerId) {
                 $invoices = $stripe->invoices->all(['customer' => $customerId, 'limit' => 1]);
                 if (count($invoices->data) > 0) {
-                    return $invoices->data[0]->hosted_invoice_url ?? null;
+                    $lastInvoice = $invoices->data[0];
+
+                    return [
+                        'invoice_url' => $lastInvoice->hosted_invoice_url ?? null,
+                        'receipt_url' => $this->resolveReceiptFromPaymentIntent($stripe, $lastInvoice->payment_intent ?? null),
+                    ];
                 }
             }
         } catch (\Throwable $e) {
-            Log::warning('confirmUpgrade: no se pudo resolver URL de factura', [
+            Log::warning('confirmUpgrade: no se pudieron resolver URLs de factura/recibo', [
                 'request_id' => $request->id,
                 'error' => $e->getMessage(),
             ]);
         }
 
-        return null;
+        return ['invoice_url' => null, 'receipt_url' => null];
+    }
+
+    private function resolveReceiptFromPaymentIntent(StripeClient $stripe, mixed $paymentIntentId): ?string
+    {
+        if (empty($paymentIntentId)) {
+            return null;
+        }
+
+        $paymentIntent = $stripe->paymentIntents->retrieve((string) $paymentIntentId);
+        $chargeId = $paymentIntent->latest_charge ?? null;
+        if (empty($chargeId)) {
+            return null;
+        }
+
+        $charge = $stripe->charges->retrieve((string) $chargeId);
+
+        return $charge->receipt_url ?? null;
     }
 
     private function isValidUpgrade(string $currentPlan, string $requestedPlan): bool

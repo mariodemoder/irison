@@ -20,6 +20,7 @@ class SubscriptionActivatedMail extends Mailable
         public string $plan,
         public string $activatedAt,
         public ?string $invoiceUrl = null,
+        public ?string $receiptUrl = null,
     ) {
     }
 
@@ -39,6 +40,7 @@ class SubscriptionActivatedMail extends Mailable
                 'plan' => $this->plan,
                 'activatedAt' => $this->activatedAt,
                 'invoiceUrl' => $this->invoiceUrl,
+                'receiptUrl' => $this->receiptUrl,
             ],
         );
     }

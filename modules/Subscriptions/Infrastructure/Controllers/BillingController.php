@@ -198,6 +198,8 @@ class BillingController extends Controller
         if ($this->hasBillingMethodColumn()) {
             $updatePayload['method'] = $result['payment_method'] ?? 'transaction';
         }
+        $updatePayload['invoice_url'] = $result['invoice_url'] ?? null;
+        $updatePayload['receipt_url'] = $result['receipt_url'] ?? null;
 
         $paymentId = $result['payment_id'] ?? null;
         if ($paymentId) {
@@ -220,6 +222,7 @@ class BillingController extends Controller
             'stripe_customer_id' => $result['customer'] ?? null,
             'stripe_subscription_id' => $result['subscription'] ?? null,
             'invoice_url' => $result['invoice_url'] ?? null,
+            'receipt_url' => $result['receipt_url'] ?? null,
             'source' => 'confirmacion de checkout',
             'plan' => 'basic',
             'previous_status' => $previousSubscriptionStatus,

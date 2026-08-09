@@ -362,7 +362,7 @@ class EmailDispatchTest extends TestCase
         ));
         $this->assertStringContainsString('Bienvenido a Irison', $rendered);
         $this->assertStringContainsString('Clinica Irison Test', $rendered);
-        $this->assertStringContainsString('Ver factura', $rendered);
+        $this->assertStringContainsString('Descargar factura', $rendered);
     }
 
     public function test_subscription_activated_mail_renders_without_invoice(): void
@@ -387,7 +387,7 @@ class EmailDispatchTest extends TestCase
             'https://invoice.stripe.com/test',
         ));
         $this->assertStringContainsString('actualizado', strtolower($rendered));
-        $this->assertStringContainsString('Ver factura', $rendered);
+        $this->assertStringContainsString('Descargar factura', $rendered);
     }
 
     public function test_subscription_upgraded_notification_mail_renders_without_invoice(): void

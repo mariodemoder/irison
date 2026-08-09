@@ -26,6 +26,7 @@ interface PaymentProviderInterface
      *               subscription?: ?string
      *               invoice_id?: ?string
      *               invoice_url?: ?string
+     *               receipt_url?: ?string
      *               }
      */
     public function confirmCheckout(array $data): array;
@@ -52,11 +53,13 @@ interface PaymentProviderInterface
     public function resolveInvoiceUrl(?string $invoiceId): ?string;
 
     /**
-     * List recent invoices for a clinic.
+     * Resolve the payment receipt URL (Stripe charge receipt) for a given
+     * payment intent id (pi_...) or charge id (ch_...).
      *
-     * @return array<int, array{id: string, status: string, amount_due: int, currency: string, hosted_invoice_url: ?string, created: int}>
+     * For a payment intent, the receipt is resolved via the latest charge;
+     * a charge id can be resolved directly.
      */
-    public function listInvoices(array $data): array;
+    public function resolveReceiptUrl(?string $paymentIntentOrChargeId): ?string;
 
     /**
      * Preview the prorated invoice for an upgrade without applying changes.
@@ -102,6 +105,7 @@ interface PaymentProviderInterface
      *               provider_ref: ?string
      *               invoice_id: ?string
      *               invoice_url: ?string
+     *               receipt_url?: ?string
      *               }
      */
     public function upgradeSubscription(array $data): array;

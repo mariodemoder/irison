@@ -74,7 +74,7 @@ class PlanChangeEmailTest extends TestCase
         );
 
         $this->assertStringContainsString('Bienvenido a Irison', $rendered);
-        $this->assertStringContainsString('Ver factura', $rendered);
+        $this->assertStringContainsString('Descargar factura', $rendered);
     }
 
     public function test_trial_to_basic_sends_email_without_invoice(): void
@@ -161,7 +161,7 @@ class PlanChangeEmailTest extends TestCase
         );
 
         $this->assertStringContainsString('actualizado', strtolower($rendered));
-        $this->assertStringContainsString('Ver factura', $rendered);
+        $this->assertStringContainsString('Descargar factura', $rendered);
     }
 
     public function test_basic_to_pro_sends_payment_completed_email(): void

@@ -54,15 +54,6 @@ class SubscriptionRequestService
         $request->save();
     }
 
-    public function rejectRequest(SubscriptionRequest $request, string $comments, int $reviewedBy): void
-    {
-        $request->status = 'rejected';
-        $request->reviewer_comments = $comments;
-        $request->reviewed_by = $reviewedBy;
-        $request->reviewed_at = now();
-        $request->save();
-    }
-
     public function markAsPaid(SubscriptionRequest $request): void
     {
         $request->status = 'paid';

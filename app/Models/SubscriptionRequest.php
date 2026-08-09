@@ -28,6 +28,7 @@ class SubscriptionRequest extends Model
         'completed_at',
         'stripe_checkout_session_id',
         'checkout_url',
+        'upgrade_detail',
     ];
 
     public function isReactivation(): bool
@@ -39,6 +40,7 @@ class SubscriptionRequest extends Model
     {
         return [
             'reviewed_at' => 'datetime',
+            'upgrade_detail' => 'array',
         ];
     }
 

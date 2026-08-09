@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Services\Counters\MySaasCounterService;
 
 class BillingPayment extends Model
@@ -13,7 +14,8 @@ class BillingPayment extends Model
     protected $table = 'billing_payments';
 
     protected $fillable = [
-        'clinic_id', 'amount', 'currency', 'status', 'provider', 'provider_ref', 'method', 'counter'
+        'clinic_id', 'amount', 'currency', 'status', 'provider', 'provider_ref', 'method', 'counter',
+        'invoice_url', 'receipt_url', 'subscription_request_id',
     ];
 
     protected static function booted(): void
@@ -30,5 +32,10 @@ class BillingPayment extends Model
     public function clinic()
     {
         return $this->belongsTo(Clinic::class);
+    }
+
+    public function subscriptionRequest(): BelongsTo
+    {
+        return $this->belongsTo(SubscriptionRequest::class);
     }
 }

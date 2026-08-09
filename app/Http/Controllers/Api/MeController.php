@@ -85,10 +85,14 @@ class MeController
             if ($hasBillingMethod) {
                 $paymentColumns[] = 'method';
             }
+            $paymentColumns[] = 'invoice_url';
+            $paymentColumns[] = 'receipt_url';
+            $paymentColumns[] = 'subscription_request_id';
 
             $subscriptionPayments = BillingPayment::query()
                 ->where('clinic_id', (int) $clinic->id)
                 ->whereIn('status', ['paid', 'completed'])
+                ->with('subscriptionRequest:id,current_plan,requested_plan,upgrade_detail')
                 ->orderByDesc('created_at')
                 ->limit(20)
                 ->get($paymentColumns)
@@ -100,6 +104,12 @@ class MeController
                         'currency' => $payment->currency,
                         'status' => $payment->status,
                         'method' => $hasBillingMethod ? ($payment->method ?? null) : null,
+                        'invoice_url' => $payment->invoice_url,
+                        'receipt_url' => $payment->receipt_url,
+                        'subscription_request_id' => $payment->subscription_request_id,
+                        'current_plan' => $payment->subscriptionRequest?->current_plan,
+                        'requested_plan' => $payment->subscriptionRequest?->requested_plan,
+                        'upgrade_detail' => $payment->subscriptionRequest?->upgrade_detail,
                         'created_at' => $payment->created_at,
                     ];
                 })

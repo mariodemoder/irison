@@ -33,6 +33,9 @@ Router rápido para cargar solo el skill que necesitas.
 ## QA
 - `qa/index.md` — Testing strategies, coverage rules, delegation criteria
 
+## Clean (código muerto)
+- `agents/clean.md` — Limpieza de dead code tras cada generación de código, antes de QA: imports sin uso, vars muertas, ramas inalcanzables, depuración residual, archivos huérfanos
+
 ## Actividad
 - `activity.md` — Registro de actividad (módulo DDD), cap de logins (3 por usuario/clínica) y ocultamiento de `login` al SPA
 
@@ -59,5 +62,6 @@ Los `.agent.md` en `.github/agents/` definen permisos de herramientas, no conten
 - `backend.agent.md` — Backend specialist
 - `frontend.agent.md` — Frontend specialist
 - `qa.agent.md` — QA specialist
+- `clean.agent.md` — Clean specialist (dead-code cleanup antes de QA)
 - `deploy.agent.md` — Deploy specialist
 - `backoffice.agent.md` — Backoffice specialist

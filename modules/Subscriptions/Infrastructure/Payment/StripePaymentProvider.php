@@ -106,6 +106,7 @@ class StripePaymentProvider implements PaymentProviderInterface
             'payment_id' => $session->metadata->payment_id ?? null,
             'invoice_id' => ! empty($session->invoice) ? (string) $session->invoice : null,
             'invoice_url' => $this->resolveInvoiceUrl(! empty($session->invoice) ? (string) $session->invoice : null),
+            'receipt_url' => $this->resolveReceiptUrl(! empty($session->payment_intent) ? (string) $session->payment_intent : null),
         ];
     }
 
@@ -134,40 +135,36 @@ class StripePaymentProvider implements PaymentProviderInterface
         }
     }
 
-    public function listInvoices(array $data): array
+    public function resolveReceiptUrl(?string $paymentIntentOrChargeId): ?string
     {
-        $customerId = (string) ($data['customer_id'] ?? $data['stripe_id'] ?? '');
-        if ($customerId === '') {
-            return [];
+        if (empty($paymentIntentOrChargeId)) {
+            return null;
         }
 
         try {
-            $invoices = $this->stripe->invoices->all([
-                'customer' => $customerId,
-                'limit' => (int) ($data['limit'] ?? 10),
-            ]);
+            $chargeId = $paymentIntentOrChargeId;
+
+            // Payment intent: resolve the latest charge first.
+            if (str_starts_with($paymentIntentOrChargeId, 'pi_')) {
+                $paymentIntent = $this->stripe->paymentIntents->retrieve($paymentIntentOrChargeId);
+                $chargeId = $paymentIntent->latest_charge ?? null;
+                if (empty($chargeId)) {
+                    return null;
+                }
+            }
+
+            // Charge id (ch_...) can be resolved directly.
+            $charge = $this->stripe->charges->retrieve((string) $chargeId);
+
+            return $charge->receipt_url ?? null;
         } catch (\Throwable $e) {
-            Log::warning('stripe.list_invoices_failed', [
-                'customer_id' => $customerId,
+            Log::warning('stripe.resolve_receipt_url_failed', [
+                'payment_intent_or_charge_id' => $paymentIntentOrChargeId,
                 'error' => $e->getMessage(),
             ]);
 
-            return [];
+            return null;
         }
-
-        $result = [];
-        foreach ($invoices->data ?? [] as $invoice) {
-            $result[] = [
-                'id' => (string) ($invoice->id ?? ''),
-                'status' => (string) ($invoice->status ?? ''),
-                'amount_due' => (int) ($invoice->amount_due ?? 0),
-                'currency' => strtoupper((string) ($invoice->currency ?? 'EUR')),
-                'hosted_invoice_url' => $invoice->hosted_invoice_url ?? null,
-                'created' => (int) ($invoice->created ?? 0),
-            ];
-        }
-
-        return $result;
     }
 
     public function cancelSubscription(array $data): void
@@ -287,6 +284,8 @@ class StripePaymentProvider implements PaymentProviderInterface
                 'checkout_url' => $checkout['checkout_url'],
                 'provider_ref' => $checkout['provider_ref'],
                 'invoice_id' => null,
+                'invoice_url' => null,
+                'receipt_url' => null,
             ];
         }
 
@@ -310,6 +309,7 @@ class StripePaymentProvider implements PaymentProviderInterface
         $amountCharged = 0;
         $invoiceId = null;
         $invoiceUrl = null;
+        $receiptUrl = null;
         $latestInvoiceId = $updatedSub->latest_invoice ?? null;
         if ($latestInvoiceId) {
             try {
@@ -317,6 +317,7 @@ class StripePaymentProvider implements PaymentProviderInterface
                 $amountCharged = (int) ($invoice->amount_due ?? 0);
                 $invoiceId = $invoice->id;
                 $invoiceUrl = $invoice->hosted_invoice_url ?? null;
+                $receiptUrl = $this->resolveReceiptUrl(! empty($invoice->payment_intent) ? (string) $invoice->payment_intent : null);
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::warning('stripe.upgrade.invoice_retrieve_failed', [
                     'invoice_id' => $latestInvoiceId,
@@ -333,6 +334,7 @@ class StripePaymentProvider implements PaymentProviderInterface
             'provider_ref' => $subscriptionId,
             'invoice_id' => $invoiceId,
             'invoice_url' => $invoiceUrl,
+            'receipt_url' => $receiptUrl,
         ];
     }
 

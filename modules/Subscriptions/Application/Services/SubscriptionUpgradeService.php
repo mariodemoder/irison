@@ -28,6 +28,27 @@ class SubscriptionUpgradeService
         $clinic = $request->clinic;
         $subscription = $clinic->currentSubscription();
 
+        // Snapshot del preview del upgrade en el momento de la aprobación.
+        // El cálculo de previewUpgrade() solo es correcto mientras la solicitud
+        // está pending/waiting_payment, por eso se persiste aquí.
+        try {
+            $preview = $provider->previewUpgrade([
+                'clinic' => $clinic,
+                'current_plan' => $request->current_plan,
+                'new_plan' => $request->requested_plan,
+                'subscription_reference' => $subscription?->stripe_subscription_id,
+            ]);
+            if (! empty($preview) && ($preview['success'] ?? false)) {
+                $request->upgrade_detail = $preview;
+                $request->save();
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('upgrade.preview_snapshot_failed', [
+                'request_id' => $request->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
         $result = $provider->upgradeSubscription([
             'clinic' => $clinic,
             'current_plan' => $request->current_plan,
@@ -65,6 +86,13 @@ class SubscriptionUpgradeService
         $this->upgradeClinic($request);
         $this->requestService->completeSubscription($request);
 
+        // Persistir enlaces de factura/recibo resueltos por el proveedor o el webhook
+        if (! empty($paymentData['invoice_url']) || ! empty($paymentData['receipt_url'])) {
+            $request->invoice_url = $paymentData['invoice_url'] ?? null;
+            $request->receipt_url = $paymentData['receipt_url'] ?? null;
+            $request->save();
+        }
+
         event(new PaymentCompletedEvent($request, $paymentData));
         event(new SubscriptionUpgradedEvent($request));
     }
@@ -81,14 +109,6 @@ class SubscriptionUpgradeService
         $clinic->save();
     }
 
-    public static function getPlanPrice(string $plan): int
-    {
-        $pricing = config('pricing', []);
-        $planConfig = $pricing[$plan] ?? [];
-
-        return (int) ($planConfig['price'] ?? 2900);
-    }
-
     private function handleUpgraded(SubscriptionRequest $request, array $result, $provider): void
     {
         BillingPayment::create([
@@ -99,6 +119,9 @@ class SubscriptionUpgradeService
             'provider' => $provider->getName(),
             'provider_ref' => $result['provider_ref'] ?? ('upgrade_'.$request->id),
             'method' => 'prorated_upgrade',
+            'invoice_url' => $result['invoice_url'] ?? null,
+            'receipt_url' => $result['receipt_url'] ?? null,
+            'subscription_request_id' => $request->id,
         ]);
 
         $this->handlePaymentCompleted($request, [
@@ -107,6 +130,8 @@ class SubscriptionUpgradeService
             'mode' => 'prorated_upgrade',
             'amount_charged' => $result['amount_charged'],
             'invoice_id' => $result['invoice_id'] ?? null,
+            'invoice_url' => $result['invoice_url'] ?? null,
+            'receipt_url' => $result['receipt_url'] ?? null,
         ]);
     }
 

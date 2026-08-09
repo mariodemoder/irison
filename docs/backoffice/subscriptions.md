@@ -96,6 +96,34 @@ Arreglos aplicados:
 
 Tests de regresión: `tests/Feature/Billing/BillingLifecycleTest.php`, `tests/Feature/Billing/SubscriptionRequestTest.php`, `tests/Feature/Backoffice/ClinicAlertsReconcileTest.php`, `tests/Unit/ClinicBackofficeStatusTest.php`.
 
+## Enlaces de factura y recibo (Stripe)
+
+Tras confirmarse un pago se resuelven y persisten dos enlaces de Stripe:
+
+- **`invoice_url`** → `invoice.hosted_invoice_url` (factura).
+- **`receipt_url`** → recibo de pago, resuelto vía `payment_intent` (`pi_…`) → `latest_charge` → `charge.receipt_url`; también acepta un id de charge (`ch_…`) directo. Método: `PaymentProviderInterface::resolveReceiptUrl()` (`StripePaymentProvider`).
+
+Persistencia (columnas nullable `invoice_url`, `receipt_url`):
+
+| Tabla | Dónde se escriben |
+|---|---|
+| `billing_payments` | Webhook `checkout.session.completed` (vía `metadata.payment_id`), `BillingController::confirmCheckout`, `SubscriptionUpgradeService::handleUpgraded` (upgrade prorrateado directo), y el webhook de upgrade vía checkout (`method='upgrade_checkout'`, idempotente por `subscription_request_id`) |
+| `subscription_requests` | `SubscriptionUpgradeService::handlePaymentCompleted` (upgrade vía checkout) para que las notificaciones en cola lean los enlaces |
+
+Consumo:
+
+- **Emails**: `SubscriptionActivatedMail`, `SubscriptionUpgradedNotificationMail` y `PaymentCompletedNotification` muestran dos botones — "Descargar factura" (`invoiceUrl`) y "Descargar recibo" (`receiptUrl`) — cada uno solo si su URL existe. `PaymentCompletedNotification` lee ambos del `subscription_request`.
+- **SPA / `GET /api/me`**: `subscription_payments[]` incluye `invoice_url` y `receipt_url` por pago. En "Configuración → Suscripción → Pagos realizados" cada fila de la tabla muestra un botón "Ver factura" que abre la factura en pestaña nueva (oculto si no hay URL). El botón global "Ver facturas" y su modal de Stripe fueron retirados.
+
+## Detalle del cambio de plan por pago ("Ver detalle")
+
+Cada pago de upgrade muestra su desglose de cambio de plan en la SPA, con el mismo layout que el popup de aprobación del backoffice.
+
+- **Snapshot persistido**: el desglose del backoffice (`PaymentProviderInterface::previewUpgrade()`) solo es fiable mientras la solicitud está `pending`. Por eso `SubscriptionUpgradeService::approveAndGenerateCheckout()` lo persiste en `subscription_requests.upgrade_detail` (JSON nullable) en el momento de aprobar, antes de ejecutar el upgrade. Si falla, no bloquea el flujo y se loguea `upgrade.preview_snapshot_failed`.
+- **Vínculo pago → solicitud**: `billing_payments.subscription_request_id` (FK nullable a `subscription_requests`, migración `2026_08_09_120000_add_upgrade_detail_and_payment_request_link`). Se asigna en `handleUpgraded` (upgrade prorrateado directo) y en el webhook de upgrade vía checkout (que ahora sí crea fila en `billing_payments`, guardando contra duplicados por `subscription_request_id`).
+- **SPA / `GET /api/me`**: cada pago añade `subscription_request_id`, `current_plan`, `requested_plan` y `upgrade_detail` (array|null). En "Pagos realizados" cada fila con `upgrade_detail` muestra el botón "Ver detalle", que abre un modal con: crédito por días no usados, coste prorrateado del nuevo plan, total a pagar hoy, próxima factura e importe mensual siguiente (formatos es-ES).
+- Los pagos de activación trial→pago no tienen `upgrade_detail`, por lo que no muestran el botón.
+
 ## Scheduler en desarrollo
 
 - El ciclo de trial depende de `php artisan schedule:work` (comando `trials:process`).

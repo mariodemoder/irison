@@ -43,6 +43,8 @@ class PaymentCompletedNotification extends Notification implements ShouldQueue
                 'currentPlan' => ucfirst($this->request->current_plan),
                 'requestedPlan' => ucfirst($this->request->requested_plan),
                 'completedAt' => $this->request->completed_at,
+                'invoiceUrl' => $this->request->invoice_url,
+                'receiptUrl' => $this->request->receipt_url,
             ]);
 
         $mail->viewData = array_merge($mail->viewData, ['request' => $this->request]);

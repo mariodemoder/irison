@@ -9,5 +9,6 @@ Full behavior files for each GitHub agent. Load on demand to save tokens.
 | Backend | `backend.md` | Backend: Laravel API, services, multi-tenancy, AI |
 | Frontend | `frontend.md` | Frontend: Vue 3 SPA, components, styling, UX |
 | QA | `qa.md` | QA: testing, regression, runbooks, playbooks |
+| Clean | `clean.md` | Clean: dead-code cleanup after code generation, before QA |
 | Deploy | `deploy.md` | Deployment: production checklist, services, release |
 | Backoffice | `backoffice.md` | Backoffice: tenants, subscriptions, lifecycle, support |

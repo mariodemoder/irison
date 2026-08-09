@@ -310,6 +310,7 @@
                           <div>Fecha</div>
                           <div>Número</div>
                           <div>Importe</div>
+                          <div>Factura</div>
                         </div>
                         <div
                           v-for="payment in subscriptionPayments"
@@ -319,51 +320,30 @@
                           <div>{{ formatDateTime(payment.created_at) }}</div>
                           <div>{{ payment.counter || '—' }}</div>
                           <div>{{ formatBillingAmount(payment.amount, payment.currency) }}</div>
+                          <div class="subscription-history-actions">
+                            <a
+                              v-if="payment.invoice_url"
+                              :href="payment.invoice_url"
+                              target="_blank"
+                              rel="noopener"
+                              class="btn btn-sm"
+                            >Ver factura</a>
+                            <span v-else class="subscription-history-no-invoice">—</span>
+                            <button
+                              v-if="payment.upgrade_detail"
+                              type="button"
+                              class="btn btn-sm"
+                              @click="openUpgradeDetail(payment)"
+                            >Ver detalle</button>
+                          </div>
                         </div>
                       </div>
-                      <button class="btn btn-sm" style="margin-left:8px" @click="openStripeInvoices">Ver facturas</button>
                     </div>
 
-                    <div v-if="showInvoicesModal" class="confirm-modal-backdrop" @click.self="showInvoicesModal=false">
-                      <div class="confirm-modal" role="dialog" aria-modal="true" aria-label="Facturas Stripe">
-                        <h3>Facturas Stripe</h3>
-                        <div v-if="loadingInvoices" style="padding:12px 0;font-size:13px;color:#6b7280">Cargando facturas...</div>
-                        <div v-else-if="stripeInvoices.length === 0" style="padding:12px 0;font-size:13px;color:#6b7280">No hay facturas disponibles.</div>
-                        <div v-else style="max-height:400px;overflow-y:auto">
-                          <table style="width:100%;font-size:12px;border-collapse:collapse">
-                            <thead>
-                              <tr style="border-bottom:1px solid #e2e8f0">
-                                <th style="padding:6px 8px;text-align:left">Nº</th>
-                                <th style="padding:6px 8px;text-align:left">Fecha</th>
-                                <th style="padding:6px 8px;text-align:right">Importe</th>
-                                <th style="padding:6px 8px;text-align:left">Estado</th>
-                                <th style="padding:6px 8px"></th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              <tr v-for="inv in stripeInvoices" :key="inv.id" style="border-bottom:1px solid #f1f5f9">
-                                <td style="padding:6px 8px">{{ inv.number }}</td>
-                                <td style="padding:6px 8px">{{ inv.created_at ? new Date(inv.created_at).toLocaleDateString('es-ES') : '-' }}</td>
-                                <td style="padding:6px 8px;text-align:right">{{ formatBillingAmount(inv.total, inv.currency) }}</td>
-                                <td style="padding:6px 8px">{{ inv.status }}</td>
-                                <td style="padding:6px 8px">
-                                  <a :href="inv.hosted_invoice_url" target="_blank" rel="noopener" style="color:#2563eb;text-decoration:underline">Ver factura</a>
-                                </td>
-                              </tr>
-                            </tbody>
-                          </table>
-                        </div>
-                        <div class="confirm-modal-actions">
-                          <button class="btn btn-ghost" @click="showInvoicesModal=false">Cerrar</button>
-                        </div>
-                      </div>
-                    </div>
                   </div>
                   <div v-else>
                     <div>No tienes suscripción activa.</div>
                   </div>
-
-                  
 
                   <div v-if="showCancelSubscriptionModal" class="confirm-modal-backdrop" @click.self="closeCancelSubscriptionModal">
                     <div class="confirm-modal" role="dialog" aria-modal="true" aria-label="Confirmar cancelación de suscripción">
@@ -374,6 +354,59 @@
                         <button class="btn subscription-cancel-btn" :disabled="cancellingSubscription" @click.prevent="confirmCancelSubscription">
                           {{ cancellingSubscription ? 'Cancelando...' : 'Sí, cancelar suscripción' }}
                         </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div v-if="showUpgradeDetail && detailPayment" class="confirm-modal-backdrop" @click.self="closeUpgradeDetail">
+                    <div class="confirm-modal" role="dialog" aria-modal="true" aria-label="Detalle del cambio de plan">
+                      <h3>Detalle del cambio de plan</h3>
+                      <p class="upgrade-detail-subtitle">
+                        {{ capitalizePlan(detailPayment.current_plan) }}
+                        <span class="upgrade-detail-arrow" aria-hidden="true">→</span>
+                        {{ capitalizePlan(detailPayment.requested_plan) }}
+                      </p>
+
+                      <div class="upgrade-detail-card">
+                        <div class="upgrade-detail-row">
+                          <span>Crédito por días no usados</span>
+                          <span class="upgrade-detail-credit">-{{ formatBillingAmount(detailPayment.upgrade_detail?.credit_for_unused_days || 0, detailPayment.upgrade_detail?.currency) }}</span>
+                        </div>
+                        <div class="upgrade-detail-row">
+                          <span>Coste prorrateado {{ capitalizePlan(detailPayment.upgrade_detail?.new_plan?.name) }}</span>
+                          <span class="upgrade-detail-cost">+{{ formatBillingAmount(detailPayment.upgrade_detail?.prorated_new_plan_cost || 0, detailPayment.upgrade_detail?.currency) }}</span>
+                        </div>
+                        <div class="upgrade-detail-row upgrade-detail-row--total">
+                          <span>Total a pagar hoy</span>
+                          <strong>{{ formatBillingAmount(detailPayment.upgrade_detail?.amount_due_now || 0, detailPayment.upgrade_detail?.currency) }}</strong>
+                        </div>
+                        <div class="upgrade-detail-row upgrade-detail-row--muted">
+                          <span>Próxima factura</span>
+                          <span>{{ formatUpgradeDate(detailPayment.upgrade_detail?.next_billing_date) }}</span>
+                        </div>
+                        <div class="upgrade-detail-row upgrade-detail-row--muted">
+                          <span>Importe mensual siguiente</span>
+                          <span>{{ formatBillingAmount(detailPayment.upgrade_detail?.next_billing_amount || 0, detailPayment.upgrade_detail?.currency) }}</span>
+                        </div>
+                      </div>
+
+                      <div
+                        v-if="Array.isArray(detailPayment.upgrade_detail?.details) && detailPayment.upgrade_detail.details.length"
+                        class="upgrade-detail-details"
+                      >
+                        <div class="upgrade-detail-details-title">Desglose</div>
+                        <div
+                          v-for="(line, index) in detailPayment.upgrade_detail.details"
+                          :key="index"
+                          class="upgrade-detail-row upgrade-detail-row--muted"
+                        >
+                          <span>{{ line.label }}</span>
+                          <span>{{ (line.amount ?? 0) < 0 ? '-' : '+' }}{{ formatBillingAmount(Math.abs(line.amount ?? 0), detailPayment.upgrade_detail?.currency) }}</span>
+                        </div>
+                      </div>
+
+                      <div class="confirm-modal-actions">
+                        <button class="btn btn-ghost" type="button" @click.prevent="closeUpgradeDetail">Cerrar</button>
                       </div>
                     </div>
                   </div>
@@ -498,6 +531,8 @@ const loading = ref(true)
 const saving = ref(false)
 const cancellingSubscription = ref(false)
 const showCancelSubscriptionModal = ref(false)
+const showUpgradeDetail = ref(false)
+const detailPayment = ref(null)
 const showSubscriptionMenu = ref(false)
 const subscriptionRequests = ref([])
 
@@ -514,9 +549,6 @@ function scrollToPayments() {
 onMounted(() => document.addEventListener('click', handleClickOutsideSubMenu))
 onBeforeUnmount(() => document.removeEventListener('click', handleClickOutsideSubMenu))
 const subscriptionPayments = ref([])
-const stripeInvoices = ref([])
-const loadingInvoices = ref(false)
-const showInvoicesModal = ref(false)
 const invoiceBackgroundUrl = ref(null)
 const invoiceBackgroundFile = ref(null)
 const uploadingInvoiceBackground = ref(false)
@@ -738,20 +770,6 @@ async function load() {
     toast.error(getLoadErrorMessage(e, 'configuración'))
   } finally {
     loading.value = false
-  }
-}
-
-async function openStripeInvoices() {
-  showInvoicesModal.value = true
-  loadingInvoices.value = true
-  stripeInvoices.value = []
-  try {
-    const res = await api.get('/me/stripe-invoices')
-    stripeInvoices.value = Array.isArray(res.data.invoices) ? res.data.invoices : []
-  } catch {
-    stripeInvoices.value = []
-  } finally {
-    loadingInvoices.value = false
   }
 }
 
@@ -1031,6 +1049,16 @@ function closeCancelSubscriptionModal() {
   showCancelSubscriptionModal.value = false
 }
 
+function openUpgradeDetail(payment) {
+  detailPayment.value = payment
+  showUpgradeDetail.value = true
+}
+
+function closeUpgradeDetail() {
+  showUpgradeDetail.value = false
+  detailPayment.value = null
+}
+
 async function confirmCancelSubscription() {
   if (cancellingSubscription.value) return
 
@@ -1062,6 +1090,19 @@ function formatBillingAmount(amountInCents, currency = 'EUR') {
   const cents = Number(amountInCents || 0)
   const amount = Number.isFinite(cents) ? cents / 100 : 0
   return new Intl.NumberFormat('es-ES', { style: 'currency', currency: currency || 'EUR' }).format(amount)
+}
+
+function capitalizePlan(name) {
+  const text = String(name || '').trim()
+  if (!text) return '—'
+  return text.charAt(0).toUpperCase() + text.slice(1)
+}
+
+function formatUpgradeDate(value) {
+  if (!value) return '—'
+  const date = new Date(`${String(value).slice(0, 10)}T00:00:00`)
+  if (Number.isNaN(date.getTime())) return String(value)
+  return date.toLocaleDateString('es-ES')
 }
 
 function previewCounter(row) {
@@ -1470,13 +1511,63 @@ onBeforeUnmount(() => {
     justify-content: flex-end;
     gap: 8px;
   }
+.upgrade-detail-subtitle {
+  margin: 8px 0 0;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 600;
+}
+.upgrade-detail-arrow { color: #9ca3af; margin: 0 4px }
+.upgrade-detail-card {
+  margin-top: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #f9fafb;
+  padding: 2px 12px;
+}
+.upgrade-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  font-size: 13px;
+  color: #4b5563;
+}
+.upgrade-detail-card .upgrade-detail-row + .upgrade-detail-row { border-top: 1px solid #f3f4f6 }
+.upgrade-detail-card .upgrade-detail-row.upgrade-detail-row--total { border-top: 1px solid #d1d5db; font-weight: 700; color: #111827 }
+.upgrade-detail-row--muted { color: #6b7280; font-size: 12px }
+.upgrade-detail-credit { color: #059669; font-weight: 600 }
+.upgrade-detail-cost { color: #111827; font-weight: 600 }
+.upgrade-detail-details {
+  margin-top: 10px;
+  border: 1px dashed #d1d5db;
+  border-radius: 10px;
+  background: #ffffff;
+  padding: 2px 12px 8px;
+}
+.upgrade-detail-details-title {
+  margin: 8px 0 0;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #9ca3af;
+}
+.upgrade-detail-details .upgrade-detail-row + .upgrade-detail-row { border-top: 1px solid #f3f4f6 }
+.subscription-history-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
 .subscription-history-title { font-size:13px; font-weight:700; color:#111827; margin-bottom:8px }
 .subscription-history-empty { color:#6b7280; font-size:13px; padding:10px; border:1px dashed #d1d5db; border-radius:8px }
 .subscription-history-list { border:1px solid #e5e7eb; border-radius:10px; overflow:hidden }
 .subscription-history-head,
 .subscription-history-row {
   display:grid;
-  grid-template-columns:1.4fr 1fr 1fr;
+  grid-template-columns:1fr 1fr 1fr 1.4fr;
   gap:10px;
   padding:8px 10px;
   font-size:13px;
@@ -1484,6 +1575,7 @@ onBeforeUnmount(() => {
 }
 .subscription-history-head { background:#f9fafb; color:#6b7280; font-weight:600 }
 .subscription-history-row { border-top:1px solid #f3f4f6 }
+.subscription-history-no-invoice { color:#9ca3af }
 .counter-table-wrap {
   border: 1px solid #e5e7eb;
   border-radius: 12px;

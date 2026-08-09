@@ -15,7 +15,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Modules\Subscriptions\Application\Services\SubscriptionActivationService;
 use Modules\Subscriptions\Infrastructure\Mail\InvoicePaymentFailedMail;
-use Modules\Subscriptions\Infrastructure\Mail\SubscriptionActivatedMail;
 use Stripe\Event;
 use Stripe\Webhook;
 
@@ -76,12 +75,29 @@ class StripeWebhookHandler
         $customerId = (string) ($session->customer ?? '');
         $metadataClinicId = (int) ($session->metadata->clinic_id ?? 0);
 
-        // Marcar BillingPayment como pagado si viene en metadata
+        $invoiceUrl = null;
+        if (! empty($session->invoice)) {
+            $invoiceUrl = app(StripePaymentProvider::class)->resolveInvoiceUrl((string) $session->invoice);
+        }
+
+        $receiptUrl = app(StripePaymentProvider::class)->resolveReceiptUrl(
+            ! empty($session->payment_intent) ? (string) $session->payment_intent : null
+        );
+
+        // Marcar BillingPayment como pagado si viene en metadata y persistir enlaces
         $paymentId = $session->metadata->payment_id ?? null;
         if ($paymentId) {
+            $paymentUpdate = ['status' => 'paid'];
+            if (! empty($invoiceUrl)) {
+                $paymentUpdate['invoice_url'] = $invoiceUrl;
+            }
+            if (! empty($receiptUrl)) {
+                $paymentUpdate['receipt_url'] = $receiptUrl;
+            }
+
             \App\Models\BillingPayment::where('id', $paymentId)
                 ->whereIn('status', ['pending'])
-                ->update(['status' => 'paid']);
+                ->update($paymentUpdate);
         }
 
         $clinic = null;
@@ -105,11 +121,6 @@ class StripeWebhookHandler
         if ($clinic) {
             $previousSubscriptionStatus = strtolower(trim((string) ($clinic->subscription_status ?? 'inactive')));
 
-            $invoiceUrl = null;
-            if (! empty($session->invoice)) {
-                $invoiceUrl = app(StripePaymentProvider::class)->resolveInvoiceUrl((string) $session->invoice);
-            }
-
             $this->activationService->activateClinic($clinic, [
                 'user_id' => null,
                 'provider' => 'stripe',
@@ -117,6 +128,7 @@ class StripeWebhookHandler
                 'stripe_customer_id' => $customerId !== '' ? $customerId : null,
                 'stripe_subscription_id' => $session->subscription ?? null,
                 'invoice_url' => $invoiceUrl,
+                'receipt_url' => $receiptUrl,
                 'source' => 'webhook',
                 'plan' => (string) ($session->metadata->plan ?? $clinic->plan ?? 'basic'),
                 'previous_status' => $previousSubscriptionStatus,
@@ -167,6 +179,8 @@ class StripeWebhookHandler
                         'session_id' => $sessionId,
                         'amount' => $session->amount_total,
                         'currency' => $session->currency,
+                        'invoice_url' => $invoiceUrl,
+                        'receipt_url' => $receiptUrl,
                     ]);
 
                     Log::info('Upgrade de suscripción completado', [
@@ -180,6 +194,22 @@ class StripeWebhookHandler
                         'request_id' => $subscriptionRequest->id,
                         'clinic_id' => $subscriptionRequest->clinic_id,
                         'error' => $e->getMessage(),
+                    ]);
+                }
+
+                // Registrar el pago del checkout de upgrade (guardado contra duplicados)
+                if (! \App\Models\BillingPayment::where('subscription_request_id', $subscriptionRequest->id)->exists()) {
+                    \App\Models\BillingPayment::create([
+                        'clinic_id' => $subscriptionRequest->clinic_id,
+                        'amount' => (int) ($session->amount_total ?? 0),
+                        'currency' => strtoupper((string) ($session->currency ?? 'EUR')),
+                        'status' => 'paid',
+                        'provider' => 'stripe',
+                        'provider_ref' => $sessionId,
+                        'method' => 'upgrade_checkout',
+                        'subscription_request_id' => $subscriptionRequest->id,
+                        'invoice_url' => $invoiceUrl,
+                        'receipt_url' => $receiptUrl,
                     ]);
                 }
             }

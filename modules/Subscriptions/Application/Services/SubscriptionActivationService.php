@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Subscriptions\Application\Services;
 
+use App\Models\BillingPayment;
 use App\Models\Clinic;
 use App\Models\Subscription;
 use App\Services\Backoffice\BackofficeAlertService;
@@ -28,6 +29,7 @@ class SubscriptionActivationService
      *                          stripe_customer_id?: ?string
      *                          stripe_subscription_id?: ?string
      *                          invoice_url?: ?string
+     *                          receipt_url?: ?string
      *                          source?: string
      *                          previous_status?: ?string
      *                          metadata?: array
@@ -42,6 +44,7 @@ class SubscriptionActivationService
         $stripeCustomerId = $options['stripe_customer_id'] ?? null;
         $stripeSubscriptionId = $options['stripe_subscription_id'] ?? null;
         $invoiceUrl = $options['invoice_url'] ?? null;
+        $receiptUrl = $options['receipt_url'] ?? null;
         $source = (string) ($options['source'] ?? 'checkout');
         $userId = (int) ($options['user_id'] ?? 0);
         $ip = $options['ip'] ?? null;
@@ -77,6 +80,8 @@ class SubscriptionActivationService
         }
         $clinic->save();
 
+        $this->backfillPaymentLinks($clinic, $metadata, $invoiceUrl, $receiptUrl);
+
         ActivityLogger::log(
             tenantId: (int) $clinic->id,
             userId: $userId > 0 ? $userId : null,
@@ -93,8 +98,33 @@ class SubscriptionActivationService
         }
 
         if ($previousStatus !== 'active') {
-            $this->sendActivationEmail($clinic, $invoiceUrl);
+            $this->sendActivationEmail($clinic, $invoiceUrl, $receiptUrl);
         }
+    }
+
+    private function backfillPaymentLinks(Clinic $clinic, array $metadata, ?string $invoiceUrl, ?string $receiptUrl): void
+    {
+        $paymentId = (int) ($metadata['payment_id'] ?? 0);
+        if ($paymentId <= 0) {
+            return;
+        }
+
+        $paymentUpdate = [];
+        if (! empty($invoiceUrl)) {
+            $paymentUpdate['invoice_url'] = $invoiceUrl;
+        }
+        if (! empty($receiptUrl)) {
+            $paymentUpdate['receipt_url'] = $receiptUrl;
+        }
+
+        if ($paymentUpdate === []) {
+            return;
+        }
+
+        BillingPayment::query()
+            ->where('id', $paymentId)
+            ->where('clinic_id', $clinic->id)
+            ->update($paymentUpdate);
     }
 
     private function updateOrCreateSubscription(Clinic $clinic, ?string $stripeCustomerId, ?string $stripeSubscriptionId): Subscription
@@ -133,7 +163,7 @@ class SubscriptionActivationService
         return $subscription;
     }
 
-    private function sendActivationEmail(Clinic $clinic, ?string $invoiceUrl): void
+    private function sendActivationEmail(Clinic $clinic, ?string $invoiceUrl, ?string $receiptUrl = null): void
     {
         try {
             $recipient = $clinic->ownerUser()->first()
@@ -146,6 +176,7 @@ class SubscriptionActivationService
                         plan: (string) ($clinic->plan ?? 'basic'),
                         activatedAt: now()->format('d/m/Y H:i'),
                         invoiceUrl: $invoiceUrl,
+                        receiptUrl: $receiptUrl,
                     )
                 );
             }

@@ -24,6 +24,7 @@ class FakePaymentProvider implements \Modules\Subscriptions\Domain\Contracts\Pay
             'payment_id' => null,
             'invoice_id' => null,
             'invoice_url' => null,
+            'receipt_url' => null,
         ];
     }
 
@@ -38,9 +39,9 @@ class FakePaymentProvider implements \Modules\Subscriptions\Domain\Contracts\Pay
         return null;
     }
 
-    public function listInvoices(array $data): array
+    public function resolveReceiptUrl(?string $paymentIntentOrChargeId): ?string
     {
-        return [];
+        return null;
     }
 
     public function cancelSubscription(array $data): void
@@ -136,6 +137,7 @@ class FakePaymentProvider implements \Modules\Subscriptions\Domain\Contracts\Pay
                 'provider_ref' => $checkout['provider_ref'],
                 'invoice_id' => null,
                 'invoice_url' => null,
+                'receipt_url' => null,
             ];
         }
 
@@ -147,6 +149,7 @@ class FakePaymentProvider implements \Modules\Subscriptions\Domain\Contracts\Pay
             'provider_ref' => 'fake_upgrade_'.uniqid(),
             'invoice_id' => null,
             'invoice_url' => null,
+            'receipt_url' => null,
         ];
     }
 
