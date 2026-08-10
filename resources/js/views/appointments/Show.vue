@@ -9,53 +9,46 @@
           </h1>
           <div class="header-right">
             <div class="header-actions">
-              <template v-if="appointment.status !== 'canceled' && !isProfessional">
-                <EditButton :to="`/appointments/${appointment.id}/edit`" />
-              </template>
               <div class="back-menu-group">
                 <button class="muted back-btn" @click="back">Volver</button>
-                <div v-if="hasQuickActions && !isProfessional" class="quick-actions" ref="quickActionsRef">
-                  <button
-                    type="button"
-                    class="muted quick-trigger menu-right-btn"
-                    @click="toggleQuickActions"
-                    :disabled="cancelling || submitting"
-                    aria-label="Acciones"
-                    title="Acciones"
+                <MoreActionsMenu
+                  v-if="!isProfessional && (hasQuickActions || appointment.status !== 'canceled')"
+                  trigger-class="muted quick-trigger menu-right-btn"
+                  :disabled="cancelling || submitting"
+                  aria-label="Acciones"
+                >
+                  <router-link
+                    v-if="appointment.status !== 'canceled'"
+                    class="ma-item"
+                    :to="`/appointments/${appointment.id}/edit`"
                   >
-                    <svg class="quick-trigger-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                      <circle cx="12" cy="5" r="1.8" fill="currentColor" />
-                      <circle cx="12" cy="12" r="1.8" fill="currentColor" />
-                      <circle cx="12" cy="19" r="1.8" fill="currentColor" />
-                    </svg>
-                  </button>
-                  <div v-if="quickActionsOpen" class="quick-menu">
-                    <span
-                      v-if="canShowReprogramAction"
-                      class="quick-item-wrap"
-                      :title="!canReprogram ? reprogramTooltipMessage : ''"
-                    >
-                      <button
-                        type="button"
-                        class="quick-item"
-                        @click.prevent="runReprogram"
-                        :disabled="!canReprogram || submitting"
-                        :aria-label="!canReprogram ? `${reprogramTooltipMessage}. Reprogramar` : 'Reprogramar'"
-                      >
-                        Reprogramar
-                      </button>
-                    </span>
+                    Editar
+                  </router-link>
+                  <span
+                    v-if="canShowReprogramAction"
+                    class="ma-item-wrap"
+                    :title="!canReprogram ? reprogramTooltipMessage : ''"
+                  >
                     <button
-                      v-if="canShowCancelAction"
                       type="button"
-                      class="quick-item danger"
-                      @click.prevent="runCancel"
-                      :disabled="cancelling"
+                      class="ma-item"
+                      @click.prevent="goReprogram"
+                      :disabled="!canReprogram || submitting"
+                      :aria-label="!canReprogram ? `${reprogramTooltipMessage}. Reprogramar` : 'Reprogramar'"
                     >
-                      Cancelar Cita
+                      Reprogramar
                     </button>
-                  </div>
-                </div>
+                  </span>
+                  <button
+                    v-if="canShowCancelAction"
+                    type="button"
+                    class="ma-item ma-item--danger"
+                    @click.prevent="appointmentCancel"
+                    :disabled="cancelling"
+                  >
+                    Cancelar Cita
+                  </button>
+                </MoreActionsMenu>
               </div>
             </div>
           </div>
@@ -141,7 +134,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
@@ -161,8 +154,6 @@ const cancelling = ref(false)
 const submitting = ref(false)
 const canReprogram = ref(false)
 const isEdit = ref(!!route.params.id)
-const quickActionsOpen = ref(false)
-const quickActionsRef = ref(null)
 const isEditingNotes = ref(false)
 const notesDraft = ref('')
 
@@ -354,32 +345,7 @@ function appointmentCancel() {
   appointmentCancelShared(route.params.id, { api, toast, onSuccess: async () => { cancelling.value = true; await load(); cancelling.value = false } }).catch(() => {})
 }
 
-function toggleQuickActions() {
-  quickActionsOpen.value = !quickActionsOpen.value
-}
-
-function closeQuickActions() {
-  quickActionsOpen.value = false
-}
-
-function handleClickOutsideQuickActions(event) {
-  if (!quickActionsOpen.value) return
-  if (!quickActionsRef.value) return
-  if (!quickActionsRef.value.contains(event.target)) {
-    closeQuickActions()
-  }
-}
-
-function runReprogram() {
-  closeQuickActions()
-  goReprogram()
-}
-
-function runCancel() {
-  closeQuickActions()
-  appointmentCancel()
-}
-
+// El cierre del menú ⋮ lo gestiona el componente MoreActionsMenu
 function goReprogram() {
   router.push({ path: `/appointments/${appointment.value.id}/edit`, query: { mode: 'reprogram' } })
 }
@@ -392,11 +358,6 @@ function appointmentTypeStyle(item) {
 onMounted(() => {
   load()
   loadOwnerName()
-  document.addEventListener('click', handleClickOutsideQuickActions)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('click', handleClickOutsideQuickActions)
 })
 </script>
 
@@ -417,14 +378,6 @@ onBeforeUnmount(() => {
 .actions { display:flex; gap:12px; margin-top:16px }
 .action-row { display:flex; justify-content:space-between; align-items:center }
 .left-actions { display:flex; gap:12px; align-items:center }
-.quick-trigger { padding:11px 12px; display:inline-flex; align-items:center; justify-content:center }
-.quick-trigger-icon { width:18px; height:18px; color:#4b5563 }
-.quick-actions { position:relative }
-.quick-menu { position:absolute; right:0; top:calc(100% + 6px); min-width:180px; background:#fff; border:1px solid #e5e7eb; border-radius:10px; box-shadow:0 10px 24px rgba(2,6,23,0.10); padding:6px; display:flex; flex-direction:column; gap:4px; z-index:20 }
-.quick-item-wrap { display:block }
-.quick-item { text-align:left; padding:8px 10px; border:1px solid transparent; background:#fff; border-radius:8px; font-size:14px; color:#111827 }
-.quick-item:hover { background:#f9fafb }
-.quick-item.danger { color:#b91c1c }
 
 .type-badge { padding:6px 10px; border-radius:9999px; font-weight:700 }
 .status { padding:8px 14px; border-radius:9999px; font-weight:700; text-transform:capitalize; display:inline-flex; align-items:center }

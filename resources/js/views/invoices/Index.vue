@@ -77,33 +77,6 @@
                 </td>
                 <td class="col-min">{{ formatCurrency(doc.amount) }}</td>
                 <td class="col-min"><span class="status" :class="paymentStatusClass(doc)">{{ statusLabel(paymentStatusValue(doc)) }}</span></td>
-                <td class="col-min invoice-pdf-col">
-                  <div class="pdf-actions">
-                    <button
-                      type="button"
-                      class="pdf-btn"
-                      title="Vista previa PDF"
-                      @click.stop="previewPdf(doc)"
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="pdf-icon">
-                        <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"></path>
-                        <circle cx="12" cy="12" r="2.5"></circle>
-                      </svg>
-                    </button>
-                    <button
-                      type="button"
-                      class="pdf-btn"
-                      title="Descargar PDF"
-                      @click.stop="downloadPdf(doc)"
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="pdf-icon">
-                        <path d="M12 4v11"></path>
-                        <path d="M8.5 11.5L12 15l3.5-3.5"></path>
-                        <path d="M5 19h14"></path>
-                      </svg>
-                    </button>
-                  </div>
-                </td>
               </tr>
             </template>
           </EntityTable>
@@ -152,7 +125,6 @@ const tableColumns = [
   { key: 'type', label: 'Tipo', thClass: 'col-min' },
   { key: 'amount', label: 'Importe', thClass: 'col-min' },
   { key: 'payment_status', label: 'Estado de pago', thClass: 'col-min' },
-  { key: 'pdf', label: 'PDF', thClass: 'col-min invoice-pdf-col' },
 ]
 
 const filters = ref({
@@ -227,46 +199,6 @@ function goToShow(id) {
   router.push(`/invoices/${id}`)
 }
 
-function invoiceDownloadName(doc) {
-  const suffix = String(doc?.counter || doc?.id || 'factura').replace(/[^a-zA-Z0-9_-]/g, '_')
-  return doc?.type === 'abono'
-    ? `factura-rectificativa-${suffix}.pdf`
-    : `factura-${suffix}.pdf`
-}
-
-async function previewPdf(doc) {
-  if (!doc?.id) return
-
-  try {
-    const res = await api.get(`/documents/${doc.id}/pdf`, { responseType: 'blob' })
-    const file = new Blob([res.data], { type: 'application/pdf' })
-    const fileUrl = URL.createObjectURL(file)
-    window.open(fileUrl, '_blank', 'noopener,noreferrer')
-    setTimeout(() => URL.revokeObjectURL(fileUrl), 60000)
-  } catch (e) {
-    toast.error('No se pudo abrir el PDF de la factura')
-  }
-}
-
-async function downloadPdf(doc) {
-  if (!doc?.id) return
-
-  try {
-    const res = await api.get(`/documents/${doc.id}/pdf`, { responseType: 'blob' })
-    const file = new Blob([res.data], { type: 'application/pdf' })
-    const fileUrl = URL.createObjectURL(file)
-    const link = document.createElement('a')
-    link.href = fileUrl
-    link.download = invoiceDownloadName(doc)
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    setTimeout(() => URL.revokeObjectURL(fileUrl), 60000)
-  } catch (e) {
-    toast.error('No se pudo descargar el PDF de la factura')
-  }
-}
-
 async function load(page = 1) {
   loading.value = true
   try {
@@ -311,15 +243,8 @@ onMounted(async () => {
 
 .summary { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; color:#374151; font-size:14px }
 
-.invoice-pdf-col { width:120px }
-
 .type-chip { display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border-radius:9999px; background:#eff6ff; color:#1d4ed8; font-weight:600; font-size:12px }
 .type-icon { width:13px; height:13px; display:block }
-
-.pdf-btn { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:8px; border:1px solid #bfdbfe; background:#eff6ff; color:#1d4ed8 }
-.pdf-btn:hover { background:#dbeafe; border-color:#93c5fd }
-.pdf-icon { width:14px; height:14px; display:block }
-.pdf-actions { display:flex; gap:6px; align-items:center }
 
 .patient-link { color: var(--secondary); text-decoration: none; font-weight: 600 }
 .patient-link:hover { text-decoration: underline }

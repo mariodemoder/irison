@@ -52,12 +52,12 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
-import Swal from 'sweetalert2'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
 import BtnTrash from '../../components/BtnTrash.vue'
 import { isFullAccess } from '../../shared/meCache'
 import HelpModal from '../../components/consents/HelpModal.vue'
+import { confirmDelete } from '../../shared/confirmDelete'
 
 const router = useRouter()
 const showHelp = ref(false)
@@ -88,25 +88,12 @@ function goEdit(id) {
 }
 
 async function remove(t) {
-  const { isConfirmed } = await Swal.fire({
+  const confirmed = await confirmDelete({
     title: 'Eliminar plantilla',
     text: `¿Eliminar "${t.title}"? Esta acción no se puede deshacer.`,
-    icon: 'warning',
-    iconColor: '#f97316',
-    width: '420px',
-    buttonsStyling: false,
-    customClass: {
-      popup: 'swal-popup-warning-card',
-      confirmButton: 'app-btn app-btn-warning',
-      cancelButton: 'app-btn app-btn-muted',
-      actions: 'swal-actions',
-    },
-    showCancelButton: true,
-    confirmButtonText: 'Sí, eliminar',
-    cancelButtonText: 'Cancelar',
   })
 
-  if (!isConfirmed) return
+  if (!confirmed) return
 
   try {
     await api.delete(`/consent-templates/${t.id}`)

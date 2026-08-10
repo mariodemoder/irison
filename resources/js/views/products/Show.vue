@@ -8,28 +8,29 @@
             <p class="form-sub">Detalle del producto</p>
           </div>
           <div class="header-actions">
-            <EditButton v-if="product?.id" :to="`/products/${product.id}/edit`" />
             <div class="back-menu-group">
               <button type="button" class="muted back-btn" @click="goBack">Volver</button>
-              <div v-if="product?.id" class="quick-actions" ref="quickActionsRef">
+              <MoreActionsMenu
+                v-if="product?.id"
+                trigger-class="muted quick-trigger menu-right-btn"
+                :disabled="deleting"
+                aria-label="Acciones"
+              >
+                <router-link
+                  class="ma-item"
+                  :to="`/products/${product.id}/edit`"
+                >
+                  Editar
+                </router-link>
                 <button
                   type="button"
-                  class="muted quick-trigger menu-right-btn"
-                  @click="toggleQuickActions"
+                  class="ma-item ma-item--danger"
                   :disabled="deleting"
-                  aria-label="Acciones"
-                  title="Acciones"
+                  @click.prevent="handleDelete"
                 >
-                  <svg class="quick-trigger-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <circle cx="12" cy="5" r="1.8" fill="currentColor" />
-                    <circle cx="12" cy="12" r="1.8" fill="currentColor" />
-                    <circle cx="12" cy="19" r="1.8" fill="currentColor" />
-                  </svg>
+                  {{ deleting ? 'Eliminando...' : 'Eliminar' }}
                 </button>
-                <div v-if="quickActionsOpen" class="quick-menu">
-                  <BtnTrash class="quick-item danger" :disabled="deleting" @click.prevent="runDelete">{{ deleting ? 'Eliminando...' : 'Eliminar' }}</BtnTrash>
-                </div>
-              </div>
+              </MoreActionsMenu>
             </div>
           </div>
         </div>
@@ -59,16 +60,15 @@
 </template>
 
 <script setup>
-import { onMounted, onBeforeUnmount, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
-import Swal from 'sweetalert2'
 import MainLayout from '../../layouts/MainLayout.vue'
 import AppLoading from '../../components/AppLoading.vue'
-import BtnTrash from '../../components/BtnTrash.vue'
 import api from '../../services/api'
 import { getLoadErrorMessage } from '../../shared/httpErrors'
 import { goBackWithPriority } from '../../shared/navigationHelpers'
+import { confirmDelete } from '../../shared/confirmDelete'
 
 const route = useRoute()
 const router = useRouter()
@@ -77,8 +77,6 @@ const toast = useToast()
 const loading = ref(false)
 const deleting = ref(false)
 const product = ref(null)
-const quickActionsOpen = ref(false)
-const quickActionsRef = ref(null)
 
 function formatMoney(value) {
   return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(Number(value || 0))
@@ -95,44 +93,15 @@ function goBack() {
   })
 }
 
-function toggleQuickActions() {
-  quickActionsOpen.value = !quickActionsOpen.value
-}
-
-function closeQuickActions() {
-  quickActionsOpen.value = false
-}
-
-function handleClickOutsideQuickActions(event) {
-  if (!quickActionsOpen.value) return
-  if (!quickActionsRef.value) return
-  if (!quickActionsRef.value.contains(event.target)) {
-    closeQuickActions()
-  }
-}
-
-function runDelete() {
-  closeQuickActions()
-  handleDelete()
-}
-
+// El cierre del menú ⋮ lo gestiona el componente MoreActionsMenu
 async function handleDelete() {
   if (deleting.value) return
-  const result = await Swal.fire({
+  const confirmed = await confirmDelete({
     title: 'Eliminar producto',
     text: `¿Estás seguro de eliminar "${product.value?.name}"?`,
-    icon: 'warning',
-    showCancelButton: true,
     confirmButtonText: 'Eliminar',
-    cancelButtonText: 'Cancelar',
-    buttonsStyling: false,
-    customClass: {
-      popup: 'swal-popup-card',
-      confirmButton: 'primary',
-      cancelButton: 'muted'
-    }
   })
-  if (!result.isConfirmed) return
+  if (!confirmed) return
 
   deleting.value = true
   try {
@@ -162,11 +131,6 @@ async function load() {
 
 onMounted(() => {
   load()
-  document.addEventListener('click', handleClickOutsideQuickActions)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('click', handleClickOutsideQuickActions)
 })
 </script>
 
@@ -186,13 +150,6 @@ onBeforeUnmount(() => {
 .alert-subtle { background:#f8fafc; border:1px solid #e6edf3; padding:10px; border-radius:8px; color:#334155; font-size:14px }
 
 .back-menu-group { display:inline-flex; align-items:center; gap:0 }
-.quick-trigger { padding:11px 12px; display:inline-flex; align-items:center; justify-content:center }
-.quick-trigger-icon { width:18px; height:18px; color:#4b5563 }
-.quick-actions { position:relative }
-.quick-menu { position:absolute; right:0; top:calc(100% + 6px); min-width:180px; background:#fff; border:1px solid #e5e7eb; border-radius:10px; box-shadow:0 10px 24px rgba(2,6,23,0.10); padding:6px; display:flex; flex-direction:column; gap:4px; z-index:20 }
-.quick-item { text-align:left; padding:8px 10px; border:1px solid transparent; background:#fff; border-radius:8px; font-size:14px; color:#111827 }
-.quick-item:hover { background:#f9fafb }
-.quick-item.danger { color:#b91c1c }
 
 @media (max-width: 768px) {
   .details-grid { grid-template-columns:1fr }

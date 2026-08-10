@@ -10,16 +10,11 @@
           <div v-if="userMeta" class="user-limit-badge">
             {{ userMeta.total }} / {{ maxUsers > 0 ? maxUsers : '∞' }} usuarios
           </div>
-          <div class="sub-menu-wrap">
-            <button class="btn sub-menu-trigger" @click.stop="showProfessionsMenu = !showProfessionsMenu" title="Más opciones">
-              &#8942;
+          <MoreActionsMenu class="more-actions--push-right" aria-label="Más opciones">
+            <button class="ma-item" @click="openProfessionsModal">
+              Profesiones
             </button>
-            <div v-if="showProfessionsMenu" class="sub-menu-dropdown">
-              <button class="sub-menu-item" @click="openProfessionsModal(); showProfessionsMenu = false">
-                Profesiones
-              </button>
-            </div>
-          </div>
+          </MoreActionsMenu>
         </div>
 
         <div v-if="showLimitWarning" class="limit-warning-banner">
@@ -142,6 +137,7 @@ import BtnTrash from '../../components/BtnTrash.vue'
 import api from '../../services/api'
 import { getLoadErrorMessage } from '../../shared/httpErrors'
 import { isBasic } from '../../shared/meCache'
+import { confirmDelete } from '../../shared/confirmDelete'
 
 const router = useRouter()
 const toast = useToast()
@@ -199,16 +195,12 @@ function debouncedLoadUsers() {
 }
 
 async function deleteUser(u) {
-  const { isConfirmed } = await Swal.fire({
+  const confirmed = await confirmDelete({
     title: 'Eliminar usuario',
     text: `¿Eliminar a ${u.name}? Esta acción no se puede deshacer.`,
-    icon: 'warning',
     confirmButtonText: 'Eliminar',
-    cancelButtonText: 'Cancelar',
-    showCancelButton: true,
-    customClass: { popup: 'swal-popup-card' },
   })
-  if (!isConfirmed) return
+  if (!confirmed) return
   try {
     await api.delete(`/team/users/${u.id}`)
     toast.success('Usuario eliminado')
@@ -219,7 +211,6 @@ async function deleteUser(u) {
 }
 
 // Professions modal
-const showProfessionsMenu = ref(false)
 const showProfessionsModal = ref(false)
 const professions = ref([])
 const professionsLoading = ref(false)
@@ -297,16 +288,12 @@ async function editProfession(p) {
 }
 
 async function deleteProfession(p) {
-  const { isConfirmed } = await Swal.fire({
+  const confirmed = await confirmDelete({
     title: 'Eliminar profesión',
     text: `¿Eliminar "${p.name}"?`,
-    icon: 'warning',
     confirmButtonText: 'Eliminar',
-    cancelButtonText: 'Cancelar',
-    showCancelButton: true,
-    customClass: { popup: 'swal-popup-card' },
   })
-  if (!isConfirmed) return
+  if (!confirmed) return
   try {
     await api.delete(`/team/professions/${p.id}`)
     toast.success('Profesión eliminada')
@@ -316,11 +303,7 @@ async function deleteProfession(p) {
   }
 }
 
-// Close dropdown on outside click
-document.addEventListener('click', () => {
-  showProfessionsMenu.value = false
-})
-
+// El cierre del menú ⋮ lo gestiona el componente MoreActionsMenu
 onMounted(async () => {
   loading.value = true
   try {
@@ -386,51 +369,6 @@ onMounted(async () => {
   color: #6b7280;
   font-size: 14px;
 }
-
-/* Sub-menu (⋮) */
-.sub-menu-wrap { position:relative; display:inline-block; margin-left:auto; }
-.sub-menu-trigger {
-  padding:0;
-  width:32px;
-  height:32px;
-  font-size:18px;
-  line-height:1;
-  background:#f9fafb;
-  border:1px solid #d1d5db;
-  color:#6b7280;
-  border-radius:6px;
-  cursor:pointer;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-}
-.sub-menu-trigger:hover { background:#f3f4f6; color:#374151; }
-.sub-menu-dropdown {
-  position:absolute;
-  top:calc(100% + 4px);
-  right:0;
-  min-width:170px;
-  background:#fff;
-  border:1px solid #e5e7eb;
-  border-radius:8px;
-  box-shadow:0 4px 12px rgba(0,0,0,.1);
-  z-index:100;
-  overflow:hidden;
-}
-.sub-menu-item {
-  display:block;
-  width:100%;
-  padding:9px 14px;
-  font-size:13px;
-  font-weight:500;
-  text-align:left;
-  background:#fff;
-  border:none;
-  cursor:pointer;
-  color:#374151;
-  font-family:inherit;
-}
-.sub-menu-item:hover { background:#f9fafb; }
 
 /* Modal overlay */
 .modal-backdrop {

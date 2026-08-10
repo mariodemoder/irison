@@ -46,11 +46,11 @@
         <template v-else>
           <EntityTable v-if="payments.length > 0" :columns="tableColumns" table-class="payments-table">
             <template #default>
-              <tr v-for="pay in payments" :key="pay.id" class="entity-table-row">
+              <tr v-for="pay in payments" :key="pay.id" class="entity-table-row" role="button" tabindex="0" @click="goToShow(pay.id)" @keydown.enter="goToShow(pay.id)">
                 <td class="col-min">{{ pay.counter || '—' }}</td>
                 <td class="col-min">{{ formatDateOnlyDay(pay.created_at) }}</td>
                 <td class="col-mid">
-                  <router-link v-if="pay.patient?.id" :to="`/patients/${pay.patient.id}`" class="patient-link">
+                  <router-link v-if="pay.patient?.id" :to="`/patients/${pay.patient.id}`" class="patient-link" @click.stop>
                     {{ pay.patient?.counter ? `${pay.patient.counter} · ` : '' }}{{ pay.patient?.name ?? `Paciente #${pay.patient_id}` }}
                   </router-link>
                   <span v-else>{{ pay.patient?.counter ? `${pay.patient.counter} · ` : '' }}{{ pay.patient?.name ?? `Paciente #${pay.patient_id}` }}</span>
@@ -64,9 +64,6 @@
                     {{ formatCurrency(pay.credit_pending_amount) }}
                   </span>
                   <span v-else>—</span>
-                </td>
-                <td class="row-action payments-action-col">
-                  <EditButton :to="`/payments/${pay.id}/edit`" />
                 </td>
               </tr>
             </template>
@@ -90,7 +87,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
 import AppLoading from '../../components/AppLoading.vue'
@@ -102,6 +99,7 @@ import { getLoadErrorMessage } from '../../shared/httpErrors'
 
 const toast = useToast()
 const route = useRoute()
+const router = useRouter()
 
 const loading = ref(false)
 const payments = ref([])
@@ -118,7 +116,6 @@ const tableColumns = [
   { key: 'method', label: 'Método', thClass: 'col-min' },
   { key: 'status', label: 'Estado', thClass: 'col-min' },
   { key: 'credit_pending_amount', label: 'A favor', thClass: 'col-min' },
-  { key: 'actions', label: '', thClass: 'payments-action-col' },
 ]
 
 const filters = ref({
@@ -197,6 +194,10 @@ function conceptLabel(concept) {
   return concept || '—'
 }
 
+function goToShow(id) {
+  router.push(`/payments/${id}`)
+}
+
 async function load(page = 1) {
   loading.value = true
   try {
@@ -247,8 +248,6 @@ onMounted(async () => {
 .status.partially-applied { background:#dbeafe; color:#1e40af }
 .status.refunded { background:#f3f4f6; color:#374151 }
 
-.row-action { display:flex; align-items:center; justify-content:flex-start }
-.payments-action-col { width:120px }
 .action-btn { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:8px; text-decoration:none; color:#374151; font-size:13px; border:1px solid transparent }
 .action-btn.datos { background:#fff; border-color:#e5e7eb; color:#374151 }
 

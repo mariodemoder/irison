@@ -339,6 +339,7 @@ import FormModal from '../../components/FormModal.vue'
 import BtnTrash from '../../components/BtnTrash.vue'
 import api from '../../services/api'
 import { getLoadErrorMessage } from '../../shared/httpErrors'
+import { confirmDelete } from '../../shared/confirmDelete'
 
 const toast = useToast()
 
@@ -466,6 +467,11 @@ async function saveExpense() {
 }
 
 async function removeExpense(expense) {
+  const confirmed = await confirmDelete({
+    title: 'Eliminar gasto',
+    text: `¿Eliminar el gasto "${expense.concept}"? Esta acción no se puede deshacer.`,
+  })
+  if (!confirmed) return
   try {
     await api.delete(`/finance/expenses/${expense.id}`)
     toast.success('Gasto eliminado')
@@ -504,6 +510,11 @@ async function saveCategory() {
 }
 
 async function removeCategory(category) {
+  const confirmed = await confirmDelete({
+    title: 'Eliminar categoría',
+    text: `¿Eliminar la categoría "${category.name}"? Esta acción no se puede deshacer.`,
+  })
+  if (!confirmed) return
   try {
     await api.delete(`/finance/expense-categories/${category.id}`)
     toast.success('Categoría eliminada')

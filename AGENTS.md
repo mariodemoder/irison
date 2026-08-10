@@ -27,14 +27,10 @@ All agents MUST read this file at the start of every session before planning or 
 - The plan must include a "docs" task that reflects the executed changes (routes, flows, architecture, module/class names), and it is completed in the same workflow, not deferred.
 - The plan agent validates that the docs task is done before marking the plan complete.
 
-### 5. Delegation policy
-- Backend changes → **Backend** agent.
-- Frontend/UI changes → **Frontend** agent.
-- Billing/Stripe/subscription/upgrade flows → **Billing** agent.
-- Dead-code cleanup after any code generation → **Clean** agent (always before QA).
-- QA, regression, or validation work → **QA** agent.
-- Deploy/release risk → **Deploy** agent.
-- Backoffice or tenant lifecycle work → **Backoffice** agent.
+### 5. Delegation policy (two-agent model)
+- **plan** orquesta todo trabajo no trivial: entiende la tarea, la descompone, presenta el plan y supervisa la ejecución.
+- **build** ejecuta los planes aprobados end-to-end (backend + frontend) cargando la skill que el dominio requiera.
+- **No hay subagentes especialistas.** Ambos agentes comparten el catálogo completo de skills (`.opencode/skills/index.md` + nativas en `.agents/skills/`) y cargan la skill por necesidad según el dominio.
 - Small or simple tasks → plan agent handles directly.
 
 ## Agent Architecture
@@ -51,15 +47,11 @@ This project is organized into 5 layers:
 
 - It plans, prioritizes, delegates, and validates progress.
 
-3. Specialist Layer
+3. Execution Layer
 
-- Domain specialists handle specific implementation work.
+- **build** executes the approved plans end-to-end (backend + frontend).
 
-- Each specialist is responsible for a part of the product: backend, frontend, billing, back office, quality assurance, cleanup, or deployment.
-
-- Dedicated agents for **Opencode** (`.opencode/agents/`): `@backend`, `@frontend`, `@qa`, `@billing`, `@backoffice`, `@deploy`, `@clean`.
-
-- Skills files in `.opencode/skills/agents/`.
+- There are **no specialist subagents**. Both `plan` and `build` share the full skill catalog (`.opencode/skills/index.md` + native SKILL.md in `.agents/skills/`) and load the skill the domain requires.
 
 4. Knowledge Layer
 
@@ -69,31 +61,22 @@ This project is organized into 5 layers:
 
 5. Cleaning and Verification Layer (on user demand)
 
-- All significant changes must be validated with tests, build checks, or regression analysis.
-
-- Dead code cleanup (Cleanup Agent) is run before QA and on user demand with the request "con clean"; otherwise, no cleanup is executed.
-
-The QA specialist must participate on demand with "con tests"; otherwise, no tests are executed.
+- Dead-code cleanup (`con clean`) and QA passes (`con tests`) are executed **only on demand**, unless the approved plan/spec explicitly defines a **"complete flow"** that includes them. Otherwise, no cleanup, tests, or verification are executed.
 
 ## Practical Routing Matrix
 
 Use this decision map when a task starts:
 
 - If the task is a simple bug or small UI tweak → plan agent handles it directly.
-- If the task touches backend logic, services, controllers, or database behavior → delegate to the backend specialist.
-- If the task changes Vue components, routes, forms, or user flows → delegate to the frontend specialist.
-- If the task touches Stripe, subscriptions, invoices, payments, or billing webhooks → delegate to the billing specialist.
-- If the task affects tenant lifecycle, backoffice operations, invoices, or internal management flows → delegate to the backoffice specialist.
-- **If code was generated or modified → delegate to the Clean agent (dead-code cleanup) before QA.**
-- If the task is a regression, risk-hardening, or validation pass → delegate to the QA specialist.
-- If the task affects deployment, queues, environment, release safety, or production readiness → delegate to the deploy specialist.
+- If the task touches backend logic, services, controllers, or database behavior → load the `backend` skill.
+- If the task changes Vue components, routes, forms, or user flows → load the `frontend` skill (+ `vue-best-practices`, `frontend-a11y`).
+- If the task touches Stripe, subscriptions, invoices, payments, or billing webhooks → load the `billing` skill.
+- If the task affects tenant lifecycle, backoffice operations, invoices, or internal management flows → load the `backoffice` skill.
+- If the task is a regression, risk-hardening, or validation pass → load the `qa` skill (`con tests`).
+- If the task affects deployment, queues, environment, release safety, or production readiness → load the `deployment` skill.
+- **If dead-code cleanup was requested** (`con clean`) or a "complete flow" plan includes it → `build` runs the cleanup following the Clean rule below.
 
-### Delegation target by platform
-
-| Platform | Invocation |
-|---|---|
-| **Opencode** (plan agent) | Use `@agent_name` or Task tool → `.opencode/agents/{name}.md` |
-| **GitHub Copilot** (VS Code) | Use the `.agent.md` files → `.github/agents/{name}.agent.md` |
+Both `plan` and `build` execute these paths: `plan` plans and supervises, `build` implements loading the corresponding skill.
 
 ## Domain-Driven Design Guidance for New Features
 
@@ -157,20 +140,20 @@ See `.opencode/skills/index.md` for detailed routing. Key skills:
 - `bonus` — Multi-type sessions, BonusService, consumption flow, session lines
 - `booking` — Online booking engine, models, routes
 - `company-services` — Sessions, bonuses, booking settings page
-- `qa` — Testing strategies, delegation
-- `clean` — Dead-code cleanup tras toda generación de código, antes de QA
+- `qa` — Testing strategies, delegation (`con tests`)
+- `clean` — Dead-code cleanup **solo on demand** (`con clean`); regla en la sección Clean Delegation Rule
 - `deployment` — Production checklist, queues
 - `backoffice` — Tenant management, invoices
 - `consent` — Consentimientos informados, plantillas, firma digital, envío remoto
 - `activity` — Registro de actividad, cap de logins (3 por usuario/clínica), logins ocultos al SPA
 
-## Clean Delegation Rule (mandatory)
+## Clean Delegation Rule
 
-Every time code is generated, modified, or generated by an agent during a plan, the plan agent delegates a dead-code cleanup pass to the Clean agent (`.opencode/agents/clean.md` / `.github/agents/clean.agent.md`) **before** QA validates. The Clean agent removes imports sin uso, variables muertas, ramas inalcanzables, depuración residual y archivos huérfanos, and never removes tests. QA only runs after the cleanup pass reports zero dead code.
+Dead-code cleanup se ejecuta **únicamente bajo demanda**: cuando el usuario lo solicite (`con clean`) o cuando el plan/spec aprobado defina explícitamente un **"complete flow"** que lo incluya. Nunca se ejecuta de forma automática. `build` elimina imports sin uso, variables muertas, ramas inalcanzables, depuración residual y archivos huérfanos, y **nunca borra tests**.
 
 ## QA Delegation Rule
 
-For focused tests, regression, HTTP validation, or risk hardening → delegate to `.github/agents/qa.agent.md`.
+QA, tests, regresión o validación se ejecutan **solo bajo demanda** (`con tests`) o si el plan/spec aprobado define un **"complete flow"** que lo incluya. Sin petición explícita, no se ejecutan tests ni verificación. La ejecución la hace `build` cargando la skill `qa`.
 
 ## Known Pitfalls
 

@@ -151,7 +151,6 @@
                 <th>Tipo</th>
                 <th>Estado</th>
                 <th>Pago</th>
-                <th v-if="!isProfessional" class="action-col"></th>
               </tr>
             </thead>
             <tbody>
@@ -160,7 +159,7 @@
 
                 <!-- Hueco libre -->
                 <tr v-if="item._type === 'gap' && !isProfessional" class="gap-tr">
-                  <td colspan="7">
+                  <td colspan="6">
                     <div class="gap-row" :class="{ 'gap-unavailable': !gapIsClickable(item) }" role="button" tabindex="0" @click="gapIsClickable(item) ? goToNewWithGap(item) : null" @keydown.enter="gapIsClickable(item) ? goToNewWithGap(item) : null">
                       <svg class="gap-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                       <span class="gap-time">{{ hhmm(item.from) }} – {{ hhmm(item.to) }}</span>
@@ -187,14 +186,11 @@
                   <td>
                     <span class="payment-status" :class="paymentStatusClass(item.payment_status)">{{ paymentStatusLabel(item.payment_status) }}</span>
                   </td>
-                  <td v-if="!isProfessional" class="row-action">
-                    <EditButton :to="`/appointments/${item.id}/edit`" @click.stop />
-                  </td>
                 </tr>
 
               </template>
               <tr v-if="!loading">
-                <td colspan="7">
+                <td colspan="6">
                   <EmptyIndexState
                     v-if="filteredAppointments.length === 0 && !hasActiveFilters"
                     :title="emptyStateTitle"
@@ -1064,7 +1060,6 @@ watch(totalPages, (pages) => {
   padding:8px 8px; font-weight:600; font-size:13px; color:#6b7280;
   text-align:left; border-bottom:2px solid #e5e7eb; background:#fff;
 }
-.agenda-table th.action-col { width:80px; text-align:center }
 .agenda-table td { padding:6px 8px; font-size:13px; color:#374151; text-align:left; vertical-align:middle; border-bottom:1px solid #f3f4f6 }
 .agenda-table td:first-child { padding-left:12px }
 .appointment-row { cursor:pointer; transition:background .12s }

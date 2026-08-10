@@ -22,6 +22,12 @@
 - Shared CSS in `resources/css/app.css`: `.swal-popup-card`, `.swal-card`, `.create-row`, `.create-grid-2`
 - No duplicate popup styles in view-scoped files
 
+## Confirmación de borrado (NORMA OBLIGATORIA)
+
+- Todo borrado DEBE pedir confirmación con `confirmDelete()` de `resources/js/shared/confirmDelete.js` (único estilo, naranja).
+- Nunca usar `confirm()` nativo ni `Swal.fire` directo para confirmaciones de borrado; no duplicar estilos del popup en vistas.
+- Referencia completa: `docs/frontend/confirmacion-eliminar.md`
+
 ## Table Responsiveness (Index Views)
 
 Cambios en `resources/css/app.css:446-489` para que las tablas index de productos, pagos, bonos, facturas, equipo se adapten al ancho del formulario:

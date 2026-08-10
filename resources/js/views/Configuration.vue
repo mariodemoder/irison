@@ -89,29 +89,25 @@
                   </div>
 
                   <div>
-                    <label class="label">Logo de la clínica</label>
                     <template v-if="canUseClinicBranding">
-                      <div class="clinic-logo-row">
-                        <img
-                          v-if="clinicLogoUrl"
-                          :src="clinicLogoUrl"
-                          :alt="form.clinic_name || 'Logo de la clínica'"
-                          class="clinic-logo-preview"
-                        />
-                        <div v-else class="clinic-logo-empty">Sin logo</div>
-                        <div class="clinic-logo-controls">
-                          <input class="input" type="file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" @change="onClinicLogoPicked" />
-                          <div class="clinic-logo-buttons">
-                            <button class="btn btn-sm invoice-mini-btn" type="button" :disabled="uploadingClinicLogo || !clinicLogoFile" @click.prevent="uploadClinicLogo">Subir</button>
-                            <BtnTrash class="invoice-mini-btn" :disabled="removingClinicLogo || !clinicLogoUrl" @click.prevent="removeClinicLogo">Eliminar</BtnTrash>
-                          </div>
-                        </div>
-                      </div>
-                      <div v-if="clinicLogoFile && clinicLogoFile.size > 2 * 1024 * 1024" class="field-error">El logo no puede superar los 2 MB.</div>
-                      <div v-if="clinicLogoTooLarge" class="field-error">El logo no puede superar 500 × 500 px.</div>
-                      <div class="invoice-bg-help">
-                        Recomendado: PNG con fondo transparente, 500 × 500 px como máximo. Se usará en tus emails y en tu página de reserva online.
-                      </div>
+                      <ImageUploader
+                        v-model="clinicLogoFile"
+                        :preview-url="clinicLogoUrl"
+                        accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+                        :max-size-mb="2"
+                        :max-width="500"
+                        :max-height="500"
+                        label="Logo de la clínica"
+                        :hint="'Recomendado: PNG con fondo transparente, 500 × 500 px como máximo. Se usará en tus emails y en tu página de reserva online.'"
+                        :disabled="uploadingClinicLogo || removingClinicLogo"
+                        :loading="uploadingClinicLogo"
+                        @validity-change="clinicLogoValid = $event"
+                      >
+                        <template #actions>
+                          <button class="btn btn-sm invoice-mini-btn" type="button" :disabled="uploadingClinicLogo || !clinicLogoValid" @click.prevent="uploadClinicLogo">Subir</button>
+                          <BtnTrash class="invoice-mini-btn" :disabled="removingClinicLogo || !clinicLogoUrl" @click.prevent="removeClinicLogo">Eliminar</BtnTrash>
+                        </template>
+                      </ImageUploader>
                     </template>
                     <div v-else class="panel-note">
                       El logo de tu clínica es una funcionalidad del plan PRO. <a href="#" class="plan-link" @click.prevent="goToSubscription">Ver planes</a>
@@ -231,22 +227,17 @@
                   <div class="subscription-actions">
                     <button v-if="status !== 'active' && status !== 'trial'" class="btn btn-md btn-primary save-button allow-readonly-action" :disabled="!canActivatePaidPlan" @click.prevent="beginPaidPlanFake">Activar cuenta de pago</button>
                     <button v-if="status==='blocked'" class="btn btn-md btn-primary" :disabled="!canActivatePaidPlan" @click.prevent="subscribe">Activar plan (Stripe)</button>
-                    <div v-if="status==='active'" class="sub-menu-wrap">
-                      <button class="btn sub-menu-trigger" @click.stop="showSubscriptionMenu = !showSubscriptionMenu" title="Opciones de suscripción">
-                        &#8942;
+                    <MoreActionsMenu v-if="status==='active'" align="left" aria-label="Opciones de suscripción">
+                      <button class="ma-item ma-item--danger" :disabled="cancellingSubscription" @click.prevent="openCancelSubscriptionModal">
+                        Cancelar suscripción
                       </button>
-                      <div v-if="showSubscriptionMenu" class="sub-menu-dropdown">
-                        <button class="sub-menu-item sub-menu-item--danger" :disabled="cancellingSubscription" @click.prevent="openCancelSubscriptionModal(); showSubscriptionMenu = false">
-                          Cancelar suscripción
-                        </button>
-                        <button class="sub-menu-item" @click.stop="scrollToPayments">
-                          Consultar pago
-                        </button>
-                        <a class="sub-menu-item" href="/legal" target="_blank" @click="showSubscriptionMenu = false">
-                          Legales
-                        </a>
-                      </div>
-                    </div>
+                      <button class="ma-item" @click="scrollToPayments">
+                        Consultar pago
+                      </button>
+                      <a class="ma-item" href="/legal" target="_blank">
+                        Legales
+                      </a>
+                    </MoreActionsMenu>
                   </div>
                 </div>
 
@@ -486,13 +477,22 @@
 
                 <div class="invoice-toolbar">
                   <div class="invoice-picker">
-                    <label class="label">Seleccionar imagen</label>
-                    <input class="input" type="file" accept=".jpg,.jpeg,.png,.webp,image/*" @change="onInvoiceBackgroundPicked" />
-                  </div>
-                  <div class="invoice-toolbar-actions">
-                    <button class="btn btn-sm invoice-mini-btn" type="button" :disabled="previewingInvoiceBackgroundPdf" @click.prevent="openPdfInNewTab()">PDF</button>
-                    <button class="btn btn-sm invoice-mini-btn" type="button" :disabled="uploadingInvoiceBackground || !invoiceBackgroundFile" @click.prevent="uploadInvoiceBackground">Subir</button>
-                    <BtnTrash class="invoice-mini-btn" :disabled="removingInvoiceBackground || !invoiceBackgroundUrl" @click.prevent="removeInvoiceBackground">Descartar</BtnTrash>
+                    <ImageUploader
+                      v-model="invoiceBackgroundFile"
+                      :preview-url="invoiceBackgroundUrl"
+                      accept=".jpg,.jpeg,.png,.webp,image/*"
+                      :max-size-mb="5"
+                      label="Seleccionar imagen"
+                      :hint="'Formatos: JPG, PNG o WEBP. Tamaño máximo: 5MB.'"
+                      :loading="uploadingInvoiceBackground"
+                      @validity-change="invoiceBgValid = $event"
+                    >
+                      <template #actions>
+                        <button class="btn btn-sm invoice-mini-btn" type="button" :disabled="previewingInvoiceBackgroundPdf" @click.prevent="openPdfInNewTab()">PDF</button>
+                        <button class="btn btn-sm invoice-mini-btn" type="button" :disabled="uploadingInvoiceBackground || !invoiceBgValid" @click.prevent="uploadInvoiceBackground">Subir</button>
+                        <BtnTrash class="invoice-mini-btn" :disabled="removingInvoiceBackground || !invoiceBackgroundUrl" @click.prevent="removeInvoiceBackground">Descartar</BtnTrash>
+                      </template>
+                    </ImageUploader>
                   </div>
                 </div>
 
@@ -549,6 +549,7 @@ import { useToast } from 'vue-toastification'
 import { meClinic, isPro, isEnterprise } from '../shared/meCache'
 import { getLoadErrorMessage } from '../shared/httpErrors'
 import SaveButton from '../components/SaveButton.vue'
+import ImageUploader from '../components/ImageUploader.vue'
 
 const router = useRouter()
 const toast = useToast()
@@ -563,31 +564,24 @@ const cancellingSubscription = ref(false)
 const showCancelSubscriptionModal = ref(false)
 const showUpgradeDetail = ref(false)
 const detailPayment = ref(null)
-const showSubscriptionMenu = ref(false)
 const subscriptionRequests = ref([])
 
-function handleClickOutsideSubMenu() {
-  showSubscriptionMenu.value = false
-}
-
 function scrollToPayments() {
-  showSubscriptionMenu.value = false
   const el = document.getElementById('sub-pagos')
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
-onMounted(() => document.addEventListener('click', handleClickOutsideSubMenu))
-onBeforeUnmount(() => document.removeEventListener('click', handleClickOutsideSubMenu))
 const subscriptionPayments = ref([])
 const invoiceBackgroundUrl = ref(null)
 const invoiceBackgroundFile = ref(null)
+const invoiceBgValid = ref(false)
 const uploadingInvoiceBackground = ref(false)
 const removingInvoiceBackground = ref(false)
 const previewingInvoiceBackgroundPdf = ref(false)
 const profilePreviewPdfUrl = ref(null)
 const clinicLogoUrl = ref(null)
 const clinicLogoFile = ref(null)
-const clinicLogoTooLarge = ref(false)
+const clinicLogoValid = ref(false)
 const uploadingClinicLogo = ref(false)
 const removingClinicLogo = ref(false)
 const IRISON_COLOR = '#F8FAFC'
@@ -875,12 +869,6 @@ async function save() {
 }
 
 
-function onInvoiceBackgroundPicked(event) {
-  const files = event?.target?.files
-  invoiceBackgroundFile.value = files && files.length > 0 ? files[0] : null
-  refreshPreview()
-}
-
 async function uploadInvoiceBackground() {
   if (!invoiceBackgroundFile.value) {
     toast.error('Seleccioná una imagen antes de subir')
@@ -898,6 +886,7 @@ async function uploadInvoiceBackground() {
 
     invoiceBackgroundUrl.value = res.data?.invoice_background_url || null
     invoiceBackgroundFile.value = null
+    invoiceBgValid.value = false
     await refreshPreview()
     toast.success('Fondo de factura actualizado')
   } catch (e) {
@@ -915,6 +904,7 @@ async function removeInvoiceBackground() {
     await api.delete('/me/invoice-background')
     invoiceBackgroundUrl.value = null
     invoiceBackgroundFile.value = null
+    invoiceBgValid.value = false
     await refreshPreview()
     toast.success('Fondo de factura eliminado', {
       toastClassName: 'toast-delete',
@@ -929,33 +919,9 @@ async function removeInvoiceBackground() {
   }
 }
 
-function onClinicLogoPicked(event) {
-  const files = event?.target?.files
-  clinicLogoFile.value = files && files.length > 0 ? files[0] : null
-  clinicLogoTooLarge.value = false
-
-  if (!clinicLogoFile.value) return
-
-  const img = new Image()
-  img.onload = () => {
-    clinicLogoTooLarge.value = img.naturalWidth > 500 || img.naturalHeight > 500
-  }
-  img.src = URL.createObjectURL(clinicLogoFile.value)
-}
-
 async function uploadClinicLogo() {
   if (!clinicLogoFile.value) {
     toast.error('Seleccioná una imagen antes de subir')
-    return
-  }
-
-  if (clinicLogoFile.value.size > 2 * 1024 * 1024) {
-    toast.error('El logo no puede superar los 2 MB')
-    return
-  }
-
-  if (clinicLogoTooLarge.value) {
-    toast.error('El logo no puede superar 500 × 500 px')
     return
   }
 
@@ -970,7 +936,7 @@ async function uploadClinicLogo() {
 
     clinicLogoUrl.value = res.data?.clinic_logo_url || null
     clinicLogoFile.value = null
-    clinicLogoTooLarge.value = false
+    clinicLogoValid.value = false
     toast.success('Logo de la clínica actualizado')
   } catch (e) {
     console.error('Error subiendo logo de la clínica', e)
@@ -987,7 +953,7 @@ async function removeClinicLogo() {
     await api.delete('/me/logo')
     clinicLogoUrl.value = null
     clinicLogoFile.value = null
-    clinicLogoTooLarge.value = false
+    clinicLogoValid.value = false
     toast.success('Logo de la clínica eliminado', {
       toastClassName: 'toast-delete',
       progressClassName: 'toast-delete-progress',
@@ -1555,50 +1521,6 @@ onBeforeUnmount(() => {
   }
   .subscription-cancel-btn { background:#fff; border:1px solid #ef4444; color:#b91c1c }
   .subscription-cancel-btn:hover { background:#fef2f2 }
-  .sub-menu-wrap { position:relative; display:inline-block }
-  .sub-menu-trigger {
-    padding:0;
-    width:32px;
-    height:32px;
-    font-size:18px;
-    line-height:1;
-    background:#f9fafb;
-    border:1px solid #d1d5db;
-    color:#6b7280;
-    border-radius:6px;
-    cursor:pointer;
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-  }
-  .sub-menu-trigger:hover { background:#f3f4f6; color:#374151 }
-  .sub-menu-dropdown {
-    position:absolute;
-    top:calc(100% + 4px);
-    left:0;
-    min-width:170px;
-    background:#fff;
-    border:1px solid #e5e7eb;
-    border-radius:8px;
-    box-shadow:0 4px 12px rgba(0,0,0,.1);
-    z-index:100;
-    overflow:hidden;
-  }
-  .sub-menu-item {
-    display:block;
-    width:100%;
-    padding:9px 14px;
-    font-size:13px;
-    color:#374151;
-    background:none;
-    border:none;
-    text-align:left;
-    cursor:pointer;
-    text-decoration:none;
-  }
-  .sub-menu-item:hover { background:#f3f4f6 }
-  .sub-menu-item--danger { color:#b91c1c }
-  .sub-menu-item--danger:hover { background:#fef2f2 }
   .confirm-modal-backdrop {
     position: fixed;
     inset: 0;
@@ -1979,14 +1901,8 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
 }
 .invoice-picker {
-  flex: 1 1 280px;
-  max-width: 320px;
-}
-.invoice-toolbar-actions {
-  display: flex;
-  gap: 8px;
-  align-items: right;
-  flex-wrap: nowrap;
+  flex: 1 1 300px;
+  max-width: 420px;
 }
 .invoice-mini-btn {
   padding: 6px 10px;
@@ -1994,46 +1910,6 @@ onBeforeUnmount(() => {
   font-size: 12px;
   line-height: 1;
   white-space: nowrap;
-}
-.clinic-logo-row {
-  display: flex;
-  gap: 14px;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-top: 6px;
-}
-.clinic-logo-preview {
-  height: 64px;
-  max-width: 220px;
-  width: auto;
-  object-fit: contain;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  background: #ffffff;
-  padding: 6px;
-}
-.clinic-logo-empty {
-  height: 64px;
-  min-width: 140px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px dashed #d1d5db;
-  border-radius: 8px;
-  color: #9ca3af;
-  font-size: 13px;
-}
-.clinic-logo-controls {
-  display: grid;
-  gap: 8px;
-  flex: 1 1 260px;
-  max-width: 360px;
-}
-.clinic-logo-buttons {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
 }
 .invoice-pdf-preview-wrap {
   width: min(100%, 860px);
@@ -2138,11 +2014,6 @@ onBeforeUnmount(() => {
   .invoice-picker {
     max-width: none;
     width: 100%;
-  }
-  .invoice-toolbar-actions {
-    width: 100%;
-    justify-content: flex-start;
-    overflow-x: auto;
   }
   .hours-table thead {
     display: table-header-group;

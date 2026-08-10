@@ -44,9 +44,6 @@
                   <td class="col-min">{{ formatTax(product.sale_tax) }}</td>
                   <td class="col-min">{{ product.family || '—' }}</td>
                   <td class="col-min">{{ product.lot || '—' }}</td>
-                  <td class="row-action products-action-col">
-                    <EditButton :to="`/products/${product.id}/edit`" @click.stop />
-                  </td>
                 </tr>
             </template>
           </EntityTable>
@@ -94,7 +91,6 @@ const tableColumns = [
   { key: 'sale_tax', label: 'IVA venta', thClass: 'col-min' },
   { key: 'family', label: 'Familia', thClass: 'col-min' },
   { key: 'lot', label: 'Lote', thClass: 'col-min' },
-  { key: 'actions', label: '', thClass: 'products-action-col' },
 ]
 
 const hasActiveFilters = computed(() => Boolean(String(query.value || '').trim()))
@@ -148,8 +144,6 @@ onMounted(() => {
 
 .name-col { font-weight:600 }
 
-.row-action { display:flex; align-items:center; gap:8px; justify-content:flex-start }
-.products-action-col { width:130px }
 .action-btn { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:8px; text-decoration:none; color:#374151; font-size:13px; border:1px solid #e5e7eb; background:#fff }
 
 .empty { color:#6b7280; padding:12px }

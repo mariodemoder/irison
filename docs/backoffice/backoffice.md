@@ -293,7 +293,7 @@ Regla de seguridad de pruebas:
 - `database.connections.sqlite.database=:memory:`
 
 Delegación QA:
-- Para regresión amplia, contratos HTTP y validación de escenarios de riesgo, delegar ejecución especializada a `QA` (`.github/agents/qa.agent.md`).
+- Para regresión amplia, contratos HTTP y validación de escenarios de riesgo, `build` ejecuta la validación cargando la skill `qa` (solo bajo demanda con `con tests` o si el plan aprobado define "complete flow").
 
 ## Última modificación (2026-06-02): ETAPA 3 Fase 1 (Hardening)
 

@@ -46,3 +46,8 @@ Usar `.btn.btn-sm.small` (compacto: padding 6px 10px).
 ## Regla general
 
 Todo botón de acción en listados CRUD debe usar `.btn.btn-sm` estándar y alinearse a la derecha mediante `.crud-add-wrap` o `.crud-row`. No forzar paddings ni borders con CSS local.
+
+## Confirmación de borrado
+
+Toda operación de eliminar usa el popup genérico `confirmDelete()` (único estilo de la app, naranja).
+Detalle y norma completa: [`docs/frontend/confirmacion-eliminar.md`](confirmacion-eliminar.md)

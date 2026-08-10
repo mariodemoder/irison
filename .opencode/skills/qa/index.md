@@ -1,13 +1,11 @@
 # QA Skill
 
 ## Delegation Rule
-Use QA (`.github/agents/qa.agent.md`) when needing:
+La ejecución de QA la hace `build` cargando esta skill. **Solo bajo demanda** (`con tests`) o si el plan/spec aprobado define un **"complete flow"** que lo incluya; nunca automático. Usarla cuando se necesite:
 - Focused feature tests
 - Module-specific regression
 - HTTP contract validation
 - Risk scenario hardening
-
-Delegar ejecución y criterio de cobertura al agente QA.
 
 ## Testing Patterns
 - Full test suite: `php artisan test`

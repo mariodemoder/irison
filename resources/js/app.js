@@ -9,6 +9,7 @@ import SaveButton from './components/SaveButton.vue'
 import BtnTrash from './components/BtnTrash.vue'
 import EditButton from './components/EditButton.vue'
 import NewButton from './components/NewButton.vue'
+import MoreActionsMenu from './components/MoreActionsMenu.vue'
 
 // Toasts
 import Toast from 'vue-toastification'
@@ -20,6 +21,7 @@ app.component('SaveButton', SaveButton)
 app.component('BtnTrash', BtnTrash)
 app.component('EditButton', EditButton)
 app.component('NewButton', NewButton)
+app.component('MoreActionsMenu', MoreActionsMenu)
 app.use(router)
 app.use(Toast, toastConfig)
 app.mount('#app')

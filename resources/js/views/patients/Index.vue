@@ -30,7 +30,6 @@
                   <th class="wide-min">Alta</th>
                   <th class="wide-min">Teléfono</th>
                   <th class="wide-mid">Email</th>
-                  <th v-if="!isProfessional" class="patients-action-col"></th>
                 </tr>
               </thead>
               <tbody>
@@ -50,9 +49,6 @@
                   <td class="wide-min">{{ formatDateOnlyDay(p.created_at) }}</td>
                   <td class="wide-min">{{ p.phone ?? '—' }}</td>
                   <td class="wide-mid">{{ p.email ?? '—' }}</td>
-                  <td v-if="!isProfessional" class="row-action patients-action-col">
-                    <EditButton :to="{ path: `/patients/${p.id}/edit`, query: { from: 'list' } }" aria-label="Datos" @click.stop />
-                  </td>
                 </tr>
               </tbody>
             </table>
@@ -86,13 +82,13 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
-import Swal from 'sweetalert2'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
 import AppLoading from '../../components/AppLoading.vue'
 import EmptyIndexState from '../../components/EmptyIndexState.vue'
 import { formatDateOnlyDay } from '../../shared/dateHelpers'
 import { isProfessional } from '../../shared/meCache'
+import { confirmDelete } from '../../shared/confirmDelete'
 
 const patients = ref([])
 const meta = ref(null)
@@ -157,25 +153,12 @@ onMounted(() => {
 async function deletePatient(p) {
   if (deletingId.value) return
 
-  const res = await Swal.fire({
-    title: `Eliminar paciente`,
+  const confirmed = await confirmDelete({
+    title: 'Eliminar paciente',
     text: `¿Eliminar al paciente "${p.counter ? `${p.counter} · ` : ''}${p.name}"? Esta acción es reversible (soft delete).`,
-    icon: 'warning',
-    iconColor: '#f97316',
-    width: '420px',
-    buttonsStyling: false,
-    customClass: {
-      popup: 'swal-popup-warning-card',
-      confirmButton: 'app-btn app-btn-warning',
-      cancelButton: 'app-btn app-btn-muted',
-      actions: 'swal-actions'
-    },
-    showCancelButton: true,
-    confirmButtonText: 'Sí, eliminar',
-    cancelButtonText: 'Cancelar'
   })
 
-  if (!res.isConfirmed) return
+  if (!confirmed) return
 
   deletingId.value = p.id
   try {
@@ -201,19 +184,9 @@ function goToPatient(id) {
 
 .page-header { display:grid; grid-template-columns: 1fr 480px auto; align-items:center; gap:12px; margin-bottom:16px }
 
-.row-left { display:flex; flex-direction:column }
 .row-name { font-weight:600; font-size:15px }
-.row-sub { color:#6b7280; font-size:13px }
 .row-number { font-weight:600 }
-.row-action { text-align:left }
-.patients-action-col { width:130px }
 .empty { color:#6b7280; padding:12px; text-align:center }
-
-.action-btn { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:8px; text-decoration:none; color:#374151; font-size:13px; border:1px solid transparent }
-.action-btn.history { background:#eef2ff; border-color: #dbeafe; color:#1e3a8a }
-.action-btn.datos { background:#fff; border-color:#e5e7eb; color:#374151 }
-.action-btn.danger { background:#fff1f2; border-color:#fecdd3; color:#be123c }
-.action-btn:hover { transform:translateY(-1px) }
 
 .pagination { margin-top:12px; display:flex; justify-content:flex-end; gap:12px; align-items:center }
 .pagination-info { color:#6b7280; font-size:13px }
@@ -227,19 +200,3 @@ function goToPatient(id) {
 }
 </style>
 
-<!-- Global styles for SweetAlert buttons (not scoped so they apply to the modal) -->
-<style>
-/* SweetAlert modal styled to match app buttons and spacing */
-.app-btn { display:inline-flex; align-items:center; justify-content:center; padding:8px 14px; border-radius:9999px; border:2px solid transparent; font-weight:600; cursor:pointer; font-size:13px; box-shadow:none }
-.app-btn-warning { border-color:#f97316; background:#f97316; color:#ffffff }
-.app-btn-warning:hover { background:#ef7a1e }
-.app-btn-muted { border-color:#e5e7eb; color:#374151; background:#ffffff }
-.swal-actions { display:flex; gap:8px; justify-content:center; margin-top:12px }
-
-/* Popup container and typography to match app */
-.swal2-popup { font-family: inherit; border-radius:12px; padding:18px; box-shadow: 0 10px 30px rgba(2,6,23,0.08); }
-.swal2-title { font-size:16px; font-weight:700; color:#111827; margin-bottom:6px }
-.swal2-content { color:#ffffff; font-size:14px; margin-bottom:6px }
-.swal2-icon { margin: 0 auto 8px }
-.swal2-actions .app-btn { min-width:110px }
-</style>

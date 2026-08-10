@@ -180,11 +180,11 @@
 <script setup>
 import { ref, onMounted, computed, watch, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import Swal from 'sweetalert2'
 import api from '../services/api'
 import { useToast } from 'vue-toastification'
 import { formatDMY } from '../shared/dateHelpers'
 import { isProfessional } from '../shared/meCache'
+import { confirmDelete } from '../shared/confirmDelete'
 import EntitySearchSelect from './EntitySearchSelect.vue'
 import BtnTrash from './BtnTrash.vue'
 
@@ -435,17 +435,12 @@ async function confirmDeleteBonus(bonus) {
     return
   }
 
-  const res = await Swal.fire({
-    title: `Eliminar bono`,
+  const confirmed = await confirmDelete({
+    title: 'Eliminar bono',
     text: `¿Eliminar el bono de ${bonus.total_sessions} sesiones?`,
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonText: 'Sí, eliminar',
-    cancelButtonText: 'Cancelar',
-    customClass: { popup: 'swal-popup-warning-card' },
   })
 
-  if (!res.isConfirmed) return
+  if (!confirmed) return
   await deleteBonus(bonus.id)
 }
 

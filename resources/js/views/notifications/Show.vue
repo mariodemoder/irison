@@ -8,11 +8,23 @@
             <p class="form-sub">Detalle del email enviado o fallido</p>
           </div>
           <div class="header-actions">
-            <button v-if="canResend(notificationData)" type="button" class="primary" :disabled="resending" @click="resendCurrent">
-              {{ resending ? 'Reenviando...' : 'Reenviar' }}
-            </button>
             <div class="back-menu-group">
               <button type="button" class="muted back-btn" @click="goBack">Volver</button>
+              <MoreActionsMenu
+                v-if="canResend(notificationData)"
+                trigger-class="muted quick-trigger menu-right-btn"
+                :disabled="resending"
+                aria-label="Acciones"
+              >
+                <button
+                  type="button"
+                  class="ma-item"
+                  :disabled="resending"
+                  @click="resendCurrent"
+                >
+                  {{ resending ? 'Reenviando...' : 'Reenviar' }}
+                </button>
+              </MoreActionsMenu>
             </div>
           </div>
         </div>

@@ -253,6 +253,26 @@ body { background: var(--bg-app); color: var(--text-main); }
 .swal2-icon.swal2-warning .swal2-icon-content { color: #ffffff }
 .swal2-icon.swal2-warning { background-color: #f97316 !important }
 
+/* Popup genérico de confirmación de borrado (ÚNICO estilo de la app).
+   Usado por shared/confirmDelete.js. No duplicar estos estilos en vistas. */
+.swal-popup-warning-card {
+	background: #fff;
+	border-radius: 12px;
+	box-shadow: 0 10px 30px rgba(2, 6, 23, 0.06);
+	padding: 18px 18px 16px;
+	max-width: 420px;
+}
+.swal-popup-warning-card .swal2-title {
+	margin-bottom: 8px;
+}
+.app-btn { display:inline-flex; align-items:center; justify-content:center; padding:8px 14px; border-radius:9999px; border:2px solid transparent; font-weight:600; cursor:pointer; font-size:13px; box-shadow:none }
+.app-btn-warning { border-color:#f97316; background:#f97316; color:#ffffff }
+.app-btn-warning:hover { background:#ef7a1e }
+.app-btn-muted { border-color:#e5e7eb; color:#374151; background:#ffffff }
+.app-btn-muted:hover { background:#f9fafb }
+.swal-actions { display:flex; gap:8px; justify-content:center; margin-top:12px }
+.swal2-actions .app-btn { min-width:110px }
+
 /* ==========================================================================
    BUTTON SYSTEM — single source of truth
    Base .btn already renders as the default "outline blue" pill, so existing

@@ -46,7 +46,6 @@
                   <th class="col-max">Asunto</th>
                   <th class="col-mid">Paciente</th>
                   <th class="col-min">Estado</th>
-                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -77,24 +76,6 @@
                     </div>
                   </td>
                   <td class="col-min"><span class="status" :class="item.status">{{ statusLabel(item.status) }}</span></td>
-                  <td class="row-action">
-                    <button
-                      type="button"
-                      class="action-btn details"
-                      @click.stop="goToShow(item.id)"
-                    >
-                      Ver detalle
-                    </button>
-                    <button
-                      v-if="canResend(item)"
-                      type="button"
-                      class="action-btn resend"
-                      :disabled="resendingId === item.id"
-                      @click="resend(item)"
-                    >
-                      {{ resendingId === item.id ? 'Reenviando...' : 'Reenviar' }}
-                    </button>
-                  </td>
                 </tr>
               </tbody>
             </table>
@@ -134,11 +115,8 @@ const loading = ref(false)
 const logs = ref([])
 const meta = ref(null)
 const summary = ref({ count: 0, sent_count: 0, failed_count: 0 })
-const resendingId = ref(null)
 const showHelp = ref(false)
 let searchTimer = null
-
-const REMINDER_CATEGORIES = ['reminder_24h', 'reminder_2h']
 
 const categoryOptions = [
   { value: 'reminder_24h', label: 'Recordatorio 24h' },
@@ -204,14 +182,6 @@ function patientLabel(item) {
   return 'Paciente sin datos'
 }
 
-function isReminderCategory(category) {
-  return REMINDER_CATEGORIES.includes(category)
-}
-
-function canResend(item) {
-  return item?.status === 'failed' && isReminderCategory(item?.category)
-}
-
 async function load(page = 1) {
   loading.value = true
   try {
@@ -250,23 +220,6 @@ function debouncedReload() {
   searchTimer = setTimeout(() => load(1), 250)
 }
 
-async function resend(item) {
-  if (!item?.id) return
-
-  resendingId.value = item.id
-  try {
-    const res = await api.post(`/notifications/${item.id}/resend`)
-    toast.success(res.data?.message || 'Recordatorio reenviado')
-    await load(meta.value?.current_page || 1)
-  } catch (e) {
-    const message = e.response?.data?.message || 'No se pudo reenviar el recordatorio'
-    toast.error(message)
-    await load(meta.value?.current_page || 1)
-  } finally {
-    resendingId.value = null
-  }
-}
-
 onMounted(async () => {
   await load(1)
 })
@@ -294,12 +247,6 @@ onMounted(async () => {
 .status { display: inline-flex; align-items: center; padding: 5px 8px; border-radius: 9999px; font-weight: 700; font-size: 11px }
 .status.sent { background: #dcfce7; color: #166534 }
 .status.failed { background: #fee2e2; color: #991b1b }
-
-.row-action { display: flex; align-items: center; justify-content: flex-start; gap: 6px }
-.action-btn { display: inline-flex; align-items: center; justify-content: center; padding: 6px 10px; border-radius: 8px; border: 1px solid transparent; font-size: 13px; white-space: nowrap }
-.action-btn.details { background: #fff; color: #374151; border-color: #e5e7eb }
-.action-btn.resend { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe }
-.action-btn:disabled { opacity: 0.55; cursor: not-allowed }
 
 .empty { color: #6b7280; padding: 16px; text-align: center }
 

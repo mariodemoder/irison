@@ -8,26 +8,20 @@
             <p class="form-sub">Detalle del pago</p>
           </div>
           <div class="header-actions">
-            <EditButton v-if="paymentData?.id" :to="`/payments/${paymentData.id}/edit`" />
             <div class="back-menu-group">
               <button type="button" class="muted back-btn" @click="goBack">Volver</button>
-              <div v-if="hasQuickActions" class="quick-actions" ref="quickActionsRef">
-                <button
-                  type="button"
-                  class="muted quick-trigger menu-right-btn"
-                  @click="toggleQuickActions"
-                  aria-label="Acciones"
-                  title="Acciones"
+              <MoreActionsMenu
+                v-if="paymentData?.id"
+                trigger-class="muted quick-trigger menu-right-btn"
+                aria-label="Acciones"
+              >
+                <router-link
+                  class="ma-item"
+                  :to="`/payments/${paymentData.id}/edit`"
                 >
-                  <svg class="quick-trigger-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <circle cx="12" cy="5" r="1.8" fill="currentColor" />
-                    <circle cx="12" cy="12" r="1.8" fill="currentColor" />
-                    <circle cx="12" cy="19" r="1.8" fill="currentColor" />
-                  </svg>
-                </button>
-                <div v-if="quickActionsOpen" class="quick-menu">
-                </div>
-              </div>
+                  Editar
+                </router-link>
+              </MoreActionsMenu>
             </div>
           </div>
         </div>
@@ -60,7 +54,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../../services/api'
 import MainLayout from '../../layouts/MainLayout.vue'
@@ -76,9 +70,6 @@ const toast = useToast()
 
 const loading = ref(false)
 const paymentData = ref(null)
-const quickActionsOpen = ref(false)
-const quickActionsRef = ref(null)
-const hasQuickActions = computed(() => false)
 
 const patientLabel = computed(() => {
   const patient = paymentData.value?.patient
@@ -121,22 +112,7 @@ function goBack() {
   })
 }
 
-function toggleQuickActions() {
-  quickActionsOpen.value = !quickActionsOpen.value
-}
-
-function closeQuickActions() {
-  quickActionsOpen.value = false
-}
-
-function handleClickOutsideQuickActions(event) {
-  if (!quickActionsOpen.value) return
-  if (!quickActionsRef.value) return
-  if (!quickActionsRef.value.contains(event.target)) {
-    closeQuickActions()
-  }
-}
-
+// El menú ⋮ no aplica en este detalle (sin acciones extra por ahora)
 async function load() {
   loading.value = true
   try {
@@ -153,11 +129,6 @@ async function load() {
 
 onMounted(async () => {
   await load()
-  document.addEventListener('click', handleClickOutsideQuickActions)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('click', handleClickOutsideQuickActions)
 })
 </script>
 
@@ -182,13 +153,6 @@ onBeforeUnmount(() => {
 .alert-subtle { background:#f8fafc; border:1px solid #e6edf3; padding:10px; border-radius:8px; color:#334155; font-size:14px }
 
 .back-menu-group { display:inline-flex; align-items:center; gap:0 }
-.quick-trigger { padding:11px 12px; display:inline-flex; align-items:center; justify-content:center }
-.quick-trigger-icon { width:18px; height:18px; color:#4b5563 }
-.quick-actions { position:relative }
-.quick-menu { position:absolute; right:0; top:calc(100% + 6px); min-width:180px; background:#fff; border:1px solid #e5e7eb; border-radius:10px; box-shadow:0 10px 24px rgba(2,6,23,0.10); padding:6px; display:flex; flex-direction:column; gap:4px; z-index:20 }
-.quick-item { text-align:left; padding:8px 10px; border:1px solid transparent; background:#fff; border-radius:8px; font-size:14px; color:#111827 }
-.quick-item:hover { background:#f9fafb }
-.quick-item.danger { color:#b91c1c }
 
 @media (max-width: 768px) {
   .details-grid { grid-template-columns:1fr }

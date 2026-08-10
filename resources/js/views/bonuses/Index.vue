@@ -62,6 +62,15 @@
                 <td class="col-min"><span class="status" :class="bonus.status">{{ statusLabel(bonus.status) }}</span></td>
                 <td class="col-min"><span class="status" :class="bonus.is_paid ? 'completed' : 'pending'">{{ bonus.is_paid ? 'Pagado' : 'Impago' }}</span></td>
                 <td class="col-min">
+                  <MoreActionsMenu aria-label="Acciones del bono">
+                    <template v-if="bonus.invoice_id">
+                      <button type="button" class="ma-item" @click.stop="previewPdf(bonus)">Vista previa PDF</button>
+                      <button type="button" class="ma-item" @click.stop="downloadPdf(bonus)">Descargar PDF</button>
+                    </template>
+                    <button v-else type="button" class="ma-item" :disabled="loading || invoicingId === bonus.id" @click.stop="issueBonusInvoice(bonus)">
+                      {{ invoicingId === bonus.id ? 'Facturando...' : 'Facturar' }}
+                    </button>
+                  </MoreActionsMenu>
                   <div v-if="bonus.invoice_id" class="pdf-actions">
                     <button
                       type="button"

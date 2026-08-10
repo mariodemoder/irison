@@ -207,6 +207,7 @@ import api from '../../services/api'
 import { useToast } from 'vue-toastification'
 import { meUser } from '../../shared/meCache'
 import { getLoadErrorMessage } from '../../shared/httpErrors'
+import { confirmDelete } from '../../shared/confirmDelete'
 
 const toast = useToast()
 const route = useRoute()
@@ -506,20 +507,26 @@ function toggleBonusAccordion(key) {
   expandedBonusKey.value = expandedBonusKey.value === key ? null : key
 }
 
-function removeBonusType(item) {
+async function removeBonusType(item) {
   if (item.id != null) {
-    bonusTypes.value = bonusTypes.value.filter((b) => b !== item)
-  } else {
-    bonusTypes.value = bonusTypes.value.filter((b) => b !== item)
+    const confirmed = await confirmDelete({
+      title: 'Eliminar bono',
+      text: `¿Eliminar el bono "${item.description || 'Sin nombre'}"? Se eliminará definitivamente al guardar los cambios.`,
+    })
+    if (!confirmed) return
   }
+  bonusTypes.value = bonusTypes.value.filter((b) => b !== item)
 }
 
-function removeCesionType(item) {
-  if (item.id == null) {
-    cesionTypes.value.pop()
-    return
+async function removeCesionType(item) {
+  if (item.id != null) {
+    const confirmed = await confirmDelete({
+      title: 'Eliminar tipo de sesión',
+      text: `¿Eliminar el tipo de sesión "${item.description || 'Sin nombre'}"? Se eliminará definitivamente al guardar los cambios.`,
+    })
+    if (!confirmed) return
   }
-  cesionTypes.value = cesionTypes.value.filter((i) => i.id !== item.id)
+  cesionTypes.value = cesionTypes.value.filter((i) => i !== item)
 }
 </script>
 

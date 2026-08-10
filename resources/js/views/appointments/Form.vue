@@ -2295,13 +2295,6 @@ async function submit(payNow = false) {
 .tab-btn-success { border-color:#86efac; color:#166534; background:#dcfce7 }
 .input, .textarea { width:100%; box-sizing:border-box; padding:12px; border:1px solid #e5e7eb; border-radius:8px; font-size:14px }
 .datetime-pair { display:grid; grid-template-columns: 1fr 120px; gap:6px; align-items:center }
-:deep(.option-select .select-btn) {
-  padding: 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  font-size: 14px;
-  background: #fff;
-}
 .status-select-wrap {
   position: relative;
   width: 100%;

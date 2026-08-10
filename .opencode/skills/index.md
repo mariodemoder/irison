@@ -1,6 +1,6 @@
 # Skill Index — Irison
 
-Router rápido para cargar solo el skill que necesitas.
+Router rápido para cargar solo el skill que necesitas. **Todos los skills son compartidos** por los agentes `plan` y `build`; se cargan por necesidad según el dominio de la tarea.
 
 ## Core (read first)
 - `core/index.md` — Quick start, architecture, conventions
@@ -31,10 +31,10 @@ Router rápido para cargar solo el skill que necesitas.
 - `booking/index.md` — Models, AvailabilityEngine, notifications, public vs admin routes
 
 ## QA
-- `qa/index.md` — Testing strategies, coverage rules, delegation criteria
+- `qa/index.md` — Testing strategies, coverage rules. Ejecución **solo on demand** (`con tests`) o si el plan aprobado define "complete flow"
 
 ## Clean (código muerto)
-- `agents/clean.md` — Limpieza de dead code tras cada generación de código, antes de QA: imports sin uso, vars muertas, ramas inalcanzables, depuración residual, archivos huérfanos
+- Regla en `AGENTS.md` → `build` ejecuta dead-code cleanup **solo on demand** (`con clean`) o si el plan aprobado define "complete flow". Nunca automático, nunca borra tests.
 
 ## Actividad
 - `activity.md` — Registro de actividad (módulo DDD), cap de logins (3 por usuario/clínica) y ocultamiento de `login` al SPA
@@ -55,13 +55,9 @@ Router rápido para cargar solo el skill que necesitas.
 
 ---
 
-## GitHub Agents (tool permissions)
-Los `.agent.md` en `.github/agents/` definen permisos de herramientas, no contenido duplicado:
-- `plan.agent.md` — Orchestrator
-- `billing.agent.md` — Billing specialist
-- `backend.agent.md` — Backend specialist
-- `frontend.agent.md` — Frontend specialist
-- `qa.agent.md` — QA specialist
-- `clean.agent.md` — Clean specialist (dead-code cleanup antes de QA)
-- `deploy.agent.md` — Deploy specialist
-- `backoffice.agent.md` — Backoffice specialist
+## Skills nativos (SKILL.md en `.agents/skills/`)
+Skills auto-descubiertos por opencode, compartidos por todos los agentes. Se cargan automáticamente según su descripción o bajo demanda:
+- `vue-best-practices` — Composition API con `<script setup>` (Vue 3 SFC). Usar para todo trabajo `.vue`.
+- `vite-patterns` — Config, plugins, HMR, env variables, build optimization.
+- `frontend-a11y` — HTML semántico, ARIA, foco y navegación por teclado.
+- `ui-to-vue` — Conversión de capturas/diseños a componentes Vue (Vant, Element Plus, Ant Design Vue).

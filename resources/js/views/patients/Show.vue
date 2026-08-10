@@ -7,41 +7,41 @@
             <h1>Paciente e Historial</h1>
           </div>
           <div class="header-actions">
-            <EditButton v-if="!isProfessional" @click.prevent="goEdit" />
             <div class="back-menu-group">
               <button class="muted back-btn" @click.prevent="goBack">Volver</button>
-              <div class="quick-actions" ref="quickActionsRef">
+              <MoreActionsMenu trigger-class="muted quick-trigger menu-right-btn" aria-label="Acciones">
+                <button
+                  v-if="!isProfessional"
+                  type="button"
+                  class="ma-item"
+                  @click.prevent="goEdit"
+                >
+                  Editar
+                </button>
                 <button
                   type="button"
-                  class="muted quick-trigger menu-right-btn"
-                  @click="toggleQuickActions"
-                  aria-label="Acciones"
-                  title="Acciones"
+                  class="ma-item"
+                  @click.prevent="viewHistory"
                 >
-                  <svg class="quick-trigger-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <circle cx="12" cy="5" r="1.8" fill="currentColor" />
-                    <circle cx="12" cy="12" r="1.8" fill="currentColor" />
-                    <circle cx="12" cy="19" r="1.8" fill="currentColor" />
-                  </svg>
+                  Historia Clinica
                 </button>
-                <div v-if="quickActionsOpen" class="quick-menu">
-                  <button
-                    type="button"
-                    class="quick-item"
-                    @click.prevent="runViewHistory"
-                  >
-                    Historia Clinica
-                  </button>
-                  <button
-                    type="button"
-                    class="quick-item"
-                    @click.prevent="runAttachImages"
-                  >
-                    Imagenes
-                  </button>
-                  <BtnTrash v-if="!isProfessional" class="quick-item danger" :disabled="deletingPatient" @click.prevent="runDelete">{{ deletingPatient ? 'Eliminando...' : 'Eliminar' }}</BtnTrash>
-                </div>
-              </div>
+                <button
+                  type="button"
+                  class="ma-item"
+                  @click.prevent="attachImages"
+                >
+                  Imagenes
+                </button>
+                <button
+                  v-if="!isProfessional"
+                  type="button"
+                  class="ma-item ma-item--danger"
+                  :disabled="deletingPatient"
+                  @click.prevent="confirmDeletePatient"
+                >
+                  {{ deletingPatient ? 'Eliminando...' : 'Eliminar' }}
+                </button>
+              </MoreActionsMenu>
             </div>
           </div>
         </div>
@@ -319,14 +319,14 @@
 
 <script setup>
 import MainLayout from '../../layouts/MainLayout.vue'
-import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import PatientBonuses from '../../components/PatientBonuses.vue'
 import PatientConsents from '../consents/PatientConsents.vue'
 import { formatTime, formatDateShort, statusLabel } from '../../shared/appointmentHelpers'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../../services/api'
 import { useToast } from 'vue-toastification'
-import Swal from 'sweetalert2'
+import { confirmDelete } from '../../shared/confirmDelete'
 import { goBackWithStack } from '../../shared/navigationHelpers'
 import BtnTrash from '../../components/BtnTrash.vue'
 import { isProfessional } from '../../shared/meCache'
@@ -342,8 +342,6 @@ const loading = ref(false)
 const deletingPatient = ref(false)
 const showCanceledAppointments = ref(false)
 const showCompletedPayments = ref(false)
-const quickActionsOpen = ref(false)
-const quickActionsRef = ref(null)
 const attachImagesModalOpen = ref(false)
 const attachImagesError = ref('')
 const uploadingImages = ref(false)
@@ -425,11 +423,6 @@ async function loadPatient() {
 
 onMounted(() => {
   loadPatient()
-  document.addEventListener('click', handleClickOutsideQuickActions)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('click', handleClickOutsideQuickActions)
 })
 
 watch(() => route.params.id, (id) => {
@@ -600,17 +593,12 @@ async function deleteExistingImage(image) {
   deletingExistingImageId.value = image.id
 
   try {
-    const confirm = await Swal.fire({
+    const confirmed = await confirmDelete({
       title: 'Eliminar archivo',
       text: '¿Seguro que deseas eliminar este archivo?',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Sí, eliminar',
-      cancelButtonText: 'Cancelar',
-      customClass: { popup: 'swal-popup-warning-card' },
     })
 
-    if (!confirm.isConfirmed) return
+    if (!confirmed) return
 
     await api.delete(`/patients/${patient.value.id}/images/${image.id}`)
 
@@ -687,38 +675,7 @@ async function submitAttachImages() {
   }
 }
 
-function toggleQuickActions() {
-  quickActionsOpen.value = !quickActionsOpen.value
-}
-
-function closeQuickActions() {
-  quickActionsOpen.value = false
-}
-
-function handleClickOutsideQuickActions(event) {
-  if (!quickActionsOpen.value) return
-  if (!quickActionsRef.value) return
-  if (!quickActionsRef.value.contains(event.target)) {
-    closeQuickActions()
-  }
-}
-
-function runViewHistory() {
-  closeQuickActions()
-  viewHistory()
-}
-
-function runAttachImages() {
-  closeQuickActions()
-  attachImages()
-}
-
-function runDelete() {
-  if (deletingPatient.value) return
-  closeQuickActions()
-  confirmDelete()
-}
-
+// El cierre del menú ⋮ lo gestiona el componente MoreActionsMenu
 function goBack() {
   goBackWithStack(router, '/patients')
 }
@@ -782,20 +739,15 @@ function formatPaymentDate(value) {
   return `${dd}/${mm}/${yy}`
 }
 
-async function confirmDelete() {
+async function confirmDeletePatient() {
   if (!patient.value || deletingPatient.value) return
 
-  const res = await Swal.fire({
-    title: `Eliminar paciente`,
+  const confirmed = await confirmDelete({
+    title: 'Eliminar paciente',
     text: `¿Eliminar al paciente "${patient.value.name}"?`,
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonText: 'Sí, eliminar',
-    cancelButtonText: 'Cancelar',
-    customClass: { popup: 'swal-popup-warning-card' },
   })
 
-  if (!res.isConfirmed) return
+  if (!confirmed) return
 
   deletingPatient.value = true
   try {
@@ -823,13 +775,6 @@ async function confirmDelete() {
 .form-card { width:100%; background: #fff; border-radius:12px; box-shadow: 0 10px 30px rgba(2,6,23,0.06); padding:24px }
 .form-header h1 { margin:0; font-size:22px }
 .header-actions { display:flex; gap:8px; align-items:center }
-.quick-trigger { padding:11px 12px; display:inline-flex; align-items:center; justify-content:center }
-.quick-trigger-icon { width:18px; height:18px; color:#4b5563 }
-.quick-actions { position:relative }
-.quick-menu { position:absolute; right:0; top:calc(100% + 6px); min-width:200px; background:#fff; border:1px solid #e5e7eb; border-radius:10px; box-shadow:0 10px 24px rgba(2,6,23,0.10); padding:6px; display:flex; flex-direction:column; gap:4px; z-index:30 }
-.quick-item { text-align:left; padding:8px 10px; border:1px solid transparent; background:#fff; border-radius:8px; font-size:14px; color:#111827 }
-.quick-item:hover { background:#f9fafb }
-.quick-item.danger { color:#b91c1c }
 
 .patient-info-grid { display:flex; flex-direction:column; gap:12px }
 .info-row-3 { display:grid; grid-template-columns: repeat(3,1fr); gap:12px }

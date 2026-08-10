@@ -60,6 +60,7 @@ import { ref, onMounted, watch } from 'vue'
 import { useToast } from 'vue-toastification'
 import api from '../../services/api'
 import { isProfessional } from '../../shared/meCache'
+import { confirmDelete } from '../../shared/confirmDelete'
 import SaveButton from '../../components/SaveButton.vue'
 import SignPad from '../../components/consents/SignPad.vue'
 
@@ -176,7 +177,12 @@ async function downloadConsent(c) {
 }
 
 async function revokeConsent(c) {
-  if (!confirm('¿Revocar este consentimiento?')) return
+  const confirmed = await confirmDelete({
+    title: 'Revocar consentimiento',
+    text: '¿Revocar este consentimiento? Esta acción no se puede deshacer.',
+    confirmButtonText: 'Sí, revocar',
+  })
+  if (!confirmed) return
   try {
     await api.post(`/consents/${c.id}/revoke`)
     toast.success('Consentimiento revocado')

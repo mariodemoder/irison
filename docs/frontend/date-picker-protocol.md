@@ -109,7 +109,6 @@ The SweetAlert popup must have `customClass: { popup: 'swal-popup-card' }` in it
 ## Do NOT Modify
 
 - `AgendaDay.vue` mini-calendar (`class="mini-date"`) — this is a custom visual calendar component, not a standard input
-- `SmallCalendar.vue` — dead code, stub only
 - `StepCalendar.vue` — public booking calendar, fully custom
 
 ## Accessibility Checklist
