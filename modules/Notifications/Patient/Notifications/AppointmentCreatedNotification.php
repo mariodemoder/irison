@@ -37,7 +37,7 @@ class AppointmentCreatedNotification extends Notification implements ShouldQueue
             ->line("Por favor, confirma tu asistencia o contacta con la clínica si necesitas cambiar la cita.")
             ->salutation("Saludos, {$clinic->name}");
 
-        $mail->viewData = ['appointment' => $this->appointment];
+        $mail->viewData = ['appointment' => $this->appointment, 'clinic' => $clinic];
 
         return $mail;
     }

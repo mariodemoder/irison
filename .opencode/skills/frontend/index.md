@@ -71,3 +71,10 @@ All date/time inputs must use standardized CSS classes defined in `resources/css
 8. Use `BaseInput` when the input has a standalone label; use raw input with the class when inside complex layouts.
 
 Full reference: `docs/frontend/date-picker-protocol.md`
+
+## Skills externos (SKILL.md en `.agents/skills/`)
+
+- `vue-best-practices` — Vue 3 Composition API, reactividad, SFC, data flow, composables (JS, no TS)
+- `ui-to-vue` — Conversión batch de screenshots/designs a componentes Vue 3 (CLI `ui-to-vue-converter`)
+- `vite-patterns` — Config Vite 6 (`vite.config.js`, env, proxy, chunks, HMR) — nota: este repo usa Rollup, no Rolldown
+- `frontend-a11y` — Accesibilidad: ARIA, labels, teclado, foco, reduced motion (ejemplos React → traducción a Vue)

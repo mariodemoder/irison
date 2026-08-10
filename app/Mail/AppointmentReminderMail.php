@@ -39,6 +39,7 @@ class AppointmentReminderMail extends Mailable
             with: [
                 'hoursBefore' => $this->hoursBefore,
                 'patientName' => $this->appointment->patient?->name ?: 'Paciente',
+                'clinic' => $this->appointment->clinic,
                 'clinicName' => $this->appointment->clinic?->name ?: 'Clínica',
                 'dateText' => $start?->format('d/m/Y') ?: '-',
                 'timeText' => $start?->format('H:i') ?: '-',

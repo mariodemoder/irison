@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Cashier\Billable;
 
 
@@ -28,8 +29,31 @@ class Clinic extends Model
         return in_array($this->plan, ['pro', 'enterprise'], true);
     }
 
+    /**
+     * Determina si la clínica puede mostrar su propia marca (logo) en los
+     * emails salientes y en la página de reserva online.
+     */
+    public function usesClinicBranding(): bool
+    {
+        return $this->hasProFeatures();
+    }
+
+    public function hasClinicLogo(): bool
+    {
+        return $this->logo_path !== null && $this->logo_path !== '';
+    }
+
+    public function clinicLogoUrl(): ?string
+    {
+        if (! $this->hasClinicLogo()) {
+            return null;
+        }
+
+        return url(Storage::url($this->logo_path));
+    }
+
     protected $fillable = [
-        'name', 'slug', 'legal_name', 'email', 'phone', 'address', 'nif', 'locality', 'province', 'country', 'zip', 'timezone', 'business_hours', 'closed_days', 'max_users', 'trial_ends_at', 'subscription_status', 'status', 'plan', 'stripe_customer_id', 'suspended_at', 'churned_at', 'last_activity_at', 'subscribed_at', 'subscription_provider', 'subscription_reference', 'invoice_background_path', 'theme_color', 'stripe_id', 'pm_type', 'pm_last_four'
+        'name', 'slug', 'legal_name', 'email', 'phone', 'address', 'nif', 'locality', 'province', 'country', 'zip', 'timezone', 'business_hours', 'closed_days', 'max_users', 'trial_ends_at', 'subscription_status', 'status', 'plan', 'stripe_customer_id', 'suspended_at', 'churned_at', 'last_activity_at', 'subscribed_at', 'subscription_provider', 'subscription_reference', 'invoice_background_path', 'theme_color', 'logo_path', 'stripe_id', 'pm_type', 'pm_last_four'
     ];
 
     protected $casts = [

@@ -240,6 +240,8 @@ Key model requirements: `Patient` uses `Notifiable` trait; `Clinic` has `getAdmi
 
 Tests en `tests/Feature/Mail/EmailDispatchTest.php` y `tests/Feature/Notifications/NotificationsTest.php`.
 
+> Formato de email: todos los emails de Irison hacia subscriptores usan el layout unificado `emails/layouts/irison.blade.php` (header con logo Irison + pie legal genérico). Detalle: `docs/qa/email-tests.md`.
+
 Detalle de comportamiento: `docs/backoffice/subscriptions.md` (ciclo de suscripción) y `docs/backoffice/notificaciones-internas.md` (alertas internas de backoffice).
 
 ## High-Value References

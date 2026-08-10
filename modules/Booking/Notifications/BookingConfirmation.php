@@ -38,7 +38,7 @@ class BookingConfirmation extends Notification
             ->line('Si no puedes asistir, cancela con al menos 24 horas de antelación.')
             ->salutation('Gracias por confiar en ' . ($this->appointment->clinic->name ?? 'Irison'));
 
-        $mail->viewData = ['appointment' => $this->appointment];
+        $mail->viewData = ['appointment' => $this->appointment, 'clinic' => $this->appointment->clinic];
 
         return $mail;
     }

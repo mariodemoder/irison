@@ -155,6 +155,7 @@ const faviconUrl = `${import.meta.env.BASE_URL}favicon.svg`
     <div class="booking-inner">
       <header class="booking-header">
         <div v-if="pageData" class="booking-header__clinic">
+          <img v-if="pageData.clinic.logo_url" :src="pageData.clinic.logo_url" :alt="pageData.clinic.name" class="booking-header__logo" />
           <h1>{{ pageData.clinic.name }}</h1>
           <p v-if="pageData.settings.title" class="booking-header__tagline">{{ pageData.settings.title }}</p>
           <p v-if="pageData.clinic.address">{{ pageData.clinic.address }}</p>
@@ -338,6 +339,16 @@ const faviconUrl = `${import.meta.env.BASE_URL}favicon.svg`
   font-size: 2rem;
   font-weight: 800;
   letter-spacing: -0.03em;
+}
+
+.booking-header__logo {
+  max-width: 220px;
+  max-height: 64px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto 12px;
 }
 
 .booking-header__clinic p {

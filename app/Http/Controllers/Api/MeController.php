@@ -124,6 +124,7 @@ class MeController
             'clinic' => $clinic,
             'clinic_owner_name' => $ownerName,
             'clinic_invoice_background_url' => $invoiceBackgroundUrl,
+            'clinic_logo_url' => $clinic?->clinicLogoUrl(),
             'counters' => $clinic ? $this->counterService->getProfileCounters((int) $clinic->id) : [],
             'subscription_payments' => $subscriptionPayments,
             'status' => $status,
@@ -356,6 +357,7 @@ class MeController
             'clinic_invoice_background_url' => $clinic->invoice_background_path
                 ? Storage::url($clinic->invoice_background_path)
                 : null,
+            'clinic_logo_url' => $clinic->clinicLogoUrl(),
             'counters' => $this->counterService->getProfileCounters((int) $clinic->id),
             'message' => 'Datos actualizados',
         ]);
@@ -414,6 +416,66 @@ class MeController
             'message' => 'Fondo de factura eliminado',
             'invoice_background_path' => null,
             'invoice_background_url' => null,
+        ]);
+    }
+
+    public function uploadClinicLogo(Request $request)
+    {
+        $user = $request->user();
+        $clinic = $user ? $user->clinic : null;
+
+        if (!$user || !$clinic) {
+            return response()->json([
+                'message' => 'Usuario o clínica no disponible',
+            ], 403);
+        }
+
+        abort_unless($clinic->usesClinicBranding(), 403, 'Subir el logo de la clínica es una funcionalidad del plan PRO.');
+
+        $data = $request->validate([
+            'image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048', 'dimensions:max_width=500,max_height=500'],
+        ]);
+
+        if ($clinic->logo_path && Storage::disk('public')->exists($clinic->logo_path)) {
+            Storage::disk('public')->delete($clinic->logo_path);
+        }
+
+        $path = $data['image']->store('clinic-logos', 'public');
+
+        $clinic->logo_path = $path;
+        $clinic->save();
+
+        return response()->json([
+            'message' => 'Logo de la clínica actualizado',
+            'logo_path' => $path,
+            'clinic_logo_url' => $clinic->clinicLogoUrl(),
+        ]);
+    }
+
+    public function deleteClinicLogo(Request $request)
+    {
+        $user = $request->user();
+        $clinic = $user ? $user->clinic : null;
+
+        if (!$user || !$clinic) {
+            return response()->json([
+                'message' => 'Usuario o clínica no disponible',
+            ], 403);
+        }
+
+        abort_unless($clinic->usesClinicBranding(), 403, 'Subir el logo de la clínica es una funcionalidad del plan PRO.');
+
+        if ($clinic->logo_path && Storage::disk('public')->exists($clinic->logo_path)) {
+            Storage::disk('public')->delete($clinic->logo_path);
+        }
+
+        $clinic->logo_path = null;
+        $clinic->save();
+
+        return response()->json([
+            'message' => 'Logo de la clínica eliminado',
+            'logo_path' => null,
+            'clinic_logo_url' => null,
         ]);
     }
 

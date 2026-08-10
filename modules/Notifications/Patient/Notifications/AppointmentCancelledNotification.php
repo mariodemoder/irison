@@ -35,7 +35,7 @@ class AppointmentCancelledNotification extends Notification implements ShouldQue
             ->line("Si deseas reagendar, por favor contacta con la clínica.")
             ->salutation("Saludos, {$clinic->name}");
 
-        $mail->viewData = ['appointment' => $this->appointment];
+        $mail->viewData = ['appointment' => $this->appointment, 'clinic' => $clinic];
 
         return $mail;
     }

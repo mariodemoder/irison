@@ -37,6 +37,7 @@ class AppointmentReminderNotification extends Notification implements ShouldQueu
             ->subject("Recordatorio de cita - {$clinic->name}")
             ->view('emails.appointment-reminder', [
                 'patientName' => $patientName,
+                'clinic' => $clinic,
                 'clinicName' => $clinic->name,
                 'clinicPhone' => $clinic->phone,
                 'dateText' => $this->appointment->start_time->format('d/m/Y'),

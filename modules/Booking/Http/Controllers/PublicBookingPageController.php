@@ -32,6 +32,7 @@ class PublicBookingPageController extends Controller
                 'address' => $page->clinic->address,
                 'phone' => $page->clinic->phone,
                 'email' => $page->clinic->email,
+                'logo_url' => $page->clinic->usesClinicBranding() ? $page->clinic->clinicLogoUrl() : null,
             ],
             'services' => $page->services->map(fn ($s) => [
                 'id' => $s->id,

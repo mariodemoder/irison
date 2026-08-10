@@ -13,6 +13,7 @@ use Modules\Booking\Models\ProfessionalSchedule;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 class PublicBookingFlowTest extends TestCase
 {
@@ -81,6 +82,31 @@ class PublicBookingFlowTest extends TestCase
         $response->assertJsonPath('clinic.name', 'Fisio Center');
         $response->assertJsonPath('services.0.name', 'Sesión de fisioterapia');
         $response->assertJsonPath('professionals.0.name', 'Dra. Ana');
+    }
+
+    public function test_booking_page_returns_logo_for_pro_clinic(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('clinic-logos/fisio-logo.png', 'fake-binary');
+        $this->clinic->plan = 'pro';
+        $this->clinic->logo_path = 'clinic-logos/fisio-logo.png';
+        $this->clinic->save();
+
+        $response = $this->getJson("/api/booking/{$this->slug}");
+
+        $response->assertOk();
+        $this->assertStringContainsString('storage/clinic-logos/fisio-logo.png', (string) $response->json('clinic.logo_url'));
+    }
+
+    public function test_booking_page_returns_null_logo_for_basic_clinic(): void
+    {
+        $this->clinic->plan = 'basic';
+        $this->clinic->save();
+
+        $response = $this->getJson("/api/booking/{$this->slug}");
+
+        $response->assertOk()
+            ->assertJsonPath('clinic.logo_url', null);
     }
 
     public function test_returns_404_for_invalid_slug(): void

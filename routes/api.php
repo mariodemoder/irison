@@ -171,6 +171,8 @@ Route::middleware(['auth:sanctum', 'clinic'])->get('/me', \App\Http\Controllers\
 Route::middleware(['auth:sanctum', 'clinic', 'check.subscription'])->put('/me', [\App\Http\Controllers\Api\MeController::class, 'update']);
 Route::middleware(['auth:sanctum', 'clinic', 'check.subscription'])->post('/me/invoice-background', [\App\Http\Controllers\Api\MeController::class, 'uploadInvoiceBackground']);
 Route::middleware(['auth:sanctum', 'clinic', 'check.subscription'])->delete('/me/invoice-background', [\App\Http\Controllers\Api\MeController::class, 'deleteInvoiceBackground']);
+Route::middleware(['auth:sanctum', 'clinic', 'check.subscription'])->post('/me/logo', [\App\Http\Controllers\Api\MeController::class, 'uploadClinicLogo']);
+Route::middleware(['auth:sanctum', 'clinic', 'check.subscription'])->delete('/me/logo', [\App\Http\Controllers\Api\MeController::class, 'deleteClinicLogo']);
 Route::middleware(['auth:sanctum', 'clinic'])->get('/me/stripe-invoices', [\App\Http\Controllers\Api\MeController::class, 'stripeInvoices']);
 Route::middleware(['auth:sanctum', 'clinic'])->post('/me/invoice-background/preview-pdf', [\App\Http\Controllers\Api\MeController::class, 'previewInvoiceBackgroundPdf']);
 // Billing confirm/cancel: movidos a modules/Subscriptions/Routes/api.php

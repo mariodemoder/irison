@@ -88,6 +88,36 @@
                     </div>
                   </div>
 
+                  <div>
+                    <label class="label">Logo de la clínica</label>
+                    <template v-if="canUseClinicBranding">
+                      <div class="clinic-logo-row">
+                        <img
+                          v-if="clinicLogoUrl"
+                          :src="clinicLogoUrl"
+                          :alt="form.clinic_name || 'Logo de la clínica'"
+                          class="clinic-logo-preview"
+                        />
+                        <div v-else class="clinic-logo-empty">Sin logo</div>
+                        <div class="clinic-logo-controls">
+                          <input class="input" type="file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" @change="onClinicLogoPicked" />
+                          <div class="clinic-logo-buttons">
+                            <button class="btn btn-sm invoice-mini-btn" type="button" :disabled="uploadingClinicLogo || !clinicLogoFile" @click.prevent="uploadClinicLogo">Subir</button>
+                            <BtnTrash class="invoice-mini-btn" :disabled="removingClinicLogo || !clinicLogoUrl" @click.prevent="removeClinicLogo">Eliminar</BtnTrash>
+                          </div>
+                        </div>
+                      </div>
+                      <div v-if="clinicLogoFile && clinicLogoFile.size > 2 * 1024 * 1024" class="field-error">El logo no puede superar los 2 MB.</div>
+                      <div v-if="clinicLogoTooLarge" class="field-error">El logo no puede superar 500 × 500 px.</div>
+                      <div class="invoice-bg-help">
+                        Recomendado: PNG con fondo transparente, 500 × 500 px como máximo. Se usará en tus emails y en tu página de reserva online.
+                      </div>
+                    </template>
+                    <div v-else class="panel-note">
+                      El logo de tu clínica es una funcionalidad del plan PRO. <a href="#" class="plan-link" @click.prevent="goToSubscription">Ver planes</a>
+                    </div>
+                  </div>
+
                   <div v-if="status==='blocked'" class="panel-note">
                     Tu clínica no tiene suscripción activa. Puedes activarla desde la pestaña de Subscripción.
                   </div>
@@ -516,7 +546,7 @@ import AppLoading from '../components/AppLoading.vue'
 import BtnTrash from '../components/BtnTrash.vue'
 import api from '../services/api'
 import { useToast } from 'vue-toastification'
-import { meClinic } from '../shared/meCache'
+import { meClinic, isPro, isEnterprise } from '../shared/meCache'
 import { getLoadErrorMessage } from '../shared/httpErrors'
 import SaveButton from '../components/SaveButton.vue'
 
@@ -555,7 +585,18 @@ const uploadingInvoiceBackground = ref(false)
 const removingInvoiceBackground = ref(false)
 const previewingInvoiceBackgroundPdf = ref(false)
 const profilePreviewPdfUrl = ref(null)
+const clinicLogoUrl = ref(null)
+const clinicLogoFile = ref(null)
+const clinicLogoTooLarge = ref(false)
+const uploadingClinicLogo = ref(false)
+const removingClinicLogo = ref(false)
 const IRISON_COLOR = '#F8FAFC'
+
+const canUseClinicBranding = computed(() => isPro.value || isEnterprise.value)
+
+function goToSubscription() {
+  activeTab.value = 'subscripcion'
+}
 
 const previewPdfEmbedUrl = computed(() => {
   if (!profilePreviewPdfUrl.value) return null
@@ -731,6 +772,7 @@ async function load() {
     trial_ends_at.value = meRes.data.trial_ends_at || null
     subscriptionPayments.value = Array.isArray(meRes.data.subscription_payments) ? meRes.data.subscription_payments : []
     invoiceBackgroundUrl.value = meRes.data.clinic_invoice_background_url || null
+    clinicLogoUrl.value = meRes.data.clinic_logo_url || null
     subscriptionRequests.value = Array.isArray(historyRes?.data?.data) ? historyRes.data.data : []
 
     form.value.name = user.value?.name ?? ''
@@ -884,6 +926,78 @@ async function removeInvoiceBackground() {
     toast.error(msg)
   } finally {
     removingInvoiceBackground.value = false
+  }
+}
+
+function onClinicLogoPicked(event) {
+  const files = event?.target?.files
+  clinicLogoFile.value = files && files.length > 0 ? files[0] : null
+  clinicLogoTooLarge.value = false
+
+  if (!clinicLogoFile.value) return
+
+  const img = new Image()
+  img.onload = () => {
+    clinicLogoTooLarge.value = img.naturalWidth > 500 || img.naturalHeight > 500
+  }
+  img.src = URL.createObjectURL(clinicLogoFile.value)
+}
+
+async function uploadClinicLogo() {
+  if (!clinicLogoFile.value) {
+    toast.error('Seleccioná una imagen antes de subir')
+    return
+  }
+
+  if (clinicLogoFile.value.size > 2 * 1024 * 1024) {
+    toast.error('El logo no puede superar los 2 MB')
+    return
+  }
+
+  if (clinicLogoTooLarge.value) {
+    toast.error('El logo no puede superar 500 × 500 px')
+    return
+  }
+
+  uploadingClinicLogo.value = true
+  try {
+    const formData = new FormData()
+    formData.append('image', clinicLogoFile.value)
+
+    const res = await api.post('/me/logo', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+
+    clinicLogoUrl.value = res.data?.clinic_logo_url || null
+    clinicLogoFile.value = null
+    clinicLogoTooLarge.value = false
+    toast.success('Logo de la clínica actualizado')
+  } catch (e) {
+    console.error('Error subiendo logo de la clínica', e)
+    const msg = e.response?.data?.message || 'No se pudo subir el logo'
+    toast.error(msg)
+  } finally {
+    uploadingClinicLogo.value = false
+  }
+}
+
+async function removeClinicLogo() {
+  removingClinicLogo.value = true
+  try {
+    await api.delete('/me/logo')
+    clinicLogoUrl.value = null
+    clinicLogoFile.value = null
+    clinicLogoTooLarge.value = false
+    toast.success('Logo de la clínica eliminado', {
+      toastClassName: 'toast-delete',
+      progressClassName: 'toast-delete-progress',
+    })
+  } catch (e) {
+    console.error('Error eliminando logo de la clínica', e)
+    const msg = e.response?.data?.message || 'No se pudo eliminar el logo'
+    toast.error(msg)
+  } finally {
+    removingClinicLogo.value = false
   }
 }
 
@@ -1175,6 +1289,14 @@ onBeforeUnmount(() => {
   background:#fff7ed;
   color:#9a3412;
   font-size:13px;
+}
+.plan-link {
+  color: #4338ca;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  font-weight: 600;
 }
 .field-error {
   margin-top: 6px;
@@ -1872,6 +1994,46 @@ onBeforeUnmount(() => {
   font-size: 12px;
   line-height: 1;
   white-space: nowrap;
+}
+.clinic-logo-row {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.clinic-logo-preview {
+  height: 64px;
+  max-width: 220px;
+  width: auto;
+  object-fit: contain;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 6px;
+}
+.clinic-logo-empty {
+  height: 64px;
+  min-width: 140px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed #d1d5db;
+  border-radius: 8px;
+  color: #9ca3af;
+  font-size: 13px;
+}
+.clinic-logo-controls {
+  display: grid;
+  gap: 8px;
+  flex: 1 1 260px;
+  max-width: 360px;
+}
+.clinic-logo-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 .invoice-pdf-preview-wrap {
   width: min(100%, 860px);

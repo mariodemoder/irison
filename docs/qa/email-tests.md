@@ -1,12 +1,41 @@
 # Email Dispatch Tests — QA Guide
 
+## Formato unificado de emails de Irison (suscripción/facturación)
+
+Los emails que Irison emite hacia los subscriptores (owners de clínicas) comparten un único formato visual definido en:
+
+- **Layout:** `resources/views/emails/layouts/irison.blade.php`
+- **Header:** `resources/views/emails/partials/email-header.blade.php` (logo Irison centrado)
+- **Footer legal:** `resources/views/emails/partials/email-footer.blade.php` (copyright, email de contacto y web, sin datos de empresa)
+- **Botón CTA:** `resources/views/emails/partials/email-cta.blade.php` (azul primario de la app `#2563EB/#1d4ed8`)
+
+### Tokens de diseño
+
+| Token | Valor |
+|---|---|
+| Fondo exterior | `#f6f8fc` |
+| Tarjeta | 620px, radius 16px, sombra `0 10px 28px rgba(15,23,42,.08)` |
+| Fuente | `Segoe UI, Arial, sans-serif` |
+| H1 | 22px `#020617` |
+| Cuerpo | 15px `#334155`, line-height 1.6 |
+| Tabla informativa | borde `#e2e8f0`, radius 12px, label `#f8fafc`/`#475569`, valor 700 `#0f172a` |
+| CTA | gradiente `linear-gradient(135deg,#0ea5e9,#1d4ed8)`, radius 10px, texto blanco 14px/700 |
+
+### Plantillas unificadas
+
+`subscription-activated`, `subscription-upgraded-notification`, `payment-completed`, `upgrade-checkout-link`, `subscription-status`, `reactivation-status`, `invoice-payment-failed`, `resend-invoice`, `trial-lifecycle`, `account-activation` — todas usan `@extends('emails.layouts.irison')` y heredan header + footer.
+
+> Nota: los emails a pacientes (recordatorios, consentimientos, reservas online) usan branding de la clínica (`email-clinic-header`) y los internos (contact, cancelación) no forman parte de este formato.
+
+---
+
 ## Ejecutar todos los tests de email
 
 ```bash
 php artisan test --filter=EmailDispatchTest
 ```
 
-Salida esperada: **24 passed** (37 assertions)
+Salida esperada: **24 passed** (46 assertions)
 
 ---
 
@@ -68,7 +97,10 @@ Verifican que cada Mailable renderiza sin errores y contiene el contenido espera
 | Archivo | Propósito |
 |---------|-----------|
 | `tests/Feature/Mail/EmailDispatchTest.php` | Suite completa de tests |
-| `resources/views/vendor/mail/html/header.blade.php` | Header custom con logo Irison |
+| `resources/views/vendor/mail/html/header.blade.php` | Header custom con logo Irison (layout Markdown) |
+| `resources/views/emails/layouts/irison.blade.php` | Layout unificado de emails Irison → subscriptores |
+| `resources/views/emails/partials/email-footer.blade.php` | Pie legal genérico |
+| `resources/views/emails/partials/email-cta.blade.php` | Botón CTA estándar azul |
 | `public/logo.svg` | Logo de Irison para emails |
 
 ---
