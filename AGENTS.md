@@ -175,6 +175,8 @@ Events: `App\Events\AppointmentCreated`, `AppointmentUpdated`, `AppointmentCance
 
 Key model requirements: `Patient` uses `Notifiable` trait; `Clinic` has `getAdmins()` method.
 
+> Recordatorios de citas: los jobs `SendAppointmentReminder24hJob` y `SendAppointmentReminder2hJob` se ejecutan con una **frecuencia variable** definida por `REMINDER_INTERVAL_MINUTES` (default 15 min, `config/reminders.php`). Detalle: `docs/backend/reminder-scheduling.md`.
+
 ### Catálogo completo de notificaciones
 
 #### A Pacientes (email)

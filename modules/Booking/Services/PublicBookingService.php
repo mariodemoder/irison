@@ -42,7 +42,7 @@ class PublicBookingService
     public function createAppointment(
         string $slug,
         int $serviceId,
-        int $professionalId,
+        ?int $professionalId,
         string $date,
         string $startTime,
         array $patientData
@@ -63,13 +63,15 @@ class PublicBookingService
 
         $duration = $service->duration_minutes;
 
-        $bp = BookingProfessional::where('clinic_id', $clinicId)
-            ->where('user_id', $professionalId)
-            ->where('allow_online_booking', true)
-            ->first();
+        if ($professionalId !== null) {
+            $bp = BookingProfessional::where('clinic_id', $clinicId)
+                ->where('user_id', $professionalId)
+                ->where('allow_online_booking', true)
+                ->first();
 
-        if (! $bp) {
-            throw new \DomainException('El profesional no está disponible para reserva online.');
+            if (! $bp) {
+                throw new \DomainException('El profesional no está disponible para reserva online.');
+            }
         }
 
         $startDateTime = Carbon::parse($date . ' ' . $startTime);
@@ -85,15 +87,25 @@ class PublicBookingService
         }
 
         $slots = $this->availabilityEngine->getAvailableSlots($clinicId, $serviceId, $professionalId, $date);
-        $slotExists = collect($slots)->first(fn ($s) => $s['start'] === $startTime && (int) $s['professional_id'] === $professionalId);
+
+        if ($professionalId !== null) {
+            $slotExists = collect($slots)->first(fn ($s) => $s['start'] === $startTime && (int) $s['professional_id'] === $professionalId);
+        } else {
+            // Any-professional mode: slot is valid if it exists in the aggregated list at the given time.
+            $slotExists = collect($slots)->first(fn ($s) => $s['start'] === $startTime);
+        }
 
         if (! $slotExists) {
             throw new \DomainException('La franja horaria seleccionada ya no está disponible.');
         }
 
         return DB::transaction(function () use ($clinicId, $professionalId, $startDateTime, $endDateTime, $patientData, $service) {
+            // Overlap check: for specific professional, also block against null-professional
+            // appointments (unassigned bookings occupy the slot for all professionals).
             $existing = Appointment::where('clinic_id', $clinicId)
-                ->where('professional_id', $professionalId)
+                ->where(fn ($q) => $professionalId !== null
+                    ? $q->where('professional_id', $professionalId)->orWhereNull('professional_id')
+                    : $q->whereNull('professional_id'))
                 ->where('start_time', '<', $endDateTime)
                 ->where('end_time', '>', $startDateTime)
                 ->whereNotIn('status', ['canceled', 'cancelled'])

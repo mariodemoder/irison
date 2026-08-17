@@ -214,7 +214,7 @@ class AvailabilityEngine implements AvailabilityCheckerInterface
     private function getExistingAppointments(int $clinicId, int $userId, string $date): Collection
     {
         return Appointment::where('clinic_id', $clinicId)
-            ->where('professional_id', $userId)
+            ->where(fn ($q) => $q->where('professional_id', $userId)->orWhereNull('professional_id'))
             ->whereDate('start_time', $date)
             ->whereNotIn('status', ['canceled', 'cancelled'])
             ->get(['start_time', 'end_time']);

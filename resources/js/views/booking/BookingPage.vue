@@ -100,7 +100,7 @@ async function submitBooking() {
     const res = await api.post(`${baseUrl}`, {
       slug,
       service_id: selectedService.value.id,
-      professional_id: selectedSlot.value.professional_id,
+      professional_id: selectedProfessional.value?.id ?? null,
       date: selectedDate.value,
       start_time: selectedSlot.value.start,
       patient: patientData.value,

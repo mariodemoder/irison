@@ -438,4 +438,104 @@ class PublicBookingFlowTest extends TestCase
             'last_name' => 'Lopez',
         ]);
     }
+
+    public function test_creates_appointment_without_professional_when_any_selected(): void
+    {
+        $futureDate = Carbon::now()->addDay()->toDateString();
+
+        $response = $this->postJson('/api/booking', [
+            'slug' => $this->slug,
+            'service_id' => $this->service->id,
+            'date' => $futureDate,
+            'start_time' => '09:00',
+            'patient' => [
+                'first_name' => 'Maria',
+                'last_name' => 'Garcia',
+                'email' => 'maria@example.com',
+            ],
+        ]);
+
+        $response->assertStatus(201);
+        $response->assertJsonPath('appointment.patient.email', 'maria@example.com');
+        $response->assertJsonPath('appointment.professional', null);
+        $response->assertJsonStructure(['confirmation_token']);
+
+        $this->assertDatabaseHas('appointments', [
+            'booking_source' => 'online',
+            'professional_id' => null,
+        ]);
+    }
+
+    public function test_rejects_overlapping_any_professional_booking(): void
+    {
+        $futureDate = Carbon::now()->addDay();
+
+        $patient = Patient::create(['clinic_id' => $this->clinic->id, 'first_name' => 'Existing', 'last_name' => 'Patient']);
+
+        // Create an unassigned appointment (any-professional booking)
+        \App\Models\Appointment::create([
+            'clinic_id' => $this->clinic->id,
+            'patient_id' => $patient->id,
+            'professional_id' => null,
+            'start_time' => $futureDate->copy()->setTime(9, 0),
+            'end_time' => $futureDate->copy()->setTime(10, 0),
+            'status' => 'scheduled',
+            'payment_status' => 'pending',
+            'price' => 40,
+            'payment_type' => 'single',
+        ]);
+
+        // Attempt to book the same slot as any-professional
+        $response = $this->postJson('/api/booking', [
+            'slug' => $this->slug,
+            'service_id' => $this->service->id,
+            'date' => $futureDate->toDateString(),
+            'start_time' => '09:00',
+            'patient' => [
+                'first_name' => 'Otro',
+                'last_name' => 'Paciente',
+                'email' => 'otro@example.com',
+            ],
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonPath('message', 'La franja horaria seleccionada ya no está disponible.');
+    }
+
+    public function test_professional_booking_blocked_by_unassigned_appointment(): void
+    {
+        $futureDate = Carbon::now()->addDay();
+
+        $patient = Patient::create(['clinic_id' => $this->clinic->id, 'first_name' => 'Existing', 'last_name' => 'Patient']);
+
+        // Create an unassigned appointment
+        \App\Models\Appointment::create([
+            'clinic_id' => $this->clinic->id,
+            'patient_id' => $patient->id,
+            'professional_id' => null,
+            'start_time' => $futureDate->copy()->setTime(9, 0),
+            'end_time' => $futureDate->copy()->setTime(10, 0),
+            'status' => 'scheduled',
+            'payment_status' => 'pending',
+            'price' => 40,
+            'payment_type' => 'single',
+        ]);
+
+        // Attempt to book the same slot with a specific professional
+        $response = $this->postJson('/api/booking', [
+            'slug' => $this->slug,
+            'service_id' => $this->service->id,
+            'professional_id' => $this->user->id,
+            'date' => $futureDate->toDateString(),
+            'start_time' => '09:00',
+            'patient' => [
+                'first_name' => 'Otro',
+                'last_name' => 'Paciente',
+                'email' => 'otro@example.com',
+            ],
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonPath('message', 'La franja horaria seleccionada ya no está disponible.');
+    }
 }

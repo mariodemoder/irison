@@ -39,7 +39,7 @@ function formatDateTime(dateTimeStr) {
       </div>
       <div class="detail-row">
         <span class="detail-label">Profesional</span>
-        <span class="detail-value">{{ appointment.appointment.professional?.name || '—' }}</span>
+        <span class="detail-value">{{ appointment.appointment.professional?.name || 'Profesional por asignar' }}</span>
       </div>
       <div class="detail-row">
         <span class="detail-label">Fecha y hora</span>

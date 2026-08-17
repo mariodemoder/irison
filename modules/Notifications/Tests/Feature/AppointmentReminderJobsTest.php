@@ -7,8 +7,8 @@ namespace Modules\Notifications\Tests\Feature;
 use App\Models\Appointment;
 use App\Models\Clinic;
 use App\Models\Patient;
-use App\Models\Reminder;
 use Carbon\Carbon;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Modules\Notifications\Application\Jobs\AppointmentReminderQueryService;
@@ -141,5 +141,29 @@ class AppointmentReminderJobsTest extends TestCase
         ]);
 
         Carbon::setTestNow();
+    }
+
+    public function test_reminder_jobs_are_scheduled_with_configurable_interval(): void
+    {
+        // El callback withSchedule() se registra al arrancar la consola (Artisan::starting).
+        $this->artisan('schedule:list')->assertExitCode(0);
+
+        $interval = (int) config('reminders.interval_minutes', 15);
+        $expectedCron = sprintf('*/%d * * * *', max(1, $interval));
+
+        $events = collect(app(Schedule::class)->events());
+
+        foreach (['appointments:reminders-24h', 'appointments:reminders-2h'] as $name) {
+            $event = $events->first(fn ($e) => $e->description === $name);
+
+            $this->assertNotNull($event, "La tarea programada {$name} no existe en el scheduler.");
+            $this->assertSame($expectedCron, $event->expression, "Cadencia inesperada para {$name}.");
+            $this->assertTrue($event->withoutOverlapping, "La tarea {$name} debe evitar solapamientos.");
+        }
+    }
+
+    public function test_reminder_interval_defaults_to_fifteen_minutes(): void
+    {
+        $this->assertSame(15, (int) config('reminders.interval_minutes'));
     }
 }

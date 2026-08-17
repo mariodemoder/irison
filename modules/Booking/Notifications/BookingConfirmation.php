@@ -30,7 +30,7 @@ class BookingConfirmation extends Notification
             ->subject('Confirmación de cita — ' . ($this->appointment->clinic->name ?? 'Irison'))
             ->greeting('Hola ' . $this->appointment->patient->first_name . ',')
             ->line('Tu cita ha sido confirmada.')
-            ->line('**Profesional:** ' . ($this->appointment->professional->name ?? '—'))
+            ->line('**Profesional:** ' . ($this->appointment->professional->name ?? 'Profesional por asignar'))
             ->line('**Fecha:** ' . $this->appointment->start_time->format('d/m/Y'))
             ->line('**Hora:** ' . $this->appointment->start_time->format('H:i') . ' - ' . $this->appointment->end_time->format('H:i'))
             ->line('**Clínica:** ' . ($this->appointment->clinic->name ?? '—'))

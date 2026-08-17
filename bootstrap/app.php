@@ -74,16 +74,21 @@ return Application::configure(basePath: dirname(__DIR__))
         });
     })
     ->withSchedule(function (Schedule $schedule): void {
+        // Cadencia (minutos) de los jobs de recordatorios de citas.
+        // Se ajusta via REMINDER_INTERVAL_MINUTES (config/reminders.php).
+        $reminderInterval = max(1, (int) config('reminders.interval_minutes', 15));
+        $reminderCron = sprintf('*/%d * * * *', $reminderInterval);
+
         $schedule
             ->job(new SendAppointmentReminder24hJob())
             ->name('appointments:reminders-24h')
-            ->everyMinute()
+            ->cron($reminderCron)
             ->withoutOverlapping();
 
         $schedule
             ->job(new SendAppointmentReminder2hJob())
             ->name('appointments:reminders-2h')
-            ->everyMinute()
+            ->cron($reminderCron)
             ->withoutOverlapping();
 
         $schedule

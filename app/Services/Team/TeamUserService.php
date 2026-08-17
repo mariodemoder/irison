@@ -6,6 +6,7 @@ use App\Models\Clinic;
 use App\Models\Profile;
 use App\Models\User;
 use Modules\Booking\Models\BookingProfessional;
+use Modules\Booking\Models\ProfessionalSchedule;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
@@ -248,6 +249,50 @@ class TeamUserService
                 }
             }
         }
+
+        // Sync enabled schedules to ProfessionalSchedule so the booking
+        // engine reads them directly (no "Usando horario de Equipo" fallback).
+        $this->syncToProfessionalSchedule($user);
+    }
+
+    /**
+     * Mirror enabled UserSchedule entries to ProfessionalSchedule for
+     * users who are booking professionals. This keeps the booking
+     * engine's primary path (ProfessionalSchedule) in sync with
+     * the Team form's UserSchedule.
+     */
+    private function syncToProfessionalSchedule(User $user): void
+    {
+        $bp = BookingProfessional::where('user_id', $user->id)
+            ->where('allow_online_booking', true)
+            ->first();
+
+        if (! $bp) {
+            return;
+        }
+
+        // Clear existing booking-specific schedules.
+        ProfessionalSchedule::where('professional_id', $bp->id)->delete();
+
+        // Copy enabled UserSchedule entries (day_of_week 0-6) to
+        // ProfessionalSchedule (day_of_week 1-7 ISO).
+        $user->schedules()
+            ->where('enabled', true)
+            ->get()
+            ->each(function ($us) use ($bp) {
+                // UserSchedule: Sun=0, Mon=1…Sat=6
+                // ProfessionalSchedule: Mon=1…Sun=7 ISO
+                $isoDow = $us->day_of_week === 0 ? 7 : $us->day_of_week;
+
+                if ($us->start_time && $us->end_time) {
+                    ProfessionalSchedule::create([
+                        'professional_id' => $bp->id,
+                        'day_of_week' => $isoDow,
+                        'start_time' => $us->start_time,
+                        'end_time' => $us->end_time,
+                    ]);
+                }
+            });
     }
 
     private function syncScheduleExceptions(User $user, array $exceptions): void

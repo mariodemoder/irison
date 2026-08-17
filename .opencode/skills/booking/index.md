@@ -68,9 +68,11 @@ Misma lógica para excepciones/bloqueos:
 | Método | Parámetros | Retorna | DomainException |
 |---|---|---|---|
 | `resolveBookingPage(slug)` | `string $slug` | `BookingPage` | "Página de reserva no encontrada o desactivada." |
-| `createAppointment(slug, serviceId, professionalId, date, startTime, patientData)` | `string, int, int, string, string, array` | `Appointment` | 6 posibles: página no encontrada, servicio no disponible, profesional no disponible, fecha pasada, horizonte excedido, slot no disponible |
+| `createAppointment(slug, serviceId, ?professionalId, date, startTime, patientData)` | `string, int, ?int, string, string, array` | `Appointment` | 6 posibles: página no encontrada, servicio no disponible, profesional no disponible, fecha pasada, horizonte excedido, slot no disponible |
 | `cancelByToken(token)` | `string $token` | `Appointment` | "Token de cancelación no válido.", "No se puede cancelar una cita que ya ha pasado." |
 | `findByToken(token)` | `string $token` | `Appointment` | "Cita no encontrada." |
+
+> **Any-professional mode:** when `professionalId` is `null`, the service validates the slot against aggregated clinic-wide schedules (all professionals with `allow_online_booking=true`), creates the appointment with `professional_id = NULL`, and blocks the slot for all professionals. The agenda displays it under the clinic owner/admin name.
 
 ### `AvailabilityEngine` (implementa `AvailabilityCheckerInterface`)
 
@@ -115,7 +117,11 @@ Misma lógica para excepciones/bloqueos:
 - Notificaciones se envían vía `DB::afterCommit` (fallos se loggean, no se lanzan)
 - Slots se generan con granularidad de **15 minutos**
 - Solapamiento: cita nueva NO debe solaparse con citas existentes cuyo status NO sea `canceled`/`cancelled`
+- **"Cualquier profesional"**: cita con `professional_id = NULL` bloquea el hueco para **todos** los profesionales en la disponibilidad pública (incluidas reservas con profesional concreto). El admin asigna después.
+- **Overlap check con profesional**: cuando se crea una cita con profesional concreto, también se comprueba contra citas sin profesional (NULL) para respetar el bloqueo global.
 - `confirmation_token` es UUID generado con `Str::uuid()`
+- **Auto-bootstrap (plan basic)**: `RegisterController` crea automáticamente BookingProfessional + BookingPage + UserSchedule/ProfessionalSchedule al registrar una clínica. El owner aparece en booking público inmediatamente.
+- **Sync Team→Booking**: `TeamUserService::syncSchedules()` sincroniza `UserSchedule` → `ProfessionalSchedule` cuando `allow_online_booking = true`. Evita el badge "Usando horario de Equipo".
 
 ## Tests
 
@@ -124,14 +130,16 @@ Los tests viven DENTRO del módulo para respetar el bounded context.
 ```
 modules/Booking/tests/
 ├── Feature/
-│   ├── PublicBookingFlowTest.php        — Flujo público HTTP (15 tests)
-│   ├── BookingSettingsAdminTest.php     — CRUD admin HTTP (11 tests)
-│   └── AvailabilityEngineTest.php       — Motor de disponibilidad (9 tests)
+│   ├── PublicBookingFlowTest.php        — Flujo público HTTP (22 tests)
+│   ├── BookingSettingsAdminTest.php     — CRUD admin HTTP (15 tests)
+│   ├── AvailabilityEngineTest.php       — Motor de disponibilidad (14 tests)
+│   ├── BookingBootstrapTest.php         — Auto-bootstrap al registro (4 tests)
+│   └── TeamScheduleSyncTest.php         — Sync Team→Booking schedules (3 tests)
 └── Unit/
-    └── PublicBookingServiceTest.php     — Servicio de dominio (12 tests)
+    └── PublicBookingServiceTest.php     — Servicio de dominio (15 tests)
 ```
 
-**Total: ~51 tests**
+**Total: 73 tests**
 
 ### Ejecución
 
@@ -156,10 +164,12 @@ php artisan test modules/Booking/tests/Unit/PublicBookingServiceTest.php
 
 | Archivo | Tests | Cubre |
 |---|---|---|
-| `PublicBookingFlowTest` | 15 | Happy path, 404, disponibilidad, slots, crear cita, solapamiento, cancelar (token válido e inválido), página inactiva, servicio inactivo, profesional sin online, fecha pasada, horizonte, confirm token, paciente existente |
-| `BookingSettingsAdminTest` | 11 | Settings default, create/update settings, CRUD servicios, CRUD profesionales, CRUD horarios, auth requerida, update/delete profesional, update/delete horario, CRUD excepciones, listar appointments, slug-check |
-| `AvailabilityEngineTest` | 13 | Slots disponibles, booked exclusion, blocked dates, sin horario, max horizon, partial blocked range, multi-profesional, canceled ignored, granularidad 15min, fallback user_schedule, preferencia booking sobre user, fallback user_schedule_exception |
-| `PublicBookingServiceTest` | 12 | Resolve page, page not found, page inactive, create patient, existing patient, inactive service, professional no online, past date, beyond horizon, cancel past, find by token, invalid token |
+| `BookingBootstrapTest` | 4 | Auto-create BookingProfessional, BookingPage, default schedules (UserSchedule + ProfessionalSchedule), slug collision handling |
+| `TeamScheduleSyncTest` | 3 | syncSchedules creates ProfessionalSchedule for booking users, skips for non-booking users, clears old schedules on update |
+| `PublicBookingFlowTest` | 22 | Happy path, 404, disponibilidad, slots, crear cita, solapamiento, cancelar (token válido e inválido), página inactiva, servicio inactivo, profesional sin online, fecha pasada, horizonte, confirm token, paciente existente, **cita sin profesional (any), solapamiento any, bloqueo por cita sin asignar, logo por plan** |
+| `BookingSettingsAdminTest` | 15 | Settings default, create/update settings, CRUD servicios, CRUD profesionales, CRUD horarios, auth requerida, update/delete profesional, update/delete horario, CRUD excepciones, listar appointments, slug-check, schedule index, bulk update |
+| `AvailabilityEngineTest` | 14 | Slots disponibles, booked exclusion, blocked dates, sin horario, max horizon, partial blocked range, multi-profesional, canceled ignored, granularidad 15min, fallback user_schedule, preferencia booking sobre user, fallback user_schedule_exception, **NULL professional blocks all professionals** |
+| `PublicBookingServiceTest` | 15 | Resolve page, page not found, page inactive, create patient, existing patient, inactive service, professional no online, past date, beyond horizon, cancel past, find by token, invalid token, **create without professional, slot validation with any-professional, past date with null professional** |
 
 ## Errores comunes
 

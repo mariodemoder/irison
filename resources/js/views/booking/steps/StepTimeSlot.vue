@@ -53,6 +53,17 @@ function formatDateLabel(dateStr) {
 }
 
 function groupByProfessional(slots) {
+  if (!props.professionalId) {
+    // Any-professional mode: flat deduplicated list by start time.
+    const seen = new Map()
+    for (const slot of slots) {
+      if (!seen.has(slot.start)) {
+        seen.set(slot.start, slot)
+      }
+    }
+    return [{ professional_id: null, professional_name: null, slots: Array.from(seen.values()) }]
+  }
+
   const groups = {}
   for (const slot of slots) {
     if (!groups[slot.professional_id]) {

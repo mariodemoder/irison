@@ -15,7 +15,6 @@ tests/
       TeamUserLoginTest.php           Login de profesional creado desde equipo
     Appointments/
       AppointmentAvailabilityTest.php CRUD citas, solapamientos, reprogramación
-      AppointmentReminderJobsTest.php Envío de recordatorios 24h y 2h
     Auth/           (Laravel Breeze — tests estándar)
     Authorization/
       PolicyAuthorizationTest.php     Permisos cross-clinic, pagos reembolsados
@@ -40,11 +39,14 @@ tests/
       PaymentStoreTest.php            Pago con bono
     Profile/
       ProfileTest.php                 Perfil usuario (Breeze)
-    Reminders/
-      ReminderNotificationsTest.php   Listado, detalle, reenvío recordatorios
     Trials/
       TrialLifecycleTest.php          Día 1 → warning → read-only → churned
     ExampleTest.php                   Placeholder
+
+modules/Notifications/Tests/Feature/   ← Tests del módulo de notificaciones
+  AppointmentReminderJobsTest.php     Envío recordatorios 24h/2h + cadencia configurable
+  EmailLogTest.php                    Log de emails, reenvío recordatorios
+  ReminderNotificationsTest.php       Listado, detalle, reenvío recordatorios
 
   E2E/                          ← End-to-End (vacío — pendiente de Dusk/Playwright)
 ```

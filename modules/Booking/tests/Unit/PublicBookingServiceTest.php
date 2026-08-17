@@ -311,4 +311,70 @@ class PublicBookingServiceTest extends TestCase
 
         $this->bookingService->findByToken('invalid-token');
     }
+
+    public function test_creates_appointment_without_professional(): void
+    {
+        $futureDate = Carbon::now()->addDay()->toDateString();
+
+        $appointment = $this->bookingService->createAppointment(
+            'test-clinic',
+            $this->service->id,
+            null, // any-professional
+            $futureDate,
+            '09:00',
+            [
+                'first_name' => 'Any',
+                'last_name' => 'Patient',
+                'email' => 'any@example.com',
+            ]
+        );
+
+        $this->assertNull($appointment->professional_id);
+        $this->assertDatabaseHas('appointments', [
+            'id' => $appointment->id,
+            'professional_id' => null,
+            'booking_source' => 'online',
+        ]);
+    }
+
+    public function test_any_professional_slot_validates_against_aggregated_slots(): void
+    {
+        $futureDate = Carbon::now()->addDay()->toDateString();
+
+        // Slot 14:00 is outside the schedule (09:00-17:00 for 60min = last start at 16:00)
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('La franja horaria seleccionada ya no está disponible.');
+
+        $this->bookingService->createAppointment(
+            'test-clinic',
+            $this->service->id,
+            null, // any-professional
+            $futureDate,
+            '17:00',
+            [
+                'first_name' => 'Any',
+                'last_name' => 'Patient',
+                'email' => 'any@example.com',
+            ]
+        );
+    }
+
+    public function test_throws_on_past_date_with_null_professional(): void
+    {
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('No se puede reservar en una fecha pasada.');
+
+        $this->bookingService->createAppointment(
+            'test-clinic',
+            $this->service->id,
+            null,
+            Carbon::now()->subDay()->toDateString(),
+            '09:00',
+            [
+                'first_name' => 'Test',
+                'last_name' => 'User',
+                'email' => 'test-past@example.com',
+            ]
+        );
+    }
 }

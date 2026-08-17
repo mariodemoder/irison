@@ -474,4 +474,59 @@ class AvailabilityEngineTest extends TestCase
         $dateMap = collect($dates)->keyBy('date');
         $this->assertFalse($dateMap[$futureDate->toDateString()]['has_availability']);
     }
+
+    public function test_null_professional_appointment_blocks_all_professionals(): void
+    {
+        $futureDate = Carbon::now()->addDay();
+        $start = $futureDate->copy()->setTime(10, 0);
+        $end = $start->copy()->addHour();
+
+        $patient = Patient::create(['clinic_id' => $this->clinic->id, 'first_name' => 'Test', 'last_name' => 'Patient']);
+
+        // Create an unassigned appointment (professional_id = null)
+        Appointment::create([
+            'clinic_id' => $this->clinic->id,
+            'patient_id' => $patient->id,
+            'professional_id' => null,
+            'start_time' => $start,
+            'end_time' => $end,
+            'status' => 'scheduled',
+            'payment_status' => 'pending',
+            'price' => 40,
+            'payment_type' => 'single',
+        ]);
+
+        $engine = app(AvailabilityEngine::class);
+
+        // Slot should be removed for professional 1
+        $slots1 = $engine->getAvailableSlots(
+            $this->clinic->id,
+            $this->service->id,
+            $this->user->id,
+            $futureDate->toDateString()
+        );
+        $this->assertNotContains('10:00', array_column($slots1, 'start'));
+
+        // Slot should be removed for professional 2
+        $slots2 = $engine->getAvailableSlots(
+            $this->clinic->id,
+            $this->service->id,
+            $this->user2->id,
+            $futureDate->toDateString()
+        );
+        $this->assertNotContains('10:00', array_column($slots2, 'start'));
+
+        // Slot should be removed from aggregated (null professional) view
+        $slotsAll = $engine->getAvailableSlots(
+            $this->clinic->id,
+            $this->service->id,
+            null,
+            $futureDate->toDateString()
+        );
+        $this->assertNotContains('10:00', array_column($slotsAll, 'start'));
+
+        // Slots around 10:00 should still be available
+        $this->assertContains('09:00', array_column($slots1, 'start'));
+        $this->assertContains('11:00', array_column($slots1, 'start'));
+    }
 }

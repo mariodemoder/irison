@@ -21,7 +21,7 @@ const emit = defineEmits(['select'])
         <span class="professional-card__initial">?</span>
         <div>
           <span class="professional-card__name">Cualquier profesional disponible</span>
-          <span class="professional-card__meta">El sistema asignará el primero disponible</span>
+          <span class="professional-card__meta">La clínica asignará tu profesional</span>
         </div>
       </button>
 

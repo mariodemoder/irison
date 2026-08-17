@@ -20,7 +20,7 @@ class PublicBookingController extends Controller
         $validated = $request->validate([
             'slug' => 'required|string',
             'service_id' => 'required|integer',
-            'professional_id' => 'required|integer',
+            'professional_id' => 'nullable|integer',
             'date' => 'required|date_format:Y-m-d',
             'start_time' => 'required|date_format:H:i',
             'patient.first_name' => 'required|string|max:255',
@@ -34,7 +34,7 @@ class PublicBookingController extends Controller
             $appointment = $this->bookingService->createAppointment(
                 $validated['slug'],
                 (int) $validated['service_id'],
-                (int) $validated['professional_id'],
+                isset($validated['professional_id']) ? (int) $validated['professional_id'] : null,
                 $validated['date'],
                 $validated['start_time'],
                 $validated['patient']
