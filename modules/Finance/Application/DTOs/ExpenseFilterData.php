@@ -9,6 +9,7 @@ class ExpenseFilterData
     public function __construct(
         public readonly ?string $q = null,
         public readonly ?int $categoryId = null,
+        public readonly ?int $providerId = null,
         public readonly ?string $paymentMethod = null,
         public readonly ?string $fromDate = null,
         public readonly ?string $toDate = null,
@@ -20,6 +21,7 @@ class ExpenseFilterData
         return new self(
             q: $validated['q'] ?? null,
             categoryId: isset($validated['category_id']) ? (int) $validated['category_id'] : null,
+            providerId: isset($validated['provider_id']) ? (int) $validated['provider_id'] : null,
             paymentMethod: $validated['payment_method'] ?? null,
             fromDate: $validated['from_date'] ?? null,
             toDate: $validated['to_date'] ?? null,
@@ -32,6 +34,7 @@ class ExpenseFilterData
         return array_filter([
             'q' => $this->q,
             'category_id' => $this->categoryId,
+            'provider_id' => $this->providerId,
             'payment_method' => $this->paymentMethod,
             'from_date' => $this->fromDate,
             'to_date' => $this->toDate,

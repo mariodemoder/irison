@@ -29,7 +29,10 @@ class BuildBenefitsReportQuery
         $profit = $this->marginCalculator->margin($revenue, $cost);
         $marginPercentage = $this->marginCalculator->marginPercentage($revenue, $cost);
 
-        [$previousTotals, $variation] = $this->computeComparison($clinicId, $from, $to, $revenue, $expenses, $profit, $marginPercentage);
+        $paidOperationsCount = $this->dataProvider->paidOperationsCount($clinicId, $from, $to);
+        $revenueByPaymentMethod = $this->dataProvider->revenueByPaymentMethod($clinicId, $from, $to);
+
+        [$previousTotals, $variation] = $this->computeComparison($clinicId, $from, $to, $revenue, $expenses, $profit, $marginPercentage, $paidOperationsCount);
 
         return new BenefitsReportData(
             revenue: $revenue,
@@ -43,6 +46,8 @@ class BuildBenefitsReportQuery
             byCategory: $this->dataProvider->expensesByCategory($clinicId, $from, $to),
             previousTotals: $previousTotals,
             variation: $variation,
+            paidOperationsCount: $paidOperationsCount,
+            revenueByPaymentMethod: $revenueByPaymentMethod,
         );
     }
 
@@ -57,6 +62,7 @@ class BuildBenefitsReportQuery
         float $expenses,
         float $profit,
         ?float $marginPercentage,
+        int $paidOperationsCount,
     ): array {
         if (! $from || ! $to) {
             return [null, null];
@@ -72,6 +78,7 @@ class BuildBenefitsReportQuery
         $prevCost = round($prevExpenses + $prevLaborCost, 2);
         $prevProfit = $this->marginCalculator->margin($prevRevenue, $prevCost);
         $prevMarginPercentage = $this->marginCalculator->marginPercentage($prevRevenue, $prevCost);
+        $prevPaidOperationsCount = $this->dataProvider->paidOperationsCount($clinicId, $prevFrom, $prevTo);
 
         return [
             [
@@ -81,6 +88,7 @@ class BuildBenefitsReportQuery
                 'cost' => $prevCost,
                 'profit' => $prevProfit,
                 'margin_percentage' => $prevMarginPercentage,
+                'paid_operations_count' => $prevPaidOperationsCount,
             ],
             [
                 'revenue' => $this->percentageChange($revenue, $prevRevenue),
@@ -89,6 +97,7 @@ class BuildBenefitsReportQuery
                 'margin_percentage' => $prevMarginPercentage !== null && $marginPercentage !== null
                     ? round($marginPercentage - $prevMarginPercentage, 2)
                     : null,
+                'paid_operations_count' => $this->percentageChange($paidOperationsCount, $prevPaidOperationsCount),
             ],
         ];
     }

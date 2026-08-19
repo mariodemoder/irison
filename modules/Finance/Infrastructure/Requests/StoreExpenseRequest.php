@@ -19,6 +19,7 @@ class StoreExpenseRequest extends FormRequest
         return [
             'concept' => ['required', 'string', 'max:255'],
             'category_id' => ['nullable', 'integer', 'exists:expense_categories,id'],
+            'provider_id' => ['nullable', 'integer', 'exists:providers,id'],
             'supplier' => ['nullable', 'string', 'max:255'],
             'amount' => ['required', 'numeric', 'min:0'],
             'tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],

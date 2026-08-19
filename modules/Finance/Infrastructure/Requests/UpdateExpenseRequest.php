@@ -19,6 +19,7 @@ class UpdateExpenseRequest extends FormRequest
         return [
             'concept' => ['sometimes', 'required', 'string', 'max:255'],
             'category_id' => ['sometimes', 'nullable', 'integer', 'exists:expense_categories,id'],
+            'provider_id' => ['sometimes', 'nullable', 'integer', 'exists:providers,id'],
             'supplier' => ['sometimes', 'nullable', 'string', 'max:255'],
             'amount' => ['sometimes', 'required', 'numeric', 'min:0'],
             'tax_rate' => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:100'],

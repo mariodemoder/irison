@@ -26,7 +26,12 @@
       </li>
     </ul>
 
-    <div v-if="showCreateModal" class="modal-backdrop" @click.self="showCreateModal = false">
+    <div
+      v-if="showCreateModal"
+      class="modal-backdrop"
+      @mousedown.left="onCreateBackdropMouseDown"
+      @mouseup.left="onCreateBackdropMouseUp"
+    >
       <div class="modal-content compact-modal" role="dialog" aria-modal="true" aria-label="Nuevo consentimiento">
         <h3>Nuevo consentimiento</h3>
         <label class="field">
@@ -43,7 +48,12 @@
       </div>
     </div>
 
-    <div v-if="showSignModal" class="modal-backdrop" @click.self="showSignModal = false">
+    <div
+      v-if="showSignModal"
+      class="modal-backdrop"
+      @mousedown.left="onSignBackdropMouseDown"
+      @mouseup.left="onSignBackdropMouseUp"
+    >
       <div class="modal-content compact-modal" role="dialog" aria-modal="true" aria-label="Firmar consentimiento">
         <h3>Firmar consentimiento</h3>
         <p style="margin-bottom:12px;color:#6b7280;font-size:14px">
@@ -57,6 +67,7 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
+import { useModalClose } from '../../composables/useModalClose'
 import { useToast } from 'vue-toastification'
 import api from '../../services/api'
 import { isProfessional } from '../../shared/meCache'
@@ -77,6 +88,15 @@ const showSignModal = ref(false)
 const creatingConsent = ref(false)
 const signingConsent = ref(null)
 const signPad = ref(null)
+
+const {
+  onBackdropMouseDown: onCreateBackdropMouseDown,
+  onBackdropMouseUp: onCreateBackdropMouseUp,
+} = useModalClose(() => { showCreateModal.value = false }, showCreateModal)
+const {
+  onBackdropMouseDown: onSignBackdropMouseDown,
+  onBackdropMouseUp: onSignBackdropMouseUp,
+} = useModalClose(() => { showSignModal.value = false }, showSignModal)
 
 const createForm = ref({ template_id: '' })
 

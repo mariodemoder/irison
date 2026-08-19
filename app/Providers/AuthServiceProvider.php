@@ -43,9 +43,11 @@ use Modules\Bonus\Policies\BonusTypePolicy;
 use Modules\Finance\Infrastructure\Persistence\ExpenseEloquentModel;
 use Modules\Finance\Infrastructure\Persistence\ExpenseCategoryEloquentModel;
 use Modules\Finance\Infrastructure\Persistence\ProfessionalRateEloquentModel;
+use Modules\Finance\Infrastructure\Persistence\ProviderEloquentModel;
 use Modules\Finance\Infrastructure\Policies\ExpensePolicy;
 use Modules\Finance\Infrastructure\Policies\ExpenseCategoryPolicy;
 use Modules\Finance\Infrastructure\Policies\ProfessionalRatePolicy;
+use Modules\Finance\Infrastructure\Policies\ProviderPolicy;
 
 use Modules\Activity\Infrastructure\Persistence\ActivityLogQueryModel;
 use Modules\Activity\Infrastructure\Policies\ActivityPolicy;
@@ -70,6 +72,7 @@ class AuthServiceProvider extends ServiceProvider
         ExpenseEloquentModel::class => ExpensePolicy::class,
         ExpenseCategoryEloquentModel::class => ExpenseCategoryPolicy::class,
         ProfessionalRateEloquentModel::class => ProfessionalRatePolicy::class,
+        ProviderEloquentModel::class => ProviderPolicy::class,
         ActivityLogQueryModel::class => ActivityPolicy::class,
     ];
 

@@ -366,7 +366,12 @@
                     <div>No tienes suscripción activa.</div>
                   </div>
 
-                  <div v-if="showCancelSubscriptionModal" class="confirm-modal-backdrop" @click.self="closeCancelSubscriptionModal">
+                  <div
+                    v-if="showCancelSubscriptionModal"
+                    class="confirm-modal-backdrop"
+                    @mousedown.left="onCancelSubBackdropMouseDown"
+                    @mouseup.left="onCancelSubBackdropMouseUp"
+                  >
                     <div class="confirm-modal" role="dialog" aria-modal="true" aria-label="Confirmar cancelación de suscripción">
                       <h3>Cancelar suscripción</h3>
                       <p>Esta acción cancelará tu suscripción activa. ¿Deseas continuar?</p>
@@ -379,7 +384,12 @@
                     </div>
                   </div>
 
-                  <div v-if="showUpgradeDetail && detailPayment" class="confirm-modal-backdrop" @click.self="closeUpgradeDetail">
+                  <div
+                    v-if="showUpgradeDetail && detailPayment"
+                    class="confirm-modal-backdrop"
+                    @mousedown.left="onUpgradeDetailBackdropMouseDown"
+                    @mouseup.left="onUpgradeDetailBackdropMouseUp"
+                  >
                     <div class="confirm-modal" role="dialog" aria-modal="true" aria-label="Detalle del cambio de plan">
                       <h3>Detalle del cambio de plan</h3>
                       <p class="upgrade-detail-subtitle">
@@ -550,6 +560,7 @@ import { meClinic, isPro, isEnterprise } from '../shared/meCache'
 import { getLoadErrorMessage } from '../shared/httpErrors'
 import SaveButton from '../components/SaveButton.vue'
 import ImageUploader from '../components/ImageUploader.vue'
+import { useModalClose } from '../composables/useModalClose'
 
 const router = useRouter()
 const toast = useToast()
@@ -565,6 +576,16 @@ const showCancelSubscriptionModal = ref(false)
 const showUpgradeDetail = ref(false)
 const detailPayment = ref(null)
 const subscriptionRequests = ref([])
+
+const {
+  onBackdropMouseDown: onCancelSubBackdropMouseDown,
+  onBackdropMouseUp: onCancelSubBackdropMouseUp,
+} = useModalClose(closeCancelSubscriptionModal, showCancelSubscriptionModal)
+
+const {
+  onBackdropMouseDown: onUpgradeDetailBackdropMouseDown,
+  onBackdropMouseUp: onUpgradeDetailBackdropMouseUp,
+} = useModalClose(closeUpgradeDetail, showUpgradeDetail)
 
 function scrollToPayments() {
   const el = document.getElementById('sub-pagos')

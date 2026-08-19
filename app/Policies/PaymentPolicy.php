@@ -60,6 +60,27 @@ class PaymentPolicy extends BasePolicy
         return !$this->isLockedByInvoice($model);
     }
 
+    public function refund(User $user, $model): bool
+    {
+        if (! $user->hasFullAccess()) {
+            return false;
+        }
+
+        if (! $model instanceof Payment) {
+            return false;
+        }
+
+        if (! $this->sameClinic($user, $model)) {
+            return false;
+        }
+
+        if ((string) $model->status === 'refunded') {
+            return false;
+        }
+
+        return true;
+    }
+
     private function isLockedByInvoice(Payment $payment): bool
     {
         $payment->loadMissing([

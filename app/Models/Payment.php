@@ -14,11 +14,13 @@ class Payment extends Model
 
     protected $fillable = [
         'clinic_id', 'patient_id', 'professional_id', 'appointment_id',
-        'package_id', 'concept', 'amount', 'method', 'status', 'counter', 'notes', 'paid_at'
+        'package_id', 'concept', 'amount', 'method', 'status', 'counter', 'notes', 'paid_at',
+        'refund_reason', 'refunded_at',
     ];
 
     protected $casts = [
         'paid_at' => 'datetime:Y-m-d H:i:s',
+        'refunded_at' => 'datetime:Y-m-d H:i:s',
         'amount' => 'decimal:2',
     ];
 

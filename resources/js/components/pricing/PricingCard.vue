@@ -15,7 +15,12 @@
   </article>
 
   <Teleport to="body">
-    <div v-if="showFeaturesModal" class="plan-modal-backdrop" @click.self="showFeaturesModal = false">
+    <div
+      v-if="showFeaturesModal"
+      class="plan-modal-backdrop"
+      @mousedown.left="onFeaturesBackdropMouseDown"
+      @mouseup.left="onFeaturesBackdropMouseUp"
+    >
       <div class="plan-modal-content">
         <h3>Funcionalidades del plan Basic</h3>
         <ul class="plan-modal-features">
@@ -29,6 +34,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useModalClose } from '../../composables/useModalClose'
 
 const props = defineProps({
   plan: { type: Object, required: true },
@@ -38,6 +44,11 @@ const props = defineProps({
 })
 
 const showFeaturesModal = ref(false)
+
+const {
+  onBackdropMouseDown: onFeaturesBackdropMouseDown,
+  onBackdropMouseUp: onFeaturesBackdropMouseUp,
+} = useModalClose(() => { showFeaturesModal.value = false }, showFeaturesModal)
 
 const basicFeatures = computed(() => {
   return props.allPlans?.basic?.features || []

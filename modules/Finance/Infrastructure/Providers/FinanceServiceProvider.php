@@ -9,11 +9,13 @@ use Modules\Finance\Domain\Contracts\BenefitsDataProviderInterface;
 use Modules\Finance\Domain\Contracts\ExpenseCategoryRepositoryInterface;
 use Modules\Finance\Domain\Contracts\ExpenseRepositoryInterface;
 use Modules\Finance\Domain\Contracts\ProfessionalRateRepositoryInterface;
+use Modules\Finance\Domain\Contracts\ProviderRepositoryInterface;
 use Modules\Finance\Domain\Services\MarginCalculator;
 use Modules\Finance\Infrastructure\Persistence\BenefitsDataProvider;
 use Modules\Finance\Infrastructure\Persistence\ExpenseCategoryRepository;
 use Modules\Finance\Infrastructure\Persistence\ExpenseRepository;
 use Modules\Finance\Infrastructure\Persistence\ProfessionalRateRepository;
+use Modules\Finance\Infrastructure\Persistence\ProviderRepository;
 
 class FinanceServiceProvider extends ServiceProvider
 {
@@ -23,6 +25,7 @@ class FinanceServiceProvider extends ServiceProvider
         $this->app->bind(ExpenseCategoryRepositoryInterface::class, ExpenseCategoryRepository::class);
         $this->app->bind(ProfessionalRateRepositoryInterface::class, ProfessionalRateRepository::class);
         $this->app->bind(BenefitsDataProviderInterface::class, BenefitsDataProvider::class);
+        $this->app->bind(ProviderRepositoryInterface::class, ProviderRepository::class);
         $this->app->singleton(MarginCalculator::class);
     }
 

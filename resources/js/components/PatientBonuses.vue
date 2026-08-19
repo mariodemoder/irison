@@ -18,7 +18,12 @@
     </div>
 
     <!-- Asociar Bono Modal -->
-    <div v-if="showForm" class="modal-backdrop" @click.self="cancelForm">
+    <div
+      v-if="showForm"
+      class="modal-backdrop"
+      @mousedown.left="onFormBackdropMouseDown"
+      @mouseup.left="onFormBackdropMouseUp"
+    >
       <div class="modal-card" @click.stop>
         <div class="modal-header">
           <h3 style="margin:0">Asociar Bono</h3>
@@ -187,6 +192,7 @@ import { isProfessional } from '../shared/meCache'
 import { confirmDelete } from '../shared/confirmDelete'
 import EntitySearchSelect from './EntitySearchSelect.vue'
 import BtnTrash from './BtnTrash.vue'
+import { useModalClose } from '../composables/useModalClose'
 
 const props = defineProps({ patientId: { type: [String, Number], required: true } })
 const emit = defineEmits(['active-bonus-count'])
@@ -197,6 +203,11 @@ const form = ref({ name: 'Bono', price: 0, expires_at: '' })
 const bonusTemplates = ref([])
 const selectedTemplate = ref(null)
 const toast = useToast()
+
+const {
+  onBackdropMouseDown: onFormBackdropMouseDown,
+  onBackdropMouseUp: onFormBackdropMouseUp,
+} = useModalClose(cancelForm, showForm)
 const router = useRouter()
 const invoicingBonusId = ref(null)
 const expandedBonuses = reactive(new Set())

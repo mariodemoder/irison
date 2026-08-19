@@ -1,5 +1,10 @@
 <template>
-  <div v-if="open" class="modal-backdrop" @click.self="close">
+  <div
+    v-if="open"
+    class="modal-backdrop"
+    @mousedown.left="onBackdropMouseDown"
+    @mouseup.left="onBackdropMouseUp"
+  >
     <div class="modal-content">
       <h3>Solicitar reactivación de la cuenta</h3>
       <p class="modal-intro">Cuéntanos el motivo por el que quieres volver a activar tu cuenta. El equipo de Irison revisará tu solicitud y se pondrá en contacto contigo.</p>
@@ -18,12 +23,13 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, toRef } from 'vue'
 import { useToast } from 'vue-toastification'
 import api from '../services/api'
 import SaveButton from './SaveButton.vue'
+import { useModalClose } from '../composables/useModalClose'
 
-defineProps({
+const props = defineProps({
   open: { type: Boolean, default: false },
 })
 
@@ -32,6 +38,8 @@ const emit = defineEmits(['close', 'submitted'])
 const toast = useToast()
 const sending = ref(false)
 const comments = ref('')
+
+const { onBackdropMouseDown, onBackdropMouseUp } = useModalClose(close, toRef(props, 'open'))
 
 async function submit() {
   const motive = String(comments.value || '').trim()

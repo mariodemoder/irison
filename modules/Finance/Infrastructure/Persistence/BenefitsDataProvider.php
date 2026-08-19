@@ -8,6 +8,7 @@ use App\Models\Appointment;
 use App\Models\Document;
 use App\Models\Payment;
 use App\Models\User;
+use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 use Modules\Finance\Domain\Contracts\BenefitsDataProviderInterface;
@@ -143,7 +144,7 @@ class BenefitsDataProvider implements BenefitsDataProviderInterface
         $otherPayments = Payment::query()
             ->where('clinic_id', $clinicId)
             ->where('concept', 'other')
-            ->where('status', 'completed')
+            ->where('status', '!=', 'refunded')
             ->whereNotNull('professional_id')
             ->when($from, fn ($q) => $q->where('paid_at', '>=', $from))
             ->when($to, fn ($q) => $q->where('paid_at', '<=', $to))
@@ -202,5 +203,101 @@ class BenefitsDataProvider implements BenefitsDataProviderInterface
             ])
             ->values()
             ->all();
+    }
+
+    public function paidOperationsCount(int $clinicId, ?CarbonInterface $from, ?CarbonInterface $to): int
+    {
+        return (int) Payment::query()
+            ->where('clinic_id', $clinicId)
+            ->where('status', 'completed')
+            ->where('concept', '!=', 'refund')
+            ->when($from, fn ($q) => $q->where('paid_at', '>=', $from))
+            ->when($to, fn ($q) => $q->where('paid_at', '<=', $to))
+            ->count();
+    }
+
+    public function revenueByPaymentMethod(int $clinicId, ?CarbonInterface $from, ?CarbonInterface $to): array
+    {
+        $methodLabels = [
+            'cash' => 'Efectivo',
+            'card' => 'Tarjeta',
+            'transfer' => 'Transferencia',
+        ];
+
+        $rows = Payment::query()
+            ->where('clinic_id', $clinicId)
+            ->where('status', 'completed')
+            ->where('concept', '!=', 'refund')
+            ->when($from, fn ($q) => $q->where('paid_at', '>=', $from))
+            ->when($to, fn ($q) => $q->where('paid_at', '<=', $to))
+            ->select('method', DB::raw('COUNT(*) as count'), DB::raw('ROUND(COALESCE(SUM(amount), 0), 2) as total'))
+            ->groupBy('method')
+            ->get();
+
+        $revenue = (float) $rows->sum('total');
+
+        return $rows->map(function ($row) use ($methodLabels, $revenue) {
+            $total = (float) $row->total;
+
+            return [
+                'method' => (string) $row->method,
+                'label' => $methodLabels[$row->method] ?? $row->method,
+                'count' => (int) $row->count,
+                'total' => $total,
+                'percentage' => $revenue > 0 ? round(($total / $revenue) * 100, 1) : 0.0,
+            ];
+        })->values()->all();
+    }
+
+    public function pendingPaymentsCount(int $clinicId): int
+    {
+        return (int) Appointment::query()
+            ->where('clinic_id', $clinicId)
+            ->where('status', '!=', 'canceled')
+            ->whereIn('payment_status', ['pending', 'partially_paid'])
+            ->count();
+    }
+
+    public function pendingPaymentsAmount(int $clinicId): float
+    {
+        $appointments = Appointment::query()
+            ->where('clinic_id', $clinicId)
+            ->where('status', '!=', 'canceled')
+            ->whereIn('payment_status', ['pending', 'partially_paid'])
+            ->get(['id', 'price']);
+
+        $total = 0.0;
+
+        foreach ($appointments as $appointment) {
+            $paid = (float) Payment::where('appointment_id', $appointment->id)
+                ->where('status', 'completed')
+                ->sum('amount');
+            $total += max((float) $appointment->price - $paid, 0);
+        }
+
+        return round($total, 2);
+    }
+
+    public function revenueEvolution(int $clinicId, int $months = 12): array
+    {
+        $evolution = [];
+        $now = Carbon::now();
+
+        for ($i = $months - 1; $i >= 0; $i--) {
+            $monthStart = $now->copy()->subMonths($i)->startOfMonth();
+            $monthEnd = $now->copy()->subMonths($i)->endOfMonth();
+
+            $revenue = $this->revenueOnPeriod($clinicId, $monthStart, $monthEnd);
+            $expenses = $this->expensesTotalOnPeriod($clinicId, $monthStart, $monthEnd);
+
+            $evolution[] = [
+                'month' => $monthStart->format('Y-m'),
+                'revenue' => $revenue,
+                'expenses' => $expenses,
+                'profit' => round($revenue - $expenses, 2),
+            ];
+        }
+
+        return $evolution;
     }
 }

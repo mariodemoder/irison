@@ -149,7 +149,12 @@
         </div>
       </div>
 
-      <div v-if="attachImagesModalOpen" class="modal-backdrop" @click.self="closeAttachImagesModal">
+      <div
+        v-if="attachImagesModalOpen"
+        class="modal-backdrop"
+        @mousedown.left="onAttachBackdropMouseDown"
+        @mouseup.left="onAttachBackdropMouseUp"
+      >
         <div class="attach-modal" role="dialog" aria-modal="true" aria-label="Adjuntar archivos">
           <div class="attach-modal-head">
             <h3>Adjuntar archivos</h3>
@@ -282,7 +287,12 @@
         </div>
       </div>
 
-      <div v-if="imagePreviewOpen && selectedImage" class="image-preview-backdrop" @click.self="closeImagePreview">
+      <div
+        v-if="imagePreviewOpen && selectedImage"
+        class="image-preview-backdrop"
+        @mousedown.left="onPreviewBackdropMouseDown"
+        @mouseup.left="onPreviewBackdropMouseUp"
+      >
         <div class="image-preview-modal" role="dialog" aria-modal="true" aria-label="Vista previa de archivo">
           <div class="image-preview-head">
             <div class="image-preview-title">{{ selectedImage.description || 'Archivo clínico' }}</div>
@@ -329,8 +339,9 @@ import { useToast } from 'vue-toastification'
 import { confirmDelete } from '../../shared/confirmDelete'
 import { goBackWithStack } from '../../shared/navigationHelpers'
 import BtnTrash from '../../components/BtnTrash.vue'
-import { isProfessional } from '../../shared/meCache'
 
+import { isProfessional } from '../../shared/meCache'
+import { useModalClose } from '../../composables/useModalClose'
 const route = useRoute()
 const router = useRouter()
 const patient = ref(null)
@@ -354,6 +365,18 @@ const selectedImage = ref(null)
 const MAX_ATTACHMENTS_TOTAL = 6
 const MAX_FILE_SIZE_BYTES = 200 * 1024
 const ALLOWED_UPLOAD_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf']
+
+// Cierre seguro de modales (backdrop drag-select + ESC). La vista previa se
+// abre encima del modal de adjuntos: ESC cierra solo la capa superior.
+const attachModalEscOpen = computed(() => attachImagesModalOpen.value && !imagePreviewOpen.value)
+const {
+  onBackdropMouseDown: onAttachBackdropMouseDown,
+  onBackdropMouseUp: onAttachBackdropMouseUp,
+} = useModalClose(closeAttachImagesModal, attachModalEscOpen)
+const {
+  onBackdropMouseDown: onPreviewBackdropMouseDown,
+  onBackdropMouseUp: onPreviewBackdropMouseUp,
+} = useModalClose(closeImagePreview, imagePreviewOpen)
 
 const existingAttachmentsCount = computed(() => existingImages.value.length)
 

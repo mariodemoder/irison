@@ -36,6 +36,7 @@ class ExpenseController extends Controller
         $validated = $request->validate([
             'q' => ['nullable', 'string', 'max:255'],
             'category_id' => ['nullable', 'integer'],
+            'provider_id' => ['nullable', 'integer'],
             'payment_method' => ['nullable', 'in:cash,card,transfer'],
             'from_date' => ['nullable', 'date'],
             'to_date' => ['nullable', 'date'],

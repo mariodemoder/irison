@@ -18,6 +18,8 @@ class BenefitsReportData
         public readonly array $byCategory,
         public readonly ?array $previousTotals,
         public readonly ?array $variation,
+        public readonly int $paidOperationsCount = 0,
+        public readonly array $revenueByPaymentMethod = [],
     ) {}
 
     public function toArray(): array
@@ -30,10 +32,12 @@ class BenefitsReportData
                 'cost' => $this->cost,
                 'profit' => $this->profit,
                 'margin_percentage' => $this->marginPercentage,
+                'paid_operations_count' => $this->paidOperationsCount,
             ],
             'by_service' => $this->byService,
             'by_professional' => $this->byProfessional,
             'by_category' => $this->byCategory,
+            'revenue_by_payment_method' => $this->revenueByPaymentMethod,
             'previous_totals' => $this->previousTotals,
             'variation' => $this->variation,
         ];

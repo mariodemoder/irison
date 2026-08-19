@@ -18,6 +18,7 @@ class ExpenseEloquentModel extends Model
     protected $fillable = [
         'clinic_id',
         'category_id',
+        'provider_id',
         'concept',
         'supplier',
         'amount',
@@ -39,6 +40,11 @@ class ExpenseEloquentModel extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(ExpenseCategoryEloquentModel::class, 'category_id');
+    }
+
+    public function provider(): BelongsTo
+    {
+        return $this->belongsTo(ProviderEloquentModel::class, 'provider_id');
     }
 
     public function getDateAttribute($value): ?Carbon

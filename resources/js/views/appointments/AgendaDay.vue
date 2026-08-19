@@ -104,7 +104,12 @@
           </div>
         </div>
 
-        <div v-if="detailedFiltersOpen" class="filters-modal-backdrop" @click.self="closeDetailedFilters">
+        <div
+          v-if="detailedFiltersOpen"
+          class="filters-modal-backdrop"
+          @mousedown.left="onFiltersBackdropMouseDown"
+          @mouseup.left="onFiltersBackdropMouseUp"
+        >
           <div class="filters-modal" role="dialog" aria-modal="true" aria-label="Filtros detallados">
             <div class="filters-modal-head">
               <h3>Filtros detallados</h3>
@@ -230,6 +235,7 @@ import { isDateClosed, normalizeClosedDays } from '../../shared/clinicCalendar'
 import { useToast } from 'vue-toastification'
 import { isProfessional } from '../../shared/meCache'
 import AgendaHelpModal from '../../components/agenda/AgendaHelpModal.vue'
+import { useModalClose } from '../../composables/useModalClose'
 
 const showHelp = ref(false)
 
@@ -252,6 +258,11 @@ const query = ref('')
 const paymentFilter = ref('')
 const statusFilter = ref('')
 const detailedFiltersOpen = ref(false)
+
+const {
+  onBackdropMouseDown: onFiltersBackdropMouseDown,
+  onBackdropMouseUp: onFiltersBackdropMouseUp,
+} = useModalClose(closeDetailedFilters, detailedFiltersOpen)
 const agendaProfessionals = ref([])
 const professionalFilter = ref('')
 const selectedProfessionalSchedules = computed(() => {

@@ -15,7 +15,7 @@ class ExpenseRepository implements ExpenseRepositoryInterface
 {
     public function paginate(int $clinicId, array $filters, int $perPage = 15): LengthAwarePaginator
     {
-        $query = ExpenseEloquentModel::with('category:id,name,color')
+        $query = ExpenseEloquentModel::with(['category:id,name,color', 'provider:id,name'])
             ->where('clinic_id', $clinicId);
 
         if (! empty($filters['q'])) {
@@ -29,6 +29,10 @@ class ExpenseRepository implements ExpenseRepositoryInterface
 
         if (! empty($filters['category_id'])) {
             $query->where('category_id', (int) $filters['category_id']);
+        }
+
+        if (! empty($filters['provider_id'])) {
+            $query->where('provider_id', (int) $filters['provider_id']);
         }
 
         if (! empty($filters['payment_method'])) {
@@ -67,6 +71,7 @@ class ExpenseRepository implements ExpenseRepositoryInterface
         $model = ExpenseEloquentModel::create([
             'clinic_id' => $clinicId,
             'category_id' => $attributes['category_id'] ?? null,
+            'provider_id' => $attributes['provider_id'] ?? null,
             'concept' => $attributes['concept'],
             'supplier' => $attributes['supplier'] ?? null,
             'amount' => $amount,
@@ -78,7 +83,7 @@ class ExpenseRepository implements ExpenseRepositoryInterface
             'notes' => $attributes['notes'] ?? null,
         ]);
 
-        return $this->toDomain($model->load('category'));
+        return $this->toDomain($model->load(['category', 'provider']));
     }
 
     public function update(int $id, int $clinicId, array $attributes): Expense
@@ -87,7 +92,7 @@ class ExpenseRepository implements ExpenseRepositoryInterface
 
         $payload = [];
 
-        foreach (['concept', 'supplier', 'category_id', 'date', 'payment_method', 'receipt_number', 'notes'] as $field) {
+        foreach (['concept', 'supplier', 'category_id', 'provider_id', 'date', 'payment_method', 'receipt_number', 'notes'] as $field) {
             if (array_key_exists($field, $attributes)) {
                 $payload[$field] = $attributes[$field];
             }
@@ -107,7 +112,7 @@ class ExpenseRepository implements ExpenseRepositoryInterface
 
         $model->update($payload);
 
-        return $this->toDomain($model->load('category'));
+        return $this->toDomain($model->load(['category', 'provider']));
     }
 
     public function delete(int $id, int $clinicId): int
@@ -125,6 +130,10 @@ class ExpenseRepository implements ExpenseRepositoryInterface
                 'name' => $model->category->name,
                 'color' => $model->category->color,
             ] : null,
+            'provider' => $model->provider ? [
+                'id' => $model->provider->id,
+                'name' => $model->provider->name,
+            ] : null,
         ]);
     }
 
@@ -138,6 +147,7 @@ class ExpenseRepository implements ExpenseRepositoryInterface
             taxRate: (float) $model->tax_rate,
             total: (float) $model->total,
             categoryId: $model->category_id ? (int) $model->category_id : null,
+            providerId: $model->provider_id ? (int) $model->provider_id : null,
             supplier: $model->supplier,
             date: $model->date ? Carbon::parse($model->date) : null,
             paymentMethod: $model->payment_method ? ExpensePaymentMethod::tryFrom($model->payment_method) : null,

@@ -61,7 +61,6 @@
                   <td class="col-min">{{ formatDate(item.sent_at || item.created_at) }}</td>
                   <td class="col-mid">
                     <div class="to-email">{{ item.to_email || '—' }}</div>
-                    <div v-if="item.from_email" class="from-email">de {{ item.from_email }}</div>
                   </td>
                   <td class="col-max">
                     <div class="subject">{{ item.subject || '—' }}</div>
@@ -239,7 +238,6 @@ onMounted(async () => {
 .patient-link:hover { text-decoration: underline }
 
 .to-email { font-weight: 600; color: #111827 }
-.from-email { color: #9ca3af; font-size: 12px; margin-top: 2px; word-break: break-word }
 
 .subject { font-size: 13px; color: #374151; word-break: break-word; margin-bottom: 4px }
 .type-chip { display: inline-flex; align-items: center; padding: 4px 8px; border-radius: 9999px; background: #eff6ff; color: #1d4ed8; font-size: 12px; font-weight: 600 }

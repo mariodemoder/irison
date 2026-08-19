@@ -239,3 +239,4 @@ Detalle de comportamiento: `docs/backoffice/subscriptions.md` (ciclo de suscripc
 - `app/Models/Scopes/ClinicScope.php` — Tenant scope
 - `app/Traits/MultiTenantAuthorization.php` — Tenant auth
 - `docs/backend/auth-flow.md` — Auth completo: registro, activación, login, password reset
+- `docs/backend/finance-restructure-spec.md` — Spec completo de reestructuración del módulo Finanzas PRO (6 fases, roadmap)

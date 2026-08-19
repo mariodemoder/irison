@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useModalClose } from '../../composables/useModalClose'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 
@@ -142,9 +143,18 @@ function resetBooking() {
 }
 
 onMounted(loadPage)
-
 const showPrivacyModal = ref(false)
+
 const showTermsModal = ref(false)
+
+const {
+  onBackdropMouseDown: onPrivacyBackdropMouseDown,
+  onBackdropMouseUp: onPrivacyBackdropMouseUp,
+} = useModalClose(() => { showPrivacyModal.value = false }, showPrivacyModal)
+const {
+  onBackdropMouseDown: onTermsBackdropMouseDown,
+  onBackdropMouseUp: onTermsBackdropMouseUp,
+} = useModalClose(() => { showTermsModal.value = false }, showTermsModal)
 
 const currentYear = new Date().getFullYear()
 const faviconUrl = `${import.meta.env.BASE_URL}favicon.svg`
@@ -238,7 +248,12 @@ const faviconUrl = `${import.meta.env.BASE_URL}favicon.svg`
         </div>
       </template>
 
-      <div v-if="showPrivacyModal" class="booking-modal-backdrop" @click.self="showPrivacyModal = false">
+      <div
+        v-if="showPrivacyModal"
+        class="booking-modal-backdrop"
+        @mousedown.left="onPrivacyBackdropMouseDown"
+        @mouseup.left="onPrivacyBackdropMouseUp"
+      >
         <div class="booking-modal">
           <div class="booking-modal-header">
             <h3>Política de Privacidad</h3>
@@ -260,7 +275,12 @@ const faviconUrl = `${import.meta.env.BASE_URL}favicon.svg`
         </div>
       </div>
 
-      <div v-if="showTermsModal" class="booking-modal-backdrop" @click.self="showTermsModal = false">
+      <div
+        v-if="showTermsModal"
+        class="booking-modal-backdrop"
+        @mousedown.left="onTermsBackdropMouseDown"
+        @mouseup.left="onTermsBackdropMouseUp"
+      >
         <div class="booking-modal">
           <div class="booking-modal-header">
             <h3>Términos y Condiciones</h3>

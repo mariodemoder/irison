@@ -1,7 +1,12 @@
 <template>
   <Teleport to="body">
     <Transition name="fm">
-      <div v-if="show" class="fm-overlay" @click.self="$emit('close')">
+      <div
+        v-if="show"
+        class="fm-overlay"
+        @mousedown.left="onOverlayMouseDown"
+        @mouseup.left="onOverlayMouseUp"
+      >
         <div class="fm-panel" :style="{ maxWidth: width }">
           <div class="fm-header">
             <h2 class="fm-title">{{ title }}</h2>
@@ -17,13 +22,19 @@
 </template>
 
 <script setup>
-defineProps({
+import { toRef } from 'vue'
+import { useModalClose } from '../composables/useModalClose'
+
+const props = defineProps({
   show: { type: Boolean, default: false },
   title: { type: String, default: '' },
   width: { type: String, default: '640px' },
 })
 
-defineEmits(['close'])
+const emit = defineEmits(['close'])
+
+const { onBackdropMouseDown: onOverlayMouseDown, onBackdropMouseUp: onOverlayMouseUp } =
+  useModalClose(() => emit('close'), toRef(props, 'show'))
 </script>
 
 <style scoped>

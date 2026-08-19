@@ -92,7 +92,12 @@
     </div>
 
     <!-- Modal Profesiones -->
-    <div v-if="showProfessionsModal" class="modal-backdrop" @click.self="closeProfessionsModal">
+    <div
+      v-if="showProfessionsModal"
+      class="modal-backdrop"
+      @mousedown.left="onProfessionsBackdropMouseDown"
+      @mouseup.left="onProfessionsBackdropMouseUp"
+    >
       <div class="modal-card">
         <div class="modal-card-header">
           <h2>Profesiones</h2>
@@ -138,6 +143,7 @@ import api from '../../services/api'
 import { getLoadErrorMessage } from '../../shared/httpErrors'
 import { isBasic } from '../../shared/meCache'
 import { confirmDelete } from '../../shared/confirmDelete'
+import { useModalClose } from '../../composables/useModalClose'
 
 const router = useRouter()
 const toast = useToast()
@@ -214,6 +220,11 @@ async function deleteUser(u) {
 const showProfessionsModal = ref(false)
 const professions = ref([])
 const professionsLoading = ref(false)
+
+const {
+  onBackdropMouseDown: onProfessionsBackdropMouseDown,
+  onBackdropMouseUp: onProfessionsBackdropMouseUp,
+} = useModalClose(closeProfessionsModal, showProfessionsModal)
 
 const professionColumns = [
   { key: 'id', label: 'ID', thClass: 'col-min' },

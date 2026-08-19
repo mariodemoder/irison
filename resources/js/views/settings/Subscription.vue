@@ -115,7 +115,12 @@
       </template>
 
       <!-- Modal solicitud -->
-      <div v-if="showModal" class="modal-backdrop" @click.self="showModal = false">
+      <div
+        v-if="showModal"
+        class="modal-backdrop"
+        @mousedown.left="onUpgradeBackdropMouseDown"
+        @mouseup.left="onUpgradeBackdropMouseUp"
+      >
         <div class="modal-content">
           <h3>Solicitar upgrade</h3>
           <form @submit.prevent="submitRequest">
@@ -139,7 +144,12 @@
       </div>
 
       <!-- Modal funcionalidades Basic -->
-      <div v-if="showBasicFeaturesModal" class="modal-backdrop" @click.self="showBasicFeaturesModal = false">
+      <div
+        v-if="showBasicFeaturesModal"
+        class="modal-backdrop"
+        @mousedown.left="onBasicFeaturesBackdropMouseDown"
+        @mouseup.left="onBasicFeaturesBackdropMouseUp"
+      >
         <div class="modal-content">
           <h3>Funcionalidades del plan Basic</h3>
           <ul class="plan-modal-features">
@@ -159,6 +169,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useModalClose } from '../../composables/useModalClose'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import Swal from 'sweetalert2'
@@ -178,6 +189,15 @@ const history = ref([])
 const showModal = ref(false)
 const showBasicFeaturesModal = ref(false)
 const showReactivationModal = ref(false)
+
+const {
+  onBackdropMouseDown: onUpgradeBackdropMouseDown,
+  onBackdropMouseUp: onUpgradeBackdropMouseUp,
+} = useModalClose(() => { showModal.value = false }, showModal)
+const {
+  onBackdropMouseDown: onBasicFeaturesBackdropMouseDown,
+  onBackdropMouseUp: onBasicFeaturesBackdropMouseUp,
+} = useModalClose(() => { showBasicFeaturesModal.value = false }, showBasicFeaturesModal)
 const sending = ref(false)
 const backupping = ref(false)
 const form = ref({ requested_plan: '', comments: '' })

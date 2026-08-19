@@ -1,5 +1,9 @@
 <template>
-  <div class="modal-backdrop" @click.self="$emit('close')">
+  <div
+    class="modal-backdrop"
+    @mousedown.left="onBackdropMouseDown"
+    @mouseup.left="onBackdropMouseUp"
+  >
     <div class="help-modal" role="dialog" aria-modal="true" aria-label="Ayuda de notificaciones">
       <div class="help-header">
         <h2>Notificaciones</h2>
@@ -59,7 +63,11 @@
 </template>
 
 <script setup>
-defineEmits(['close'])
+import { useModalClose } from '../../composables/useModalClose'
+
+const emit = defineEmits(['close'])
+
+const { onBackdropMouseDown, onBackdropMouseUp } = useModalClose(() => emit('close'))
 </script>
 
 <style scoped>
