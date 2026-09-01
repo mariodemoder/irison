@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import api from '../../services/api'
 import { useToast } from 'vue-toastification'
 import BtnTrash from '../../components/BtnTrash.vue'
@@ -222,6 +222,21 @@ function toggleProfessionalDetail(bp) {
   editingProfessional.value = editingProfessional.value === bp.id ? null : bp.id
 }
 
+const bookingPublicUrl = computed(() =>
+  settings.value.slug
+    ? `${window.location.origin}/booking/${encodeURIComponent(settings.value.slug)}`
+    : ''
+)
+
+async function copyBookingUrl() {
+  try {
+    await navigator.clipboard.writeText(bookingPublicUrl.value)
+    toast.success('Enlace copiado')
+  } catch (e) {
+    toast.error('No se pudo copiar el enlace')
+  }
+}
+
 
 
 onMounted(loadSettings)
@@ -280,6 +295,12 @@ onMounted(loadSettings)
           </select>
         </div>
       </div>
+      <div v-if="settings.slug" class="public-link-actions">
+        <a :href="bookingPublicUrl" target="_blank" rel="noopener" class="btn btn-sm btn-outline">
+          Ver página pública&nbsp;↗
+        </a>
+        <button type="button" class="btn btn-sm btn-outline" @click="copyBookingUrl">Copiar enlace público</button>
+      </div>
     </div>
 
     <!-- Services -->
@@ -287,14 +308,6 @@ onMounted(loadSettings)
       <div class="section-head">
         <span class="section-head-title">Servicios</span>
         <NewButton label="Nuevo servicio" @click="addServiceView" />
-        <a v-if="settings.slug"
-           :href="`/booking/${settings.slug}`"
-           target="_blank"
-           rel="noopener"
-           class="btn btn-sm"
-           style="margin-left:8px;">
-          Ver página pública ↗
-        </a>
       </div>
 
       <div class="counter-table-wrap" style="margin-top:14px">
@@ -493,6 +506,15 @@ onMounted(loadSettings)
 
 .url-preview strong {
   color: #1d4ed8;
+}
+
+.public-link-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
 }
 
 .input {

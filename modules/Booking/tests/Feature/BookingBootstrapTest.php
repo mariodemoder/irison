@@ -132,4 +132,50 @@ class BookingBootstrapTest extends TestCase
         $this->assertNotEquals('clinica-test', $page->slug);
         $this->assertStringStartsWith('clinica-test-', $page->slug);
     }
+
+    public function test_registration_auto_creates_clinic_slug(): void
+    {
+        $response = $this->postJson('/api/register', [
+            'name' => 'Dr. Test',
+            'clinic_name' => 'Clinica Portal Test',
+            'email' => 'test@clinic.com',
+            'password' => 'password123',
+            'nif' => '12345678Z',
+            'zip' => '28001',
+            'phone' => '600123456',
+        ]);
+
+        $response->assertStatus(201);
+
+        $clinic = Clinic::where('name', 'Clinica Portal Test')->first();
+        $this->assertNotNull($clinic);
+        $this->assertEquals('clinica-portal-test', $clinic->slug);
+    }
+
+    public function test_registration_clinic_slug_handles_collision(): void
+    {
+        // Create a clinic with the same slug to force collision
+        Clinic::withoutGlobalScopes()->create([
+            'name' => 'Clinica Test',
+            'slug' => 'clinica-test',
+            'plan' => 'basic',
+        ]);
+
+        $response = $this->postJson('/api/register', [
+            'name' => 'Dr. Test',
+            'clinic_name' => 'Clinica Test',
+            'email' => 'test2@clinic.com',
+            'password' => 'password123',
+            'nif' => '12345678Z',
+            'zip' => '28001',
+            'phone' => '600123456',
+        ]);
+
+        $response->assertStatus(201);
+
+        $newClinic = Clinic::where('email', 'test2@clinic.com')->first();
+        $this->assertNotNull($newClinic);
+        $this->assertNotEquals('clinica-test', $newClinic->slug);
+        $this->assertStringStartsWith('clinica-test-', $newClinic->slug);
+    }
 }

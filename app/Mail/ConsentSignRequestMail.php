@@ -5,6 +5,7 @@ namespace App\Mail;
 use App\Models\PatientConsent;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -22,6 +23,7 @@ class ConsentSignRequestMail extends Mailable
     {
         return new Envelope(
             subject: 'Firma de consentimiento - ' . ($this->consent->clinic->name ?? 'Irison'),
+            from: new Address(config('mail.from.address'), $this->consent->clinic->name ?? config('mail.from.name')),
         );
     }
 

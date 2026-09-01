@@ -6,20 +6,41 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Auth\Passwords\CanResetPassword;
+use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 use App\Models\Concerns\BelongsToClinic;
 use App\Models\Bonus;
 use App\Models\CreditUsage;
 use App\Services\Counters\CounterService;
+use App\Notifications\PatientResetPasswordNotification;
+use Modules\PatientPortal\Infrastructure\Persistence\PatientPortalSettings;
 
-class Patient extends Model
+class Patient extends Model implements CanResetPasswordContract
 {
-    use BelongsToClinic, SoftDeletes, Notifiable;
-      
+    use BelongsToClinic, SoftDeletes, Notifiable, HasApiTokens, CanResetPassword;
+
     protected $fillable = [
         'clinic_id', 'first_name', 'last_name', 'phone', 'email',
-        'birth_date', 'notes', 'nif', 'address', 'zip', 'city', 'province', 'country', 'counter'
+        'birth_date', 'notes', 'nif', 'address', 'zip', 'city', 'province', 'country', 'counter',
+        // Portal fields
+        'password', 'email_verified_at', 'last_login_at', 'status',
     ];
+
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'email_verified_at' => 'datetime',
+            'last_login_at' => 'datetime',
+            'password' => 'hashed',
+        ];
+    }
 
     protected static function booted(): void
     {
@@ -102,5 +123,47 @@ class Patient extends Model
         $last = $this->last_name ?? '';
 
         return trim(sprintf('%s %s', $first, $last));
+    }
+
+    /**
+     * El paciente puede usar el Portal del Paciente.
+     *
+     * Requiere que la clínica tenga configurado un slug de portal (las clínicas
+     * sin slug quedan fuera de todo el circuito del portal), que el portal esté
+     * activado a nivel de clínica (interruptor maestro, patient_portal_settings.is_active)
+     * y que el acceso del paciente esté activado (opt-in, status = 'active').
+     */
+    public function canUsePortal(): bool
+    {
+        if ($this->status !== 'active') {
+            return false;
+        }
+
+        if (empty($this->clinic?->slug)) {
+            return false;
+        }
+
+        return PatientPortalSettings::forClinic($this->clinic_id)->is_active;
+    }
+
+    /**
+     * Clave de almacenamiento del token de restablecimiento de contraseña.
+     *
+     * Se usa el id del paciente (globalmente único) en lugar del email, de modo
+     * que cada clinic-patient tenga su propio token independiente y un email
+     * compartido entre clínicas no invalide el token de la otra.
+     */
+    public function getEmailForPasswordReset(): string
+    {
+        return (string) $this->id;
+    }
+
+    /**
+     * Notificación de restablecimiento de contraseña del Portal del Paciente.
+     * Apunta a /patient/reset-password (SPA del paciente) con branding de clínica.
+     */
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new PatientResetPasswordNotification($token));
     }
 }

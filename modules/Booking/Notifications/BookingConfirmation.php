@@ -27,6 +27,7 @@ class BookingConfirmation extends Notification
         $cancelUrl = config('app.frontend_url') . '/booking/cancel/' . $this->appointment->confirmation_token;
 
         $mail = (new MailMessage)
+            ->from(config('mail.from.address'), $this->appointment->clinic->name ?? config('mail.from.name'))
             ->subject('Confirmación de cita — ' . ($this->appointment->clinic->name ?? 'Irison'))
             ->greeting('Hola ' . $this->appointment->patient->first_name . ',')
             ->line('Tu cita ha sido confirmada.')

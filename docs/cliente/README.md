@@ -14,6 +14,8 @@ Este espacio almacena documentacion orientada a clinicas (cliente final).
 - `inicio-rapido.md`
 - `agenda-y-citas.md`
 - `pacientes-e-historia.md`
+- `pacientes/` — guias operativas de pacientes (incluye `pacientes/portal-paciente.md`)
+- `patient-portal.md` — guia general del Portal del Paciente
 - `facturacion-y-pagos.md`
 - `suscripcion-y-estados.md`
 - `faq.md`

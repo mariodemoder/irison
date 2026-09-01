@@ -15,6 +15,7 @@ Este directorio centraliza la documentacion oficial del backend y operaciones.
 - `backoffice/notificaciones-internas.md`: alertas internas de backoffice (tipos, reconciliacion, UI).
 - `backoffice/usuario/`: manuales para usuarios internos de backoffice.
 - `cliente/`: guias para cliente final (clinicas de Irison).
+- `cliente/pacientes/`: guias operativas de pacientes para la clinica (incluye acceso al Portal del Paciente).
 - `deployment/`: despliegue e infraestructura.
 - `frontend/`: protocolos y guias para desarrollo frontend (Vue 3).
 - `documentation-plan.md`: plan de informacion, ownership y roadmap de docs.

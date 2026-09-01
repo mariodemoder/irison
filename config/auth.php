@@ -45,13 +45,13 @@ return [
             'provider' => 'admins',
         ],
         'api' => [
-                'driver' => 'sanctum',
-                'provider' => 'users',
-            ],/*
-        'sanctum' => [
             'driver' => 'sanctum',
             'provider' => 'users',
-        ],*/
+        ],
+        'patient' => [
+            'driver' => 'sanctum',
+            'provider' => 'patients',
+        ],
     ],
     /*
     |--------------------------------------------------------------------------
@@ -79,11 +79,10 @@ return [
             'driver' => 'eloquent',
             'model' => App\Models\AdminUser::class,
         ],
-
-        // 'users' => [
-        //     'driver' => 'database',
-        //     'table' => 'users',
-        // ],
+        'patients' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\Patient::class,
+        ],
     ],
 
     /*
@@ -115,6 +114,12 @@ return [
         'admin_users' => [
             'provider' => 'admins',
             'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
+            'expire' => 60,
+            'throttle' => 60,
+        ],
+        'patients' => [
+            'provider' => 'patients',
+            'table' => 'patient_password_reset_tokens',
             'expire' => 60,
             'throttle' => 60,
         ],

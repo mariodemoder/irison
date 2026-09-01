@@ -20,6 +20,7 @@
             <button :class="['tab', { active: activeTab==='sesiones' }]" @click="activeTab='sesiones'">Sesiones</button>
             <button :class="['tab', { active: activeTab==='bonos' }]" @click="activeTab='bonos'">Bonos</button>
             <button :class="['tab', { active: activeTab==='booking' }]" @click="activeTab='booking'">Reserva Online</button>
+            <button :class="['tab', { active: activeTab==='portal' }]" @click="activeTab='portal'">Portal del Paciente</button>
           </div>
 
           <div class="profile-shell">
@@ -181,10 +182,14 @@
               <div class="tab-panel tab-card" v-show="activeTab==='booking'">
                 <BookingSettings ref="bookingSettingsRef" :cesionTypes="cesionTypes" />
               </div>
+
+              <div class="tab-panel tab-card" v-show="activeTab==='portal'">
+                <PatientPortalSettings ref="portalSettingsRef" />
+              </div>
             </div>
 
             <div class="action-plane">
-              <div v-if="activeTab==='sesiones' || activeTab==='bonos' || activeTab==='booking'" class="action-row action-row-save">
+              <div v-if="activeTab==='sesiones' || activeTab==='bonos' || activeTab==='booking' || activeTab==='portal'" class="action-row action-row-save">
                 <SaveButton class="save-button" :saving="saving" @click.prevent="save" />
               </div>
               <div v-else class="action-row action-row-empty"></div>
@@ -203,6 +208,7 @@ import AppLoading from '../../components/AppLoading.vue'
 import BtnTrash from '../../components/BtnTrash.vue'
 import SaveButton from '../../components/SaveButton.vue'
 import BookingSettings from '../settings/BookingSettings.vue'
+import PatientPortalSettings from '../settings/PatientPortalSettings.vue'
 import api from '../../services/api'
 import { useToast } from 'vue-toastification'
 import { meUser } from '../../shared/meCache'
@@ -221,6 +227,7 @@ const cesionTypes = ref([])
 const bonusTypes = ref([])
 const expandedBonusKey = ref(null)
 const bookingSettingsRef = ref(null)
+const portalSettingsRef = ref(null)
 const status = ref('active')
 
 const IRISON_COLOR = '#F8FAFC'
@@ -237,7 +244,7 @@ const themeColors = [
 ]
 
 onMounted(async () => {
-  if (route.query.tab && ['sesiones', 'bonos', 'booking'].includes(route.query.tab)) {
+  if (route.query.tab && ['sesiones', 'bonos', 'booking', 'portal'].includes(route.query.tab)) {
     activeTab.value = route.query.tab
   }
   await load()
@@ -311,6 +318,11 @@ async function save() {
       } catch (e) {
         toast.error('Error al guardar la configuración de reserva online.')
       }
+    }
+
+    if (portalSettingsRef.value) {
+      // Valida el slug (disponibilidad/formato) y guarda; lanza si no es válido.
+      await portalSettingsRef.value.save()
     }
 
     toast.success('Servicios guardados')
@@ -542,7 +554,7 @@ async function removeCesionType(item) {
 
 .tabs {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
   margin-bottom: 12px;
 }
@@ -864,7 +876,7 @@ async function removeCesionType(item) {
 
 @media (max-width: 980px) {
   .tabs {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 

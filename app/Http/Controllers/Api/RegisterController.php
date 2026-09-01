@@ -20,8 +20,15 @@ class RegisterController extends Controller
     {
         $data = $request->validated();
 
+        // Generate a unique slug for the patient portal.
+        $portalSlug = Str::slug($data['clinic_name']);
+        if (Clinic::withoutGlobalScopes()->where('slug', $portalSlug)->exists()) {
+            $portalSlug .= '-' . Str::random(4);
+        }
+
         $clinic = Clinic::create([
             'name' => $data['clinic_name'],
+            'slug' => $portalSlug,
             'legal_name' => $data['clinic_name'],
             'email' => $data['email'],
             'nif' => $data['nif'],

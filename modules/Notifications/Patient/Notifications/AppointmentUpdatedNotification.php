@@ -43,6 +43,7 @@ class AppointmentUpdatedNotification extends Notification implements ShouldQueue
         $changeText = !empty($changes) ? ' (' . implode(', ', $changes) . ')' : '';
 
         $mail = (new MailMessage)
+            ->from(config('mail.from.address'), $clinic->name ?? config('mail.from.name'))
             ->subject("Cita actualizada - {$clinic->name}")
             ->greeting("Hola {$patient->first_name},")
             ->line("Tu cita en {$clinic->name} ha sido modificada{$changeText}.")

@@ -76,7 +76,64 @@
             <div class="card-row"><strong>Notas</strong></div>
             <div class="card-row">{{ patient?.notes ?? '—' }}</div>
           </div>
+
+          <div class="card full portal-card">
+            <div class="portal-card-head">
+              <div>
+                <div class="portal-title-row">
+                  <strong>Portal del Paciente</strong>
+                  <button class="help-btn" @click="showHelp = true" title="Ayuda del Portal del Paciente">?</button>
+                </div>
+                <div class="portal-status-line">
+                  <span
+                    class="portal-status"
+                    :class="patient?.has_portal_access ? 'portal-status--active' : 'portal-status--inactive'"
+                  >
+                    {{ patient?.has_portal_access ? 'Acceso activo' : 'Acceso inactivo' }}
+                  </span>
+                  <span
+                    v-if="patient?.has_portal_access && patient?.last_login_at"
+                    class="portal-last-login"
+                  >
+                    Última conexión: {{ formatDateShort(patient.last_login_at) }} {{ formatTime(patient.last_login_at) }}
+                  </span>
+                  <span v-else-if="patient?.has_portal_access" class="portal-last-login">El paciente aún no ha entrado</span>
+                </div>
+              </div>
+              <div class="portal-actions">
+                <BaseButton
+                  v-if="!isProfessional && !patient?.has_portal_access"
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  :disabled="portalBusy"
+                  @click="activatePortal"
+                >
+                  {{ portalBusy ? 'Guardando...' : 'Activar acceso' }}
+                </BaseButton>
+                <BaseButton
+                  v-if="!isProfessional && patient?.has_portal_access"
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  :disabled="portalBusy"
+                  @click="deactivatePortal"
+                >
+                  {{ portalBusy ? 'Guardando...' : 'Desactivar acceso' }}
+                </BaseButton>
+              </div>
+            </div>
+            <div class="portal-hint">
+              El paciente entra con el email de su ficha y crea su contraseña con «He olvidado mi contraseña» en la pantalla de acceso. Desactivar el acceso cierra sus sesiones activas de inmediato.
+            </div>
+            <div v-if="portalLink" class="portal-link-row">
+              <code class="portal-link">{{ portalLink }}</code>
+              <button type="button" class="btn btn--ghost" @click="copyPortalLink">Copiar enlace</button>
+            </div>
+          </div>
         </div>
+
+        <PatientPortalHelpModal v-if="showHelp" @close="showHelp = false" />
 
         <div class="history-grid">
           <div class="history-card">
@@ -339,8 +396,10 @@ import { useToast } from 'vue-toastification'
 import { confirmDelete } from '../../shared/confirmDelete'
 import { goBackWithStack } from '../../shared/navigationHelpers'
 import BtnTrash from '../../components/BtnTrash.vue'
+import BaseButton from '../../components/BaseButton.vue'
+import PatientPortalHelpModal from '../../components/patient/PatientPortalHelpModal.vue'
 
-import { isProfessional } from '../../shared/meCache'
+import { isProfessional, meClinic } from '../../shared/meCache'
 import { useModalClose } from '../../composables/useModalClose'
 const route = useRoute()
 const router = useRouter()
@@ -351,6 +410,8 @@ const packs = ref([])
 const payments = ref([])
 const loading = ref(false)
 const deletingPatient = ref(false)
+const portalBusy = ref(false)
+const showHelp = ref(false)
 const showCanceledAppointments = ref(false)
 const showCompletedPayments = ref(false)
 const attachImagesModalOpen = ref(false)
@@ -461,6 +522,60 @@ function goEdit() {
 function viewHistory() {
   if (patient.value && patient.value.id) {
     router.push({ path: `/patients/${patient.value.id}/history` })
+  }
+}
+
+async function activatePortal() {
+  if (portalBusy.value || !patient.value || !patient.value.id) return
+  portalBusy.value = true
+  try {
+    const res = await api.put(`/patients/${patient.value.id}/portal-access`, { status: 'active' })
+    patient.value = { ...patient.value, ...res.data }
+    toast.success('Acceso al portal activado')
+  } catch (e) {
+    const msg = e.response?.data?.message || 'Error al activar el acceso'
+    toast.error(msg)
+  } finally {
+    portalBusy.value = false
+  }
+}
+
+async function deactivatePortal() {
+  if (portalBusy.value || !patient.value || !patient.value.id) return
+
+  const confirmed = await confirmDelete({
+    title: 'Desactivar acceso al portal',
+    text: `¿Desactivar el acceso al portal de "${patient.value.name}"? Se cerrarán sus sesiones activas. Podrás reactivarlo cuando quieras.`,
+    confirmButtonText: 'Sí, desactivar',
+    cancelButtonText: 'Cancelar',
+  })
+  if (!confirmed) return
+
+  portalBusy.value = true
+  try {
+    const res = await api.put(`/patients/${patient.value.id}/portal-access`, { status: 'inactive' })
+    patient.value = { ...patient.value, ...res.data }
+    toast.success('Acceso al portal desactivado')
+  } catch (e) {
+    const msg = e.response?.data?.message || 'Error al desactivar el acceso'
+    toast.error(msg)
+  } finally {
+    portalBusy.value = false
+  }
+}
+
+const portalLink = computed(() => {
+  const slug = meClinic.value?.slug
+  if (!slug) return ''
+  return `${window.location.origin}/patient/login?clinic=${encodeURIComponent(slug)}`
+})
+
+async function copyPortalLink() {
+  try {
+    await navigator.clipboard.writeText(portalLink.value)
+    toast.success('Enlace del portal copiado')
+  } catch (e) {
+    toast.error('No se pudo copiar el enlace')
   }
 }
 
@@ -850,6 +965,21 @@ async function confirmDeletePatient() {
 }
 
 .mini-badge { display:inline-block; margin-top:6px; padding:6px 10px; background:#ecfdf5; color:#065f46; border-radius:9999px; font-size:13px; font-weight:700 }
+
+.portal-card { border:1px solid #e0e7ff; background:#f8fafc; }
+.portal-card-head { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap }
+.portal-title-row { display:flex; align-items:center; gap:8px }
+.help-btn { width: 26px; height: 26px; border-radius: 50%; border: 1px solid #d1d5db; background: #fff; cursor: pointer; font-size: 13px; font-weight: 700; color: #6b7280; display: inline-flex; align-items: center; justify-content: center; line-height: 1; flex-shrink: 0; }
+.help-btn:hover { background: #f3f4f6; color: #374151; }
+.portal-status-line { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:2px }
+.portal-status { display:inline-block; padding:3px 10px; border-radius:9999px; font-size:12px; font-weight:700 }
+.portal-status--active { background:#d1fae5; color:#065f46 }
+.portal-status--inactive { background:#f3f4f6; color:#6b7280 }
+.portal-last-login { font-size:12px; color:#6b7280 }
+.portal-actions { display:flex; gap:8px; align-items:center }
+.portal-hint { margin-top:10px; font-size:12px; color:#6b7280; line-height:1.5 }
+.portal-link-row { display:flex; align-items:center; gap:8px; margin-top:10px; flex-wrap:wrap }
+.portal-link { font-size:12px; color:#4338ca; background:#eef2ff; border:1px solid #e0e7ff; border-radius:6px; padding:4px 8px; word-break:break-all }
 
 .modal-backdrop {
   position: fixed;

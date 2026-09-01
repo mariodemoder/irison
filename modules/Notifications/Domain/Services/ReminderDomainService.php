@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Notifications\Domain\Services;
 
 use App\Models\Appointment;
+use App\Events\AppointmentReminderSent;
 use DomainException;
 use Illuminate\Support\Facades\Log;
 use Modules\Notifications\Domain\Contracts\ReminderRepositoryInterface;
@@ -79,6 +80,8 @@ class ReminderDomainService
                 'reminder_type' => $reminderType->value,
                 'recipient_domain' => $this->extractEmailDomain($email),
             ]);
+
+            AppointmentReminderSent::dispatch($appointment, $reminderType->value);
 
             return ['reminder' => $log, 'sent' => true];
         } catch (Throwable $e) {

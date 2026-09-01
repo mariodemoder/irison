@@ -177,7 +177,7 @@ class EmailDispatchTest extends TestCase
         $this->assertHasIrisonLogo($this->renderMailMessage($mail), 'ResetPasswordNotificationEs');
     }
 
-    public function test_booking_confirmation_notification_renders_irison_logo(): void
+    public function test_booking_confirmation_notification_renders_clinic_name_without_irison_logo(): void
     {
         $patient = $this->createPatient();
         $professional = $this->createProfessional();
@@ -185,7 +185,10 @@ class EmailDispatchTest extends TestCase
             'professional_id' => $professional->id,
         ]);
         $mail = (new BookingConfirmation($appointment))->toMail($patient);
-        $this->assertHasIrisonLogo($this->renderMailMessage($mail), 'BookingConfirmation');
+        $html = $this->renderMailMessage($mail);
+
+        $this->assertStringContainsString($this->clinic->name, $html, 'No destaca el nombre de la clínica');
+        $this->assertStringNotContainsString(asset('logo.svg'), $html, 'El email al paciente no debe contener el logo de Irison');
     }
 
     public function test_new_online_booking_notification_renders_irison_logo(): void
@@ -215,7 +218,7 @@ class EmailDispatchTest extends TestCase
         $this->assertStringNotContainsString(asset('logo.svg'), $html, 'El logo de la clínica no reemplaza al de Irison');
     }
 
-    public function test_booking_confirmation_renders_watermark_and_clinic_name_for_basic(): void
+    public function test_booking_confirmation_renders_clinic_name_without_irison_watermark_for_basic(): void
     {
         $this->clinic->plan = 'basic';
         $this->clinic->save();
@@ -228,9 +231,9 @@ class EmailDispatchTest extends TestCase
         $mail = (new BookingConfirmation($appointment))->toMail($patient);
         $html = $this->renderMailMessage($mail);
 
-        $this->assertStringContainsString(asset('logo.svg'), $html, 'No contiene el logo de Irison grisado');
-        $this->assertStringContainsString('opacity: 0.35', $html, 'El logo de Irison no aparece como marca de agua');
         $this->assertStringContainsString($this->clinic->name, $html, 'No destaca el nombre de la clínica');
+        $this->assertStringNotContainsString(asset('logo.svg'), $html, 'La clínica sin logo ya no muestra la marca de agua de Irison');
+        $this->assertStringNotContainsString('opacity: 0.35', $html, 'El logo de Irison no debe aparecer como marca de agua');
     }
 
     public function test_appointment_created_notification_renders_clinic_logo_for_pro(): void
@@ -332,7 +335,8 @@ class EmailDispatchTest extends TestCase
         );
         $this->assertStringContainsString('Laura', $rendered);
         $this->assertStringContainsString('Consentimiento general', $rendered);
-        $this->assertStringContainsString(asset('logo.svg'), $rendered);
+        $this->assertStringContainsString($this->clinic->name, $rendered, 'El email al paciente debe mostrar el nombre de la clínica');
+        $this->assertStringNotContainsString(asset('logo.svg'), $rendered, 'El email al paciente no debe contener el logo de Irison');
     }
 
     public function test_appointment_reminder_mail_renders(): void
@@ -345,7 +349,8 @@ class EmailDispatchTest extends TestCase
         $rendered = $this->renderMailable(new AppointmentReminderMail($appointment, 24));
         $this->assertStringContainsString('24', $rendered);
         $this->assertStringContainsString('Pedro', $rendered);
-        $this->assertStringContainsString(asset('logo.svg'), $rendered);
+        $this->assertStringContainsString($this->clinic->name, $rendered, 'El email al paciente debe mostrar el nombre de la clínica');
+        $this->assertStringNotContainsString(asset('logo.svg'), $rendered, 'El email al paciente no debe contener el logo de Irison');
     }
 
     public function test_trial_lifecycle_mail_day_1_renders(): void

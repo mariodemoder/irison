@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Models\Patient;
 use App\Http\Requests\Patients\StorePatientRequest;
 use App\Http\Requests\Patients\UpdatePatientRequest;
+use App\Http\Requests\Patients\UpdatePatientPortalAccessRequest;
 use Illuminate\Routing\Controller as BaseController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -96,6 +97,34 @@ class PatientController extends BaseController
         );
 
         return response()->json($result['payload'], $result['status']);
+    }
+
+    /**
+     * Activar/desactivar el acceso al Portal del Paciente.
+     *
+     * Desactivar revoca las sesiones activas (tokens Sanctum) del paciente.
+     */
+    public function updatePortalAccess(UpdatePatientPortalAccessRequest $request, Patient $patient)
+    {
+        Gate::authorize('update', $patient);
+
+        $active = ($request->validated('status') === 'active');
+        $payload = $this->patientsServices->setPortalAccess($patient, $active);
+
+        ActivityLogger::log(
+            tenantId: (int) Auth::user()->clinic_id,
+            userId: (int) Auth::user()->id,
+            event: 'patient.portal_access.updated',
+            description: $active ? 'Acceso al portal activado' : 'Acceso al portal desactivado',
+            metadata: [
+                'entity' => 'patient',
+                'entity_id' => (int) $patient->id,
+                'portal_status' => $payload['portal_status'] ?? null,
+            ],
+            ip: $request->ip(),
+        );
+
+        return response()->json($payload, 200);
     }
 
     /**

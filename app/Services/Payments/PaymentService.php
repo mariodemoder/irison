@@ -7,6 +7,7 @@ use App\Models\Bonus;
 use App\Models\CreditUsage;
 use App\Models\Patient;
 use App\Models\Payment;
+use App\Events\PaymentCreated;
 use Modules\Bonus\Services\BonusService;
 use App\Services\Appointments\AppointmentPendingPaymentService;
 use DomainException;
@@ -235,6 +236,8 @@ class PaymentService
             'method' => (string) $payment->method,
             'status' => (string) $payment->status,
         ]);
+
+        PaymentCreated::dispatch($payment);
 
         if ($appointment) {
             $this->syncAppointmentPaymentStatus($appointment);

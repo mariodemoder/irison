@@ -175,6 +175,10 @@ class PatientsServices
             'clinical_records' => $clinicalRecords,
             'created_at' => $patient->created_at,
             'updated_at' => $patient->updated_at,
+            // Portal del Paciente
+            'portal_status' => $patient->status,
+            'has_portal_access' => ($patient->status === 'active'),
+            'last_login_at' => $patient->last_login_at,
         ];
     }
 
@@ -255,6 +259,24 @@ class PatientsServices
         $patient->delete();
     }
 
+    /**
+     * Activa o desactiva el acceso al Portal del Paciente.
+     *
+     * Al desactivar se revocan todos los tokens Sanctum del paciente, cerrando
+     * sus sesiones activas de inmediato. El estado se conserva en
+     * `patients.status` ('active' | 'inactive').
+     */
+    public function setPortalAccess(Patient $patient, bool $active): array
+    {
+        $patient->update(['status' => $active ? 'active' : 'inactive']);
+
+        if (! $active) {
+            $patient->tokens()->delete();
+        }
+
+        return $this->mapPatient($patient);
+    }
+
     private function mapPaginatorItems(LengthAwarePaginator $paginator): array
     {
         return $paginator->getCollection()->transform(function (Patient $patient) {
@@ -282,6 +304,10 @@ class PatientsServices
             'available_credit' => $patient->availableCredit(),
             'created_at' => $patient->created_at,
             'updated_at' => $patient->updated_at,
+            // Portal del Paciente
+            'portal_status' => $patient->status,
+            'has_portal_access' => ($patient->status === 'active'),
+            'last_login_at' => $patient->last_login_at,
         ];
     }
 

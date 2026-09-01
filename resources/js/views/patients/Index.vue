@@ -15,7 +15,9 @@
             </div>
           </div>
 
-          <NewButton v-if="!isProfessional" label="Nuevo paciente" to="/patients/create" />
+          <div class="header-actions">
+            <NewButton v-if="!isProfessional" label="Nuevo paciente" to="/patients/create" />
+          </div>
         </div>
 
         <AppLoading v-if="loading" message="Cargando pacientes..." />
@@ -183,6 +185,8 @@ function goToPatient(id) {
 /* Button/search/entity-table styles are now global in resources/css/app.css */
 
 .page-header { display:grid; grid-template-columns: 1fr 480px auto; align-items:center; gap:12px; margin-bottom:16px }
+
+.header-actions { display:flex; gap:8px; align-items:center; justify-content:flex-end }
 
 .row-name { font-weight:600; font-size:15px }
 .row-number { font-weight:600 }

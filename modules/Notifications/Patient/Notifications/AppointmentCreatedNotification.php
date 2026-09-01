@@ -29,6 +29,7 @@ class AppointmentCreatedNotification extends Notification implements ShouldQueue
         $patient = $this->appointment->patient;
 
         $mail = (new MailMessage)
+            ->from(config('mail.from.address'), $clinic->name ?? config('mail.from.name'))
             ->subject("Nueva cita - {$clinic->name}")
             ->greeting("Hola {$patient->first_name},")
             ->line("Se ha creado una nueva cita en {$clinic->name}.")

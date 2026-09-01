@@ -670,20 +670,24 @@ public function revenueEvolution(int $clinicId, int $months = 12): array;
 
 ### 8.3 Frontend
 
-#### 8.3.1 Reestructurar pestanas
+#### 8.3.1 Reestructurar pestanas (implementado)
+
+Pestanas actuales en `Index.vue` (orden real):
 
 ```
-pestanas = [
-  { key: 'resumen', label: 'Resumen' },      // NUEVA (primera)
-  { key: 'ingresos', label: 'Ingresos' },     // NUEVA
-  { key: 'pendientes', label: 'Pendientes' }, // NUEVA (Fase 1)
-  { key: 'gastos', label: 'Gastos' },         // EXISTENTE
-  { key: 'tarifas', label: 'Tarifas' },       // EXISTENTE
-  { key: 'beneficios', label: 'Beneficios' }, // EXISTENTE (se mantiene como detalle)
-  { key: 'informes', label: 'Informes' },     // Fase 5
-  { key: 'config', label: 'Configuracion' },  // Fase 2/6
+tabs = [
+  { key: 'resumen',     label: 'Resumen' },     // Fase 4 (primera, default)
+  { key: 'pendientes',  label: 'Pendientes' },  // Fase 1
+  { key: 'ingresos',    label: 'Ingresos' },    // Fase 3
+  { key: 'gastos',      label: 'Gastos' },      // Existente + date filters
+  { key: 'proveedores', label: 'Proveedores' }, // Fase 2
+  { key: 'tarifas',     label: 'Tarifas' },     // Existente
+  { key: 'beneficios',  label: 'Beneficios' },  // Existente (detalle)
+  { key: 'informes',    label: 'Informes' },    // Fase 5
 ]
 ```
+
+Nota: la pestana `config` prevista en el diseno original no se implemento (la configuracion vive en otras vistas).
 
 #### 8.3.2 Pestana Resumen
 
@@ -717,7 +721,7 @@ npm install chart.js vue-chartjs
 
 ---
 
-## 9. Fase 5 — Informes Exportables
+## 9. Fase 5 — Informes Exportables ✅ IMPLEMENTADA
 
 **Prioridad:** MEDIA
 **Esfuerzo estimado:** 2-3 dias
@@ -727,34 +731,84 @@ npm install chart.js vue-chartjs
 
 Generar informes detallados por diferentes dimensiones con capacidad de exportacion a CSV/Excel.
 
-### 9.2 Backend
+### 9.2 Backend (implementado)
 
-#### 9.2.1 Nuevo use case: `GenerateFinanceReportQuery`
+#### 9.2.1 DTO: `ReportFilterData`
+
+**Archivo:** `modules/Finance/Application/DTOs/ReportFilterData.php`
+
+```php
+class ReportFilterData
+{
+    public const VALID_TYPES = ['income', 'expenses', 'profit', 'professional', 'service'];
+    public const VALID_GROUP_BY = ['day', 'week', 'month'];
+
+    public function __construct(
+        public readonly string $type,
+        public readonly ?string $fromDate = null,
+        public readonly ?string $toDate = null,
+        public readonly string $groupBy = 'day',
+    ) {}
+}
+```
+
+#### 9.2.2 Use case: `GenerateFinanceReportQuery`
 
 **Archivo:** `modules/Finance/Application/UseCases/GenerateFinanceReportQuery.php`
 
-Tipos de informe:
-- `income` — Detalle de ingresos por dia/concepto
-- `expenses` — Detalle de gastos por dia/categoria/proveedor
-- `profit` — Beneficio diario/mensual
-- `professional` — Ingresos y coste laboral por profesional
-- `service` — Ingresos por tipo de servicio
+Tipos de informe implementados:
 
-Parametros:
-- `type: string` (uno de los anteriores)
-- `from_date: ?string`
-- `to_date: ?string`
-- `group_by: string` (day, week, month)
+| Tipo | Descripcion | Headers | Summary |
+|---|---|---|---|
+| `income` | Ingresos por periodo (facturas - abonos + ingresos manuales) | Periodo, Facturado, Abonos, Ingresos manuales, Neto | `total`, `count` |
+| `expenses` | Gastos por periodo | Periodo, Base imponible, IVA, Total, Nº gastos | `total`, `count` |
+| `profit` | Beneficio por periodo (ingresos - gastos) | Periodo, Ingresos, Gastos, Beneficio, Margen % | `total_revenue`, `total_expenses`, `total_profit`, `margin_percentage` |
+| `professional` | Ingresos y coste laboral por profesional | Profesional, Nº citas, Ingresos, Coste laboral, Contribucion | `total_revenue`, `total_labor`, `total_contribution` |
+| `service` | Ingresos por tipo de servicio | Servicio, Nº citas, Ingresos, Ticket medio | `total_revenue`, `total_count`, `avg_ticket` |
 
-Retorna:
+**Decision clave — agrupacion en PHP, no SQL:**
+La agrupacion por `day`/`week`/`month` se hace a nivel PHP (`groupKey()` con Carbon) en vez de SQL (`strftime`/`DATE_FORMAT`). Motivos:
+- Compatibilidad cross-DB (SQLite en tests, MySQL/PostgreSQL en produccion)
+- Los datasets de informes son acotados (periodo filtrado), el coste en memoria es despreciable
+
+Fuentes de datos por tipo:
+- `income`: `Document` (invoice + abono) + `Payment` (concept=other, status=completed)
+- `expenses`: `ExpenseEloquentModel`
+- `profit`: `Document` + `ExpenseEloquentModel`
+- `professional`: `Appointment` + `ProfessionalRate` + `Payment` manual
+- `service`: `Appointment` + `appointment_types`
+
+#### 9.2.3 Controller: `FinanceReportController`
+
+**Archivo:** `modules/Finance/Infrastructure/Controllers/FinanceReportController.php`
+
+- `show()` — JSON con `{data: {type, period, headers, rows, summary}}`
+- `export()` — CSV streaming (`Symfony\Component\HttpFoundation\StreamedResponse`, NO el de Laravel)
+  - BOM UTF-8 (`\xEF\xBB\xBF`) para compatibilidad con Excel
+  - Delimitador `;` (estandar Excel en locales europeas)
+  - Filename: `informe_{type}_{Y-m-d}.csv`
+  - Incluye bloque "Resumen" al final con los totales
+- Validacion de `type` via `whereIn` en ruta + `abort(422)` en controller
+
+**Rutas** (`modules/Finance/Routes/api.php`):
+
+```php
+Route::get('finance/reports/{type}', [FinanceReportController::class, 'show'])
+    ->whereIn('type', ['income', 'expenses', 'profit', 'professional', 'service']);
+Route::get('finance/reports/{type}/export', [FinanceReportController::class, 'export'])
+    ->whereIn('type', ['income', 'expenses', 'profit', 'professional', 'service']);
+```
+
+Respuesta JSON:
+
 ```json
 {
   "data": {
     "type": "income",
     "period": { "from": "2026-08-01", "to": "2026-08-31" },
-    "headers": ["Fecha", "Concepto", "Paciente", "Importe", "Metodo"],
+    "headers": ["Periodo", "Facturado", "Abonos", "Ingresos manuales", "Neto"],
     "rows": [
-      ["2026-08-01", "Consulta", "Juan Perez", "45.00", "Tarjeta"],
+      ["01/08/2026", 450.00, 0, 25.00, 475.00],
       ...
     ],
     "summary": {
@@ -765,35 +819,45 @@ Retorna:
 }
 ```
 
-#### 9.2.2 Endpoint de exportacion
-
-```http
-GET /api/finance/reports/{type}?from_date=...&to_date=...&group_by=day&format=csv
-GET /api/finance/reports/{type}?from_date=...&to_date=...&group_by=day&format=xlsx
-```
-
-Para CSV: Retornar `Content-Type: text/csv` con `Content-Disposition: attachment`
-Para XLSX: Usar libreria `maatwebsite/excel` o `phpoffice/phpspreadsheet`
-
-#### 9.2.3 Decision: XLSX
+#### 9.2.4 Decision: XLSX
 
 Para el MVP, CSV es suficiente. XLSX se puede anadir despues si los clientes lo piden.
 
-### 9.3 Frontend
+### 9.3 Frontend (implementado)
 
-#### 9.3.1 Pestana "Informes"
+#### 9.3.1 Pestana "Informes" (`resources/js/views/finance/Index.vue`)
 
-Layout:
-- Selector de tipo de informe (tabs o dropdown)
-- Filtros: rango de fechas, agrupacion
-- Tabla dinamica segun tipo seleccionado
-- Boton "Exportar CSV" / "Exportar Excel"
+Octava pestana del modulo. Layout:
 
-### 9.4 Tests
+- **Toolbar**: selector de tipo de informe, selector de agrupacion (dia/semana/mes), filtros Desde/Hasta, boton "Exportar CSV"
+- **Tabla dinamica**: headers y rows se renderizan segun el tipo seleccionado
+- **Deteccion automatica de columnas numericas**: `isNumericReportColumn(colIndex)` recorre las rows y detecta columnas con valores `number`; aplica clase `.report-num-col { text-align: right }` a `<th>` y `<td>`
+- **Bloque de totales** (`.report-summary`):
+  - `justify-content: flex-end` — pegado al borde derecho
+  - Valores con `text-align: right`
+  - **Orden**: computed `sortedReportSummary` coloca los conteos (`count`, `total_count`) primero, el resto mantiene el orden del backend
+  - **Formato** (`reportSummaryValue`):
+    - `count`/`total_count` → entero `toLocaleString('es-ES')`, SIN simbolo de moneda ni decimales
+    - `margin_percentage` → `45,2 %`
+    - `avg_ticket` → `formatMoney` (es monetario, no %)
+    - resto de numericos → `formatMoney`
+- **Exportar CSV**: `window.open('/api/finance/reports/{type}/export?...')` — el navegador gestiona la descarga con los headers `Content-Disposition` del backend
 
-- Generar cada tipo de informe
-- Verificar headers y rows
-- Verificar exportacion CSV
+Estado: `reportType`, `reportGroupBy`, `reportFromDate`, `reportToDate`, `reportData`, `reportLoading`.
+
+### 9.4 Tests (implementados)
+
+7 tests nuevos en `modules/Finance/Tests/Feature/FinanceApiTest.php` (33 total, 232 assertions):
+
+| Test | Verifica |
+|---|---|
+| `test_income_report` | Estructura income: headers, rows, summary |
+| `test_expenses_report` | Estructura expenses + total exacto |
+| `test_profit_report` | Calculo beneficio (200 - 60.50 = 139.50) |
+| `test_professional_report` | Revenue por profesional con cita |
+| `test_service_report` | Revenue por servicio (appointment_type) |
+| `test_csv_export_returns_csv` | Content-Type CSV + contenido con headers |
+| `test_report_with_dates_filters_correctly` | Filtrado por rango de fechas |
 
 ---
 
@@ -1075,7 +1139,7 @@ Usar este checklist para seguir el progreso entre sesiones:
 - [x] **Fase 2:** Proveedores — entidad CRUD + asociar a gastos + selector en formulario + filtro por proveedor + validacion unica por clinica
 - [x] **Fase 3:** Ingresos y Devoluciones — registro manual + reembolsos + abono opcional
 - [x] **Fase 4:** Dashboard Ejecutivo — pestana Resumen con KPIs + grafico evolucion + metodos de pago
-- [x] **Fase 5:** Informes Exportables — reportes por dimension + CSV
+- [x] **Fase 5:** Informes Exportables — 5 tipos de informe (income/expenses/profit/professional/service) + agrupacion dia/semana/mes en PHP + CSV streaming con BOM + totales alineados a la derecha + conteos enteros sin moneda
 - [ ] **Fase 6:** Permisos y Polish — control por rol + UX
 
 ### Orden de implementacion recomendado
@@ -1083,15 +1147,15 @@ Usar este checklist para seguir el progreso entre sesiones:
 ```
 Fase 0 (completada)
     |
-    +---> Fase 1 (pendientes) ---> Fase 3 (ingresos/devoluciones)
+    +---> Fase 1 (completada) ---> Fase 3 (completada)
     |                                    |
-    +---> Fase 2 (proveedores)          |
+    +---> Fase 2 (completada)          |
     |                                    |
-    +---> Fase 4 (dashboard) <----------+
+    +---> Fase 4 (completada) <--------+
               |
-              +---> Fase 5 (informes)
+              +---> Fase 5 (completada)
               |
-              +---> Fase 6 (permisos)
+              +---> Fase 6 (permisos) — pendiente
 ```
 
 Las fases 1, 2 y 3 pueden ejecutarse en paralelo.

@@ -37,7 +37,10 @@ import CompanyServices from '../views/company-services/Index.vue'
 import FinanceIndex from '../views/finance/Index.vue'
 import ActivityIndex from '../views/settings/Activity.vue'
 
-const routes = [
+// Patient Portal routes
+import patientRoutes from './patient'
+
+const backofficeRoutes = [
   { path: '/', component: Landing, meta: { publicLanding: true } },
   { path: '/login', component: Login },
   { path: '/forgot-password', component: ForgotPassword },
@@ -89,6 +92,8 @@ const routes = [
   { path: '/terms', component: Terms },
 ]
 
+const routes = [...backofficeRoutes, ...patientRoutes]
+
 const router = createRouter({
   history: createWebHistory(),
   routes,
@@ -97,8 +102,16 @@ const router = createRouter({
 // 🔐 Protección de rutas
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token')
+  const patientToken = localStorage.getItem('patient_token')
 
-  if (to.meta.auth && !token) {
+  // Patient portal routes
+  if (to.meta.requiresPatientAuth && !patientToken) {
+    next('/patient/login')
+  } else if (to.meta.guest && patientToken && to.path.startsWith('/patient')) {
+    next('/patient/dashboard')
+  }
+  // Backoffice routes
+  else if (to.meta.auth && !token) {
     next('/login')
   } else {
     next()

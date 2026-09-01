@@ -4,16 +4,19 @@ namespace App\Providers;
 
 use App\Events\AppointmentCancelled;
 use App\Events\AppointmentCreated;
+use App\Events\AppointmentReminderSent;
 use App\Events\AppointmentUpdated;
 use App\Events\ConsentCreated;
 use App\Events\ConsentRevoked;
 use App\Events\ConsentSent;
 use App\Events\ConsentSigned;
+use App\Events\PaymentCreated;
 use App\Listeners\LogConsentActivity;
 use Illuminate\Mail\Events\MessageSent;
 use Modules\Notifications\Infrastructure\Listeners\LogSentMail;
 use Modules\Notifications\Patient\Listeners\SendConsentEmail;
 use Modules\Notifications\Patient\Listeners\SendAppointmentStatusNotification;
+use Modules\PatientPortal\Infrastructure\Listeners\CreatePatientPortalNotifications;
 use Modules\Notifications\Backoffice\Listeners\SendCheckoutEmail;
 use Modules\Notifications\Backoffice\Listeners\SendPaymentConfirmationEmail;
 use Modules\Notifications\Backoffice\Listeners\SendReactivationApprovedNotification;
@@ -40,6 +43,7 @@ class EventServiceProvider extends ServiceProvider
         ConsentSent::class => [
             [LogConsentActivity::class, 'handleSent'],
             [SendConsentEmail::class, 'handle'],
+            [CreatePatientPortalNotifications::class, 'handleConsentSent'],
         ],
         ConsentSigned::class => [
             [LogConsentActivity::class, 'handleSigned'],
@@ -53,9 +57,19 @@ class EventServiceProvider extends ServiceProvider
         ],
         AppointmentUpdated::class => [
             [SendAppointmentStatusNotification::class, 'handleAppointmentUpdated'],
+            [CreatePatientPortalNotifications::class, 'handleAppointmentUpdated'],
         ],
         AppointmentCancelled::class => [
             [SendAppointmentStatusNotification::class, 'handleAppointmentCancelled'],
+            [CreatePatientPortalNotifications::class, 'handleAppointmentCancelled'],
+        ],
+
+        PaymentCreated::class => [
+            [CreatePatientPortalNotifications::class, 'handlePaymentCreated'],
+        ],
+
+        AppointmentReminderSent::class => [
+            [CreatePatientPortalNotifications::class, 'handleAppointmentReminderSent'],
         ],
 
         UpgradeRequested::class => [

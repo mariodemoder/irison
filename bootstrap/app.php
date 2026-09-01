@@ -35,6 +35,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin.active' => EnsureAdminIsActive::class,
             'admin.role' => EnsureAdminRole::class,
             'pro.access' => EnsureProAccess::class,
+            'patient.auth' => \Modules\PatientPortal\Infrastructure\Middleware\PatientAuth::class,
+            'patient.clinic' => \Modules\PatientPortal\Infrastructure\Middleware\PatientClinic::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

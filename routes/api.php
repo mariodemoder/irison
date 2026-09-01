@@ -68,6 +68,7 @@ Route::middleware(['auth:sanctum', 'clinic', 'check.subscription'])->group(funct
 
     // Pacientes: CRUD multitenant
     Route::apiResource('patients', PatientController::class);
+    Route::put('patients/{patient}/portal-access', [PatientController::class, 'updatePortalAccess']);
     Route::get('patients/{patient}/history/pdf', [\App\Http\Controllers\Api\PatientHistoryPdfController::class, 'pdf']);
     Route::get('patients/{patient}/images', [\App\Http\Controllers\Api\PatientImageController::class, 'index']);
     Route::post('patients/{patient}/images', [\App\Http\Controllers\Api\PatientImageController::class, 'storeBatch']);
@@ -143,6 +144,11 @@ Route::middleware(['auth:sanctum', 'clinic', 'check.subscription'])->group(funct
     Route::get('/company-services', [\App\Http\Controllers\Api\CompanyServicesController::class, 'index']);
     Route::put('/company-services', [\App\Http\Controllers\Api\CompanyServicesController::class, 'update']);
 
+    // Portal del Paciente: configuración del slug de la clínica (owner/admin/manager)
+    Route::get('/patient-portal/settings', [\Modules\PatientPortal\Infrastructure\Controllers\PatientPortalSettingsController::class, 'show']);
+    Route::get('/patient-portal/slug-check', [\Modules\PatientPortal\Infrastructure\Controllers\PatientPortalSettingsController::class, 'checkSlug']);
+    Route::put('/patient-portal/settings', [\Modules\PatientPortal\Infrastructure\Controllers\PatientPortalSettingsController::class, 'update']);
+
     // Consentimientos informados — categorías
     Route::apiResource('consent-categories', \App\Http\Controllers\Api\ConsentCategoryController::class)
         ->only(['index', 'store', 'update', 'destroy']);
@@ -176,5 +182,8 @@ Route::middleware(['auth:sanctum', 'clinic', 'check.subscription'])->delete('/me
 Route::middleware(['auth:sanctum', 'clinic'])->get('/me/stripe-invoices', [\App\Http\Controllers\Api\MeController::class, 'stripeInvoices']);
 Route::middleware(['auth:sanctum', 'clinic'])->post('/me/invoice-background/preview-pdf', [\App\Http\Controllers\Api\MeController::class, 'previewInvoiceBackgroundPdf']);
 // Billing confirm/cancel: movidos a modules/Subscriptions/Routes/api.php
+
+// Patient Portal: rutas del módulo PatientPortal
+require base_path('modules/PatientPortal/Routes/api.php');
 
 

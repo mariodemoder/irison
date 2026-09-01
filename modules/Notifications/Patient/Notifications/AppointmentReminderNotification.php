@@ -34,6 +34,7 @@ class AppointmentReminderNotification extends Notification implements ShouldQueu
         $patientName = $this->appointment->patient->first_name;
 
         return (new MailMessage)
+            ->from(config('mail.from.address'), $clinic->name ?? config('mail.from.name'))
             ->subject("Recordatorio de cita - {$clinic->name}")
             ->view('emails.appointment-reminder', [
                 'patientName' => $patientName,
