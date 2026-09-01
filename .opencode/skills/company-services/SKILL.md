@@ -1,3 +1,8 @@
+---
+name: company-services
+description: Use when working on the Servicios page: session types (cesiones), bonus types, booking settings panel (BookingSettings component), PatientBonuses component sidebar, /company-services route.
+---
+
 # Company Services Skill
 
 ## Core Files

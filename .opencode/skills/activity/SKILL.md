@@ -1,3 +1,8 @@
+---
+name: activity
+description: Use when working on the Registro de Actividad module: activity_logs feed, ActivityLogger, login cap (3 per user/clinic), login events hidden from the SPA, backoffice clinic activity view.
+---
+
 # Skill: Registro de Actividad
 
 ## Cuándo usar este skill

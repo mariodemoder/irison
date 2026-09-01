@@ -3,6 +3,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import api from '../../services/api'
 import { useToast } from 'vue-toastification'
 import BtnTrash from '../../components/BtnTrash.vue'
+import BookingHelpModal from '../../components/booking/BookingHelpModal.vue'
 
 const props = defineProps({
   cesionTypes: { type: Array, default: () => [] },
@@ -11,6 +12,7 @@ const props = defineProps({
 const toast = useToast()
 const localLoading = ref(false)
 const activeSubTab = ref('settings')
+const showHelp = ref(false)
 
 const settings = ref({
   slug: '',
@@ -245,6 +247,19 @@ onMounted(loadSettings)
 <template>
   <div v-if="localLoading" style="text-align:center;padding:24px;color:#6b7280;">Cargando configuración...</div>
   <div v-else>
+    <div class="section-head booking-head">
+      <h2>Reserva Online</h2>
+      <button class="help-btn" @click="showHelp = true" title="Ayuda de Reserva Online" aria-label="Ayuda de Reserva Online">?</button>
+      <div v-if="settings.slug" class="public-link-actions">
+        <a :href="bookingPublicUrl" target="_blank" rel="noopener" class="btn btn-sm btn-outline">
+          Ver página pública&nbsp;↗
+        </a>
+        <button type="button" class="btn btn-sm btn-outline" @click="copyBookingUrl">Copiar enlace público</button>
+      </div>
+    </div>
+
+    <BookingHelpModal v-if="showHelp" @close="showHelp = false" />
+
     <div class="sub-tabs" style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
       <button :class="['tab', 'tab-small', { active: activeSubTab==='settings' }]" @click="activeSubTab='settings'">Configuración</button>
       <button :class="['tab', 'tab-small', { active: activeSubTab==='services' }]" @click="activeSubTab='services'">Servicios</button>
@@ -294,12 +309,6 @@ onMounted(loadSettings)
             <option :value="72">72 horas</option>
           </select>
         </div>
-      </div>
-      <div v-if="settings.slug" class="public-link-actions">
-        <a :href="bookingPublicUrl" target="_blank" rel="noopener" class="btn btn-sm btn-outline">
-          Ver página pública&nbsp;↗
-        </a>
-        <button type="button" class="btn btn-sm btn-outline" @click="copyBookingUrl">Copiar enlace público</button>
       </div>
     </div>
 
@@ -514,8 +523,27 @@ onMounted(loadSettings)
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  margin-top: 4px;
+  margin-left: auto;
 }
+
+.booking-head {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.booking-head h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.help-btn { width: 26px; height: 26px; border-radius: 50%; border: 1px solid #d1d5db; background: #fff; cursor: pointer; font-size: 13px; font-weight: 700; color: #6b7280; display: inline-flex; align-items: center; justify-content: center; line-height: 1; flex-shrink: 0; }
+.help-btn:hover { background: #f3f4f6; color: #374151; }
 
 .input {
   padding: 10px 12px;

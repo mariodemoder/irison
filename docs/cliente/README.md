@@ -13,12 +13,17 @@ Este espacio almacena documentacion orientada a clinicas (cliente final).
 
 - `inicio-rapido.md`
 - `agenda-y-citas.md`
+- `booking.md` — guia general de la Reserva Online (configuracion y uso)
 - `pacientes-e-historia.md`
 - `pacientes/` — guias operativas de pacientes (incluye `pacientes/portal-paciente.md`)
 - `patient-portal.md` — guia general del Portal del Paciente
 - `facturacion-y-pagos.md`
 - `suscripcion-y-estados.md`
 - `faq.md`
+
+## Documentos
+
+- `booking.md` — Reserva Online para clinicas: que puede hacer el paciente, configuracion desde Servicios (URL, servicios, profesionales y horarios), requisitos y errores frecuentes.
 
 ## Criterios editoriales
 

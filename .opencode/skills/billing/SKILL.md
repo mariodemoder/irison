@@ -1,9 +1,14 @@
+---
+name: billing
+description: Use when touching Stripe, subscriptions, plans, billing webhooks, upgrade proration, price ID resolution, Stripe customer sync, read-only post-trial policy, or the XLSX clinic backup export.
+---
+
 # Billing Skill — Planes y Suscripciones
 
 ## Router rápido (anti-exploración)
 
 - Si el incidente es de upgrade aprobado en backoffice pero no reflejado en cliente/pago:
-  - Cargar `backoffice/upgrade-flow.md` antes de explorar código.
+  - Cargar `../backoffice/upgrade-flow.md` antes de explorar código.
 
 ## Planes disponibles (`Clinic::PLAN_USER_LIMITS`)
 

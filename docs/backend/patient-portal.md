@@ -404,7 +404,10 @@ profesionales/recepción → 403.
 `company-services/Index.vue` (tab "Portal del Paciente"). Expone `save()` (valida el slug
 con `slug-check`, hace `PUT /patient-portal/settings` y lanza si no es válido) e integra
 con el botón "Guardar" general de Servicios. Muestra la URL pública
-`{origin}/patient/login?clinic={slug}` como preview y enlace.
+`{origin}/patient/login?clinic={slug}` como preview y enlace. En el header del tab, junto
+al título y al botón de ayuda "?", y alineados a la derecha, están los botones
+**"Ver página pública ↗"** y **"Copiar enlace público"** (visibles cuando la clínica ya
+tiene `clinics.slug`).
 
 ### Tests
 

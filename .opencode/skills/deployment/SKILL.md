@@ -1,3 +1,8 @@
+---
+name: deployment
+description: Use when deploying or touching production readiness: migrations, queues (database driver + worker), build, post-deploy checks, rate limiting, logging verification. Full guides in docs/deployment/.
+---
+
 # Deployment Skill
 
 ## Quick Reference

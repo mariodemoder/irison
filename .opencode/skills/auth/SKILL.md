@@ -1,3 +1,8 @@
+---
+name: auth
+description: Use when working on authentication/authorization: Sanctum, login/register/password reset, profile roles (admin/manager/professional), policies, registration flow, financial data stripping for professional viewers.
+---
+
 # Auth / Autenticación Skill
 
 Sistema de autenticación con Laravel Sanctum y control de acceso basado en perfiles (profile-based access control).

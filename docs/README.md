@@ -6,6 +6,7 @@ Este directorio centraliza la documentacion oficial del backend y operaciones.
 
 - `backend/`: flujos de autenticación, autorización y lógica de negocio del API.
 - `backend/booking.md`: reserva online, flujo "Cualquier profesional", bloqueo del hueco, tests.
+- `backend/notifications.md`: catálogo completo de notificaciones (22 emails, branding por audiencia, tests y formato).
 - `backend/read-only-policy.md`: política de solo lectura post-trial (qué se permite, qué se bloquea, puntos de enforcement).
 - `backend/reminder-scheduling.md`: jobs de recordatorios de citas (24h/2h), frecuencia variable vía `REMINDER_INTERVAL_MINUTES` e idempotencia.
 - `backend/finance.md`: módulo de finanzas — gastos, tarifas por miembro del equipo y cálculo de beneficios.
@@ -19,6 +20,8 @@ Este directorio centraliza la documentacion oficial del backend y operaciones.
 - `deployment/`: despliegue e infraestructura.
 - `frontend/`: protocolos y guias para desarrollo frontend (Vue 3).
 - `documentation-plan.md`: plan de informacion, ownership y roadmap de docs.
+- `opencode-arnes.md`: estructura del harness opencode (agentes, skills, comandos) y cómo se cargan los skills.
+- `agent-commands.md`: comandos de agentes (`con promp`, `con clean`, `con tests`).
 
 ## Reglas de mantenimiento
 

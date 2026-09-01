@@ -1,3 +1,8 @@
+---
+name: core
+description: Base context for ANY Irison task — setup (composer/npm/artisan), architecture snapshot, non-negotiable conventions, high-value references, auth recovery shortcuts. Load first when starting work on this repo.
+---
+
 # Core Project Context
 
 ## Quick Start

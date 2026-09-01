@@ -1,3 +1,8 @@
+---
+name: qa
+description: Use ONLY on demand (`con tests`) or when the approved plan defines a "complete flow": focused feature tests, module regression, HTTP contract validation, risk hardening. Load before running php artisan test or validating behavior.
+---
+
 # QA Skill
 
 ## Delegation Rule

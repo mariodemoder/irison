@@ -1,3 +1,8 @@
+---
+name: bonus
+description: Use when working on bonos: multi-type session lines (BonusSessionLine), BonusService, consumption flow, backward compatibility, bonus type templates, PatientBonuses.vue, session lines.
+---
+
 # Bonus Module Skill
 
 ## Arquitectura del Módulo (DDD)

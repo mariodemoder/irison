@@ -1,3 +1,8 @@
+---
+name: consent
+description: Use when working on consentimientos informados: ConsentTemplate, PatientConsent, categories, ConsentVariableResolver {variables}, ConsentPdfGenerator (Browsershot, SHA-256), ConsentSignatureService (token 72h), SignPad, remote sign flows, public sign routes.
+---
+
 # Skill: Consentimientos Informados
 
 ## Cuándo usar este skill

@@ -1,3 +1,8 @@
+---
+name: team
+description: Use when working on team management: users, profiles, professions, UserSchedule/UserScheduleException, booking link (allow_online_booking), max_users limits, TeamUserService, Gate team-access.
+---
+
 # Team / Equipo Skill
 
 Módulo de administración de usuarios del equipo, perfiles, profesiones y horarios laborales.

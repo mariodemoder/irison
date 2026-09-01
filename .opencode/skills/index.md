@@ -1,62 +1,35 @@
 # Skill Index — Irison
 
-Router rápido para cargar solo el skill que necesitas. **Todos los skills son compartidos** por los agentes `plan` y `build`; se cargan por necesidad según el dominio de la tarea.
+Mapa humano de los skills de dominio del proyecto. **Todos son skills opencode reales** (`**/SKILL.md` con frontmatter `name`/`description`), auto-descubiertos por opencode y cargables con la herramienta `skill`. Los agentes `plan` y `build` los cargan por necesidad según el dominio de la tarea — este índice es solo referencia para humanos.
 
-## Core (read first)
-- `core/index.md` — Quick start, architecture, conventions
+## Skills de dominio (proyecto, `.opencode/skills/`)
 
-## Auth / Autenticación
-- `auth/index.md` — Role helpers, policies, registration, appointment/patient scoping, financial data stripping
+| Skill | Cuándo cargarlo |
+|---|---|
+| `core` | Base de contexto para cualquier tarea en Irison: setup, arquitectura, convenciones, auth recovery |
+| `backend` | Lógica backend, logging de negocio, soft deletes, pitfalls de DB |
+| `frontend` | Cualquier trabajo Vue/UI en el SPA: errores, botones, popups, date picker, menú |
+| `auth` | Autenticación/autorización, Sanctum, roles (admin/manager/professional), policies, registro |
+| `billing` | Stripe, suscripciones, webhooks, upgrade/prorateo, solo lectura post-trial, backup XLSX |
+| `appointments` | Form de citas, disponibilidad, solapamiento, date/time payload, consumo de bonos |
+| `bonus` | Bonos multi-tipo, session lines, BonusService, flujo de consumo |
+| `booking` | Reserva online: AvailabilityEngine, PublicBookingService, horarios, rutas públicas/admin |
+| `consent` | Consentimientos informados: plantillas, firma digital, envío remoto, PDF |
+| `activity` | Registro de actividad (activity_logs), cap de logins, logins ocultos al SPA |
+| `deployment` | Despliegue: queues, migraciones, producción |
+| `company-services` | Sesiones (cesiones), tipos de bono, panel reserva online (Servicios) |
+| `qa` | Tests/QA **solo a demanda** (`con tests`) o "complete flow" |
+| `team` | Gestión de equipo: usuarios, perfiles, profesiones, horarios, booking link |
+| `backoffice` | Panel interno: admin_users, tenant management, upgrade flow, hard-delete |
 
-## Backend
-- `backend/index.md` — Business logging, soft deletes
+Sub-recursos por dominio (referenciados relativos desde el `SKILL.md`):
+- `backoffice/upgrade-flow.md` — flujo completo de upgrade (`trial` vs activo pagado)
+- `backoffice/hard-delete.md` — hard-delete funcional de clínica
+- `frontend/menu-routing.md` — reglas `isActive()` del menú `MainLayout.vue`
 
-## Frontend
-- `frontend/index.md` — Error handling, button/popup styling, toast, date picker protocol
-- `frontend/menu-routing.md` — Menu nav items, `isActive()` rules, adding new items
+## Skills nativos vendored (`.agents/skills/`)
 
-## Billing
-- `billing/index.md` — Stripe, subscriptions, webhooks, backoffice shortcuts
-
-## Appointments
-- `appointments/index.md` — Form, availability, date/time pitfalls, overlap, bonus/credit
-
-## Bonos
-- `bonus/index.md` — Multi-type sessions, BonusService, consumption flow, backward compatibility, session lines
-
-## Consentimientos
-- `consent.md` — Templates, digital signature, remote signing, PDF generation, patient embed layout
-
-## Online Booking
-- `booking/index.md` — Models, AvailabilityEngine, notifications, public vs admin routes
-
-## QA
-- `qa/index.md` — Testing strategies, coverage rules. Ejecución **solo on demand** (`con tests`) o si el plan aprobado define "complete flow"
-
-## Clean (código muerto)
-- Regla en `AGENTS.md` → `build` ejecuta dead-code cleanup **solo on demand** (`con clean`) o si el plan aprobado define "complete flow". Nunca automático, nunca borra tests.
-
-## Actividad
-- `activity.md` — Registro de actividad (módulo DDD), cap de logins (3 por usuario/clínica) y ocultamiento de `login` al SPA
-
-## Deployment
-- `deployment/index.md` — Production checklist, migrations, queues
-
-## Company Services
-- `company-services/index.md` — Session types, bonus types, booking settings management
-
-## Team / Equipo
-- `team/index.md` — User management, profiles, professions, schedules, booking link
-
-## Backoffice
-- `backoffice/index.md` — Tenant management, Stripe customer sync, invoice resolution
-- `backoffice/hard-delete.md` — Hard-delete funcional de clínica, manual y automatizado, preserve billing data
-- `backoffice/upgrade-flow.md` — Flujo de upgrade por backoffice (`trial` vs `basic activo`), estados, webhooks y diagnóstico rápido
-
----
-
-## Skills nativos (SKILL.md en `.agents/skills/`)
-Skills auto-descubiertos por opencode, compartidos por todos los agentes. Se cargan automáticamente según su descripción o bajo demanda:
+Skills de terceros auto-descubiertos, compartidos por todos los agentes, foco frontend:
 - `vue-best-practices` — Composition API con `<script setup>` (Vue 3 SFC). Usar para todo trabajo `.vue`.
 - `vite-patterns` — Config, plugins, HMR, env variables, build optimization.
 - `frontend-a11y` — HTML semántico, ARIA, foco y navegación por teclado.

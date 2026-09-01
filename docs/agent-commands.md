@@ -15,6 +15,8 @@ Mejora una petición del usuario aplicando mejores prácticas de prompting (art�
    - **Aprobado** → continúa con la planificación normal del agente Plan.
    - **Rechazado** → itera hasta que el usuario lo apruebe.
 
+> El contexto se construye con los skills opencode de `.opencode/skills/` (auto-descubiertos, cargados con la herramienta `skill`) — ver `docs/opencode-arnes.md`.
+
 **Definición**: `.opencode/command/promp.md` (`agent: plan`).
 
 > Nota: tras crear o modificar comandos hay que **reiniciar opencode** — la configuración se carga al arrancar, no en caliente.
@@ -25,3 +27,7 @@ Mejora una petición del usuario aplicando mejores prácticas de prompting (art�
 - `con tests` — QA, tests, regresión o validación. Solo bajo demanda.
 
 > Estas invocaciones son conceptuales (referidas en AGENTS.md en la Cleaning/Verification Layer); no tienen archivo de comando definido.
+
+## Cargar skills por dominio
+
+Los skills de dominio se cargan con la herramienta `skill` (auto-descubiertos). Lista actualizada: `AGENTS.md → Skill Index` y `.opencode/skills/index.md`.

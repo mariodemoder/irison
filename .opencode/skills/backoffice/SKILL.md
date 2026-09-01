@@ -1,3 +1,8 @@
+---
+name: backoffice
+description: Use when working on the internal backoffice: admin_users vs users confusion, tenant management, clinic management, subscription upgrade flow (approve/preview-upgrade), hard-delete functional data.
+---
+
 # Backoffice Skill
 
 ## Arquitectura
@@ -44,7 +49,8 @@ La tabla `subscription_requests` tiene dos FKs a usuarios:
 
 Para incidencias o cambios en upgrades, cargar primero:
 
-- `backoffice/upgrade-flow.md` — flujo completo `trial` vs `activo pagado`, preview de facturación, estados esperados, archivos clave y checklist de diagnóstico.
+- `upgrade-flow.md` — flujo completo `trial` vs `activo pagado`, preview de facturación, estados esperados, archivos clave y checklist de diagnóstico.
+- `hard-delete.md` — hard-delete funcional de clínica
 
 ### Regla rápida
 

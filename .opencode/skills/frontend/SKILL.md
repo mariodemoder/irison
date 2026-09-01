@@ -1,3 +1,8 @@
+---
+name: frontend
+description: Use when working on the Vue 3 SPA: error handling (axios/api.js), button/popup styling, delete confirmations, date picker protocol, table responsiveness, patient Show layout, menu routing. Load for any .vue or UI work.
+---
+
 # Frontend Skill
 
 ## Error Handling (SPA)

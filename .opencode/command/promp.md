@@ -9,7 +9,7 @@ Refina una petición del usuario aplicando las mejores prácticas de prompting (
 
 ## Proceso
 
-1. **Contexto**: lee `AGENTS.md` y `.opencode/skills/index.md` para conocer las convenciones del proyecto (aislamiento tenancy, capas Controllers → Services → Policies, webhooks públicos, reminder scheduling, docs-after-approval, clean/QA solo a demanda, cambios irreversibles de billing/tenancy requieren confirmación).
+1. **Contexto**: lee `AGENTS.md` y carga la skill `core` (o la del dominio vía la herramienta `skill`) para conocer las convenciones del proyecto (aislamiento tenancy, capas Controllers → Services → Policies, webhooks públicos, reminder scheduling, docs-after-approval, clean/QA solo a demanda, cambios irreversibles de billing/tenancy requieren confirmación).
 
 2. **Análisis**: la petición del usuario llega como `$ARGUMENTS`. Descompónla en:
    - **Objetivo**: qué pide y para qué.
@@ -37,7 +37,7 @@ Refina una petición del usuario aplicando las mejores prácticas de prompting (
    - **Anti-alucinaciones**: el prompt debe pedir al Plan investigar los archivos antes de afirmar, no inventar código, evitar sobre-ingeniería y no hardcodear valores.
 
 5. **Aprobación**: presenta el prompt mejorado en un bloque de código y resume en 2-3 líneas qué cambiaste. Pide al usuario aprobarlo o pedir ajustes.
-   - **Aprobado** → continúa con el flujo normal de planificación del agente Plan (carga la skill del dominio desde `.opencode/skills/index.md` y presenta el plan para aprobación).
+   - **Aprobado** → continúa con el flujo normal de planificación del agente Plan (carga la skill del dominio vía la herramienta `skill` — ver Skill Index en `AGENTS.md` — y presenta el plan para aprobación).
    - **Rechazado / ajustes** → itera sobre el prompt hasta que el usuario lo apruebe.
 
 ## Reglas

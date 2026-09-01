@@ -1,3 +1,8 @@
+---
+name: appointments
+description: Use when working on appointments: Form.vue, date/time payload normalization, slot granularity 15min, availability/overlap checks, bonus/credit consumption, AppointmentService. Debug agenda issues here.
+---
+
 # Appointments Skill
 
 ## Core Files

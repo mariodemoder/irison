@@ -1,3 +1,8 @@
+---
+name: booking
+description: Use when working on the online booking engine: BookingPage/BookingService/BookingProfessional, AvailabilityEngine, PublicBookingService, professional/user schedules, schedule exceptions, public vs admin booking routes, booking notifications.
+---
+
 # Online Booking Skill
 
 ## Arquitectura del Módulo

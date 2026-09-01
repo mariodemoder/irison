@@ -100,6 +100,12 @@ onMounted(load)
     <div class="section-head portal-section-head">
       <h2>Portal del Paciente</h2>
       <button class="help-btn" @click="showHelp = true" title="Ayuda del Portal del Paciente">?</button>
+      <div v-if="portalLoginUrl" class="public-link-actions">
+        <a :href="portalLoginUrl" target="_blank" rel="noopener" class="btn btn-sm btn-outline">
+          Ver página pública&nbsp;↗
+        </a>
+        <button type="button" class="btn btn-sm btn-outline" @click="copyPublicUrl">Copiar enlace público</button>
+      </div>
     </div>
     <div style="margin-top:8px;color:#6b7280;font-size:13px">
       Define la URL pública de acceso al portal del paciente. Los pacientes entran en esta dirección y la clínica aparece con su propio nombre y logo.
@@ -119,13 +125,6 @@ onMounted(load)
       />
       <span v-if="slugError" class="slug-error">{{ slugError }}</span>
       <span v-else-if="saved" style="font-size:12px;color:#16a34a;">Guardado.</span>
-    </div>
-
-    <div v-if="portalLoginUrl" class="public-link-actions">
-      <a :href="portalLoginUrl" target="_blank" rel="noopener" class="btn btn-sm btn-outline">
-        Ver página pública&nbsp;↗
-      </a>
-      <button type="button" class="btn btn-sm btn-outline" @click="copyPublicUrl">Copiar enlace público</button>
     </div>
 
     <div class="portal-policy-block">
@@ -227,7 +226,7 @@ onMounted(load)
 }
 
 .public-link-actions {
-  margin-top: 16px;
+  margin-left: auto;
   display: flex;
   justify-content: flex-end;
   align-items: center;
@@ -235,7 +234,7 @@ onMounted(load)
   flex-wrap: wrap;
 }
 
-.portal-section-head { display: flex; align-items: center; gap: 8px; }
+.portal-section-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .portal-section-head h2 { margin: 0; }
 .help-btn { width: 26px; height: 26px; border-radius: 50%; border: 1px solid #d1d5db; background: #fff; cursor: pointer; font-size: 13px; font-weight: 700; color: #6b7280; display: inline-flex; align-items: center; justify-content: center; line-height: 1; flex-shrink: 0; }
 .help-btn:hover { background: #f3f4f6; color: #374151; }

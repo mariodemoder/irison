@@ -1,3 +1,8 @@
+---
+name: backend
+description: Use when working on backend logic: business logging conventions (events, context keys), soft deletes on patients/appointments/documents, DB pitfalls. Load for Laravel controllers/services/database work.
+---
+
 # Backend Skill
 
 ## Business Logging

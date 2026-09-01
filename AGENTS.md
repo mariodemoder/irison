@@ -30,7 +30,7 @@ All agents MUST read this file at the start of every session before planning or 
 ### 5. Delegation policy (two-agent model)
 - **plan** orquesta todo trabajo no trivial: entiende la tarea, la descompone, presenta el plan y supervisa la ejecución.
 - **build** ejecuta los planes aprobados end-to-end (backend + frontend) cargando la skill que el dominio requiera.
-- **No hay subagentes especialistas.** Ambos agentes comparten el catálogo completo de skills (`.opencode/skills/index.md` + nativas en `.agents/skills/`) y cargan la skill por necesidad según el dominio.
+- **No hay subagentes especialistas.** Ambos agentes comparten el catálogo completo de skills (skills opencode auto-descubiertos en `.opencode/skills/` + nativos vendored en `.agents/skills/`) y cargan la skill por necesidad según el dominio.
 - Small or simple tasks → plan agent handles directly.
 
 ## Agent Architecture
@@ -51,11 +51,11 @@ This project is organized into 5 layers:
 
 - **build** executes the approved plans end-to-end (backend + frontend).
 
-- There are **no specialist subagents**. Both `plan` and `build` share the full skill catalog (`.opencode/skills/index.md` + native SKILL.md in `.agents/skills/`) and load the skill the domain requires.
+- There are **no specialist subagents**. Both `plan` and `build` share the full skill catalog (opencode skills auto-discovered in `.opencode/skills/` + native vendor SKILL.md in `.agents/skills/`) and load the skill the domain requires.
 
 4. Knowledge Layer
 
-- The skills in `.opencode/skills/index.md` provide technical context and domain knowledge.
+- The skills in `.opencode/skills/` are opencode skills (frontmatter `name`/`description`) auto-discovered by the `skill` tool; they provide technical context and domain knowledge.
 
 - Skills should include implementation guidelines, not permissions or routing logic.
 
@@ -74,6 +74,7 @@ Use this decision map when a task starts:
 - If the task affects tenant lifecycle, backoffice operations, invoices, or internal management flows → load the `backoffice` skill.
 - If the task is a regression, risk-hardening, or validation pass → load the `qa` skill (`con tests`).
 - If the task affects deployment, queues, environment, release safety, or production readiness → load the `deployment` skill.
+- If the task touches Portal del Paciente, patient auth/reset, or `clinics.slug` → load the `patient-portal` skill.
 - **If dead-code cleanup was requested** (`con clean`) or a "complete flow" plan includes it → `build` runs the cleanup following the Clean rule below.
 
 Both `plan` and `build` execute these paths: `plan` plans and supervises, `build` implements loading the corresponding skill.
@@ -131,21 +132,23 @@ If the feature is substantial or has multiple flows, follow a richer structure s
 
 ## Skill Index (load on demand, saves tokens)
 
-See `.opencode/skills/index.md` for detailed routing. Key skills:
+Skills opencode reales auto-descubiertos en `.opencode/skills/` (frontmatter `name`/`description`); se cargan con la herramienta `skill`. Router humano detallado: `.opencode/skills/index.md`.
 - `core` — Setup, architecture, conventions, auth recovery
 - `backend` — Logging, soft deletes, DB pitfalls
 - `frontend` — Error handling, buttons, popups, date picker protocol
+- `auth` — Roles, policies, registration, financial data stripping
 - `billing` — Stripe, subscriptions, webhooks, backoffice sync
 - `appointments` — Form, availability, pitfalls
 - `bonus` — Multi-type sessions, BonusService, consumption flow, session lines
 - `booking` — Online booking engine, models, routes
+- `consent` — Plantillas, firma digital, envío remoto
 - `company-services` — Sessions, bonuses, booking settings page
+- `patient-portal` — Portal del Paciente, patient auth/reset, `clinics.slug`
+- `activity` — Registro de actividad, cap de logins, logins ocultos al SPA
+- `team` — User management, profiles, professions, schedules, booking link
 - `qa` — Testing strategies, delegation (`con tests`)
-- `clean` — Dead-code cleanup **solo on demand** (`con clean`); regla en la sección Clean Delegation Rule
 - `deployment` — Production checklist, queues
-- `backoffice` — Tenant management, invoices
-- `consent` — Consentimientos informados, plantillas, firma digital, envío remoto
-- `activity` — Registro de actividad, cap de logins (3 por usuario/clínica), logins ocultos al SPA
+- `backoffice` — Tenant management, invoices, upgrade flow, hard-delete
 
 ## Clean Delegation Rule
 
@@ -163,9 +166,10 @@ QA, tests, regresión o validación se ejecutan **solo bajo demanda** (`con test
 - **Subscription upgrade proration**: Trial→paid upgrades must charge the FULL price of the new plan (no credit). Basic-paid→PRO uses Stripe's native proration. See `backoffice/upgrade-flow.md` for details.
 - **Price ID resolution**: Each plan has its own Stripe product. `resolvePriceIdForPlan()` only falls back to `STRIPE_PRICE_ID` for the `basic` plan. Trial→paid checkout passes `price_id` explicitly to avoid incorrect fallback.
 - **Modo solo lectura post-trial**: tras el fin del trial (o del periodo pagado de una cancelación) la clínica solo puede ver datos, activar la cuenta de pago y descargar el backup XLSX. Toda escritura —incluidas las rutas admin de Booking (`check.subscription` en `modules/Booking/Routes/api.php`) y la reserva online pública (`PublicBookingService::ensureClinicCanBeBooked()`)— se bloquea. Enforcement: middleware `check.subscription`, guarda axios (`api.js`), CSS `.readonly-mode` + `allow-readonly-action`. Detalle: `docs/backend/read-only-policy.md`.
-- **Dos slugs independientes por clínica**: `clinics.slug` (Portal del Paciente, auto-generado al registrarse en `RegisterController`, editable desde Servicios → Portal del Paciente) y `booking_pages.slug` (Reserva Online, generado en `bootstrapBooking`). No sincronizar: son identificadores separados. `clinics.slug` alimenta el branding público (`/api/patient/public/branding/{slug}`), el enlace copiable del portal y el `?clinic=` de los emails de reset al paciente. Endpoints: `GET/PUT /api/patient-portal/settings`, `GET /api/patient-portal/slug-check`. Detalle: `docs/backend/patient-portal.md` §13.
-- **Reset de password del Portal del Paciente es por clinic-patient (no por email)**: un mismo email puede existir en varias clínicas. `Patient::getEmailForPasswordReset()` devuelve `(string) $this->id`, de modo que el token vive en la tabla dedicada `patient_password_reset_tokens.email = patientId` (broker `patients`) y **cada paciente tiene su propio token**. `forgot`/`reset`/`login` escopan por `clinics.slug` (credencial Closure en el broker + `whereHas('clinic', slug)`). La URL del email de reset lleva el **email real** (para pre-rellenar el formulario) + `name={nombre apellido}` (para el saludo), no el patient id. El nombre de la clínica se muestra como **título centrado** en el header de todos los emails a paciente y en los formularios del portal. Sin esto, un email compartido enviaba branding de la clínica equivocada y cambiaba el password del paciente de menor id. Detalle: `docs/backend/patient-portal.md` §2, §3, §12.
-- **Clínicas sin `clinics.slug` (NULL) quedan fuera de todo el circuito del portal** (login, forgot, reset y rutas autenticadas). No hay backfill automático; se activa asignando el slug desde Servicios → Portal del Paciente. Gate centralizado en `Patient::canUsePortal()` (`status === 'active' && !empty(clinic.slug)`); enforcement en `PatientAuthService` + middleware `patient.auth`. Detalle: `docs/backend/patient-portal.md` §13.
+- **Dos slugs independientes por clínica**: `clinics.slug` (Portal del Paciente, editable desde Servicios → Portal del Paciente) vs `booking_pages.slug` (Reserva Online). No sincronizar. `clinics.slug` alimenta branding público, enlace copiable y `?clinic=` de emails de reset. Detalle: `docs/backend/patient-portal.md` §13.
+- **Reset de password del Portal del Paciente es por clinic-patient (no por email)**: token vive en `patient_password_reset_tokens.email = patientId` (broker `patients`); `forgot`/`reset`/`login` escopan por `clinics.slug`. Sin esto, un email compartido cambiaba el password del paciente de menor id. Detalle: `docs/backend/patient-portal.md` §2, §3, §12.
+- **Clínicas sin `clinics.slug` (NULL) quedan fuera de todo el circuito del portal** (login, forgot, reset y rutas autenticadas). No hay backfill automático; se activa asignando el slug desde Servicios → Portal del Paciente. Gate: `Patient::canUsePortal()`; enforcement en `PatientAuthService` + middleware `patient.auth`. Detalle: `docs/backend/patient-portal.md` §13.
+- Detalle de los pitfalls del Portal del Paciente (slugs, reset, NULL slug) consolidado en la skill `patient-portal`.
 
 ## Notifications Module
 
@@ -180,59 +184,7 @@ Key model requirements: `Patient` uses `Notifiable` trait; `Clinic` has `getAdmi
 
 > Recordatorios de citas: los jobs `SendAppointmentReminder24hJob` y `SendAppointmentReminder2hJob` se ejecutan con una **frecuencia variable** definida por `REMINDER_INTERVAL_MINUTES` (default 15 min, `config/reminders.php`). Detalle: `docs/backend/reminder-scheduling.md`.
 
-### Catálogo completo de notificaciones
-
-#### A Pacientes (email)
-
-| # | Nombre | Motivo | Contenido | From | To |
-|---|---|---|---|---|---|
-| 1 | **BookingConfirmation** | Reserva online | Confirmación con fecha, hora, profesional, clínica + enlace cancelación | Clínica | Email paciente |
-| 2 | **AppointmentCreatedNotification** | Cita creada manualmente | Aviso de nueva cita con fecha y hora | Clínica | Email paciente |
-| 3 | **AppointmentUpdatedNotification** | Cita modificada | Cambios realizados + nueva fecha/hora | Clínica | Email paciente |
-| 4 | **AppointmentCancelledNotification** | Cita cancelada | Cancelación con fecha original | Clínica | Email paciente |
-| 5 | **AppointmentReminderNotification** | Job 2h/24h o reenvío manual | Recordatorio: fecha, hora, dirección, teléfono | Clínica | Email paciente |
-| 6 | **ConsentSignRequestMail** | Clínica envía consentimiento | Enlace para firmar (expira 72h) | Clínica | Email paciente |
-| 7 | **PatientResetPasswordNotification** (paciente) / **ResetPasswordNotificationEs** (staff) | Solicitud restablecer contraseña | Enlace restablecer (expira N min). Paciente → `/patient/reset-password?...&clinic={slug}`, From = clínica; staff → `/reset-password`, From = Irison | Paciente → clínica; staff → Irison | Email usuario |
-
-> **Branding en emails a paciente:** todos los emails al paciente (filas 1-7) muestran el **header con nombre/logo de la clínica** (`emails/partials/email-clinic-header.blade.php`, sin marca de agua Irison), **footer con el nombre de la clínica** (theme `vendor/mail/html/message.blade.php`) y **From name = nombre de la clínica** (dirección global mantenida). Solo las comunicaciones a clínica/backoffice usan el layout Irison de `emails/layouts/irison.blade.php`. Detalle: `docs/backend/patient-portal.md` §12.
-
-#### A Clínica/Propietarios (email)
-
-| # | Nombre | Motivo | Contenido | From | To |
-|---|---|---|---|---|---|
-| 8 | **NewOnlineBooking** | Nueva reserva online | Datos paciente (nombre, email, teléfono), fecha, hora, notas | Irison | Owners clínica |
-| 9 | **SubscriptionActivatedMail** | Nueva suscripción activada | Bienvenida, plan, fecha activación, enlace factura | Irison | Owner/admin |
-| 10 | **CheckoutLinkGeneratedNotification** | Enlace de pago generado para upgrade | Enlace Stripe para completar pago | Irison | Owner/admin |
-| 11 | **PaymentCompletedNotification** | Pago de upgrade completado | Confirmación de pago, plan actualizado | Irison | Owner/admin |
-| 12 | **SubscriptionUpgradedNotification** | Upgrade completado | Plan actualizado, bienvenida | Irison | Owner/admin |
-| 13 | **SubscriptionUpgradedNotificationMail** | (Fallback) Confirmación upgrade | Mismo contenido que #12, enviado directo desde controlador | Irison | Owner/admin |
-| 14 | **InvoicePaymentFailedMail** | Pago factura falló (webhook) | Aviso pago pendiente, monto, próximo intento | Irison | Email clínica + owner |
-| 15 | **ResendInvoiceMail** | Admin reenvía factura | Enlace factura + mensaje personalizado | Irison | Email destinatario |
-| 21 | **SubscriptionRejectedNotification** | Upgrade rechazado | Rechazo con comentarios del admin, plan solicitado | Irison | Email owner |
-
-#### Internas / Backoffice (email)
-
-| # | Nombre | Motivo | Contenido | From | To |
-|---|---|---|---|---|---|
-| 16 | **SubscriptionCanceledInternalMail** | Suscripción cancelada | Datos clínica + IDs Stripe | Irison | `cancellation_notification_to` |
-| 17 | **ContactMail** | Formulario de contacto | Nombre, email, asunto, mensaje | Usuario | `CONTACT_EMAIL` |
-| 18 | **AccountActivationMail** | Nuevo registro | Enlace activar cuenta + trial | Irison | Email registrado |
-| 19 | **TrialLifecycleMail** | Hitos trial (día 1,7,20,27,30) | Mensajes según milestone, enlace facturación | Irison | Email owner |
-
-#### Solo Database (bandeja interna)
-
-| # | Nombre | Motivo | Contenido | From | To |
-|---|---|---|---|---|---|
-| 20 | **SubscriptionUpgradeRequestedNotification** | Solicitud upgrade de plan | Plan solicitado, clínica, solicitante | Sistema | Admins clínica |
-| 22 | **BackofficeAlertNotification** | Alertas internas de suscripción (`backoffice_upgrade_requested`, `trial_expired`, `trial_converted`, `subscription_cancelled`) | `type`, clínica, mensaje + extras según tipo | Sistema | Admins backoffice activos |
-
-> Nota: `BackofficeAlertNotification` se reconcilia en cada carga del índice de clínicas (`ClinicController@index` → `BackofficeAlertService::reconcileMany`). Es idempotente (dedupe `type|clinic_id|admin_id`) y deriva alertas del estado actual, sin backfill retroactivo.
-
-Tests en `tests/Feature/Mail/EmailDispatchTest.php` y `tests/Feature/Notifications/NotificationsTest.php`.
-
-> Formato de email: todos los emails de Irison hacia subscriptores usan el layout unificado `emails/layouts/irison.blade.php` (header con logo Irison + pie legal genérico). Detalle: `docs/qa/email-tests.md`.
-
-Detalle de comportamiento: `docs/backoffice/subscriptions.md` (ciclo de suscripción) y `docs/backoffice/notificaciones-internas.md` (alertas internas de backoffice).
+> **Catálogo completo de notificaciones** (22 emails, branding por audiencia, tests y formato): `docs/backend/notifications.md`. Tests en `tests/Feature/Mail/EmailDispatchTest.php` y `tests/Feature/Notifications/NotificationsTest.php`.
 
 ## High-Value References
 

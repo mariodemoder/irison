@@ -50,6 +50,10 @@ Resultado: el owner aparece inmediatamente en la página pública de booking con
 
 Cuando el owner modifica su horario en la página de Equipo (`TeamUserForm`), `TeamUserService::syncSchedules()` sincroniza también a `ProfessionalSchedule` si el usuario tiene `allow_online_booking = true`. Esto mantiene los dos sistemas alineados y evita el badge "Usando horario de Equipo" en BookingSettings.
 
+### UI de configuración admin (`BookingSettings.vue`)
+
+El tab "Reserva Online" de Servicios (`resources/js/views/settings/BookingSettings.vue`) tiene un header propio con el título **"Reserva Online"** (igual que el resto de pestañas), un botón de ayuda **"?"** (`BookingHelpModal.vue`) y, arriba a la derecha (visible en cualquier sub-pestaña siempre que exista slug), los dos botones **"Ver página pública ↗"** y **"Copiar enlace público"** hacia `{origin}/booking/{slug}`. Guía para clínicas: `docs/cliente/booking.md`.
+
 ## Tests
 
 ```bash
