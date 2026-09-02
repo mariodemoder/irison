@@ -17,6 +17,7 @@
             <button :class="['tab', { active: activeTab==='horarios' }]" @click="activeTab='horarios'">Horarios</button>
             <button :class="['tab', { active: activeTab==='contadores' }]" @click="activeTab='contadores'">Contadores</button>
             <button :class="['tab', { active: activeTab==='factura_pdf' }]" @click="activeTab='factura_pdf'">Factura PDF</button>
+            <button v-if="showImportTab" :class="['tab', { active: activeTab==='importar' }]" @click="activeTab='importar'">Importar Datos</button>
             <button :class="['tab', { active: activeTab==='subscripcion' }]" @click="activeTab='subscripcion'">Subscripción</button>
           </div>
 
@@ -533,6 +534,10 @@
                   <span class="invoice-preview-label">Preview PDF real (demo con datos fake)</span>
                 </div>
               </div>
+
+              <div v-if="showImportTab" class="tab-panel tab-card" v-show="activeTab==='importar'">
+                <ImportDataTab />
+              </div>
             </div>
 
             <div class="action-plane">
@@ -560,6 +565,7 @@ import { meClinic, isPro, isEnterprise } from '../shared/meCache'
 import { getLoadErrorMessage } from '../shared/httpErrors'
 import SaveButton from '../components/SaveButton.vue'
 import ImageUploader from '../components/ImageUploader.vue'
+import ImportDataTab from '../components/imports/ImportDataTab.vue'
 import { useModalClose } from '../composables/useModalClose'
 
 const router = useRouter()
@@ -608,6 +614,8 @@ const removingClinicLogo = ref(false)
 const IRISON_COLOR = '#F8FAFC'
 
 const canUseClinicBranding = computed(() => isPro.value || isEnterprise.value)
+
+const showImportTab = computed(() => isPro.value || isEnterprise.value)
 
 function goToSubscription() {
   activeTab.value = 'subscripcion'

@@ -41,6 +41,7 @@ const features = [
   { label: 'Portal del paciente', basic: false, pro: true, enterprise: true },
   { label: 'Notificaciones WhatsApp', basic: false, pro: true, enterprise: true },
   { label: 'API de integración', basic: false, pro: true, enterprise: true },
+  { label: 'Importación de datos CSV', basic: false, pro: true, enterprise: true },
   { label: 'Informes avanzados', basic: false, pro: true, enterprise: true },
   { label: 'Multi sede', basic: false, pro: false, enterprise: true },
   { label: 'White Label', basic: false, pro: false, enterprise: true },

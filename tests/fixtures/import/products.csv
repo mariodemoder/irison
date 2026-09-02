@@ -1,0 +1,11 @@
+referencia;nombre;precio_venta;precio_compra;iva_venta;iva_compra;familia;lote
+DEMO-REF-001;Crema Antiinflamatoria;25,95;8,50;21;0;Dermocosmética;LOT-2026-001
+DEMO-REF-002;Gel de Masaje Caliente;18,50;6,20;21;0;Fisioterapia;LOT-2026-002
+DEMO-REF-003;Spray Analgésico;12,00;4,80;21;0;Farmacia;LOT-2026-003
+DEMO-REF-004;Venda Elástica 8cm;3,50;1,20;21;0;Ortopedia;LOT-2026-004
+DEMO-REF-005;Rodillera Deportiva;32,00;15,00;21;0;Ortopedia;LOT-2026-005
+DEMO-REF-006;Colágeno Hidrolizado;22,75;11,00;21;0;Nutrición;LOT-2026-006
+DEMO-REF-007;Aceite Esencial Lavanda;15,90;7,50;21;0;Aromaterapia;LOT-2026-007
+DEMO-REF-008;TENS Parches Repuesto;9,99;3,50;21;0;Electroterapia;LOT-2026-008
+DEMO-REF-009;Pillow Ergonómico Cervical;28,50;12,00;21;0;Ortopedia;LOT-2026-009
+DEMO-REF-010;Bandas de Resistencia Set;16,00;6,80;21;0;Rehabilitación;LOT-2026-010

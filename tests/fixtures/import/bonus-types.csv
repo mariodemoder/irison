@@ -1,0 +1,11 @@
+nombre;sesiones;precio;expira_el;linea_1;linea_2;linea_3;linea_4;linea_5;linea_6;linea_7;linea_8;linea_9
+Bono Masaje Deportivo 5;5;190,00;31/12/2026;Masaje Deportivo|5|40,00;;;;;;;;;
+Bono Osteopatía 8;8;340,00;30/06/2027;Osteopatía|8|45,00;;;;;;;;;
+Bono Combinado 10;10;380,00;31/12/2026;Masaje Deportivo|5;Osteopatía|3;Punción Seca|2|50,00;;;;
+Bono Rehabilitación 6;6;220,00;30/06/2027;Terapia Manual|3;Readaptación Funcional|3;;;;;;;;;
+Bono Bienestar 4;4;150,00;31/12/2026;Quiromasaje|2;Drenaje Linfático|2|45,00;;;;
+Bono Deportista 12;12;420,00;31/12/2026;Masaje Deportivo|4;Electroestimulación|4;Readaptación Funcional|4;;;;
+Bono Inicial 3;3;110,00;30/06/2027;Terapia Manual|2;Electroestimulación|1|35,00;;;;
+Bono Respiratorio 6;6;240,00;31/12/2027;Fisioterapia Respiratoria|6|40,00;;;;;;;;;
+Bono Completo 15;15;550,00;30/06/2027;Masaje Deportivo|3;Osteopatía|3;Terapia Manual|3;Punción Seca|3;Quiromasaje|3;;
+Bono Express 2;2;80,00;30/09/2026;Presoterapia|2|35,00;;;;;;;;;

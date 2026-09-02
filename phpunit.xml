@@ -26,6 +26,9 @@
         <testsuite name="Subscriptions">
             <directory>modules/Subscriptions/Tests</directory>
         </testsuite>
+        <testsuite name="DataImport">
+            <directory>modules/DataImport/Tests</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>

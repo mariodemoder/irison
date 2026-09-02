@@ -36,6 +36,7 @@ return [
             'Portal del paciente',
             'Informes avanzados',
             'API de integración',
+            'Importación de datos CSV',
             'Soporte prioritario',
         ],
     ],

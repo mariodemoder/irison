@@ -1,0 +1,11 @@
+nombre;nif;email;telefono;fecha_nacimiento;direccion;cp;poblacion;provincia;pais;observaciones
+Ana García;48000001J;ana.garcia@demo.es;600100001;15/03/1985;Calle Mayor 10;28001;Madrid;Madrid;España;Paciente de demostración
+José Martínez;48000002Z;jose.martinez@demo.es;600100002;22/07/1990;Avenida de la Paz 25;08001;Barcelona;Barcelona;España;Dolor lumbar crónico
+Laura Sánchez;48000003S;laura.sanchez@demo.es;600100003;10/11/1988;Calle Gran Vía 45;41001;Sevilla;Sevilla;España;Post-operatorio
+Carlos López;48000004Q;carlos.lopez@demo.es;600100004;05/01/1995;Paseo de la Castellana 70;28046;Madrid;Madrid;España;Rehabilitación de rodilla
+María Fernández;48000005V;maria.fernandez@demo.es;600100005;28/09/1982;Calle Serrano 120;28006;Madrid;Madrid;España;Fibromialgia
+Antonio García;48000006H;antonio.garcia@demo.es;600100006;14/06/1978;Ronda de Valencia 3;46001;Valencia;Valencia;España;Tendinitis crónica
+Isabel Díaz;48000007L;isabel.diaz@demo.es;600100007;30/04/1992;Calle Colón 55;46002;Valencia;Valencia;España;Contractura muscular
+Pedro Ruiz;48000008C;pedro.ruiz@demo.es;600100008;19/12/1975;Avenida de la Constitución 8;14001;Córdoba;Córdoba;España;Ciática
+Elena Moreno;48000009K;elena.moreno@demo.es;600100009;03/08/1987;Calle Larios 12;29001;Málaga;Málaga;España;Esguince de tobillo
+Marcos Jiménez;48000010E;marcos.jimenez@demo.es;600100010;11/02/1993;Plaza de España 7;41004;Sevilla;Sevilla;España;Lesión deportiva hombro

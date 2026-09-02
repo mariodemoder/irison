@@ -11,6 +11,7 @@ Este directorio centraliza la documentacion oficial del backend y operaciones.
 - `backend/reminder-scheduling.md`: jobs de recordatorios de citas (24h/2h), frecuencia variable vía `REMINDER_INTERVAL_MINUTES` e idempotencia.
 - `backend/finance.md`: módulo de finanzas — gastos, tarifas por miembro del equipo y cálculo de beneficios.
 - `backend/finance-restructure-spec.md`: spec completo de reestructuración del módulo Finanzas PRO (6 fases, roadmap de implementación).
+- `specs/data-import-spec.md`: spec del módulo de Importación de datos CSV (PRO/Enterprise) — decisiones, arquitectura `modules/DataImport/`, API, frontend y checklist de retomada.
 - `backoffice/`: arquitectura y operacion del panel interno.
 - `backoffice/subscriptions.md`: comportamiento del ciclo de suscripcion y alertas internas.
 - `backoffice/notificaciones-internas.md`: alertas internas de backoffice (tipos, reconciliacion, UI).
